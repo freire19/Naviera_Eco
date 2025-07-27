@@ -1,0 +1,104 @@
+RELATÓRIO GERAL DO PROJETO: SISTEMA DE EMBARCAÇÃO (Até 19/02/2025, 13:00h)
+
+A seguir apresento um relatório completo do estado atual do nosso projeto “SistemaEmbarcacaoProjeto_Novo”, contemplando:
+
+Ambiente e ferramentas utilizadas
+Estrutura de pastas criada
+Funcionalidades já implementadas
+Pontos pendentes e/ou deixados para o futuro
+Data e hora deste relatório
+1) Ambiente e Ferramentas Utilizadas
+Sistema Operacional:
+
+Windows 11 (versão exata 10.0.26100.3194, conforme capturas de tela).
+IDE:
+
+Eclipse (no caso, você baixou/instalou a versão Eclipse IDE 2024-12 / 2025, mas os passos valem para qualquer Eclipse Java).
+Versão do Java:
+
+JDK 17 (indicamos no Path e JAVA_HOME como C:\Program Files\Java\jdk-17).
+Gerenciamento de Dependências (parcial):
+
+Maven instalado (versão 3.9.9) para baixar as bibliotecas do JasperReports, mas o projeto em si não é Maven. Você utilizou o Maven apenas para fazer “download” dos .jar e depois incluiu manualmente na pasta lib/.
+Banco de Dados:
+
+PostgreSQL (conforme se vê em passagens do PassagemDAO, com queries SQL e uso de ConexaoBD.getConnection()).
+JasperReports Library:
+
+Versão 6.21.3 baixada via Maven e copiada para libs do projeto.
+2) Estrutura de Pastas do Projeto
+No disco C: (Windows), seu projeto está em:
+
+vbnet
+Copiar código
+C:\SistemaEmbarcacao\
+    └─ SistemaEmbarcacaoProjeto_Novo\
+        ├─ .project, .classpath, etc. (arquivos do Eclipse)
+        ├─ src\
+        │   ├─ dao\          (classes DAO, ex. PassagemDAO.java)
+        │   ├─ database\     (se houver conexões etc.)
+        │   ├─ gui\          (Controllers, FXML usage, e pacotes auxiliares)
+        │   ├─ model\        (classes de modelo, ex. Passagem.java)
+        │   ├─ tests\        (classe de teste, ex. TesteBilhete.java)
+        │   └─ ...           (outros pacotes: gui.icons, gui.util, etc.)
+        ├─ lib\
+        │   ├─ jasperreports-6.21.3.jar
+        │   ├─ jfreechart-1.0.19.jar
+        │   ├─ openpdf-1.3.32.jar
+        │   ├─ postgresql-42.7.5.jar
+        │   ├─ etc. (outros .jar baixados)
+        ├─ database_scripts\ (se houver scripts SQL)
+        ├─ relatorios\       (pasta onde pretendemos colocar .jasper / .jrxml)
+        └─ module-info.java  (arquivo modular, se houver)
+Observações:
+
+Pasta relatorios\ é onde pretendemos manter .jasper ou .jrxml.
+Pasta lib\ contém as dependências (JasperReports, etc.). Foi incluída manualmente no “Java Build Path” do Eclipse para que o projeto compile.
+3) Funcionalidades Já Implementadas
+3.1) Cadastro e Venda de Passagem
+VenderPassagemController:
+
+Tela que permite inserir uma nova passagem (ou editar), salvando campos como:
+numBilhete, dataViagem, nomePassageiro, numeroDoc, etc.
+Calcula automaticamente alguns valores (alimentação, transporte) de acordo com a rota e o tipo de passagem.
+Insere ou atualiza no banco (tabela passagens) via PassagemDAO.
+PassagemDAO (CRUD da tabela “passagens”):
+
+inserir(Passagem p), atualizar(Passagem p), listarTodos(), excluir(...).
+Já garante o retorno de todos os campos, inclusive valor_pago, valor_total, devedor, etc.
+3.2) Lista de Passageiros (ListaPassagensNovo)
+Tela para filtrar e visualizar passagens já emitidas.
+Pode filtrar por data, viagem, pagamento (em aberto, quitados, etc.), rota, agente, tipoPassageiro.
+Exibe as passagens em um TableView.
+(Ponto pendente: algumas colunas de pagamento não aparecem do jeito esperado, ver item 4).
+3.3) Estrutura de Filtros no DAO
+filtrarPassagens(LocalDate dtIni, LocalDate dtFim, boolean somenteViagem, String viagemSel, String pagamento, String rotaSel, String agenteSel, String tipoPassSel)
+Retorna as passagens conforme as condições, montando uma query dinâmica.
+3.4) Integração com JasperReports (incompleta, mas quase)
+Já baixamos os .jar (versão 6.21.3) e testamos com TesteBilhete.java.
+Conclusão: é funcional, mas deixamos para finalizar depois a parte de relatórios (por conta de incompatibilidade e problemas de tempo).
+4) Pontos Pendentes ou Para Fazer Depois
+Lista de Passageiros – Exibir corretamente os campos de pagamento (Valor Pago, Devedor, Descontos, etc.) no TableView.
+
+O PassagemDAO já retorna valor_pago, etc., mas no ListaPassagensNovoController ainda não foram criadas as colunas correspondentes (por exemplo, “colDevedor”, “colDescontoTarifa”, “colValorAPagar”). É necessário adicioná-las ao FXML + Controller e fazer o “bind” (cellValueFactory).
+Esse trabalho ficou pendente.
+Relatórios em JasperReports
+
+Apesar de termos a classe TesteBilhete.java para gerar um bilhete, tivemos problemas de compatibilidade (InvalidClassException) e escolhemos adiar a finalização do relatório. Precisaríamos recompilar o .jrxml com a mesma versão 6.21.3.
+Faremos depois a integração final (por exemplo, chamando fillReport(...) dentro do VenderPassagemController após salvar).
+Outros itens:
+
+Sistema de segurança (login, permissões), se for necessário.
+Otimização e refinamento das telas.
+Impressão real (imprimir em impressora térmica etc.)
+Deploy final (instalador ou algo assim).
+5) Data e Hora deste Relatório
+Data: 19/02/2025
+Hora: 13:00h (aproximadamente, conforme pedido).
+(Observação: as datas nos arquivos do projeto podem constar como 2025-02, pois estamos simulando esse ambiente.)
+
+Conclusão
+Deixamos relatórios e a lista de passageiros (parte de exibir todos os campos de pagamento) para resolver depois.
+O sistema já consegue vender passagens, salvar no BD, e listar parte das informações.
+A estrutura está pronta para qualquer desenvolvedor continuar: bastaria criar colunas nos TableViews que faltam e finalizar a recompilação do .jrxml/.jasper para relatórios.
+Esse relatório resume o estado atual do projeto, para que qualquer pessoa possa retomar o desenvolvimento exatamente de onde paramos.

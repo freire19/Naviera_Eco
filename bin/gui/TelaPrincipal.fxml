@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<BorderPane fx:id="rootPane" prefHeight="720.0" prefWidth="1024.0" stylesheets="@/css/main.css"
+            xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="gui.TelaPrincipalController">
+    <top>
+        <MenuBar BorderPane.alignment="CENTER">
+            <menus>
+                <Menu mnemonicParsing="false" text="Cadastro">
+                    <items>
+                        <MenuItem fx:id="menuCadEmpresa" onAction="#handleCadastrarEmpresa" text="Empresa/Configurações" />
+                        <MenuItem fx:id="menuCadUsuarios" onAction="#handleCadastrarUsuario" text="Usuários" />
+                        <MenuItem fx:id="menuCadViagens" onAction="#handleCadastrarViagem" text="Viagens" />
+                        <MenuItem fx:id="menuCadRotas" onAction="#handleCadastrarRotas" text="Rotas" />
+                        <MenuItem fx:id="menuCadTarifas" onAction="#handleCadastroTarifa" text="Tarifas (Passagem/Frete)" />
+                        <MenuItem fx:id="menuCadConferentes" onAction="#handleCadastrarConferente" text="Conferentes" />
+                        <MenuItem fx:id="menuCadCaixa" onAction="#handleCadastrarCaixa" text="Tipos de Caixa" />
+                        <MenuItem fx:id="menuCadProdutos" onAction="#handleProductos" text="Produtos (Bar/Serviços)" />
+                        <MenuItem fx:id="menuCadTabelasAuxiliares" onAction="#handleTabelasAuxiliares" text="Outros Cadastros Auxiliares" />
+                    </items>
+                </Menu>
+
+                <Menu mnemonicParsing="false" text="Frete">
+                    <items>
+                        <MenuItem fx:id="menuCadastrarFrete" onAction="#handleCadastrarFrete" text="Lançar Novo Frete" />
+                        <MenuItem fx:id="menuListaFretes" onAction="#handleListaFrete" text="Listar Fretes da Viagem" />
+                        <MenuItem fx:id="menuRelFretes" onAction="#handleRelatorioFrete" text="Relatório de Fretes" />
+                        <MenuItem fx:id="menuEditarMercadoria" onAction="#handleEditarMercadoria" text="Editar Mercadoria (Frete)" />
+                    </items>
+                </Menu>
+
+                <Menu mnemonicParsing="false" text="Passagens">
+                    <items>
+                        <MenuItem fx:id="menuVenderPassagem" onAction="#handleVenderPassagem" text="Vender Nova Passagem" />
+                        <MenuItem fx:id="menuListaPassagens" onAction="#handleListaPassagensNovo" text="Listar Passageiros da Viagem" />
+                        <MenuItem fx:id="menuRelPassagens" onAction="#handleRelatorioPassagem" text="Relatório de Passagens" />
+                    </items>
+                </Menu>
+
+                <Menu mnemonicParsing="false" text="Encomendas">
+                    <items>
+                        <MenuItem fx:id="menuInserirEncomenda" onAction="#handleInserirEncomenda" text="Registrar Nova Encomenda" />
+                        <MenuItem fx:id="menuListaEncomendas" onAction="#handleListaEncomenda" text="Listar Encomendas da Viagem" />
+                        <MenuItem fx:id="menuRelEncomendas" onAction="#handleRelatorioEncomenda" text="Relatório de Encomendas" />
+                        <MenuItem fx:id="menuPrecoEncomenda" onAction="#handlePrecoEncomenda" text="Tabela de Preços de Encomenda" />
+                        <MenuItem fx:id="menuClientesEncomenda" onAction="#handleClientesEncomenda" text="Cadastro de Clientes (Encomendas)" />
+                    </items>
+                </Menu>
+
+                <Menu mnemonicParsing="false" text="Financeiro">
+                    <items>
+                        <MenuItem fx:id="menuInserirEntrada" onAction="#handleInserirEntrada" text="Lançar Entrada (Avulsa)" />
+                        <MenuItem fx:id="menuInserirSaida" onAction="#handleInserirSaida" text="Lançar Saída (Despesa)" />
+                        <MenuItem fx:id="menuRelEntradas" onAction="#handleRelatorioEntrada" text="Relatório de Entradas" />
+                        <MenuItem fx:id="menuRelSaidas" onAction="#handleRelatorioSaida" text="Relatório de Saídas" />
+                        <MenuItem fx:id="menuRelGeralViagem" onAction="#handleRelatorioGeralViagem" text="Relatório Geral Financeiro da Viagem" />
+                        <MenuItem fx:id="menuVendasBar" onAction="#handleVentas" text="Registrar Vendas (Bar/Serviços)" />
+                    </items>
+                </Menu>
+
+                <Menu mnemonicParsing="false" text="Manutenção">
+                    <items>
+                        <MenuItem fx:id="menuBackup" onAction="#handleBackup" text="Backup do Sistema" />
+                    </items>
+                </Menu>
+
+                <Menu mnemonicParsing="false" text="Ajuda">
+                    <items>
+                        <MenuItem fx:id="menuDuvidas" onAction="#handleDuvidasFrequentes" text="Dúvidas Frequentes" />
+                    </items>
+                </Menu>
+
+                <Menu mnemonicParsing="false" text="Sair">
+                    <items>
+                        <MenuItem fx:id="menuLogout" onAction="#handleLogout" text="Sair do Sistema" />
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+    </top>
+    <center>
+        <AnchorPane styleClass="dashboard-pane" BorderPane.alignment="CENTER">
+            <children>
+                <VBox alignment="TOP_CENTER" spacing="20.0" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
+                    <children>
+                        <Label fx:id="lblBemVindo" styleClass="dashboard-title" text="Bem-vindo ao Sistema de Gerenciamento de Embarcações" />
+
+                        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="viagem-ativa-box">
+                            <children>
+                                <Label styleClass="label-bold" text="Viagem Ativa Selecionada:" />
+                                <ComboBox fx:id="cmbViagemAtiva" prefWidth="350.0" promptText="Selecione uma viagem" />
+                                <Button fx:id="btnCarregarDadosDaViagem" onAction="#handleCarregarDadosDaViagem" text="Carregar Dados da Viagem" />
+                            </children>
+                        </HBox>
+                        <Separator prefWidth="200.0" />
+
+                        <GridPane hgap="20.0" styleClass="dashboard-grid" vgap="10.0">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                            </rowConstraints>
+                            <children>
+                                <VBox alignment="CENTER" styleClass="info-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                    <children>
+                                        <Label styleClass="info-card-title" text="Próximas Viagens Agendadas" />
+                                        <Text fx:id="txtProximasViagens" styleClass="info-card-data" text="N/D" />
+                                    </children>
+                                </VBox>
+                                <VBox alignment="CENTER" styleClass="info-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                    <children>
+                                        <Label styleClass="info-card-title" text="Encomendas (Viagem Atual)" />
+                                        <Text fx:id="txtTotalEncomendas" styleClass="info-card-data" text="0" />
+                                    </children>
+                                </VBox>
+                                <VBox alignment="CENTER" styleClass="info-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                                    <children>
+                                        <Label styleClass="info-card-title" text="Saldo do Caixa (Geral)" />
+                                        <Text fx:id="txtSaldoCaixa" styleClass="info-card-data" text="R$ 0,00" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </GridPane>
+
+                        <Separator prefWidth="200.0" />
+                        <Label styleClass="label-header" text="Acesso Rápido" />
+                        <HBox alignment="CENTER" spacing="20.0" styleClass="acesso-rapido-box">
+                            <children>
+                                <Button fx:id="btnRapidoVenderPassagem" onAction="#handleVenderPassagem" prefHeight="80.0" prefWidth="160.0" styleClass="button-acesso-rapido" text="Vender Passagem" contentDisplay="TOP" graphicTextGap="8.0">
+                                    <graphic>
+                                        <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true">
+                                            <image><Image url="@/gui/icons/passagem.png" /></image>
+                                        </ImageView>
+                                    </graphic>
+                                </Button>
+                                <Button fx:id="btnRapidoCadastrarViagem" onAction="#handleCadastrarViagem" prefHeight="80.0" prefWidth="160.0" styleClass="button-acesso-rapido" text="Cadastrar Viagem" contentDisplay="TOP" graphicTextGap="8.0">
+                                     <graphic>
+                                        <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true">
+                                            <image><Image url="@/gui/icons/viagem.png" /></image> </ImageView>
+                                    </graphic>
+                                </Button>
+                                <Button fx:id="btnRapidoInserirFrete" onAction="#handleCadastrarFrete" prefHeight="80.0" prefWidth="160.0" styleClass="button-acesso-rapido" text="Lançar Frete" contentDisplay="TOP" graphicTextGap="8.0">
+                                     <graphic>
+                                        <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true">
+                                            <image><Image url="@/gui/icons/frete.png" /></image>
+                                        </ImageView>
+                                    </graphic>
+                                </Button>
+                                <Button fx:id="btnRapidoInserirEncomenda" onAction="#handleInserirEncomenda" prefHeight="80.0" prefWidth="160.0" styleClass="button-acesso-rapido" text="Nova Encomenda" contentDisplay="TOP" graphicTextGap="8.0">
+                                     <graphic>
+                                        <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true">
+                                            <image><Image url="@/gui/icons/encomenda.png" /></image>
+                                        </ImageView>
+                                    </graphic>
+                                </Button>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </children>
+        </AnchorPane>
+    </center>
+</BorderPane>

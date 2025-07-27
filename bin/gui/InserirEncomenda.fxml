@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="gui.InserirEncomendaController"
+            prefWidth="900" prefHeight="600">
+
+    <children>
+        <!-- Botão INICIAR (top-left) -->
+        <Button fx:id="btnIniciar" layoutX="20" layoutY="20" prefWidth="100"
+                text="Iniciar" onAction="#handleIniciar"/>
+
+        <!-- Título central -->
+        <Label layoutX="400" layoutY="20" text="ENCOMENDA"
+               style="-fx-font-size:18; -fx-font-weight:bold;"/>
+
+        <!-- N° Encomenda (top-right) -->
+        <Label layoutX="765" layoutY="10" text="N° Encomenda:"/>
+        <TextField fx:id="txtNumEncomenda" layoutX="760" layoutY="30"
+                   prefWidth="120" editable="true"/>
+
+        <!-- Linha Remetente/Destinatario (esquerda) -->
+        <Label layoutX="20" layoutY="70" text="Remetente:"/>
+        <ComboBox fx:id="cmbRemetente" layoutX="100" layoutY="65"
+                  prefWidth="250" editable="true"/>
+
+        <Label layoutX="20" layoutY="110" text="Destinatário:"/>
+        <ComboBox fx:id="cmbDestinatario" layoutX="100" layoutY="105"
+                  prefWidth="250" editable="true"/>
+
+        <!-- N° Documento do Recebedor / Obs (entre) -->
+        <Label layoutX="370" layoutY="70" text="N° Documento do Recebedor:"/>
+        <TextField fx:id="txtNDocumentoRecebedor" layoutX="550" layoutY="65"
+                   prefWidth="140"/>
+        <Label layoutX="370" layoutY="110" text="Obs:"/>
+        <TextField fx:id="txtObs" layoutX="400" layoutY="105"
+                   prefWidth="290"/>
+
+        <!-- Rota / Viagem (top-right area) -->
+        <Label layoutX="700" layoutY="70" text="Rota:"/>
+        <ComboBox fx:id="cmbRota" layoutX="740" layoutY="65"
+                  prefWidth="120"/>
+        <Label layoutX="700" layoutY="110" text="Viagem:"/>
+        <ComboBox fx:id="cmbViagem" layoutX="740" layoutY="105"
+                  prefWidth="120"/>
+
+        <!-- Linha Qtd / Descricao / Valor Unit / Valor Total + Botão Adicionar -->
+        <Label layoutX="20" layoutY="155" text="Quantidade:"/>
+        <TextField fx:id="txtQuantidade" layoutX="100" layoutY="150"
+                   prefWidth="60"/>
+        <Label layoutX="170" layoutY="155" text="Descrição:"/>
+        <TextField fx:id="txtDescricao" layoutX="230" layoutY="150"
+                   prefWidth="180"/>
+        <Label layoutX="420" layoutY="155" text="Valor Unit:"/>
+        <TextField fx:id="txtValorUnit" layoutX="485" layoutY="150"
+                   prefWidth="80"/>
+        <Label layoutX="575" layoutY="155" text="Valor Total:"/>
+        <TextField fx:id="txtValorTotal" layoutX="650" layoutY="150"
+                   prefWidth="80" editable="false"/>
+        <Button fx:id="btnAdicionarItem" layoutX="740" layoutY="150"
+                prefWidth="80" text="Adicionar" onAction="#handleAdicionarItem"/>
+
+        <!-- Table de Itens -->
+        <TableView fx:id="tableItens" layoutX="20" layoutY="190"
+                   prefWidth="860" prefHeight="200">
+            <columns>
+                <TableColumn fx:id="colQuant" text="Quant" prefWidth="70"/>
+                <TableColumn fx:id="colDesc" text="Descrição" prefWidth="380"/>
+                <TableColumn fx:id="colValUnit" text="V.Unit" prefWidth="120"/>
+                <TableColumn fx:id="colValTotal" text="V.Total" prefWidth="120"/>
+            </columns>
+        </TableView>
+
+        <!-- Rodapé: total de volumes + botões -->
+        <Label layoutX="20" layoutY="400" text="Total de Vol:"/>
+        <TextField fx:id="txtTotalVol" layoutX="100" layoutY="395"
+                   prefWidth="60" editable="false"/>
+
+        <Button fx:id="btnSalvar" layoutX="180" layoutY="395"
+                text="Salvar (F3)" onAction="#handleSalvar"/>
+        <Button fx:id="btnEditar" layoutX="270" layoutY="395"
+                text="Editar" onAction="#handleEditar"/>
+        <Button fx:id="btnExcluir" layoutX="330" layoutY="395"
+                text="Excluir" onAction="#handleExcluir"/>
+        <Button fx:id="btnImprimir" layoutX="390" layoutY="395"
+                text="Imprimir" onAction="#handleImprimir"/>
+        <Button fx:id="btnEntregar" layoutX="460" layoutY="395"
+                text="Entregar" onAction="#handleEntregar"/>
+
+        <Label layoutX="640" layoutY="400" text="Total a Pagar:"/>
+        <TextField fx:id="txtTotalAPagar" layoutX="720" layoutY="395"
+                   prefWidth="80" editable="false"/>
+
+        <!-- Rodapé 2: pagamento + Caixa -->
+        <Label layoutX="20" layoutY="440" text="Caixa:"/>
+        <ComboBox fx:id="cmbCaixa" layoutX="60" layoutY="435"
+                  prefWidth="100"/>
+
+        <Label layoutX="180" layoutY="440" text="Total:"/>
+        <TextField fx:id="txtTotal" layoutX="220" layoutY="435"
+                   prefWidth="80" editable="false"/>
+
+        <Label layoutX="310" layoutY="440" text="Desconto:"/>
+        <TextField fx:id="txtDesconto" layoutX="370" layoutY="435"
+                   prefWidth="80"/>
+
+        <Label layoutX="460" layoutY="440" text="Valor a Pagar:"/>
+        <TextField fx:id="txtValorAPagar" layoutX="540" layoutY="435"
+                   prefWidth="80" editable="false"/>
+
+        <Label layoutX="630" layoutY="440" text="Valor Pg:"/>
+        <TextField fx:id="txtValorPago" layoutX="680" layoutY="435"
+                   prefWidth="80"/>
+
+        <Label layoutX="770" layoutY="440" text="Devedor:"/>
+        <TextField fx:id="txtDevedor" layoutX="820" layoutY="435"
+                   prefWidth="60" editable="false"/>
+    </children>
+</AnchorPane>

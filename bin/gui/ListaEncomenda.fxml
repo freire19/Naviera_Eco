@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="gui.ListaEncomendaController"
+            prefWidth="900" prefHeight="600">
+
+    <children>
+        <!-- Filtros -->
+        <Label layoutX="20" layoutY="20" text="Inicial:"/>
+        <DatePicker fx:id="dpInicial" layoutX="70" layoutY="15"/>
+
+        <Label layoutX="240" layoutY="20" text="Final:"/>
+        <DatePicker fx:id="dpFinal" layoutX="280" layoutY="15"/>
+
+        <Label layoutX="400" layoutY="20" text="Viagem/Tudo"/>
+        <RadioButton fx:id="rbViagem" layoutX="480" layoutY="20" text="Viagem"/>
+        <RadioButton fx:id="rbTudo" layoutX="540" layoutY="20" text="Tudo"/>
+
+        <Label layoutX="20" layoutY="60" text="Pagamento:"/>
+        <RadioButton fx:id="rbEmAberto" layoutX="100" layoutY="60" text="Em Aberto"/>
+        <RadioButton fx:id="rbQuitados" layoutX="180" layoutY="60" text="Quitados"/>
+        <RadioButton fx:id="rbTodos" layoutX="260" layoutY="60" text="Todos"/>
+
+        <Label layoutX="320" layoutY="60" text="Entregues:"/>
+        <RadioButton fx:id="rbEntSim" layoutX="390" layoutY="60" text="Sim"/>
+        <RadioButton fx:id="rbEntNao" layoutX="440" layoutY="60" text="Não"/>
+        <RadioButton fx:id="rbEntTodos" layoutX="490" layoutY="60" text="Todos"/>
+
+        <Label layoutX="560" layoutY="60" text="Rota:"/>
+        <ComboBox fx:id="cmbRota" layoutX="600" layoutY="55" prefWidth="120"/>
+
+        <Button fx:id="btnFiltrar" layoutX="730" layoutY="55" text="Filtrar"
+                onAction="#handleFiltrar"/>
+
+        <TableView fx:id="tableEncomendas" layoutX="20" layoutY="100" prefWidth="860" prefHeight="400">
+            <columns>
+                <TableColumn fx:id="colData" text="Data" prefWidth="80"/>
+                <TableColumn fx:id="colNumero" text="N° Encomenda" prefWidth="120"/>
+                <TableColumn fx:id="colRemetente" text="Remetente" prefWidth="150"/>
+                <TableColumn fx:id="colDestinatario" text="Destinatário" prefWidth="150"/>
+                <TableColumn fx:id="colValorNominal" text="Valor" prefWidth="80"/>
+                <TableColumn fx:id="colValorPago" text="Pago" prefWidth="80"/>
+                <TableColumn fx:id="colDevedor" text="Devedor" prefWidth="80"/>
+                <TableColumn fx:id="colEntregue" text="Entregue?" prefWidth="80"/>
+            </columns>
+        </TableView>
+
+        <Label fx:id="lblTotais" layoutX="20" layoutY="510" text="Total: R$0 | Recebido: R$0 | A Receber: R$0 | Entregues: 0"/>
+
+        <Label layoutX="20" layoutY="540" text="Pesquisar:"/>
+        <TextField fx:id="txtPesquisar" layoutX="80" layoutY="535" prefWidth="150"/>
+        <ComboBox fx:id="cmbPesquisarModo" layoutX="240" layoutY="535" prefWidth="90"/>
+        <Button fx:id="btnPesquisar" layoutX="340" layoutY="535" text="Buscar" />
+    </children>
+</AnchorPane>

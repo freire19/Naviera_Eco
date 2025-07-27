@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="gui.ListaFretesController"
+            fx:id="rootListaFretes"
+            prefWidth="1050.0" prefHeight="650.0">
+
+    <!-- ********* TABELA NO CENTRO ********* -->
+    <center>
+        <TableView fx:id="tabelaFretes" prefHeight="400.0" prefWidth="980.0">
+            <columns>
+                <TableColumn fx:id="colNumFrete"     text="Nº Frete"    prefWidth="70"  style="-fx-alignment: CENTER;"/>
+                <TableColumn fx:id="colRemetente"    text="Remetente"   prefWidth="160"/>
+                <TableColumn fx:id="colDestinatario" text="Destinatário" prefWidth="160"/>
+                <TableColumn fx:id="colViagem"       text="Rota/Viagem" prefWidth="130"/>
+                <TableColumn fx:id="colEmissao"      text="Emissão"     prefWidth="90"  style="-fx-alignment: CENTER;"/>
+                <TableColumn fx:id="colNominal"      text="Vlr. Frete"  prefWidth="100" style="-fx-alignment: CENTER-RIGHT;"/>
+                <TableColumn fx:id="colDevedor"      text="A Receber"   prefWidth="100" style="-fx-alignment: CENTER-RIGHT;"/>
+                <TableColumn fx:id="colBaixado"      text="Recebido"    prefWidth="100" style="-fx-alignment: CENTER-RIGHT;"/>
+                <TableColumn fx:id="colConferente"   text="Conferente"  prefWidth="100"/>
+            </columns>
+            <BorderPane.margin>
+                <Insets top="5.0" right="10.0" bottom="5.0" left="10.0"/>
+            </BorderPane.margin>
+        </TableView>
+    </center>
+
+    <!-- ********* RODAPÉ (BOTTOM): RESUMOS E BOTÕES ********* -->
+    <bottom>
+        <VBox spacing="10" style="-fx-padding:10; -fx-border-color: lightgray; -fx-border-width: 1 0 0 0;">
+            
+            <!-- LINHA DOS TOTAIS -->
+            <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 0 0 5 0;">
+                <Label text="Total Lançado:" style="-fx-font-weight:bold; -fx-font-size: 18px;"/>
+                <Label fx:id="lblTotalLancado" text="R$ 0,00"
+                       style="-fx-text-fill:navy; 
+                              -fx-font-weight:bold; 
+                              -fx-pref-width: 150; 
+                              -fx-alignment: CENTER_RIGHT; 
+                              -fx-font-size: 18px;"/>
+                <Label text=" | " style="-fx-font-size: 18px;"/>
+
+                <Label text="Total Recebido:" style="-fx-font-weight:bold; -fx-font-size: 18px;"/>
+                <Label fx:id="lblTotalRecebido" text="R$ 0,00"
+                       style="-fx-text-fill:green; 
+                              -fx-font-weight:bold; 
+                              -fx-pref-width: 150; 
+                              -fx-alignment: CENTER_RIGHT; 
+                              -fx-font-size: 18px;"/>
+                <Label text=" | " style="-fx-font-size: 18px;"/>
+
+                <Label text="Total a Receber:" style="-fx-font-weight:bold; -fx-font-size: 18px;"/>
+                <Label fx:id="lblTotalAReceber" text="R$ 0,00"
+                       style="-fx-text-fill:red; 
+                              -fx-font-weight:bold; 
+                              -fx-pref-width: 150; 
+                              -fx-alignment: CENTER_RIGHT; 
+                              -fx-font-size: 18px;"/>
+                <Label text=" | " style="-fx-font-size: 18px;"/>
+
+                <Label text="Lançamentos:" style="-fx-font-weight:bold; -fx-font-size: 18px;"/>
+                <Label fx:id="lblLancamentos" text="0"
+                       style="-fx-text-fill:blue; 
+                              -fx-font-weight:bold; 
+                              -fx-font-size: 18px; 
+                              -fx-padding: 0 20 0 0;"/>
+                <Label text=" | " style="-fx-font-size: 18px;"/>
+
+                <Label text="Volumes:" style="-fx-font-weight:bold; -fx-font-size: 18px;"/>
+                <Label fx:id="lblTotalVolumes" text="0"
+                       style="-fx-text-fill:darkorange; 
+                              -fx-font-weight:bold; 
+                              -fx-font-size: 18px;"/>
+
+                <!-- Labels auxiliares (invisíveis) -->
+                <Label fx:id="lblTotalFaturado" visible="false" managed="false"/>
+                <Label fx:id="lblVolumes"       visible="false" managed="false"/>
+                <Label fx:id="lblDescontos"     visible="false" managed="false"/>
+            </HBox>
+
+            <!-- LINHA DOS BOTÕES -->
+            <HBox spacing="10" alignment="CENTER" style="-fx-padding: 5 0 0 0;">
+                <Button fx:id="btnFretesAReceber" text="Fretes a Receber"
+                        style="-fx-background-color:#1976D2; -fx-text-fill:white; -fx-font-weight:bold;"/>
+                <Button fx:id="btnFretesHaver" text="Fretes Haver"
+                        style="-fx-background-color:#388E3C; -fx-text-fill:white; -fx-font-weight:bold;"/>
+                <Button fx:id="btnNotaDeFrete" text="Nota de Frete"
+                        style="-fx-background-color:#00796B; -fx-text-fill:white; -fx-font-weight:bold;"/>
+                <Button fx:id="btnFrrios" text="Frrios"
+                        style="-fx-background-color:#6A1B9A; -fx-text-fill:white; -fx-font-weight:bold;"/>
+                <Button fx:id="btnImprimir" text="Imprimir Lista"
+                        style="-fx-background-color:#F57C00; -fx-text-fill:white; -fx-font-weight:bold;"/>
+                <Button fx:id="btnMunicipios" text="Municípios"
+                        style="-fx-background-color:#455A64; -fx-text-fill:white; -fx-font-weight:bold;"/>
+                <Button fx:id="btnAtualizarLista" text="Atualizar Lista"
+                        style="-fx-background-color:#0288D1; -fx-text-fill:white; -fx-font-weight:bold;"/>
+            </HBox>
+        </VBox>
+    </bottom>
+
+    <!-- ********* LATERAL DIREITA: FILTROS/PAGAMENTOS/PESQUISA ********* -->
+    <right>
+        <VBox style="-fx-padding:10;" spacing="15" prefWidth="230.0">
+
+            <TitledPane text="Status Pagamento" expanded="true">
+                <content>
+                    <VBox spacing="5" style="-fx-padding:10;">
+                        <fx:define>
+                            <ToggleGroup fx:id="statusPagamentoToggleGroup"/>
+                        </fx:define>
+                        <RadioButton fx:id="rbTodos" text="Todos" selected="true" toggleGroup="$statusPagamentoToggleGroup"/>
+                        <RadioButton fx:id="rbQuitados" text="Quitados" toggleGroup="$statusPagamentoToggleGroup"/>
+                        <RadioButton fx:id="rbAReceber" text="A Receber" toggleGroup="$statusPagamentoToggleGroup"/>
+                        <RadioButton fx:id="rbCancelado" text="Cancelado" toggleGroup="$statusPagamentoToggleGroup"/>
+                    </VBox>
+                </content>
+            </TitledPane>
+
+            <TitledPane text="Pesquisa por Período/Viagem" expanded="false">
+                <content>
+                    <VBox spacing="5" style="-fx-padding:10;">
+                        <CheckBox fx:id="cbViagem" text="Apenas Viagem Ativa (TODO)"/>
+                        <CheckBox fx:id="cbTudo"   text="Ignorar Período (TODO)"/>
+                    </VBox>
+                </content>
+            </TitledPane>
+
+            <Label text="Filtrar Nº Frete:" />
+            <TextField fx:id="txtNumFreteFiltro" promptText="Digite o Nº Frete"/>
+
+            <Label text="Filtrar por Rota:" />
+            <ComboBox fx:id="cbRotaFiltro" promptText="Todas as Rotas" prefWidth="210.0" editable="false"/>
+
+            <TitledPane text="Filtrar por Contatos" expanded="true">
+                <content>
+                    <VBox spacing="5" style="-fx-padding:10;">
+                        <Label text="Remetente:"/>
+                        <ComboBox fx:id="cbRemetenteFiltro" promptText="Todos os Remetentes" editable="true" prefWidth="200.0"/>
+
+                        <Label text="Cliente (Destinatário):"/>
+                        <ComboBox fx:id="cbClienteFiltro"  promptText="Todos os Clientes"   editable="true" prefWidth="200.0"/>
+                    </VBox>
+                </content>
+            </TitledPane>
+        </VBox>
+    </right>
+</BorderPane>
