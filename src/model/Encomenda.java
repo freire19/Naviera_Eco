@@ -1,146 +1,100 @@
 package model;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
-/**
- * Modelo mínimo para Encomenda, contendo todos os getters/setters usados no Controller.
- */
 public class Encomenda {
-    private int id;
+
+    private Long id;
+    private Long idViagem;
     private String numeroEncomenda;
     private String remetente;
     private String destinatario;
-    private String docRecebedor;
-    private String observacao;
-    private String viagem;
-    private BigDecimal valorNominal;
-    private BigDecimal desconto;
+    private String observacoes;
+    private int totalVolumes;
+    private BigDecimal totalAPagar;
     private BigDecimal valorPago;
-    private BigDecimal valorAPagar;
-    private BigDecimal devedor;
-    private String tipoPagamento;
-    private String caixa;
-    private LocalDate data;
+    private BigDecimal desconto;
+    
+    // Campos de pagamento
+    private String statusPagamento; 
+    private String formaPagamento; 
+    private String localPagamento; // CAMPO NOVO (Caixa)
+    
+    private Integer idCaixa; 
+    private String dataLancamento; 
+    
+    // Campos de Entrega
     private boolean entregue;
-    private LocalDate dataEntrega;
+    private String docRecebedor;  
+    private String nomeRecebedor; 
+    private String nomeRota;
 
-    public int getId() {
-        return id;
-    }
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getNumeroEncomenda() {
-        return numeroEncomenda;
-    }
-    public void setNumeroEncomenda(String numeroEncomenda) {
-        this.numeroEncomenda = numeroEncomenda;
+    public Encomenda() {
+        this.totalAPagar = BigDecimal.ZERO;
+        this.valorPago = BigDecimal.ZERO;
+        this.desconto = BigDecimal.ZERO;
+        this.entregue = false;
     }
 
-    public String getRemetente() {
-        return remetente;
+    public BigDecimal getTotalAPagar() { return totalAPagar == null ? BigDecimal.ZERO : totalAPagar; }
+    public BigDecimal getValorPago() { return valorPago == null ? BigDecimal.ZERO : valorPago; }
+    public BigDecimal getDesconto() { return desconto == null ? BigDecimal.ZERO : desconto; }
+    
+    public BigDecimal getSaldoDevedor() {
+        BigDecimal total = getTotalAPagar().subtract(getDesconto());
+        return total.subtract(getValorPago());
     }
-    public void setRemetente(String remetente) {
-        this.remetente = remetente;
-    }
+    
+    // Getters e Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public Long getIdViagem() { return idViagem; }
+    public void setIdViagem(Long idViagem) { this.idViagem = idViagem; }
+    
+    public String getNumeroEncomenda() { return numeroEncomenda; }
+    public void setNumeroEncomenda(String numeroEncomenda) { this.numeroEncomenda = numeroEncomenda; }
+    
+    public String getRemetente() { return remetente; }
+    public void setRemetente(String remetente) { this.remetente = remetente; }
+    
+    public String getDestinatario() { return destinatario; }
+    public void setDestinatario(String destinatario) { this.destinatario = destinatario; }
+    
+    public String getObservacoes() { return observacoes; }
+    public void setObservacoes(String observacoes) { this.observacoes = observacoes; }
+    
+    public int getTotalVolumes() { return totalVolumes; }
+    public void setTotalVolumes(int totalVolumes) { this.totalVolumes = totalVolumes; }
+    
+    public void setTotalAPagar(BigDecimal totalAPagar) { this.totalAPagar = totalAPagar; }
+    public void setValorPago(BigDecimal valorPago) { this.valorPago = valorPago; }
+    public void setDesconto(BigDecimal desconto) { this.desconto = desconto; }
+    
+    public String getStatusPagamento() { return statusPagamento; }
+    public void setStatusPagamento(String statusPagamento) { this.statusPagamento = statusPagamento; }
+    
+    public String getFormaPagamento() { return formaPagamento; }
+    public void setFormaPagamento(String formaPagamento) { this.formaPagamento = formaPagamento; }
 
-    public String getDestinatario() {
-        return destinatario;
-    }
-    public void setDestinatario(String destinatario) {
-        this.destinatario = destinatario;
-    }
-
-    public String getDocRecebedor() {
-        return docRecebedor;
-    }
-    public void setDocRecebedor(String docRecebedor) {
-        this.docRecebedor = docRecebedor;
-    }
-
-    public String getObservacao() {
-        return observacao;
-    }
-    public void setObservacao(String observacao) {
-        this.observacao = observacao;
-    }
-
-    public String getViagem() {
-        return viagem;
-    }
-    public void setViagem(String viagem) {
-        this.viagem = viagem;
-    }
-
-    public BigDecimal getValorNominal() {
-        return valorNominal;
-    }
-    public void setValorNominal(BigDecimal valorNominal) {
-        this.valorNominal = valorNominal;
-    }
-
-    public BigDecimal getDesconto() {
-        return desconto;
-    }
-    public void setDesconto(BigDecimal desconto) {
-        this.desconto = desconto;
-    }
-
-    public BigDecimal getValorPago() {
-        return valorPago;
-    }
-    public void setValorPago(BigDecimal valorPago) {
-        this.valorPago = valorPago;
-    }
-
-    public BigDecimal getValorAPagar() {
-        return valorAPagar;
-    }
-    public void setValorAPagar(BigDecimal valorAPagar) {
-        this.valorAPagar = valorAPagar;
-    }
-
-    public BigDecimal getDevedor() {
-        return devedor;
-    }
-    public void setDevedor(BigDecimal devedor) {
-        this.devedor = devedor;
-    }
-
-    public String getTipoPagamento() {
-        return tipoPagamento;
-    }
-    public void setTipoPagamento(String tipoPagamento) {
-        this.tipoPagamento = tipoPagamento;
-    }
-
-    public String getCaixa() {
-        return caixa;
-    }
-    public void setCaixa(String caixa) {
-        this.caixa = caixa;
-    }
-
-    public LocalDate getData() {
-        return data;
-    }
-    public void setData(LocalDate data) {
-        this.data = data;
-    }
-
-    public boolean isEntregue() {
-        return entregue;
-    }
-    public void setEntregue(boolean entregue) {
-        this.entregue = entregue;
-    }
-
-    public LocalDate getDataEntrega() {
-        return dataEntrega;
-    }
-    public void setDataEntrega(LocalDate dataEntrega) {
-        this.dataEntrega = dataEntrega;
-    }
+    public String getLocalPagamento() { return localPagamento; }
+    public void setLocalPagamento(String localPagamento) { this.localPagamento = localPagamento; }
+    
+    public Integer getIdCaixa() { return idCaixa; }
+    public void setIdCaixa(Integer idCaixa) { this.idCaixa = idCaixa; }
+    
+    public String getDataLancamento() { return dataLancamento; }
+    public void setDataLancamento(String dataLancamento) { this.dataLancamento = dataLancamento; }
+    
+    public boolean isEntregue() { return entregue; }
+    public void setEntregue(boolean entregue) { this.entregue = entregue; }
+    
+    public String getDocRecebedor() { return docRecebedor; }
+    public void setDocRecebedor(String docRecebedor) { this.docRecebedor = docRecebedor; }
+    
+    public String getNomeRecebedor() { return nomeRecebedor; }
+    public void setNomeRecebedor(String nomeRecebedor) { this.nomeRecebedor = nomeRecebedor; }
+    
+    public String getNomeRota() { return nomeRota; }
+    public void setNomeRota(String nomeRota) { this.nomeRota = nomeRota; }
 }

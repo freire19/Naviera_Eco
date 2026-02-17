@@ -6,7 +6,8 @@
 <AnchorPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="gui.RotasController"
-            prefWidth="600" prefHeight="400">
+            prefWidth="600" prefHeight="400"
+            styleClass="root-financeiro">
 
     <children>
         <Label layoutX="200" layoutY="14"

@@ -2,6 +2,9 @@ package gui;
 
 import dao.ItemFreteDAO;
 import dao.ConexaoBD;
+import dao.ViagemDAO;
+import model.Viagem;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -12,6 +15,8 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -21,12 +26,34 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.AnchorPane;
+import javafx.stage.FileChooser; 
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 import javafx.util.StringConverter;
 import javafx.util.converter.IntegerStringConverter;
 import model.ItemFrete;
 
+// --- IMPORTS DAS NOVAS BIBLIOTECAS (Audio e Imagem) ---
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.TargetDataLine;
+
+import net.sourceforge.tess4j.ITesseract;
+import net.sourceforge.tess4j.Tesseract;
+import org.vosk.Model;
+import org.vosk.Recognizer;
+// -----------------------------------------------------
+
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
+
+import java.io.File; 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,37 +65,28 @@ import java.text.ParseException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Controller da tela CadastroFrete.fxml.
- * Implementa:
- * - Carregamento inicial de combo boxes
- * - Edição de frete (quando staticNumeroFreteParaAbrir != null)
- * - Inserção/atualização de frete e itens
+ * VERSÃO CORRIGIDA: Método PUBLIC e Edição Direta.
  */
 public class CadastroFreteController implements Initializable {
 
-    // =====================================================
-    // 1) VARIÁVEL ESTÁTICA PARA RECEBER O NÚMERO DO FRETE
-    //    QUE SERÁ ABERTO PELA LISTA (EDIÇÃO)
-    // =====================================================
+    // VARIÁVEL ESTÁTICA PARA RECEBER O NÚMERO DO FRETE
     private static String staticNumeroFreteParaAbrir = null;
 
-    /**
-     * Chamado por ListaFretesController antes de abrir esta tela,
-     * para indicar qual número de frete deve ser carregado para edição.
-     */
     public static void setNumeroFreteParaAbrir(String numFrete) {
         staticNumeroFreteParaAbrir = numFrete;
     }
 
     //<editor-fold desc="FXML Injections">
+    @FXML private AnchorPane rootPane;
     @FXML private ComboBox<String> cbRemetente;
     @FXML private ComboBox<String> cbRota;
     @FXML private ComboBox<String> cbConferente;
     @FXML private ComboBox<String> cbCliente;
-    @FXML private ComboBox<String> cbCidadeDeCobranca;
-    // CORREÇÃO: ComboBox de item agora será ComboBox<ItemFrete> para exibir mais dados
+    @FXML private TextField txtCidadeCobranca;
     @FXML private ComboBox<ItemFrete> cbitem;
     @FXML private TextField txtNumFrete;
     @FXML private TextField txtSaida;
@@ -93,7 +111,7 @@ public class CadastroFreteController implements Initializable {
     @FXML private Button btnInserir;
     @FXML private Button btnNovo;
     @FXML private Button btnAlterar;
-    @FXML private Button btnSalvar; // Este botão será Salvar (para novo) ou Confirmar (para alteração)
+    @FXML private Button btnSalvar;
     @FXML private Button btnExcluir;
     @FXML private Button BtnSair;
     @FXML private Button BtnImprimirNota;
@@ -113,14 +131,11 @@ public class CadastroFreteController implements Initializable {
     private ObservableList<String> listaClientesOriginal = FXCollections.observableArrayList();
     private ObservableList<String> listaRotasOriginal = FXCollections.observableArrayList();
     private ObservableList<String> listaConferentesOriginal = FXCollections.observableArrayList();
-    private ObservableList<String> listaCidadesOriginal = FXCollections.observableArrayList();
-    // CORREÇÃO: listaItensDisplayOriginal agora conterá objetos ItemFrete
     private ObservableList<ItemFrete> listaItensDisplayOriginal = FXCollections.observableArrayList();
 
     private ObservableList<FreteItem> listaTabelaItensFrete = FXCollections.observableArrayList();
     private Map<String, ItemFrete> mapItensCadastrados = new HashMap<>();
-    private final DecimalFormat df = new DecimalFormat("'R$ '#,##0.00",
-            new DecimalFormatSymbols(new Locale("pt","BR")));
+    private final DecimalFormat df = new DecimalFormat("'R$ '#,##0.00", new DecimalFormatSymbols(new Locale("pt","BR")));
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private boolean programmaticamenteAtualizando = false;
@@ -129,97 +144,243 @@ public class CadastroFreteController implements Initializable {
     private boolean processandoContatoCliente = false;
     private String ultimoItemProcessadoCbItem = null;
 
-    private long freteAtualId = -1; // -1 indica que é um novo frete, não um existente
+    private long freteAtualId = -1; 
+    private ViagemDAO viagemDAO;
+    private Viagem viagemAtiva;
+
+    private ContextMenu menuSugestoesRemetente;
+    private ContextMenu menuSugestoesCliente;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        System.out.println("CadastroFreteController: Iniciando initialize()...");
+        this.viagemDAO = new ViagemDAO();
+        this.menuSugestoesRemetente = new ContextMenu();
+        this.menuSugestoesCliente = new ContextMenu();
 
         setComponentProperties();
-        configurarComboBoxItem(); // Nova configuração para cbitem
+        configurarComboBoxItem();
         carregarDadosIniciaisComboBoxes();
         setComboBoxItems();
         configurarTabela();
         configurarListenersDeCamposEEventos();
 
-        System.out.println("CadastroFreteController: initialize() pré-checagem de edição concluído.");
+        if (cbRota != null) {
+            cbRota.valueProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal != null && newVal.contains("-")) {
+                    String[] partes = newVal.split("-");
+                    if (partes.length > 1 && txtCidadeCobranca != null) {
+                        txtCidadeCobranca.setText(partes[1].trim());
+                    }
+                }
+            });
+        }
+
+        configurarAutoCompleteClienteGoogleStyle(cbRemetente, menuSugestoesRemetente, listaRemetentesOriginal);
+        configurarAutoCompleteClienteGoogleStyle(cbCliente, menuSugestoesCliente, listaClientesOriginal);
+        configurarValidacaoFocoClientesGoogle();
+
+        configurarComboboxParaAbrirAoFocar(cbRota);
+        configurarComboboxParaAbrirAoFocar(cbConferente);
+
+        Platform.runLater(() -> {
+            if (rootPane != null && rootPane.getScene() != null) {
+                rootPane.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+                    if (event.getCode() == KeyCode.F1) { if(btnNovo != null && !btnNovo.isDisabled()) handleNovoFrete(null); event.consume(); }
+                    if (event.getCode() == KeyCode.F2) { if(btnAlterar != null && !btnAlterar.isDisabled()) handleAlterarFrete(null); event.consume(); }
+                    if (event.getCode() == KeyCode.F3) { if(btnSalvar != null && !btnSalvar.isDisabled()) handleSalvarFrete(null); event.consume(); }
+                    if (event.getCode() == KeyCode.F4) { if(btnExcluir != null && !btnExcluir.isDisabled()) handleExcluirFrete(null); event.consume(); }
+                    if (event.getCode() == KeyCode.F5) { if(btnListaDeFrete != null && !btnListaDeFrete.isDisabled()) abrirListaFretes(null); event.consume(); }
+                    if (event.getCode() == KeyCode.F6) { if(BtnImprimirNota != null && !BtnImprimirNota.isDisabled()) imprimirNotaFretePersonalizada(null); event.consume(); }
+                    if (event.getCode() == KeyCode.ESCAPE) { handleSair(null); event.consume(); }
+                });
+            }
+        });
+
+        aplicarEstiloBotoesIA();
 
         if (staticNumeroFreteParaAbrir != null) {
-            System.out.println("CadastroFreteController: Detected request to open Frete para edição: " + staticNumeroFreteParaAbrir);
             carregarFreteParaEdicao(staticNumeroFreteParaAbrir);
             staticNumeroFreteParaAbrir = null;
         } else {
-            limparCamposFrete();
-            habilitarCamposParaVisualizacao(false);
-            if (btnNovo != null) btnNovo.setDisable(false);
-            if (btnSalvar != null) btnSalvar.setDisable(true);
-            if (btnAlterar != null) btnAlterar.setDisable(true);
-            if (btnExcluir != null) btnExcluir.setDisable(true);
+            configurarParaNovoFrete();
         }
-
-        System.out.println("CadastroFreteController: initialize() concluído.");
     }
 
-    // NOVO MÉTODO: Configurações específicas para cbitem
-    private void configurarComboBoxItem() {
-        if (cbitem == null) {
-            System.err.println("cbitem é NULL em configurarComboBoxItem.");
-            return;
+    private void aplicarEstiloBotoesIA() {
+        String estiloAzulForte = "-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
+        if(btnAudio != null) {
+            btnAudio.setStyle(estiloAzulForte);
+            btnAudio.setText("Voz");
         }
+        if(btnFotoNota != null) {
+            btnFotoNota.setStyle(estiloAzulForte);
+        }
+    }
+
+    private void configurarComboboxParaAbrirAoFocar(ComboBox<?> comboBox) {
+        if (comboBox == null) return;
+        comboBox.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                PauseTransition delay = new PauseTransition(Duration.millis(100));
+                delay.setOnFinished(event -> {
+                    try {
+                        if (!comboBox.isShowing() && comboBox.getItems() != null && !comboBox.getItems().isEmpty()) {
+                            comboBox.show();
+                        }
+                    } catch (Exception e) {}
+                });
+                delay.play();
+            }
+        });
+    }
+
+    private void configurarAutoCompleteClienteGoogleStyle(ComboBox<String> cmb, ContextMenu menuContexto, ObservableList<String> listaFonte) {
+        cmb.setOnShowing(e -> {}); 
+
+        cmb.getEditor().setOnKeyReleased(event -> {
+            KeyCode code = event.getCode();
+            if (code == KeyCode.ENTER || code == KeyCode.TAB || code == KeyCode.ESCAPE || code == KeyCode.UP || code == KeyCode.DOWN) {
+                if (code == KeyCode.ESCAPE) menuContexto.hide();
+                return;
+            }
+
+            String digitado = cmb.getEditor().getText().toUpperCase();
+            if (cmb.isShowing()) cmb.hide();
+            menuContexto.getItems().clear(); 
+
+            if (digitado.isEmpty()) {
+                menuContexto.hide();
+                return;
+            }
+
+            List<String> sugestoes = listaFonte.stream().filter(c -> c.toUpperCase().contains(digitado)).collect(Collectors.toList());
+
+            if (!sugestoes.isEmpty()) {
+                for (String cliente : sugestoes) {
+                    CustomMenuItem item = new CustomMenuItem();
+                    Label lblNome = new Label(cliente);
+                    lblNome.setStyle("-fx-text-fill: black; -fx-padding: 5;");
+                    HBox container = new HBox(lblNome);
+                    container.setAlignment(Pos.CENTER_LEFT);
+                    container.setPrefWidth(cmb.getWidth() > 0 ? cmb.getWidth() : 300);
+                    item.setContent(container);
+                    item.setOnAction(e -> {
+                        programmaticamenteAtualizando = true;
+                        try {
+                            cmb.setValue(cliente); 
+                            cmb.getEditor().positionCaret(cliente.length()); 
+                        } finally {
+                            programmaticamenteAtualizando = false;
+                        }
+                        menuContexto.hide();
+                        if (cmb == cbRemetente && cbCliente != null) cbCliente.requestFocus();
+                        if (cmb == cbCliente && cbRota != null) cbRota.requestFocus();
+                    });
+                    menuContexto.getItems().add(item);
+                }
+                if (!menuContexto.isShowing()) {
+                    menuContexto.show(cmb, Side.BOTTOM, 0, 0);
+                }
+            } else {
+                menuContexto.hide();
+            }
+        });
+        
+        cmb.getEditor().focusedProperty().addListener((obs, oldV, newV) -> {
+            if (!newV) menuContexto.hide();
+        });
+    }
+
+    private void configurarValidacaoFocoClientesGoogle() {
+        cbRemetente.getEditor().focusedProperty().addListener((obs, foiFocado, estaFocado) -> {
+            if (!estaFocado) {
+                menuSugestoesRemetente.hide();
+                String texto = cbRemetente.getEditor().getText().trim().toUpperCase();
+                if (!texto.isEmpty()) {
+                    processarContatoDigitado(cbRemetente, texto, listaRemetentesOriginal, "Remetente");
+                }
+            }
+        });
+
+        cbCliente.getEditor().focusedProperty().addListener((obs, foiFocado, estaFocado) -> {
+            if (!estaFocado) {
+                menuSugestoesCliente.hide();
+                String texto = cbCliente.getEditor().getText().trim().toUpperCase();
+                if (!texto.isEmpty()) {
+                    processarContatoDigitado(cbCliente, texto, listaClientesOriginal, "Cliente");
+                }
+            }
+        });
+    }
+
+    private void configurarComboBoxItem() {
+        if (cbitem == null) return;
         cbitem.setEditable(true);
 
-        // Personaliza como cada ItemFrete é exibido na lista suspensa
         cbitem.setCellFactory(lv -> new ListCell<ItemFrete>() {
             @Override
             protected void updateItem(ItemFrete item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
+                    setGraphic(null);
                 } else {
-                    setText(item.getNomeItem() + " (R$ " + df.format(item.getPrecoUnitarioPadrao()) + " / R$ " + df.format(item.getPrecoUnitarioDesconto()) + ")");
+                    HBox root = new HBox();
+                    root.setAlignment(Pos.CENTER_LEFT);
+                    root.setSpacing(10);
+                    Label lblNome = new Label(item.getNomeItem());
+                    lblNome.setStyle("-fx-text-fill: black;");
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+                    BigDecimal precoExibir;
+                    String corTexto;
+                    String sufixo;
+
+                    if (rbComDesconto != null && rbComDesconto.isSelected()) {
+                        precoExibir = item.getPrecoUnitarioDesconto();
+                        corTexto = "#2e7d32"; 
+                        sufixo = " (Desc.)";
+                    } else {
+                        precoExibir = item.getPrecoUnitarioPadrao();
+                        corTexto = "#0d47a1"; 
+                        sufixo = " (Normal)";
+                    }
+
+                    Label lblPreco = new Label(df.format(precoExibir) + sufixo);
+                    lblPreco.setStyle("-fx-font-weight: bold; -fx-text-fill: " + corTexto + ";");
+
+                    root.getChildren().addAll(lblNome, spacer, lblPreco);
+                    setGraphic(root);
+                    setText(null);
                 }
             }
         });
 
-        // Personaliza como o ItemFrete selecionado é exibido no TextField do ComboBox
         cbitem.setConverter(new StringConverter<ItemFrete>() {
             @Override
             public String toString(ItemFrete item) {
-                if (item == null) {
-                    return null;
-                }
-                // Quando o item é selecionado, exibe apenas o nome no TextField
+                if (item == null) return null;
                 return item.getNomeItem();
             }
-
             @Override
             public ItemFrete fromString(String string) {
-                // Ao digitar, tenta encontrar um ItemFrete correspondente
-                // Esta lógica já é tratada em processarItemDigitadoOuSelecionado,
-                // então aqui podemos apenas retornar null ou um ItemFrete básico
-                // que será refinado pelo listener do editor.
-                String normalizedString = string.toLowerCase();
-                for (ItemFrete item : listaItensDisplayOriginal) {
-                    if (item.getNomeItem().toLowerCase().equals(normalizedString)) {
-                        return item;
-                    }
-                }
-                // Se não encontrou, retorna um ItemFrete "fantasma" que será tratado como novo
-                // ou apenas a string para o editor. O ideal é deixar o listener do editor tratar.
                 return null; 
             }
         });
 
-        // Listener para o texto digitado no editor do ComboBox (para filtragem)
         cbitem.getEditor().textProperty().addListener((obs, oldV, newV) -> {
             if (programmaticamenteAtualizando) return;
+            try {
+                cbitem.getSelectionModel().clearSelection();
+                cbitem.setValue(null);
+            } catch (Exception e) {}
 
             if (newV == null || newV.isEmpty()) {
                 cbitem.setItems(FXCollections.observableArrayList(listaItensDisplayOriginal));
                 cbitem.hide();
             } else {
                 ObservableList<ItemFrete> filteredList = listaItensDisplayOriginal.filtered(
-                    item -> item != null && item.getNomeItem().toLowerCase().contains(newV.toLowerCase())
+                        item -> item != null && item.getNomeItem().toLowerCase().contains(newV.toLowerCase())
                 );
                 cbitem.setItems(filteredList);
                 if (!filteredList.isEmpty() && cbitem.getEditor().isFocused() && !cbitem.isShowing()) {
@@ -230,52 +391,78 @@ public class CadastroFreteController implements Initializable {
             }
         });
 
-        // Listener para quando um item é selecionado ou quando ENTER é pressionado no editor
         cbitem.setOnAction(e -> {
             if (programmaticamenteAtualizando) return;
             ItemFrete selectedItem = cbitem.getSelectionModel().getSelectedItem();
             if (selectedItem != null) {
-                processarItemDigitadoOuSelecionado(selectedItem.getNomeItem()); // Usa o nome do item selecionado
-                // Move o foco para txtpreco, se aplicável
-                if (txtpreco != null && txtpreco.isFocusTraversable()) {
-                    txtpreco.requestFocus();
+                processarItemDigitadoOuSelecionado(selectedItem.getNomeItem());
+                if (txtquantidade != null && txtquantidade.isFocusTraversable()) {
+                    txtquantidade.requestFocus();
                 }
             } else {
-                // Se o usuário digitou e não selecionou, trata como texto
                 processarItemDigitadoOuSelecionado(cbitem.getEditor().getText());
             }
         });
 
-        // Se o foco sair do ComboBox do item, processa o que foi digitado
         cbitem.focusedProperty().addListener((obs, oldV, newV) -> {
             if (programmaticamenteAtualizando) return;
-            if (!newV) { // Perdeu o foco
+            if (!newV) { 
                 String text = cbitem.getEditor().getText();
                 if (text != null && !text.trim().isEmpty()) {
-                    // Tenta encontrar um item existente que corresponda ao texto digitado
                     ItemFrete matchedItem = mapItensCadastrados.get(text.trim().toLowerCase());
                     if (matchedItem != null) {
                         programmaticamenteAtualizando = true;
                         try {
-                            cbitem.setValue(matchedItem); // Define o item como o valor selecionado
+                            cbitem.setValue(matchedItem);
                         } finally {
                             programmaticamenteAtualizando = false;
                         }
-                        processarItemDigitadoOuSelecionado(matchedItem.getNomeItem()); // Processa o item encontrado
+                        processarItemDigitadoOuSelecionado(matchedItem.getNomeItem());
                     } else {
-                        // Se não encontrou, trata como um novo item/texto livre
                         processarItemDigitadoOuSelecionado(text.trim());
                     }
                 }
-            } else { // Ganhou foco
+            } else { 
                 cbitem.setItems(FXCollections.observableArrayList(listaItensDisplayOriginal));
             }
         });
     }
 
-    private void carregarFreteParaEdicao(String numFrete) {
-        System.out.println("carregarFreteParaEdicao: carregando frete " + numFrete + " do banco...");
+    private void configurarParaNovoFrete() {
+        limparCamposFrete();
+        habilitarCamposParaVisualizacao(false);
 
+        this.viagemAtiva = viagemDAO.buscarViagemAtiva();
+
+        if (this.viagemAtiva != null) {
+            if (txtSaida != null) {
+                txtSaida.setText(this.viagemAtiva.getDataViagem().format(dateFormatter));
+            }
+            if (txtViagemAtual != null) {
+                txtViagemAtual.setText(this.viagemAtiva.getDataViagem().format(dateFormatter));
+            }
+            if (btnNovo != null) btnNovo.setDisable(false);
+            if (btnSalvar != null) btnSalvar.setDisable(false);
+        } else {
+            showAlert(AlertType.INFORMATION, "Nenhuma Viagem Ativa",
+                    "Não há nenhuma viagem ativa no sistema. Por favor, ative uma viagem na tela principal para lançar um novo frete.");
+            if (btnNovo != null) btnNovo.setDisable(true);
+            if (btnSalvar != null) btnSalvar.setDisable(true);
+        }
+        if (btnAlterar != null) btnAlterar.setDisable(true);
+        if (btnExcluir != null) btnExcluir.setDisable(true);
+        
+        Platform.runLater(() -> {
+            if (cbRemetente != null) cbRemetente.requestFocus();
+        });
+    }
+
+    // =================================================================================
+    // MÉTODO AGORA É PUBLICO PARA SER ACESSADO PELO LISTA FRETES
+    // E CONFIGURA A TELA JÁ EM MODO DE EDIÇÃO (COM BOTÕES HABILITADOS)
+    // =================================================================================
+    public void carregarFreteParaEdicao(String numFrete) {
+        System.out.println("carregarFreteParaEdicao: carregando frete " + numFrete + " do banco...");
         long numeroFreteLong;
         try {
             numeroFreteLong = Long.parseLong(numFrete);
@@ -304,26 +491,26 @@ public class CadastroFreteController implements Initializable {
                         String numNotaFiscalTemp = rs.getString("num_notafiscal");
                         BigDecimal valorNotaDb = rs.getBigDecimal("valor_notafiscal");
                         BigDecimal pesoNotaDb = rs.getBigDecimal("peso_notafiscal");
-                        BigDecimal valorTotalItens = rs.getBigDecimal("valor_total_itens");
                         BigDecimal valorFreteCalculado = rs.getBigDecimal("valor_frete_calculado");
+                        Long idViagem = rs.getObject("id_viagem", Long.class);
 
-                        if (txtNumFrete != null)        txtNumFrete.setText(numFrete);
-                        if (cbRemetente != null)        cbRemetente.setValue(remetenteNome);
-                        if (cbCliente != null)          cbCliente.setValue(destinatarioNome);
-                        if (cbRota != null)             cbRota.setValue(rotaTemp);
+                        if (txtNumFrete != null) txtNumFrete.setText(numFrete);
+                        if (cbRemetente != null) cbRemetente.setValue(remetenteNome);
+                        if (cbCliente != null) cbCliente.setValue(destinatarioNome);
+                        if (cbRota != null) cbRota.setValue(rotaTemp);
                         if (txtSaida != null && dataSaidaDb != null) {
                             txtSaida.setText(dataSaidaDb.toLocalDate().format(dateFormatter));
                         } else if (txtSaida != null) {
                             txtSaida.clear();
                         }
                         if (txtLocalTransporte != null) txtLocalTransporte.setText(localTransporte);
-                        if (cbConferente != null)       cbConferente.setValue(conferenteTemp);
-                        if (cbCidadeDeCobranca != null) cbCidadeDeCobranca.setValue(cidadeCobrancaTemp);
-                        if (txtObs != null)             txtObs.setText(obsTexto);
+                        if (cbConferente != null) cbConferente.setValue(conferenteTemp);
+                        if (txtCidadeCobranca != null) txtCidadeCobranca.setText(cidadeCobrancaTemp);
+                        if (txtObs != null) txtObs.setText(obsTexto);
 
                         if (numNotaFiscalTemp != null && !numNotaFiscalTemp.isEmpty()) {
                             if (rbSim != null) rbSim.setSelected(true);
-                            if (txtNumNota != null)    txtNumNota.setText(numNotaFiscalTemp);
+                            if (txtNumNota != null) txtNumNota.setText(numNotaFiscalTemp);
                             if (txtValorNota != null && valorNotaDb != null) {
                                 txtValorNota.setText(df.format(valorNotaDb.doubleValue()));
                             } else if (txtValorNota != null) {
@@ -342,25 +529,31 @@ public class CadastroFreteController implements Initializable {
                         } else if (txtValorTotalNota != null) {
                             txtValorTotalNota.clear();
                         }
+
+                        if (idViagem != null) {
+                            Viagem viagemAssociada = viagemDAO.buscarViagemPorId(idViagem);
+                            if (viagemAssociada != null) {
+                                if (txtViagemAtual != null) txtViagemAtual.setText(viagemAssociada.getDataViagem().format(dateFormatter));
+                                this.viagemAtiva = viagemAssociada;
+                            } else {
+                                if (txtViagemAtual != null) txtViagemAtual.setText("Viagem Não Encontrada");
+                                this.viagemAtiva = null;
+                            }
+                        } else {
+                            if (txtViagemAtual != null) txtViagemAtual.clear();
+                            this.viagemAtiva = null;
+                        }
+
                     } finally {
                         programmaticamenteAtualizando = false;
                     }
                 } else {
-                    showAlert(AlertType.WARNING, "Aviso",
-                            "Nenhum frete encontrado com número: " + numFrete);
-                    freteAtualId = -1;
-                    limparCamposFrete();
-                    habilitarCamposParaVisualizacao(false);
-                    if (btnNovo != null) btnNovo.setDisable(false);
-                    if (btnSalvar != null) btnSalvar.setDisable(true);
-                    if (btnAlterar != null) btnAlterar.setDisable(true);
-                    if (btnExcluir != null) btnExcluir.setDisable(true);
+                    showAlert(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com número: " + numFrete);
                     return;
                 }
             }
 
-            String sqlItens = "SELECT nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item " +
-                    "FROM frete_itens WHERE id_frete = ?";
+            String sqlItens = "SELECT nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item FROM frete_itens WHERE id_frete = ?";
             try (PreparedStatement pst2 = conn.prepareStatement(sqlItens)) {
                 pst2.setLong(1, freteAtualId);
                 ResultSet rs2 = pst2.executeQuery();
@@ -376,92 +569,78 @@ public class CadastroFreteController implements Initializable {
             if (tabelaItens != null) tabelaItens.refresh();
             atualizarTotaisAgregados();
 
-            habilitarCamposParaVisualizacao(true);
-            if (btnNovo != null)    btnNovo.setDisable(false);
-            if (btnSalvar != null)  btnSalvar.setDisable(true);
-            if (btnAlterar != null) btnAlterar.setDisable(false);
-            if (btnExcluir != null) btnExcluir.setDisable(false);
+            // --- LÓGICA DE ESTADO DA TELA (IGUAL AO NOVO) ---
+            habilitarCamposParaEdicao(true); // TUDO DESTRAVADO
+            
+            if (btnNovo != null) btnNovo.setDisable(false); // Permite limpar e começar um novo
+            if (btnSalvar != null) btnSalvar.setDisable(false); // Já pode salvar alterações
+            if (btnAlterar != null) btnAlterar.setDisable(true); // Já está editando
+            if (btnExcluir != null) btnExcluir.setDisable(false); // Pode excluir pois existe
+            
+            // Habilita impressões se tiver itens
+            boolean itensPresentes = listaTabelaItensFrete != null && !listaTabelaItensFrete.isEmpty();
+            if (BtnImprimirNota != null) BtnImprimirNota.setDisable(!itensPresentes);
+            if (btnImprimirEtiqueta != null) btnImprimirEtiqueta.setDisable(!itensPresentes);
+            if (btnImprimirRecibo != null) btnImprimirRecibo.setDisable(!itensPresentes);
+            // --------------------------------------------------
 
         } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao Carregar Frete",
-                    "Não foi possível carregar o frete para edição:\n" + e.getMessage());
-            freteAtualId = -1;
-            limparCamposFrete();
-            habilitarCamposParaVisualizacao(false);
-            if (btnNovo != null) btnNovo.setDisable(false);
-            if (btnSalvar != null) btnSalvar.setDisable(true);
-            if (btnAlterar != null) btnAlterar.setDisable(true);
-            if (btnExcluir != null) btnExcluir.setDisable(true);
+            showAlert(AlertType.ERROR, "Erro ao Carregar Frete", "Não foi possível carregar o frete:\n" + e.getMessage());
+            configurarParaNovoFrete();
         }
     }
 
-
     private void setComponentProperties() {
-        if (cbRemetente != null)   cbRemetente.setEditable(true);
-        if (cbCliente != null)     cbCliente.setEditable(true);
-        // cbitem agora é configurado em configurarComboBoxItem()
-        if (cbRota != null)        cbRota.setEditable(false);
-        if (cbConferente != null)  cbConferente.setEditable(false);
-        if (cbCidadeDeCobranca != null) cbCidadeDeCobranca.setEditable(false);
-
+        if (cbRemetente != null) cbRemetente.setEditable(true);
+        if (cbCliente != null) cbCliente.setEditable(true);
+        if (cbRota != null) cbRota.setEditable(false);
+        if (cbConferente != null) cbConferente.setEditable(false);
+        if (txtCidadeCobranca != null) txtCidadeCobranca.setEditable(true);
         if (txtNumFrete != null) {
             txtNumFrete.setEditable(false);
             txtNumFrete.setText("Automático");
         }
-        if (txtSaida != null)       txtSaida.setPromptText("dd/MM/yyyy");
+        if (txtSaida != null) txtSaida.setPromptText("dd/MM/yyyy");
         if (txttotal != null) {
             txttotal.setEditable(false);
             txttotal.setFocusTraversable(false);
         }
-        if (txtTotalVol != null)      txtTotalVol.setEditable(false);
+        if (txtTotalVol != null) txtTotalVol.setEditable(false);
         if (txtValorTotalNota != null) txtValorTotalNota.setEditable(false);
-        if (txtViagemAtual != null)   txtViagemAtual.setEditable(false);
+        if (txtViagemAtual != null) txtViagemAtual.setEditable(false);
     }
 
     private void carregarDadosIniciaisComboBoxes() {
-        System.out.println("CadastroFreteController: Iniciando carregarDadosIniciaisComboBoxes()...");
         carregarContatosParaComboBoxes("Remetente", listaRemetentesOriginal);
         carregarContatosParaComboBoxes("Cliente", listaClientesOriginal);
         carregarRotas();
         carregarConferentesDoBanco();
-        carregarCidadesDoBanco();
-        carregarItensCadastradosParaComboBox(); // Este método precisa ser atualizado
-        System.out.println("CadastroFreteController: carregarDadosIniciaisComboBoxes() concluído.");
+        carregarItensCadastradosParaComboBox();
     }
 
     private void setComboBoxItems() {
-        System.out.println("CadastroFreteController: Iniciando setComboBoxItems()...");
         programmaticamenteAtualizando = true;
         try {
-            if (cbRemetente != null && listaRemetentesOriginal != null)
-                cbRemetente.setItems(FXCollections.observableArrayList(listaRemetentesOriginal));
-            if (cbCliente != null && listaClientesOriginal != null)
-                cbCliente.setItems(FXCollections.observableArrayList(listaClientesOriginal));
-            if (cbRota != null && listaRotasOriginal != null)
-                cbRota.setItems(FXCollections.observableArrayList(listaRotasOriginal));
-            if (cbConferente != null && listaConferentesOriginal != null)
-                cbConferente.setItems(FXCollections.observableArrayList(listaConferentesOriginal));
-            if (cbCidadeDeCobranca != null && listaCidadesOriginal != null)
-                cbCidadeDeCobranca.setItems(FXCollections.observableArrayList(listaCidadesOriginal));
-            // CORREÇÃO: cbitem agora é do tipo ItemFrete e usa listaItensDisplayOriginal (que agora é ItemFrete)
-            if (cbitem != null && listaItensDisplayOriginal != null)
-                cbitem.setItems(FXCollections.observableArrayList(listaItensDisplayOriginal));
+            if (cbRemetente != null) cbRemetente.setItems(FXCollections.observableArrayList(listaRemetentesOriginal));
+            if (cbCliente != null) cbCliente.setItems(FXCollections.observableArrayList(listaClientesOriginal));
+            if (cbRota != null) cbRota.setItems(FXCollections.observableArrayList(listaRotasOriginal));
+            if (cbConferente != null) cbConferente.setItems(FXCollections.observableArrayList(listaConferentesOriginal));
+            if (cbitem != null) cbitem.setItems(FXCollections.observableArrayList(listaItensDisplayOriginal));
         } finally {
             programmaticamenteAtualizando = false;
         }
-        System.out.println("CadastroFreteController: setComboBoxItems() concluído.");
     }
 
     public static class FreteItem {
         private final SimpleIntegerProperty quantidade;
-        private final SimpleStringProperty  item;
+        private final SimpleStringProperty item;
         private final SimpleDoubleProperty preco;
 
         public FreteItem(int qtd, String it, double pr) {
             this.quantidade = new SimpleIntegerProperty(qtd);
-            this.item       = new SimpleStringProperty(it);
-            this.preco      = new SimpleDoubleProperty(pr);
+            this.item = new SimpleStringProperty(it);
+            this.preco = new SimpleDoubleProperty(pr);
         }
 
         public int getQuantidade() { return quantidade.get(); }
@@ -480,15 +659,10 @@ public class CadastroFreteController implements Initializable {
     }
 
     private void configurarTabela() {
-        if (tabelaItens == null) {
-            System.err.println("Erro Crítico: tabelaItens é null em configurarTabela.");
-            return;
-        }
+        if (tabelaItens == null) return;
         tabelaItens.setEditable(true);
         if (listaTabelaItensFrete != null) {
             tabelaItens.setItems(listaTabelaItensFrete);
-        } else {
-            System.err.println("listaTabelaItensFrete é NULL em configurarTabela");
         }
 
         if (colQuantidade != null) {
@@ -496,8 +670,8 @@ public class CadastroFreteController implements Initializable {
             colQuantidade.setCellFactory(TextFieldTableCell.forTableColumn(new IntegerStringConverter()));
             colQuantidade.setOnEditCommit(e -> {
                 FreteItem it = e.getRowValue();
-                Integer nV   = e.getNewValue();
-                Integer oV   = e.getOldValue();
+                Integer nV = e.getNewValue();
+                Integer oV = e.getOldValue();
                 if (nV != null && nV > 0) {
                     it.setQuantidade(nV);
                 } else {
@@ -506,14 +680,14 @@ public class CadastroFreteController implements Initializable {
                 tabelaItens.refresh();
                 atualizarTotaisAgregados();
             });
-        } else System.err.println("colQuantidade é NULL em configurarTabela");
+        }
 
         if (colItem != null) {
             colItem.setCellValueFactory(cd -> cd.getValue().itemProperty());
             colItem.setCellFactory(TextFieldTableCell.forTableColumn());
             colItem.setOnEditCommit(e -> {
                 FreteItem it = e.getRowValue();
-                String nV    = e.getNewValue();
+                String nV = e.getNewValue();
                 if (nV != null && !nV.trim().isEmpty()) {
                     it.setItem(nV.trim());
                 } else {
@@ -522,7 +696,7 @@ public class CadastroFreteController implements Initializable {
                 tabelaItens.refresh();
                 atualizarTotaisAgregados();
             });
-        } else System.err.println("colItem é NULL em configurarTabela");
+        }
 
         if (colPreco != null) {
             colPreco.setCellValueFactory(cd -> cd.getValue().precoProperty().asObject());
@@ -536,16 +710,14 @@ public class CadastroFreteController implements Initializable {
                     try {
                         return parseValorMonetario(string);
                     } catch (ParseException parseException) {
-                        showAlert(AlertType.ERROR, "Valor Inválido",
-                                "Preço digitado na tabela ('" + string + "') é inválido.");
                         return null;
                     }
                 }
             }));
             colPreco.setOnEditCommit(event -> {
                 FreteItem itemEditado = event.getRowValue();
-                Double novoValor      = event.getNewValue();
-                Double valorAntigo    = event.getOldValue();
+                Double novoValor = event.getNewValue();
+                Double valorAntigo = event.getOldValue();
                 if (novoValor != null && novoValor >= 0) {
                     itemEditado.setPreco(novoValor);
                 } else {
@@ -554,21 +726,19 @@ public class CadastroFreteController implements Initializable {
                 tabelaItens.refresh();
                 atualizarTotaisAgregados();
             });
-        } else System.err.println("colPreco é NULL em configurarTabela");
+        }
 
         if (colTotal != null) {
             colTotal.setCellValueFactory(cd ->
                     new SimpleStringProperty(df.format(cd.getValue().getTotal()))
             );
-        } else System.err.println("colTotal é NULL em configurarTabela");
+        }
     }
 
     private void configurarListenersDeCamposEEventos() {
-        System.out.println("CadastroFreteController: Iniciando configurarListenersDeCamposEEventos()...");
-
         if (txtquantidade != null) {
             txtquantidade.textProperty().addListener((o, old, n) -> calcularTotalItemEmTempoReal());
-        } else System.err.println("txtquantidade é NULL");
+        }
 
         if (txtpreco != null) {
             txtpreco.textProperty().addListener((o, old, n) -> calcularTotalItemEmTempoReal());
@@ -578,11 +748,10 @@ public class CadastroFreteController implements Initializable {
                         double v = parseValorMonetario(txtpreco.getText());
                         txtpreco.setText(df.format(v));
                     } catch (ParseException e) {
-                        // mantém como está se for inválido
                     }
                 }
             });
-        } else System.err.println("txtpreco é NULL");
+        }
 
         if (notaFiscalToggleGroup != null) {
             notaFiscalToggleGroup.selectedToggleProperty().addListener((o, old, n) -> {
@@ -590,64 +759,54 @@ public class CadastroFreteController implements Initializable {
                 boolean isFormEditable = (btnSalvar != null && !btnSalvar.isDisabled()) || (btnAlterar != null && !btnAlterar.isDisabled());
                 habilitarCamposDaNotaFiscal(isFormEditable);
             });
-        } else System.err.println("notaFiscalToggleGroup é NULL");
-        
+        }
         if (precoToggleGroup != null) {
             precoToggleGroup.selectedToggleProperty().addListener((o, old, n) -> {
                 if (programmaticamenteAtualizando) return;
-                // CORREÇÃO: Usar cbitem.getValue() para obter o ItemFrete selecionado
                 if (cbitem != null && cbitem.getValue() != null) {
                     processarItemDigitadoOuSelecionado(cbitem.getValue().getNomeItem());
                 } else {
                     if (txtpreco != null) txtpreco.clear();
                     if (txttotal != null) txttotal.clear();
                 }
+                if (cbitem != null) {
+                    List<ItemFrete> items = new ArrayList<>(cbitem.getItems());
+                    cbitem.setItems(FXCollections.observableArrayList(items));
+                }
             });
-        } else System.err.println("precoToggleGroup é NULL");
-
-        // CORREÇÃO: cbitem agora é do tipo ItemFrete, então configureDynamicComboBox precisa ser ajustado
-        // ou criar um novo método para ele. Já temos configurarComboBoxItem() para isso.
-        // As chamadas para cbRemetente e cbCliente permanecem as mesmas.
-        configureDynamicComboBox(cbRemetente, listaRemetentesOriginal,
-                (nome) -> processarContatoDigitado(cbRemetente, nome, listaRemetentesOriginal, "Remetente"), cbCliente);
-        configureDynamicComboBox(cbCliente, listaClientesOriginal,
-                (nome) -> processarContatoDigitado(cbCliente, nome, listaClientesOriginal, "Cliente"), cbRota);
-
-        if (listaTabelaItensFrete != null) {
-            listaTabelaItensFrete.addListener((ListChangeListener<FreteItem>) c -> {
-                if (programmaticamenteAtualizando) return;
-                atualizarTotaisAgregados();
-                boolean itensPresentes = !listaTabelaItensFrete.isEmpty();
-                boolean podeImprimir = freteAtualId != -1 || (btnSalvar != null && !btnSalvar.isDisabled());
-
-                if (BtnImprimirNota != null)     BtnImprimirNota.setDisable(!(podeImprimir && itensPresentes));
-                if (btnImprimirEtiqueta != null) btnImprimirEtiqueta.setDisable(!(podeImprimir && itensPresentes));
-                if (btnImprimirRecibo != null)   btnImprimirRecibo.setDisable(!(podeImprimir && itensPresentes));
+        }
+        
+        if (cbRemetente != null && cbCliente != null) {
+            cbRemetente.getEditor().setOnKeyPressed(e -> {
+                 if(e.getCode() == KeyCode.ENTER) { menuSugestoesRemetente.hide(); cbCliente.requestFocus(); }
             });
-        } else System.err.println("listaTabelaItensFrete é NULL");
-
-        if (cbRemetente != null && cbRemetente.getEditor() != null
-                && cbCliente != null && cbCliente.getEditor() != null) {
-            setEnterNavigation(cbRemetente.getEditor(), cbCliente.getEditor());
         }
-        if (cbCliente != null && cbCliente.getEditor() != null && cbRota != null) {
-            setEnterNavigation(cbCliente.getEditor(), cbRota);
+        if (cbCliente != null && cbRota != null) {
+            cbCliente.getEditor().setOnKeyPressed(e -> {
+                 if(e.getCode() == KeyCode.ENTER) { menuSugestoesCliente.hide(); cbRota.requestFocus(); }
+            });
         }
+        
         if (cbRota != null && txtSaida != null) {
-            setEnterNavigation(cbRota, txtSaida);
+            cbRota.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ENTER) { 
+                    txtSaida.requestFocus(); e.consume(); 
+                }
+            });
         }
-        if (txtSaida != null && txtLocalTransporte != null) {
-            setEnterNavigation(txtSaida, txtLocalTransporte);
+        
+        if (txtSaida != null && txtLocalTransporte != null) setEnterNavigation(txtSaida, txtLocalTransporte);
+        if (txtLocalTransporte != null && cbConferente != null) setEnterNavigation(txtLocalTransporte, cbConferente);
+        
+        if (cbConferente != null && txtCidadeCobranca != null) {
+            cbConferente.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ENTER) { 
+                    txtCidadeCobranca.requestFocus(); e.consume(); 
+                }
+            });
         }
-        if (txtLocalTransporte != null && cbConferente != null) {
-            setEnterNavigation(txtLocalTransporte, cbConferente);
-        }
-        if (cbConferente != null && cbCidadeDeCobranca != null) {
-            setEnterNavigation(cbConferente, cbCidadeDeCobranca);
-        }
-        if (cbCidadeDeCobranca != null && rbSim != null) {
-            setEnterNavigation(cbCidadeDeCobranca, rbSim);
-        }
+        
+        if (txtCidadeCobranca != null && rbSim != null) setEnterNavigation(txtCidadeCobranca, rbSim);
 
         if (rbSim != null && txtNumNota != null && txtObs != null) {
             rbSim.setOnKeyPressed(createEnterKeyHandlerForRadioButton(txtNumNota, txtObs, true));
@@ -656,24 +815,11 @@ public class CadastroFreteController implements Initializable {
             Rbnao.setOnKeyPressed(createEnterKeyHandlerForRadioButton(txtNumNota, txtObs, false));
         }
 
-        if (txtNumNota != null && txtValorNota != null) {
-            setEnterNavigation(txtNumNota, txtValorNota);
-        }
-        if (txtValorNota != null && txtPesoNota != null) {
-            setEnterNavigation(txtValorNota, txtPesoNota);
-        }
-        if (txtPesoNota != null && txtObs != null) {
-            setEnterNavigation(txtPesoNota, txtObs);
-        }
-        if (txtObs != null && txtquantidade != null) {
-            setEnterNavigation(txtObs, txtquantidade);
-        }
-        // CORREÇÃO: Navegação do txtquantidade para o editor do cbitem
-        if (txtquantidade != null && cbitem != null && cbitem.getEditor() != null) {
-            setEnterNavigation(txtquantidade, cbitem.getEditor());
-        }
-
-        // CORREÇÃO: Editor do cbitem agora deve chamar processarItemDigitadoOuSelecionado
+        if (txtNumNota != null && txtValorNota != null) setEnterNavigation(txtNumNota, txtValorNota);
+        if (txtValorNota != null && txtPesoNota != null) setEnterNavigation(txtValorNota, txtPesoNota);
+        if (txtPesoNota != null && txtObs != null) setEnterNavigation(txtPesoNota, txtObs);
+        if (txtObs != null && txtquantidade != null) setEnterNavigation(txtObs, txtquantidade);
+        if (txtquantidade != null && cbitem != null) setEnterNavigation(txtquantidade, cbitem.getEditor());
         if (cbitem != null && cbitem.getEditor() != null) {
             cbitem.getEditor().setOnAction(e -> {
                 if (cbitem.getEditor() != null) {
@@ -689,10 +835,9 @@ public class CadastroFreteController implements Initializable {
             });
         }
 
-
         if (txtpreco != null && btnInserir != null) {
             txtpreco.setOnAction(e -> {
-                if (btnInserir != null && !btnInserir.isDisable()) {
+                if (!btnInserir.isDisable()) {
                     btnInserir.fire();
                     if (txtquantidade != null && txtquantidade.isFocusTraversable()) {
                         txtquantidade.requestFocus();
@@ -701,134 +846,18 @@ public class CadastroFreteController implements Initializable {
             });
         }
 
-        // DESABILITANDO OS BOTÕES DE IA POR ENQUANTO
-        if (btnFotoNota != null) {
-            btnFotoNota.setDisable(true);
-            btnFotoNota.setOnAction(null);
+        if (listaTabelaItensFrete != null) {
+            listaTabelaItensFrete.addListener((ListChangeListener<FreteItem>) c -> {
+                if (programmaticamenteAtualizando) return;
+                atualizarTotaisAgregados();
+                boolean itensPresentes = !listaTabelaItensFrete.isEmpty();
+                boolean podeImprimir = freteAtualId != -1 || (btnSalvar != null && !btnSalvar.isDisabled());
+
+                if (BtnImprimirNota != null) BtnImprimirNota.setDisable(!(podeImprimir && itensPresentes));
+                if (btnImprimirEtiqueta != null) btnImprimirEtiqueta.setDisable(!(podeImprimir && itensPresentes));
+                if (btnImprimirRecibo != null) btnImprimirRecibo.setDisable(!(podeImprimir && itensPresentes));
+            });
         }
-        if (btnCodXml != null) {
-            btnCodXml.setDisable(true);
-            btnCodXml.setOnAction(null);
-        }
-        if (btnAudio != null) {
-            btnAudio.setDisable(true);
-            btnAudio.setOnAction(null);
-        }
-
-        System.out.println("CadastroFreteController: configurarListenersDeCamposEEventos() concluído.");
-    }
-
-    // Método original `configureDynamicComboBox` foi renomeado para `configurarComboBoxRemetenteCliente` ou similar,
-    // já que `cbitem` tem uma configuração especial agora.
-    // Manterei este método para cbRemetente e cbCliente que ainda são tipo String.
-    private void configureDynamicComboBox(
-            ComboBox<String> comboBox,
-            ObservableList<String> originalListInput,
-            java.util.function.Consumer<String> processFunction,
-            Node nextNodeToFocusOnSelectionOrEnter
-    ) {
-        if (comboBox == null || comboBox.getEditor() == null) {
-            System.err.println("configureDynamicComboBox: ComboBox ou seu editor é null. Abortando configuração.");
-            return;
-        }
-        final ObservableList<String> actualOriginalList =
-                (originalListInput != null) ? originalListInput : FXCollections.observableArrayList();
-
-        comboBox.getEditor().textProperty().addListener((obs, oldV, newV) -> {
-            if (programmaticamenteAtualizando) {
-                return;
-            }
-
-            if (actualOriginalList == null) {
-                comboBox.setItems(FXCollections.observableArrayList());
-                return;
-            }
-            if (newV == null || newV.isEmpty()) {
-                programmaticamenteAtualizando = true;
-                try {
-                    comboBox.setItems(FXCollections.observableArrayList(actualOriginalList));
-                } finally {
-                    programmaticamenteAtualizando = false;
-                }
-                if (comboBox.isShowing()) comboBox.hide();
-            } else {
-                ObservableList<String> filteredList = actualOriginalList.filtered(
-                        item -> item != null && item.toLowerCase().contains(newV.toLowerCase())
-                );
-                programmaticamenteAtualizando = true;
-                try {
-                    comboBox.setItems(filteredList);
-                } finally {
-                    programmaticamenteAtualizando = false;
-                }
-                if (!filteredList.isEmpty() && comboBox.getEditor().isFocused() && !comboBox.isShowing()) {
-                    comboBox.show();
-                } else if (filteredList.isEmpty() && comboBox.isShowing()) {
-                    comboBox.hide();
-                }
-            }
-        });
-
-        comboBox.focusedProperty().addListener((obs, oldV, newV) -> {
-            if (programmaticamenteAtualizando) return;
-
-            if (actualOriginalList == null) return;
-
-            if (!newV) {
-                String text = comboBox.getEditor().getText();
-                if (text != null && !text.trim().isEmpty()) {
-                    String matched = null;
-                    for (String item : actualOriginalList) {
-                        if (item != null && item.equalsIgnoreCase(text.trim())) {
-                            matched = item;
-                            break;
-                        }
-                    }
-                    final String finalMatched = matched;
-                    final String finalText = text.trim();
-                    javafx.application.Platform.runLater(() -> {
-                        programmaticamenteAtualizando = true;
-                        try {
-                            if (finalMatched != null) {
-                                if (comboBox.getValue() == null || !comboBox.getValue().equalsIgnoreCase(finalMatched)) {
-                                     comboBox.setValue(finalMatched);
-                                }
-                            } else {
-                                processFunction.accept(finalText);
-                            }
-                        } finally {
-                            programmaticamenteAtualizando = false;
-                        }
-                        if (nextNodeToFocusOnSelectionOrEnter != null && nextNodeToFocusOnSelectionOrEnter.isFocusTraversable()
-                            && !nextNodeToFocusOnSelectionOrEnter.isFocused()) {
-                            nextNodeToFocusOnSelectionOrEnter.requestFocus();
-                        }
-                    });
-                }
-            } else {
-                programmaticamenteAtualizando = true;
-                try {
-                    comboBox.setItems(FXCollections.observableArrayList(actualOriginalList));
-                } finally {
-                    programmaticamenteAtualizando = false;
-                }
-            }
-        });
-
-        comboBox.setOnAction(e -> {
-            if (programmaticamenteAtualizando) {
-                return;
-            }
-            String selectedItem = comboBox.getSelectionModel().getSelectedItem();
-            if (selectedItem != null) {
-                processFunction.accept(selectedItem);
-                if (nextNodeToFocusOnSelectionOrEnter != null && nextNodeToFocusOnSelectionOrEnter.isFocusTraversable()) {
-                    if (nextNodeToFocusOnSelectionOrEnter != comboBox && !nextNodeToFocusOnSelectionOrEnter.isFocused()) {
-                        nextNodeToFocusOnSelectionOrEnter.requestFocus();
-                    }
-                }
-            }
-        });
     }
 
     private javafx.event.EventHandler<KeyEvent> createEnterKeyHandlerForRadioButton(Node nextSim, Node nextNao, boolean isSim) {
@@ -853,7 +882,6 @@ public class CadastroFreteController implements Initializable {
             });
         } else if (sourceNode instanceof ComboBox) {
             ComboBox<?> comboBox = (ComboBox<?>) sourceNode;
-            // CORREÇÃO: A navegação no ComboBox do Item precisa ser no editor
             if (comboBox.isEditable() && comboBox.getEditor() != null) {
                 comboBox.getEditor().setOnAction(e -> {
                     if (targetNode.isFocusTraversable()) targetNode.requestFocus();
@@ -872,9 +900,7 @@ public class CadastroFreteController implements Initializable {
     private void processarContatoDigitado(ComboBox<String> comboBox, String nomeContatoInput,
                                           ObservableList<String> listaContatosInput, String tipoContatoContexto) {
         if (programmaticamenteAtualizando) return;
-
-        final ObservableList<String> listaContatos =
-                (listaContatosInput != null) ? listaContatosInput : FXCollections.observableArrayList();
+        final ObservableList<String> listaContatos = (listaContatosInput != null) ? listaContatosInput : FXCollections.observableArrayList();
         if (nomeContatoInput == null || nomeContatoInput.trim().isEmpty()) return;
         final String nomeContato = nomeContatoInput.trim();
 
@@ -903,7 +929,7 @@ public class CadastroFreteController implements Initializable {
                     programmaticamenteAtualizando = true;
                     try {
                         if (comboBox.getValue() == null || !comboBox.getValue().equalsIgnoreCase(finalContato)) {
-                             comboBox.setValue(finalContato);
+                            comboBox.setValue(finalContato);
                         }
                     } finally {
                         programmaticamenteAtualizando = false;
@@ -927,8 +953,6 @@ public class CadastroFreteController implements Initializable {
                         pst.setString(1, novoNomeContato);
                         int affectedRows = pst.executeUpdate();
                         if (affectedRows > 0) {
-                            showAlert(AlertType.INFORMATION, "Sucesso",
-                                    novoNomeContato + " cadastrado como " + tipoContatoContexto + "!");
                             if (!listaContatos.contains(novoNomeContato)) {
                                 listaContatos.add(novoNomeContato);
                                 FXCollections.sort(listaContatos);
@@ -945,14 +969,6 @@ public class CadastroFreteController implements Initializable {
                         }
                     } catch (SQLException e) {
                         e.printStackTrace();
-                        if ("23505".equals(e.getSQLState())) {
-                            showAlert(AlertType.ERROR, "Erro de Duplicidade",
-                                    "O " + tipoContatoContexto.toLowerCase() + " '" + novoNomeContato + "' já existe.");
-                        } else {
-                            showAlert(AlertType.ERROR, "Erro ao Salvar",
-                                    "Não foi possível salvar o novo " +
-                                            tipoContatoContexto.toLowerCase() + ": " + e.getMessage());
-                        }
                     }
                 } else {
                     if (comboBox.isEditable() && comboBox.getEditor() != null) {
@@ -962,11 +978,8 @@ public class CadastroFreteController implements Initializable {
                 }
             }
         } finally {
-            if (tipoContatoContexto.equals("Remetente")) {
-                processandoContatoRemetente = false;
-            } else if (tipoContatoContexto.equals("Cliente")) {
-                processandoContatoCliente = false;
-            }
+            if (tipoContatoContexto.equals("Remetente")) processandoContatoRemetente = false;
+            else if (tipoContatoContexto.equals("Cliente")) processandoContatoCliente = false;
         }
     }
 
@@ -992,7 +1005,6 @@ public class CadastroFreteController implements Initializable {
             }
             return;
         }
-        
         processandoItemCbItem = true;
         ultimoItemProcessadoCbItem = nomeItem;
 
@@ -1000,13 +1012,11 @@ public class CadastroFreteController implements Initializable {
             if (mapItensCadastrados.containsKey(nomeItem)) {
                 ItemFrete itemCadastrado = mapItensCadastrados.get(nomeItem);
                 double precoASerUsado = 0.0;
-
                 if (rbNormal != null && rbNormal.isSelected()) {
                     precoASerUsado = itemCadastrado.getPrecoUnitarioPadrao().doubleValue();
                 } else if (rbComDesconto != null && rbComDesconto.isSelected()) {
                     precoASerUsado = itemCadastrado.getPrecoUnitarioDesconto().doubleValue();
                 }
-
                 if (txtpreco != null) txtpreco.setText(df.format(precoASerUsado));
                 calcularTotalItemEmTempoReal();
                 if (txtpreco != null && txtpreco.isFocusTraversable()) {
@@ -1026,7 +1036,6 @@ public class CadastroFreteController implements Initializable {
                 } else {
                     if (txtpreco != null) txtpreco.clear();
                     if (txttotal != null) txttotal.clear();
-                    // CORREÇÃO: Limpar o cbitem corretamente, já que agora é tipo ItemFrete
                     if (cbitem != null) {
                         programmaticamenteAtualizando = true;
                         try {
@@ -1034,7 +1043,7 @@ public class CadastroFreteController implements Initializable {
                             if (cbitem.isEditable() && cbitem.getEditor() != null) {
                                 cbitem.getEditor().clear();
                             }
-                            cbitem.setValue(null); // Define o valor como null
+                            cbitem.setValue(null);
                         } finally {
                             programmaticamenteAtualizando = false;
                         }
@@ -1048,10 +1057,7 @@ public class CadastroFreteController implements Initializable {
     }
 
     private void carregarContatosParaComboBoxes(String tipo, ObservableList<String> lista) {
-        if (lista == null) {
-            System.err.println("carregarContatosParaComboBoxes: Lista fornecida para " + tipo + " é null.");
-            return;
-        }
+        if (lista == null) return;
         lista.clear();
         String sql = "SELECT nome_razao_social FROM contatos ORDER BY nome_razao_social";
         try (Connection c = ConexaoBD.getConnection();
@@ -1062,19 +1068,12 @@ public class CadastroFreteController implements Initializable {
                 if (nome != null) lista.add(nome);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL ao carregar " + tipo + "s: " + e.getMessage() + " (SQLState: " + e.getSQLState() + ")");
-            e.printStackTrace();
-        } catch (Exception e) {
-            System.err.println("Erro GERAL ao carregar " + tipo + "s: " + e.getMessage());
             e.printStackTrace();
         }
-        System.out.println(tipo + "s carregados na lista: " + lista.size());
     }
 
     private void carregarRotas() {
-        if (listaRotasOriginal == null) {
-            listaRotasOriginal = FXCollections.observableArrayList();
-        }
+        if (listaRotasOriginal == null) listaRotasOriginal = FXCollections.observableArrayList();
         listaRotasOriginal.clear();
         String sql = "SELECT origem, destino FROM rotas ORDER BY origem, destino";
         try (Connection c = ConexaoBD.getConnection();
@@ -1092,18 +1091,12 @@ public class CadastroFreteController implements Initializable {
                 if (!rd.isEmpty()) listaRotasOriginal.add(rd);
             }
         } catch (SQLException e) {
-            System.err.println("Falha SQL ao carregar rotas: " + e.getMessage());
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro de Banco de Dados",
-                    "Falha ao carregar lista de rotas: " + e.getMessage());
         }
-        System.out.println("Rotas carregadas: " + listaRotasOriginal.size());
     }
 
     private void carregarConferentesDoBanco() {
-        if (listaConferentesOriginal == null) {
-            listaConferentesOriginal = FXCollections.observableArrayList();
-        }
+        if (listaConferentesOriginal == null) listaConferentesOriginal = FXCollections.observableArrayList();
         listaConferentesOriginal.clear();
         String sql = "SELECT nome_conferente FROM conferentes ORDER BY nome_conferente";
         try (Connection c = ConexaoBD.getConnection();
@@ -1114,191 +1107,71 @@ public class CadastroFreteController implements Initializable {
                 if (nome != null) listaConferentesOriginal.add(nome);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL ao carregar conferentes: " + e.getMessage());
             e.printStackTrace();
         }
-        System.out.println("Conferentes carregados: " + listaConferentesOriginal.size());
-    }
-
-    private void carregarCidadesDoBanco() {
-        if (listaCidadesOriginal == null) {
-            listaCidadesOriginal = FXCollections.observableArrayList();
-        }
-        listaCidadesOriginal.clear();
-        listaCidadesOriginal.addAll("Manaus (AM)", "Belém (PA)", "Santarém (PA)", "Porto Velho (RO)");
-        System.out.println("Cidades carregadas (mock): " + listaCidadesOriginal.size());
     }
 
     private void carregarItensCadastradosParaComboBox() {
-        if (listaItensDisplayOriginal == null) {
-            listaItensDisplayOriginal = FXCollections.observableArrayList();
-        }
-        if (mapItensCadastrados == null) {
-            mapItensCadastrados = new HashMap<>();
-        }
+        if (listaItensDisplayOriginal == null) listaItensDisplayOriginal = FXCollections.observableArrayList();
+        if (mapItensCadastrados == null) mapItensCadastrados = new HashMap<>();
         listaItensDisplayOriginal.clear();
         mapItensCadastrados.clear();
 
         try {
             ItemFreteDAO dao = new ItemFreteDAO();
-            // CORREÇÃO: Chamar listarTodos(false) para obter apenas itens ATIVOS para a combobox
-            List<ItemFrete> todosAtivos = dao.listarTodos(false); 
-
-            for (ItemFrete item : todosAtivos) { // Itera sobre itens ativos
+            List<ItemFrete> todosAtivos = dao.listarTodos(false);
+            for (ItemFrete item : todosAtivos) {
                 if (item != null && item.getNomeItem() != null) {
                     String desc = item.getNomeItem().toLowerCase();
-                    if (!listaItensDisplayOriginal.contains(item)) { // Adiciona o objeto ItemFrete
+                    if (!listaItensDisplayOriginal.contains(item)) {
                         listaItensDisplayOriginal.add(item);
                     }
-                    mapItensCadastrados.put(desc, item); // Mapeia pelo nome em minúsculas
+                    mapItensCadastrados.put(desc, item);
                 }
             }
-            // Não é necessário ordenar listaItensDisplayOriginal se o DAO já ordena,
-            // mas FXCollections.sort(listaItensDisplayOriginal, Comparator.comparing(ItemFrete::getNomeItem));
-            // pode ser usado se precisar ordenar na UI por nome.
-
-            System.out.println("Itens cadastrados (DAO.listarTodos) carregados: "
-                    + listaItensDisplayOriginal.size());
         } catch (SQLException e) {
-            System.err.println("Falha SQL ao carregar itens de frete (DAO): " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private void abrirDialogCadastroNovoItem(String descSugerida) {
         try {
-            // Usar a classe TripleCustom
-            Dialog<TripleCustom<String, String, String>> d = new Dialog<>();
-            d.setTitle("Novo Item de Frete");
-            d.setHeaderText("Forneça a descrição (minúsculas) e os preços do novo item.");
-            ButtonType sBT = ButtonType.OK;
-            d.getDialogPane().getButtonTypes().addAll(sBT, ButtonType.CANCEL);
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/TabelaPrecoFrete.fxml"));
+            Parent root = loader.load();
+            TabelaPrecoFreteController controller = loader.getController();
+            if (controller != null) {
+                controller.setDescricaoTexto(descSugerida);
+            }
+            Stage stage = new Stage();
+            stage.setTitle("Cadastrar Novo Item");
+            stage.setScene(TemaManager.criarSceneComTema(root));
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.showAndWait(); 
+            
+            carregarItensCadastradosParaComboBox();
+            setComboBoxItems();
 
-            GridPane g = new GridPane();
-            g.setHgap(10);
-            g.setVgap(10);
-            g.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
-
-            TextField tDI = new TextField();
-            tDI.setPromptText("Descrição do Item");
-            tDI.setText(descSugerida);
-
-            TextField tPN = new TextField(); // Preço Normal
-            tPN.setPromptText("Ex: 12.50 ou 12,50");
-
-            TextField tPD = new TextField(); // Preço com Desconto
-            tPD.setPromptText("Ex: 10.00 ou 10,00");
-
-            g.add(new Label("Descrição:"), 0, 0);
-            g.add(tDI, 1, 0);
-            g.add(new Label("Preço Normal (R$):"), 0, 1);
-            g.add(tPN, 1, 1);
-            g.add(new Label("Preço c/ Desconto (R$):"), 0, 2);
-            g.add(tPD, 1, 2);
-
-            Node bSD = d.getDialogPane().lookupButton(sBT);
-            Runnable uSBDS = () -> bSD.setDisable(
-                    tDI.getText().trim().isEmpty() ||
-                            tPN.getText().trim().isEmpty() ||
-                            !isPrecoValido(tPN.getText()) ||
-                            tPD.getText().trim().isEmpty() ||
-                            !isPrecoValido(tPD.getText())
-            );
-            tDI.textProperty().addListener((o, oV, nV) -> uSBDS.run());
-            tPN.textProperty().addListener((o, oV, nV) -> uSBDS.run());
-            tPD.textProperty().addListener((o, oV, nV) -> uSBDS.run());
-            uSBDS.run();
-
-            d.getDialogPane().setContent(g);
-            d.setResultConverter(dB -> {
-                if (dB == sBT) {
-                    try {
-                        parseValorMonetario(tPN.getText());
-                        parseValorMonetario(tPD.getText());
-                        return new TripleCustom<>(tDI.getText().trim(), tPN.getText(), tPD.getText());
-                    } catch (ParseException e) {
-                        showAlert(AlertType.ERROR, "Preço Inválido",
-                                "Um dos valores de preço digitados ('" + tPN.getText() + "' ou '" + tPD.getText() + "') não é um preço válido.");
-                        return null;
-                    }
-                }
-                return null;
-            });
-
-            Optional<TripleCustom<String, String, String>> res = d.showAndWait();
-            ultimoItemProcessadoCbItem = null;
-            res.ifPresent(pDP -> {
-                String nDO = pDP.getFirstValue();
-                String nD  = nDO.toLowerCase();
-                String nPSNormal = pDP.getSecondValue();
-                String nPSDesconto = pDP.getThirdValue();
-                double nPNormal, nPDesconto;
-                try {
-                    nPNormal = parseValorMonetario(nPSNormal);
-                    nPDesconto = parseValorMonetario(nPSDesconto);
-                } catch (ParseException e) {
-                    showAlert(AlertType.ERROR, "Erro Interno de Conversão",
-                            "Um dos preços se tornou inválido.");
-                    return;
-                }
-                String sqlI = "INSERT INTO itens_frete_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, preco_unitario_desconto, ativo) VALUES (?, ?, ?, ?, ?, TRUE)";
-                try (Connection con = ConexaoBD.getConnection();
-                     PreparedStatement p = con.prepareStatement(sqlI, Statement.RETURN_GENERATED_KEYS)) {
-                    p.setString(1, nD);
-                    p.setString(2, "");
-                    p.setString(3, "");
-                    p.setBigDecimal(4, BigDecimal.valueOf(nPNormal).setScale(2, RoundingMode.HALF_UP));
-                    p.setBigDecimal(5, BigDecimal.valueOf(nPDesconto).setScale(2, RoundingMode.HALF_UP));
-                    int aR = p.executeUpdate();
-                    if (aR > 0) {
-                        showAlert(AlertType.INFORMATION, "Sucesso",
-                                "Item '" + nDO + "' (salvo como '" + nD + "') com preços " + df.format(nPNormal) + " / " + df.format(nPDesconto) + " cadastrado!");
-                        
-                        // Recarrega os itens no ComboBox da tela de Frete para refletir o novo item
-                        carregarItensCadastradosParaComboBox(); 
-                        setComboBoxItems(); // Atualiza os items do ComboBox
-
-                        ItemFrete newItem = new ItemFrete((int)0L, nD, "", "", BigDecimal.valueOf(nPNormal), BigDecimal.valueOf(nPDesconto), true);
-                        mapItensCadastrados.put(nD, newItem);
-
-                        if (cbitem != null) {
-                            programmaticamenteAtualizando = true;
-                            try {
-                                // CORREÇÃO: Setar o valor do ComboBox com o objeto ItemFrete recém-criado
-                                cbitem.setValue(newItem); 
-                            } finally {
-                                programmaticamenteAtualizando = false;
-                            }
+            if (cbitem != null) {
+                String nomeItemProcurado = descSugerida.trim().toLowerCase();
+                for(ItemFrete item : cbitem.getItems()) {
+                    if(item != null && item.getNomeItem().trim().equalsIgnoreCase(nomeItemProcurado)) {
+                        programmaticamenteAtualizando = true;
+                        try {
+                            cbitem.setValue(item);
+                            processarItemDigitadoOuSelecionado(item.getNomeItem());
+                        } finally {
+                            programmaticamenteAtualizando = false;
                         }
-                        processarItemDigitadoOuSelecionado(nD);
-                        ultimoItemProcessadoCbItem = nD;
-                        if (txtpreco != null && txtpreco.isFocusTraversable()) {
-                            txtpreco.requestFocus();
-                        }
-                    }
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                    if ("23505".equals(e.getSQLState())) {
-                        showAlert(AlertType.ERROR, "Erro de Duplicidade", "Item '" + nD + "' já existe no banco de dados.");
-                    } else {
-                        showAlert(AlertType.ERROR, "Erro ao Salvar", "Não foi possível salvar o novo item: " + e.getMessage());
+                        break;
                     }
                 }
-            });
-        } catch (Exception e) {
+                if(txtquantidade != null) {
+                    txtquantidade.requestFocus();
+                    txtquantidade.selectAll();
+                }
+            }
+        } catch (IOException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro Inesperado", "Não foi possível abrir o diálogo de novo item.");
-            ultimoItemProcessadoCbItem = null;
-        }
-    }
-
-    private boolean isPrecoValido(String precoStr) {
-        if (precoStr == null || precoStr.trim().isEmpty()) return false;
-        try {
-            parseValorMonetario(precoStr);
-            return true;
-        } catch (ParseException e) {
-            return false;
         }
     }
 
@@ -1315,9 +1188,8 @@ public class CadastroFreteController implements Initializable {
         return proximoNumero;
     }
 
-    @FXML
-    private void handleNovoFrete(ActionEvent event) {
-        limparCamposFrete();
+    @FXML private void handleNovoFrete(ActionEvent event) {
+        configurarParaNovoFrete();
         habilitarCamposParaEdicao(true);
         freteAtualId = -1;
         if (txtNumFrete != null) txtNumFrete.setText("Automático");
@@ -1328,13 +1200,11 @@ public class CadastroFreteController implements Initializable {
         if (btnExcluir != null) btnExcluir.setDisable(true);
     }
 
-    @FXML
-    private void handleSalvarFrete(ActionEvent event) {
+    @FXML private void handleSalvarFrete(ActionEvent event) {
         salvarOuAlterarFrete();
     }
 
-    @FXML
-    private void handleAlterarFrete(ActionEvent event) {
+    @FXML private void handleAlterarFrete(ActionEvent event) {
         if (freteAtualId == -1) {
             showAlert(AlertType.WARNING, "Aviso", "Não há frete selecionado para alteração.");
             return;
@@ -1368,13 +1238,18 @@ public class CadastroFreteController implements Initializable {
             return;
         }
 
+        boolean isNewFrete = (freteAtualId == -1);
+        if (isNewFrete && this.viagemAtiva == null) {
+            showAlert(AlertType.ERROR, "Erro Crítico", "Não é possível salvar um novo frete sem uma Viagem Ativa definida no sistema. Por favor, ative uma viagem na tela principal.");
+            return;
+        }
+
         Connection conn = null;
         try {
             conn = ConexaoBD.getConnection();
             conn.setAutoCommit(false);
 
             long numeroFreteParaOperacao = freteAtualId;
-            boolean isNewFrete = (freteAtualId == -1);
 
             if (isNewFrete) {
                 numeroFreteParaOperacao = gerarNumeroFreteNoBanco();
@@ -1382,19 +1257,9 @@ public class CadastroFreteController implements Initializable {
 
             String sqlFrete;
             if (isNewFrete) {
-                sqlFrete = "INSERT INTO fretes (" +
-                        "id_frete, numero_frete, data_emissao, data_saida_viagem, local_transporte, " +
-                        "remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, cidade_cobranca, " +
-                        "observacoes, num_notafiscal, valor_notafiscal, peso_notafiscal, valor_total_itens, " +
-                        "desconto, valor_frete_calculado, valor_pago, troco, valor_devedor, tipo_pagamento, nome_caixa, status_frete" +
-                        ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                sqlFrete = "INSERT INTO fretes (id_frete, numero_frete, data_emissao, data_saida_viagem, local_transporte, remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, cidade_cobranca, observacoes, num_notafiscal, valor_notafiscal, peso_notafiscal, valor_total_itens, desconto, valor_frete_calculado, valor_pago, troco, valor_devedor, tipo_pagamento, nome_caixa, status_frete, id_viagem) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
             } else {
-                sqlFrete = "UPDATE fretes SET " +
-                        "data_emissao = ?, data_saida_viagem = ?, local_transporte = ?, " +
-                        "remetente_nome_temp = ?, destinatario_nome_temp = ?, rota_temp = ?, conferente_temp = ?, cidade_cobranca = ?, " +
-                        "observacoes = ?, num_notafiscal = ?, valor_notafiscal = ?, peso_notafiscal = ?, valor_total_itens = ?, " +
-                        "desconto = ?, valor_frete_calculado = ?, valor_pago = ?, troco = ?, valor_devedor = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ? " +
-                        "WHERE id_frete = ?";
+                sqlFrete = "UPDATE fretes SET data_emissao = ?, data_saida_viagem = ?, local_transporte = ?, remetente_nome_temp = ?, destinatario_nome_temp = ?, rota_temp = ?, conferente_temp = ?, cidade_cobranca = ?, observacoes = ?, num_notafiscal = ?, valor_notafiscal = ?, peso_notafiscal = ?, valor_total_itens = ?, desconto = ?, valor_frete_calculado = ?, valor_pago = ?, troco = ?, valor_devedor = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ?, id_viagem = ? WHERE id_frete = ?";
             }
 
             try (PreparedStatement pstFrete = conn.prepareStatement(sqlFrete)) {
@@ -1417,7 +1282,7 @@ public class CadastroFreteController implements Initializable {
                 pstFrete.setString(paramIdx++, cbCliente.getValue());
                 pstFrete.setString(paramIdx++, cbRota.getValue());
                 pstFrete.setString(paramIdx++, cbConferente.getValue());
-                pstFrete.setString(paramIdx++, cbCidadeDeCobranca.getValue());
+                pstFrete.setString(paramIdx++, txtCidadeCobranca.getText()); 
                 pstFrete.setString(paramIdx++, txtObs != null ? txtObs.getText() : null);
 
                 boolean temNF = rbSim != null && rbSim.isSelected();
@@ -1432,8 +1297,8 @@ public class CadastroFreteController implements Initializable {
                 pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
 
                 BigDecimal valorFreteCalculado = (txtValorTotalNota != null && !txtValorTotalNota.getText().isEmpty())
-                                ? parseToBigDecimal(txtValorTotalNota.getText())
-                                : totalItens;
+                        ? parseToBigDecimal(txtValorTotalNota.getText())
+                        : totalItens;
                 pstFrete.setBigDecimal(paramIdx++, valorFreteCalculado);
                 pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
                 pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
@@ -1441,6 +1306,12 @@ public class CadastroFreteController implements Initializable {
                 pstFrete.setString(paramIdx++, null);
                 pstFrete.setString(paramIdx++, null);
                 pstFrete.setString(paramIdx++, "PENDENTE");
+
+                if (this.viagemAtiva != null) {
+                    pstFrete.setLong(paramIdx++, this.viagemAtiva.getId());
+                } else {
+                    pstFrete.setNull(paramIdx++, Types.BIGINT);
+                }
 
                 if (!isNewFrete) {
                     pstFrete.setLong(paramIdx++, numeroFreteParaOperacao);
@@ -1457,8 +1328,7 @@ public class CadastroFreteController implements Initializable {
                 }
             }
 
-            String sqlItem = "INSERT INTO frete_itens (" +
-                    "id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES (?,?,?,?,?)";
+            String sqlItem = "INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES (?,?,?,?,?)";
             try (PreparedStatement pstItem = conn.prepareStatement(sqlItem)) {
                 for (FreteItem it : listaTabelaItensFrete) {
                     pstItem.setLong(1, numeroFreteParaOperacao);
@@ -1490,17 +1360,25 @@ public class CadastroFreteController implements Initializable {
             }
             showAlert(AlertType.INFORMATION, "Sucesso", mensagemSucesso);
 
-            habilitarCamposParaVisualizacao(true);
-            if (btnNovo != null) btnNovo.setDisable(false);
-            if (btnSalvar != null) btnSalvar.setDisable(true);
-            if (btnAlterar != null) btnAlterar.setDisable(false);
-            if (btnExcluir != null) btnExcluir.setDisable(false);
+            if (isNewFrete) {
+                configurarParaNovoFrete();
+                habilitarCamposParaEdicao(true);
+                freteAtualId = -1;
+                Platform.runLater(() -> {
+                    if (cbRemetente != null) cbRemetente.requestFocus();
+                });
+            } else {
+                habilitarCamposParaVisualizacao(true);
+                if (btnNovo != null) btnNovo.setDisable(false);
+                if (btnSalvar != null) btnSalvar.setDisable(true);
+                if (btnAlterar != null) btnAlterar.setDisable(false);
+                if (btnExcluir != null) btnExcluir.setDisable(false);
+            }
 
         } catch (SQLException e) {
             try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro na Operação do Frete",
-                    "Ocorreu um erro no banco de dados:\n" + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro na Operação do Frete", "Ocorreu um erro no banco de dados:\n" + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             showAlert(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro geral na operação:\n" + e.getMessage());
@@ -1516,41 +1394,30 @@ public class CadastroFreteController implements Initializable {
 
     @FXML private void adicionarItemTabela(ActionEvent event) {
         if (txtquantidade == null || cbitem == null || txtpreco == null || tabelaItens == null) {
-            showAlert(AlertType.ERROR, "Erro Interno de Componente",
-                    "Componentes para adicionar itens não foram inicializados.");
             return;
         }
         if (btnSalvar.isDisabled() && btnAlterar.isDisabled()) {
-             showAlert(AlertType.WARNING, "Aviso", "Habilite a edição do frete (Botão 'Novo' ou 'Alterar') antes de adicionar itens.");
-             return;
+            return;
         }
 
         String qtdStr = txtquantidade.getText().trim();
         String itemNomeOuDescricao = null;
-        // CORREÇÃO: cbitem.getValue() já retorna um ItemFrete. Se for nulo, pega do editor.
         if (cbitem.getValue() != null) {
             itemNomeOuDescricao = cbitem.getValue().getNomeItem();
         } else if (cbitem.getEditor() != null) {
             itemNomeOuDescricao = cbitem.getEditor().getText();
         }
-        
         String precoStr = txtpreco.getText().trim();
 
         if (qtdStr.isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Obrigatório",
-                    "Quantidade do item deve ser informada.");
             txtquantidade.requestFocus();
             return;
         }
         if (itemNomeOuDescricao == null || itemNomeOuDescricao.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Obrigatório",
-                    "Descrição/Nome do item deve ser informado.");
             cbitem.requestFocus();
             return;
         }
         if (precoStr.isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Obrigatório",
-                    "Preço unitário do item deve ser informado.");
             txtpreco.requestFocus();
             return;
         }
@@ -1560,8 +1427,6 @@ public class CadastroFreteController implements Initializable {
             quantidade = Integer.parseInt(qtdStr);
             if (quantidade <= 0) throw new NumberFormatException("Qtd > 0");
         } catch (NumberFormatException e) {
-            showAlert(AlertType.ERROR, "Formato Inválido",
-                    "Quantidade ('" + qtdStr + "') inválida. Deve ser inteiro > 0.");
             txtquantidade.requestFocus();
             return;
         }
@@ -1570,8 +1435,6 @@ public class CadastroFreteController implements Initializable {
             precoUnitario = parseValorMonetario(precoStr);
             if (precoUnitario < 0) throw new ParseException("Preço não negativo", 0);
         } catch (ParseException e) {
-            showAlert(AlertType.ERROR, "Formato Inválido",
-                    "Preço unitário ('" + precoStr + "') inválido.");
             txtpreco.requestFocus();
             return;
         }
@@ -1579,8 +1442,6 @@ public class CadastroFreteController implements Initializable {
         String nomeItemFinal = itemNomeOuDescricao.trim().toLowerCase();
         if (listaTabelaItensFrete != null) {
             listaTabelaItensFrete.add(new FreteItem(quantidade, nomeItemFinal, precoUnitario));
-        } else {
-            System.err.println("listaTabelaItensFrete é NULL ao adicionar item!");
         }
         limparCamposItem();
         if (txtquantidade != null && txtquantidade.isFocusTraversable()) {
@@ -1598,7 +1459,6 @@ public class CadastroFreteController implements Initializable {
         confirmacao.setTitle("Confirmar Exclusão");
         confirmacao.setHeaderText("Excluir Frete " + txtNumFrete.getText() + "?");
         confirmacao.setContentText("Esta ação não pode ser desfeita. Deseja realmente excluir este frete e todos os seus itens?");
-        
         Optional<ButtonType> result = confirmacao.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             Connection conn = null;
@@ -1629,9 +1489,7 @@ public class CadastroFreteController implements Initializable {
                 freteAtualId = -1;
             } catch (SQLException e) {
                 try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-                e.printStackTrace();
-                showAlert(AlertType.ERROR, "Erro ao Excluir Frete",
-                        "Não foi possível excluir o frete:\n" + e.getMessage());
+                showAlert(AlertType.ERROR, "Erro ao Excluir Frete", "Não foi possível excluir o frete:\n" + e.getMessage());
             } finally {
                 try {
                     if (conn != null) {
@@ -1643,96 +1501,271 @@ public class CadastroFreteController implements Initializable {
         }
     }
 
+    @FXML
+    public void handleFotoNota(ActionEvent event) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Selecione a Foto da Nota Fiscal/Pedido");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagens", "*.png", "*.jpg", "*.jpeg"));
+        File file = fileChooser.showOpenDialog(rootPane.getScene().getWindow());
+
+        if (file != null) {
+            if (freteAtualId == -1 || btnSalvar.isDisable()) {
+                 handleNovoFrete(null);
+            }
+            if (rbSim != null) rbSim.setSelected(true);
+
+            new Thread(() -> {
+                try {
+                    ITesseract instance = new Tesseract();
+                    instance.setDatapath("C:\\SistemaEmbarcacao\\tessdata");
+                    instance.setLanguage("por");
+
+                    String resultado = instance.doOCR(file);
+                    interpretarTextoFreteEPreencher(resultado);
+                } catch (Exception e) {
+                    Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro OCR", "Erro ao ler imagem: " + e.getMessage()));
+                }
+            }).start();
+        }
+    }
+
+    @FXML
+    public void handleAudio(ActionEvent event) {
+        if(btnAudio.getText().contains("Ouvindo")) return;
+        if (freteAtualId == -1 || btnSalvar.isDisable()) {
+             handleNovoFrete(null);
+        }
+
+        btnAudio.setText("Ouvindo... (Fale)");
+        btnAudio.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white;"); 
+
+        new Thread(() -> {
+            try {
+                String modeloPath = "C:\\SistemaEmbarcacao\\modelo-voz";
+                Model model = new Model(modeloPath);
+                
+                AudioFormat format = new AudioFormat(16000, 16, 1, true, false);
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+                TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+
+                Recognizer recognizer = new Recognizer(model, 16000);
+                microphone.open(format);
+                microphone.start();
+
+                int numBytesRead;
+                int CHUNK_SIZE = 4096;
+                byte[] data = new byte[CHUNK_SIZE];
+                
+                long start = System.currentTimeMillis();
+                while (System.currentTimeMillis() - start < 5000) {
+                    numBytesRead = microphone.read(data, 0, CHUNK_SIZE);
+                    recognizer.acceptWaveForm(data, numBytesRead);
+                }
+                
+                String jsonResult = recognizer.getFinalResult();
+                String texto = "";
+                if(jsonResult.contains("\"text\" : \"")) {
+                    texto = jsonResult.split("\"text\" : \"")[1].replace("\"}", "").replace("\n", "").trim();
+                }
+
+                microphone.stop();
+                microphone.close();
+                model.close();
+
+                interpretarTextoFreteEPreencher(texto);
+
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro Audio", "Erro no microfone ou modelo: " + e.getMessage()));
+            } finally {
+                Platform.runLater(() -> {
+                    btnAudio.setText("Voz");
+                    btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+                });
+            }
+        }).start();
+    }
+
+    private void interpretarTextoFreteEPreencher(String texto) {
+        if (texto == null || texto.isEmpty()) {
+            Platform.runLater(() -> showAlert(AlertType.WARNING, "IA", "Nenhum texto identificado."));
+            return;
+        }
+
+        String[] linhas = texto.split("\n");
+
+        Platform.runLater(() -> {
+            for (String linha : linhas) {
+                linha = linha.trim().toUpperCase();
+                if (linha.isEmpty()) continue;
+
+                if (linha.contains("DANFE") || linha.contains("NF-E") || linha.contains("NOTA FISCAL") || linha.contains("NÚMERO")) {
+                     String numeros = linha.replaceAll("[^0-9]", "");
+                     if(numeros.length() > 3 && numeros.length() < 10) {
+                         if(txtNumNota != null) txtNumNota.setText(numeros);
+                     }
+                }
+
+                if (linha.contains("VALOR") || linha.contains("TOTAL NOTA") || linha.contains("V. TOTAL")) {
+                     if (txtValorNota != null && txtValorNota.getText().isEmpty()) {
+                         String valor = extrairValorMonetarioStr(linha);
+                         if(!valor.isEmpty()) txtValorNota.setText(valor);
+                     }
+                }
+
+                if (linha.contains("PESO") || linha.contains("KG") || linha.contains("P.LIQ")) {
+                    String peso = extrairApenasNumerosVirgula(linha);
+                    if (!peso.isEmpty() && txtPesoNota != null) txtPesoNota.setText(peso);
+                }
+
+                if (linha.startsWith("REM:") || linha.startsWith("EMITENTE") || linha.startsWith("DE:")) {
+                    String valor = extrairTextoAposDoisPontos(linha);
+                    if (!valor.isEmpty() && cbRemetente != null) cbRemetente.setValue(valor);
+                }
+
+                else if (linha.startsWith("DEST:") || linha.startsWith("DESTINATARIO") || linha.startsWith("PARA:")) {
+                    String valor = extrairTextoAposDoisPontos(linha);
+                    if (!valor.isEmpty() && cbCliente != null) cbCliente.setValue(valor);
+                }
+                
+                else if (linha.startsWith("OBS:") || linha.startsWith("OBSERVACOES")) {
+                    String valor = extrairTextoAposDoisPontos(linha);
+                    if (!valor.isEmpty() && txtObs != null) txtObs.setText(valor);
+                }
+
+                else if (Character.isDigit(linha.charAt(0)) && linha.contains(" ")) {
+                    try {
+                        String[] partes = linha.split(" ", 2);
+                        if (partes.length >= 2) {
+                            String qtdStr = partes[0].replaceAll("[^0-9]", "");
+                            String descLida = partes[1].trim();
+
+                            if (!qtdStr.isEmpty() && descLida.length() > 2) {
+                                int qtd = Integer.parseInt(qtdStr);
+                                
+                                double precoEncontrado = 0.0;
+                                for (Map.Entry<String, ItemFrete> entry : mapItensCadastrados.entrySet()) {
+                                    if (descLida.contains(entry.getKey().toUpperCase()) || entry.getKey().toUpperCase().contains(descLida)) {
+                                        ItemFrete itemBanco = entry.getValue();
+                                        precoEncontrado = itemBanco.getPrecoUnitarioPadrao().doubleValue();
+                                        descLida = itemBanco.getNomeItem(); 
+                                        break;
+                                    }
+                                }
+
+                                if(listaTabelaItensFrete != null) {
+                                    listaTabelaItensFrete.add(new FreteItem(qtd, descLida, precoEncontrado));
+                                }
+                            }
+                        }
+                    } catch (Exception e) {}
+                }
+            }
+
+            atualizarTotaisAgregados();
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("IA Processada");
+            alert.setHeaderText("Dados extraídos com sucesso");
+            alert.setContentText("Verifique os campos preenchidos e os itens na tabela.");
+            alert.show();
+        });
+    }
+
+    private String extrairTextoAposDoisPontos(String linha) {
+        if (linha.contains(":")) {
+            return linha.substring(linha.indexOf(":") + 1).trim();
+        }
+        String[] keywords = {"REM", "DEST", "PARA", "DE", "EMITENTE", "DESTINATARIO"};
+        for(String k : keywords) {
+             if(linha.startsWith(k)) return linha.replace(k, "").trim();
+        }
+        return linha;
+    }
+
+    private String extrairApenasNumerosVirgula(String texto) {
+        return texto.replaceAll("[^0-9,.]", "");
+    }
+    
+    private String extrairValorMonetarioStr(String linha) {
+         String[] tokens = linha.split(" ");
+         for(String t : tokens) {
+             if(t.contains(",") || t.contains(".")) {
+                 if(t.matches(".*\\d.*")) return t.replace("R$", "").trim();
+             }
+         }
+         return "";
+    }
 
     @FXML private void imprimirNotaFretePersonalizada(ActionEvent event) {
         if (freteAtualId == -1) {
             showAlert(AlertType.WARNING, "Aviso", "É necessário ter um frete salvo ou carregado para imprimir a nota.");
             return;
         }
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente",
-                "Imprimir Nota Fiscal do Frete - Não implementado.");
+        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Nota Fiscal do Frete - Não implementado.");
     }
     @FXML private void imprimirReciboPersonalizado(ActionEvent event) {
         if (freteAtualId == -1) {
             showAlert(AlertType.WARNING, "Aviso", "É necessário ter um frete salvo ou carregado para imprimir o recibo.");
             return;
         }
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente",
-                "Imprimir Recibo do Frete - Não implementado.");
+        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Recibo do Frete - Não implementado.");
     }
+
     @FXML private void abrirListaFretes(ActionEvent event) {
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente",
-                "Abrir Lista de Fretes - Esta funcionalidade deve ser implementada para abrir a tela de listagem.");
+        abrirJanelaGenerica("ListaFretes.fxml", "Lista de Fretes", true, Modality.APPLICATION_MODAL);
     }
     @FXML private void handleSair(ActionEvent event) {
-        Node source = (Node) event.getSource();
-        if (source != null && source.getScene() != null) {
-            Stage s = (Stage) source.getScene().getWindow();
-            if (s != null) s.close();
-            else System.err.println("Erro ao fechar janela: stage é null.");
-        } else {
-            System.err.println("Erro ao fechar janela: source ou scene é null.");
-        }
+        TelaPrincipalController.fecharTelaAtual(rootPane);
     }
-    @FXML private void handleFotoNota(ActionEvent event) {
-        // Nada acontece, botão desabilitado por enquanto
-    }
+
     @FXML private void handleCodXml(ActionEvent event) {
-        // Nada acontece, botão desabilitado por enquanto
     }
-    @FXML private void handleAudio(ActionEvent event) {
-        // Nada acontece, botão desabilitado por enquanto
-    }
+    
     @FXML private void handleImprimirEtiqueta(ActionEvent event) {
         if (freteAtualId == -1) {
             showAlert(AlertType.WARNING, "Aviso", "É necessário ter um frete salvo ou carregado para imprimir etiquetas.");
             return;
         }
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente",
-                "Imprimir Etiqueta(s) - Não implementado.");
+        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Etiqueta(s) - Não implementado.");
     }
 
     private void habilitarCamposDaNotaFiscal(boolean formularioHabilitado) {
         boolean notaFiscalSelecionada = rbSim != null && rbSim.isSelected();
         boolean habilitarCamposNF = formularioHabilitado && notaFiscalSelecionada;
 
-        // Esses botões estarão sempre desabilitados por enquanto, conforme solicitado
-        if (btnFotoNota != null)       btnFotoNota.setDisable(true);
-        if (btnCodXml != null)         btnCodXml.setDisable(true);
-        if (btnAudio != null)          btnAudio.setDisable(true);
+        if (btnFotoNota != null) btnFotoNota.setDisable(!formularioHabilitado);
+        if (btnCodXml != null) btnCodXml.setDisable(!formularioHabilitado);
+        if (btnAudio != null) btnAudio.setDisable(!formularioHabilitado);
 
-        if (txtNumNota != null)        txtNumNota.setDisable(!habilitarCamposNF);
-        if (txtValorNota != null)      txtValorNota.setDisable(!habilitarCamposNF);
-        if (txtPesoNota != null)       txtPesoNota.setDisable(!habilitarCamposNF);
+        if (txtNumNota != null) txtNumNota.setDisable(!habilitarCamposNF);
+        if (txtValorNota != null) txtValorNota.setDisable(!habilitarCamposNF);
+        if (txtPesoNota != null) txtPesoNota.setDisable(!habilitarCamposNF);
 
         if (!habilitarCamposNF) {
-            if (txtNumNota != null)    txtNumNota.clear();
-            if (txtValorNota != null)  txtValorNota.clear();
-            if (txtPesoNota != null)   txtPesoNota.clear();
+            if (txtNumNota != null) txtNumNota.clear();
+            if (txtValorNota != null) txtValorNota.clear();
+            if (txtPesoNota != null) txtPesoNota.clear();
         }
     }
 
     private void habilitarCamposParaEdicao(boolean habilitar) {
-        if (cbRemetente != null)         cbRemetente.setDisable(!habilitar);
-        if (cbCliente != null)           cbCliente.setDisable(!habilitar);
-        if (cbRota != null)              cbRota.setDisable(!habilitar);
-        if (txtSaida != null)            txtSaida.setDisable(!habilitar);
-        if (txtLocalTransporte != null)  txtLocalTransporte.setDisable(!habilitar);
-        if (cbConferente != null)        cbConferente.setDisable(!habilitar);
-        if (cbCidadeDeCobranca != null)  cbCidadeDeCobranca.setDisable(!habilitar);
-        if (rbSim != null)               rbSim.setDisable(!habilitar);
-        if (Rbnao != null)               Rbnao.setDisable(!habilitar);
-        
-        habilitarCamposDaNotaFiscal(habilitar); 
+        if (cbRemetente != null) cbRemetente.setDisable(!habilitar);
+        if (cbCliente != null) cbCliente.setDisable(!habilitar);
+        if (cbRota != null) cbRota.setDisable(!habilitar);
+        if (txtSaida != null) txtSaida.setDisable(!habilitar);
+        if (txtLocalTransporte != null) txtLocalTransporte.setDisable(!habilitar);
+        if (cbConferente != null) cbConferente.setDisable(!habilitar);
+        if (txtCidadeCobranca != null) txtCidadeCobranca.setDisable(!habilitar); 
+        if (rbSim != null) rbSim.setDisable(!habilitar);
+        if (Rbnao != null) Rbnao.setDisable(!habilitar);
+        habilitarCamposDaNotaFiscal(habilitar);
 
-        if (txtObs != null)              txtObs.setDisable(!habilitar);
-        if (rbComDesconto != null)       rbComDesconto.setDisable(!habilitar);
-        if (rbNormal != null)            rbNormal.setDisable(!habilitar);
-        if (txtquantidade != null)       txtquantidade.setDisable(!habilitar);
-        if (cbitem != null)              cbitem.setDisable(!habilitar); // CORREÇÃO: cbitem habilitado aqui
-        if (txtpreco != null)            txtpreco.setDisable(!habilitar);
-        if (btnInserir != null)          btnInserir.setDisable(!habilitar);
-        
+        if (txtObs != null) txtObs.setDisable(!habilitar);
+        if (rbComDesconto != null) rbComDesconto.setDisable(!habilitar);
+        if (rbNormal != null) rbNormal.setDisable(!habilitar);
+        if (txtquantidade != null) txtquantidade.setDisable(!habilitar);
+        if (cbitem != null) cbitem.setDisable(!habilitar); 
+        if (txtpreco != null) txtpreco.setDisable(!habilitar);
+        if (btnInserir != null) btnInserir.setDisable(!habilitar);
         if (tabelaItens != null) {
             tabelaItens.setEditable(habilitar);
             if (colQuantidade != null) colQuantidade.setEditable(habilitar);
@@ -1743,21 +1776,18 @@ public class CadastroFreteController implements Initializable {
     }
 
     private void habilitarCamposParaVisualizacao(boolean habilitar) {
-        // Desabilita campos de entrada para edição (modo visualização)
         habilitarCamposParaEdicao(false);
 
-        // Habilita os botões de IA novamente, se for o caso. (Mantendo desabilitados por enquanto)
         if (btnFotoNota != null) btnFotoNota.setDisable(true);
-        if (btnCodXml != null)   btnCodXml.setDisable(true);
-        if (btnAudio != null)    btnAudio.setDisable(true);
-
+        if (btnCodXml != null) btnCodXml.setDisable(true);
+        if (btnAudio != null) btnAudio.setDisable(true);
 
         boolean itensPresentes = listaTabelaItensFrete != null && !listaTabelaItensFrete.isEmpty();
         boolean podeImprimir = habilitar && itensPresentes && freteAtualId != -1;
 
-        if (BtnImprimirNota != null)     BtnImprimirNota.setDisable(!podeImprimir);
+        if (BtnImprimirNota != null) BtnImprimirNota.setDisable(!podeImprimir);
         if (btnImprimirEtiqueta != null) btnImprimirEtiqueta.setDisable(!podeImprimir);
-        if (btnImprimirRecibo != null)   btnImprimirRecibo.setDisable(!podeImprimir);
+        if (btnImprimirRecibo != null) btnImprimirRecibo.setDisable(!podeImprimir);
     }
 
     private void limparCamposFrete() {
@@ -1795,9 +1825,8 @@ public class CadastroFreteController implements Initializable {
                 cbConferente.getSelectionModel().clearSelection();
                 cbConferente.setValue(null);
             }
-            if (cbCidadeDeCobranca != null) {
-                cbCidadeDeCobranca.getSelectionModel().clearSelection();
-                cbCidadeDeCobranca.setValue(null);
+            if (txtCidadeCobranca != null) {
+                txtCidadeCobranca.clear(); 
             }
             if (Rbnao != null && notaFiscalToggleGroup != null) Rbnao.setSelected(true);
             if (txtNumNota != null) txtNumNota.clear();
@@ -1825,7 +1854,6 @@ public class CadastroFreteController implements Initializable {
                     cbitem.getEditor().clear();
                 }
                 cbitem.setValue(null);
-                // CORREÇÃO: Garante que os itens da combobox sejam recarregados para o estado original
                 if (listaItensDisplayOriginal != null) {
                     cbitem.setItems(FXCollections.observableArrayList(listaItensDisplayOriginal));
                 }
@@ -1911,10 +1939,7 @@ public class CadastroFreteController implements Initializable {
         if (valorStr == null || valorStr.trim().isEmpty()) {
             return 0.0;
         }
-        String valorLimpo = valorStr.replace("R$", "")
-                                    .trim()
-                                    .replace(".", "")
-                                    .replace(",", ".");
+        String valorLimpo = valorStr.replace("R$", "").trim().replace(".", "").replace(",", ".");
         try {
             return Double.parseDouble(valorLimpo);
         } catch (NumberFormatException e) {
@@ -1930,7 +1955,6 @@ public class CadastroFreteController implements Initializable {
             double vD = parseValorMonetario(vS);
             return BigDecimal.valueOf(vD).setScale(2, RoundingMode.HALF_UP);
         } catch (ParseException e) {
-            System.err.println("Erro ao converter '" + vS + "' para BigDecimal: " + e.getMessage());
             throw new IllegalArgumentException("Valor monetário inválido: '" + vS + "'.", e);
         }
     }
@@ -1945,31 +1969,18 @@ public class CadastroFreteController implements Initializable {
 
     private void abrirJanelaGenerica(String fxmlFileRelative, String title, boolean resizable, Modality modality) {
         try {
-            if (fxmlFileRelative == null || fxmlFileRelative.trim().isEmpty()) {
-                showAlert(AlertType.ERROR, "Erro Interno", "Nome do arquivo FXML não pode ser vazio.");
-                return;
-            }
-            String fxmlPath = fxmlFileRelative.startsWith("/")
-                    ? fxmlFileRelative
-                    : "/gui/" + fxmlFileRelative;
-
+            String fxmlPath = fxmlFileRelative.startsWith("/") ? fxmlFileRelative : "/gui/" + fxmlFileRelative;
             URL fxmlLocation = getClass().getResource(fxmlPath);
             if (fxmlLocation == null) {
-                showAlert(AlertType.ERROR, "Erro ao Abrir Tela",
-                        "Arquivo FXML não pôde ser localizado: " + fxmlPath);
+                showAlert(AlertType.ERROR, "Erro ao Abrir Tela", "Arquivo FXML não pôde ser localizado: " + fxmlPath);
                 return;
             }
             FXMLLoader loader = new FXMLLoader(fxmlLocation);
             Parent root = loader.load();
             Stage stage = new Stage();
             stage.setTitle(title);
-            stage.setScene(new Scene(root));
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setResizable(resizable);
-
-            URL cssLocation = getClass().getResource("/css/main.css");
-            if (cssLocation != null) {
-                stage.getScene().getStylesheets().add(cssLocation.toExternalForm());
-            }
             if (modality != null && modality != Modality.NONE) {
                 stage.initModality(modality);
                 stage.showAndWait();
@@ -1978,43 +1989,15 @@ public class CadastroFreteController implements Initializable {
             }
         } catch (IOException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao Abrir Tela",
-                    "Não foi possível carregar a tela: " + fxmlFileRelative + "\nDetalhes: " + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro ao Abrir Tela", "Não foi possível carregar a tela: " + fxmlFileRelative + "\nDetalhes: " + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro Crítico",
-                    "Ocorreu um erro inesperado ao tentar abrir a tela '" + title + "'.");
+            showAlert(AlertType.ERROR, "Erro Crítico", "Ocorreu um erro inesperado ao tentar abrir a tela '" + title + "'.");
         }
     }
 
     public void atualizarListaItensDoComboBox() {
         carregarItensCadastradosParaComboBox();
         setComboBoxItems();
-    }
-
-    // CORREÇÃO: Nova classe auxiliar TripleCustom para passar 3 valores
-    // Mantenho aqui por simplicidade da entrega, mas o ideal é que esteja em 'util' ou similar.
-    private static class TripleCustom<A, B, C> {
-        private final A firstValue;
-        private final B secondValue;
-        private final C thirdValue;
-
-        public TripleCustom(A firstValue, B secondValue, C thirdValue) {
-            this.firstValue = firstValue;
-            this.secondValue = secondValue;
-            this.thirdValue = thirdValue;
-        }
-
-        public A getFirstValue() {
-            return firstValue;
-        }
-
-        public B getSecondValue() {
-            return secondValue;
-        }
-
-        public C getThirdValue() {
-            return thirdValue;
-        }
     }
 }

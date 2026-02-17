@@ -14,15 +14,12 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.RowConstraints?>
 
-<AnchorPane prefHeight="400.0" prefWidth="500.0" stylesheets="@/css/main.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.CadastroCaixaController">
+<AnchorPane prefHeight="400.0" prefWidth="500.0" styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.CadastroCaixaController">
     <children>
-        <VBox spacing="15.0" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
+        <VBox spacing="15.0" styleClass="content-panel" style="-fx-padding: 20;" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
             <children>
-                <Label text="Cadastro de Tipos de Caixa" styleClass="tela-titulo">
-                    <font>
-                        <Font name="System Bold" size="18.0" />
-                    </font>
-                </Label>
+                <Label text="Cadastro de Tipos de Caixa" styleClass="title-main-screen" />
+                
                 <GridPane hgap="10.0" vgap="10.0">
                     <columnConstraints>
                         <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" minWidth="10.0" prefWidth="50.0" />
@@ -33,20 +30,23 @@
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                     </rowConstraints>
                     <children>
-                        <Label text="ID:" />
+                        <Label text="ID:" styleClass="label-bold"/>
                         <TextField fx:id="txtId" editable="false" promptText="Automático" GridPane.columnIndex="1" />
-                        <Label text="Nome:" GridPane.rowIndex="1" />
+                        <Label text="Nome:" GridPane.rowIndex="1" styleClass="label-bold"/>
                         <TextField fx:id="txtNome" promptText="Nome do Tipo de Caixa (Ex: Caixa Principal)" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                     </children>
                 </GridPane>
+                
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                     <children>
                         <Button fx:id="btnNova" onAction="#novaCaixa" prefWidth="80.0" text="Novo" />
-                        <Button fx:id="btnSalvar" onAction="#salvarCaixa" prefWidth="80.0" text="Salvar" styleClass="button-primary" />
-                        <Button fx:id="btnExcluir" onAction="#excluirCaixa" prefWidth="80.0" text="Excluir" />
+                        <Button fx:id="btnSalvar" onAction="#salvarCaixa" prefWidth="80.0" styleClass="button-success" text="Salvar" />
+                        <Button fx:id="btnExcluir" onAction="#excluirCaixa" prefWidth="80.0" styleClass="button-danger" text="Excluir" />
                     </children>
                 </HBox>
-                <TableView fx:id="tabela" prefHeight="200.0" VBox.vgrow="ALWAYS"> <columns>
+                
+                <TableView fx:id="tabela" prefHeight="200.0" VBox.vgrow="ALWAYS"> 
+                    <columns>
                         <TableColumn fx:id="colId" prefWidth="75.0" text="ID" />
                         <TableColumn fx:id="colNome" prefWidth="370.0" text="Nome do Caixa" />
                     </columns>

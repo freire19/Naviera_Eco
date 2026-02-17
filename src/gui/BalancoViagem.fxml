@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane fx:id="mainContainer" prefHeight="720.0" prefWidth="1100.0" styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.BalancoViagemController">
+   <children>
+      <VBox alignment="CENTER" prefWidth="1100.0" spacing="5.0" styleClass="painel-cabecalho" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <Label text="RELATÓRIO FINANCEIRO DA VIAGEM" textFill="#cccccc">
+               <font><Font name="Segoe UI Bold" size="24.0" /></font>
+            </Label>
+            <HBox alignment="CENTER" spacing="15.0">
+               <children>
+                  <Label text="Selecionar Viagem:" textFill="#555555"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <ComboBox fx:id="cmbViagens" onAction="#handleFiltrarViagem" prefWidth="400.0" style="-fx-font-size: 13px;" />
+                  <Button mnemonicParsing="false" onAction="#handleImprimirResumido" style="-fx-background-color: #2E7D32; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR RESUMO" />
+                  <Button mnemonicParsing="false" onAction="#handleImprimirDetalhado" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR DETALHADO" />
+               </children>
+               <padding><Insets bottom="10.0" top="10.0" /></padding>
+            </HBox>
+         </children>
+         <padding><Insets top="10.0" /></padding>
+      </VBox>
+
+      <TabPane layoutY="100.0" prefHeight="620.0" prefWidth="1100.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="90.0">
+         <tabs>
+            <Tab text="VISÃO GERAL (SIMPLIFICADA)">
+               <content>
+                  <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;">
+                     <content>
+                        <VBox spacing="20.0">
+                           <padding><Insets bottom="30.0" left="50.0" right="50.0" top="30.0" /></padding>
+                           <children>
+                              <Label text="RESUMO DE RECEITAS" textFill="#cccccc"><font><Font name="Segoe UI Bold" size="18.0" /></font></Label>
+                              <Separator />
+                              <VBox fx:id="vboxListaEntradas" spacing="8.0" styleClass="card-info">
+                                 <padding><Insets bottom="15.0" left="15.0" right="15.0" top="15.0" /></padding>
+                              </VBox>
+                              <VBox spacing="10.0" styleClass="card-info">
+                                 <padding><Insets bottom="20.0" left="30.0" right="30.0" top="20.0" /></padding>
+                                 <children>
+                                    <HBox><children><Label maxWidth="Infinity" text="TOTAL ENTRADAS:" textFill="#333333" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="16.0" /></font></Label><Label fx:id="lblTotalGeralEntradas" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="18.0" /></font></Label></children></HBox>
+                                    <HBox><children><Label maxWidth="Infinity" text="TOTAL SAÍDAS:" textFill="#333333" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="16.0" /></font></Label><Label fx:id="lblTotalGeralSaidas" text="R$ 0,00" textFill="#c62828"><font><Font name="System Bold" size="18.0" /></font></Label></children></HBox>
+                                    <Separator />
+                                    <HBox><children><Label maxWidth="Infinity" text="SALDO FINAL:" textFill="#cccccc" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="20.0" /></font></Label><Label fx:id="lblSaldoFinal" text="R$ 0,00"><font><Font name="System Bold" size="24.0" /></font></Label></children></HBox>
+                                 </children>
+                              </VBox>
+                           </children>
+                        </VBox>
+                     </content>
+                  </ScrollPane>
+               </content>
+            </Tab>
+
+            <Tab text="VISÃO GERAL DETALHADA">
+               <content>
+                  <VBox>
+                     <children>
+                        <HBox spacing="20.0" VBox.vgrow="ALWAYS">
+                           <padding><Insets bottom="10.0" left="15.0" right="15.0" top="15.0" /></padding>
+                           <children>
+                              <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                                 <VBox spacing="5.0" styleClass="card-info" VBox.vgrow="ALWAYS">
+                                    <padding><Insets bottom="10.0" left="10.0" right="10.0" top="10.0" /></padding>
+                                    <children>
+                                       <Label text="DETALHAMENTO DE RECEITAS" textFill="#2e7d32"><font><Font name="System Bold" size="14.0" /></font></Label>
+                                       <Separator />
+                                       <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;" VBox.vgrow="ALWAYS">
+                                          <content><VBox fx:id="vboxReceitasDetalhadasTela" spacing="5.0" /></content>
+                                       </ScrollPane>
+                                    </children>
+                                 </VBox>
+                                 <VBox alignment="CENTER" prefHeight="250.0" styleClass="card-info">
+                                    <children>
+                                       <Label text="Balanço Visual" textFill="#555555"><font><Font name="System Bold" size="12.0" /></font></Label>
+                                       <BarChart fx:id="graficoBalanco" legendVisible="false" animated="false">
+                                         <xAxis><CategoryAxis label="Balanço" /></xAxis>
+                                         <yAxis><NumberAxis label="Valor (R$)" /></yAxis>
+                                       </BarChart>
+                                    </children>
+                                 </VBox>
+                              </VBox>
+                              <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                                 <VBox spacing="5.0" styleClass="card-info" VBox.vgrow="ALWAYS">
+                                    <padding><Insets bottom="10.0" left="10.0" right="10.0" top="10.0" /></padding>
+                                    <children>
+                                       <Label text="SAÍDAS POR CATEGORIA" textFill="#cccccc"><font><Font name="System Bold" size="14.0" /></font></Label>
+                                       <Separator />
+                                       <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;" VBox.vgrow="ALWAYS">
+                                          <content><VBox fx:id="vboxDespesasDetalhadasTela" spacing="5.0" /></content>
+                                       </ScrollPane>
+                                    </children>
+                                 </VBox>
+                              </VBox>
+                           </children>
+                        </HBox>
+                        <HBox alignment="CENTER" spacing="15.0" prefHeight="110.0" styleClass="painel-totais">
+                           <padding><Insets bottom="10.0" left="15.0" right="15.0" top="10.0" /></padding>
+                           <children>
+                              <VBox alignment="CENTER" prefWidth="280.0" spacing="5.0" styleClass="card-info">
+                                 <children><Label text="TOTAL ENTRADAS" textFill="#757575"><font><Font size="12.0" /></font></Label><Label fx:id="lblCardEntradas" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="20.0" /></font></Label></children>
+                              </VBox>
+                              <Label text="-" textFill="#999999"><font><Font name="System Bold" size="24.0" /></font></Label>
+                              <VBox alignment="CENTER" prefWidth="280.0" spacing="5.0" styleClass="card-info">
+                                 <children><Label text="TOTAL SAÍDAS" textFill="#757575"><font><Font size="12.0" /></font></Label><Label fx:id="lblCardSaidas" text="R$ 0,00" textFill="#c62828"><font><Font name="System Bold" size="20.0" /></font></Label></children>
+                              </VBox>
+                              <Label text="=" textFill="#999999"><font><Font name="System Bold" size="24.0" /></font></Label>
+                              <VBox alignment="CENTER" prefWidth="280.0" spacing="5.0" styleClass="card-info">
+                                 <children><Label text="SALDO LÍQUIDO" textFill="#757575"><font><Font size="12.0" /></font></Label><Label fx:id="lblCardSaldo" text="R$ 0,00" textFill="#cccccc"><font><Font name="System Bold" size="20.0" /></font></Label></children>
+                              </VBox>
+                              <Separator orientation="VERTICAL" />
+                              <VBox alignment="CENTER" prefWidth="280.0" spacing="5.0" styleClass="card-info">
+                                 <children><Label text="A RECEBER (FIADO/PENDENTE)" textFill="#f57f17"><font><Font name="System Bold" size="11.0" /></font></Label><Label fx:id="lblCardPendente" text="R$ 0,00" textFill="#f57f17"><font><Font name="System Bold" size="18.0" /></font></Label><Label fx:id="lblCardRecebido" text="Já Recebido: R$ 0,00" textFill="#555555"><font><Font size="11.0" /></font></Label></children>
+                              </VBox>
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+               </content>
+            </Tab>
+         </tabs>
+      </TabPane>
+   </children>
+</AnchorPane>

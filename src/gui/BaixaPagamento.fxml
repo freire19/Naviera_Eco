@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="15.0" styleClass="dialog-baixa" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.BaixaPagamentoController">
+   <padding><Insets bottom="20.0" left="25.0" right="25.0" top="20.0" /></padding>
+   <children>
+      <Label text="Confirmar Recebimento" textFill="#cccccc"><font><Font name="System Bold" size="20.0" /></font></Label>
+      <Separator />
+      
+      <GridPane hgap="15.0" vgap="12.0">
+        <columnConstraints>
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="140.0" />
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="200.0" />
+        </columnConstraints>
+        <rowConstraints>
+          <RowConstraints vgrow="SOMETIMES" />
+          <RowConstraints vgrow="SOMETIMES" />
+          <RowConstraints vgrow="SOMETIMES" />
+            <RowConstraints vgrow="SOMETIMES" />
+            <RowConstraints vgrow="SOMETIMES" />
+            <RowConstraints vgrow="SOMETIMES" />
+            <RowConstraints vgrow="SOMETIMES" />
+        </rowConstraints>
+         <children>
+            <Label text="Valor Total:" textFill="#757575"><font><Font size="14.0" /></font></Label>
+            <Label fx:id="lblValorTotal" text="R$ 0,00" GridPane.columnIndex="1"><font><Font name="System Bold" size="16.0" /></font></Label>
+            
+            <Label text="Já Pago:" textFill="#757575" GridPane.rowIndex="1"><font><Font size="14.0" /></font></Label>
+            <Label fx:id="lblJaPago" text="R$ 0,00" textFill="#2e7d32" GridPane.columnIndex="1" GridPane.rowIndex="1"><font><Font name="System Bold" size="16.0" /></font></Label>
+            
+            <Label text="Restante (Dívida):" textFill="#757575" GridPane.rowIndex="2"><font><Font size="14.0" /></font></Label>
+            <Label fx:id="lblRestante" text="R$ 0,00" textFill="#c62828" GridPane.columnIndex="1" GridPane.rowIndex="2"><font><Font name="System Bold" size="18.0" /></font></Label>
+            
+            <Label text="Desconto (R$):" GridPane.rowIndex="3"><font><Font name="System Bold" size="14.0" /></font></Label>
+            <TextField fx:id="txtDesconto" promptText="0,00" style="-fx-border-color: #ef5350; -fx-font-size: 14px;" text="0,00" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            
+            <Label text="Pagar Agora (R$):" GridPane.rowIndex="4"><font><Font name="System Bold" size="16.0" /></font></Label>
+            <TextField fx:id="txtValorRecebido" promptText="Digite o valor" styleClass="campo-valor" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+            
+            <Label text="Forma Pagamento:" GridPane.rowIndex="5"><font><Font size="14.0" /></font></Label>
+            <ComboBox fx:id="cmbFormaPagamento" maxWidth="1.7976931348623157E308" style="-fx-font-size: 14px;" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+            
+            <Label text="Caixa:" GridPane.rowIndex="6"><font><Font size="14.0" /></font></Label>
+            <ComboBox fx:id="cmbCaixa" maxWidth="1.7976931348623157E308" style="-fx-font-size: 14px;" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+         </children>
+      </GridPane>
+      
+      <HBox alignment="CENTER" spacing="10.0" styleClass="painel-resumo-pagamento" style="-fx-padding: 15;">
+         <children>
+            <Label text="TROCO:" textFill="#2e7d32"><font><Font name="System Bold" size="20.0" /></font></Label>
+            <Label fx:id="lblTroco" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="32.0" /></font></Label>
+         </children>
+      </HBox>
+      
+      <HBox alignment="CENTER_RIGHT" spacing="15.0">
+         <children>
+            <Button mnemonicParsing="false" onAction="#cancelar" style="-fx-background-color: #cfd8dc; -fx-font-size: 14px;" text="Cancelar" />
+            <Button fx:id="btnConfirmar" defaultButton="true" mnemonicParsing="false" onAction="#confirmar" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="CONFIRMAR PAGAMENTO">
+               <padding><Insets bottom="10.0" left="20.0" right="20.0" top="10.0" /></padding>
+            </Button>
+         </children>
+      </HBox>
+   </children>
+</VBox>

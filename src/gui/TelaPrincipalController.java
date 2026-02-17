@@ -1,358 +1,1345 @@
 package gui;
 
+import gui.util.LogService;
+import gui.util.RelatorioUtil;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType; // Importar AlertType
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.layout.BorderPane;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.fxml.FXMLLoader;
+import javafx.stage.StageStyle;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
-import java.util.List;
-import java.util.ResourceBundle;
 import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.ResourceBundle;
 
-import dao.ViagemDAO;
+import dao.AgendaDAO;
 import dao.ConexaoBD;
+import dao.ViagemDAO;
 import model.Viagem;
-import dao.AuxiliaresDAO;
+import gui.BalancoViagemController;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 
-/**
- * Controller da tela principal (menu).
- */
 public class TelaPrincipalController implements Initializable {
 
-    @FXML
-    private BorderPane rootPane;
+    @FXML private BorderPane rootPane;
+    @FXML private ComboBox<String> cmbViagemAtiva;
+    @FXML private Button btnCarregarDadosDaViagem;
+    @FXML private GridPane dashboardGrid;
+    
+    // Menu Superior
+    @FXML private HBox hboxMenuSuperior;
+    
+    // Botão de Modo Escuro
+    @FXML private ToggleButton btnModoNoturno;
+    
+    // Calendário
+    @FXML private Label lblMesAnoCalendario;
+    @FXML private GridPane calendarioGrid;
+    
+    // Legenda 
+    @FXML private HBox hboxLegenda;
+    
+    // Sistema de Abas
+    @FXML private TabPane tabPanePrincipal;
+    @FXML private Tab tabInicio;
 
-    @FXML
-    private ComboBox<String> cmbViagemAtiva;
-
-    @FXML
-    private Button btnCarregarDadosDaViagem;
-
-    @FXML
-    private Text txtProximasViagens;
-    @FXML
-    private Text txtTotalEncomendas;
-    @FXML
-    private Text txtSaldoCaixa;
+    private Text txtTotalVolumesFrete;
+    private Text txtQtdEncomendas;
+    private Text txtTotalPassageiros;
 
     private final ViagemDAO viagemDAO = new ViagemDAO();
-    private final AuxiliaresDAO auxiliaresDAO = new AuxiliaresDAO();
+    private final AgendaDAO agendaDAO = new AgendaDAO();
+    
+    private YearMonth mesAtualCalendario;
+    
+    // Controle de Tema
+    private boolean isModoEscuro = false;
+    private String cssClaro = "/css/main.css";
+    private String cssEscuro = "/css/dark.css";
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        setupDashboardCards();
         carregarViagensNoCombo();
-        txtProximasViagens.setText("N/D");
-        txtTotalEncomendas.setText("0");
-        txtSaldoCaixa.setText("R$ 0,00");
+        atualizarDashboard();
+        
+        mesAtualCalendario = YearMonth.now();
+        construirCalendario();
+        
+        atualizarEstiloMenuSuperior();
+        configurarLegendaDinamica(); 
+        
+        if (btnModoNoturno != null) {
+            btnModoNoturno.setText("🌙 Modo Escuro");
+        }
+    }
+
+    // ================================================================================
+    // CONFIGURAÇÃO AUTOMÁTICA DA LEGENDA
+    // ================================================================================
+    private void configurarLegendaDinamica() {
+        HBox containerLegenda = null;
+
+        if (hboxLegenda != null) {
+            containerLegenda = hboxLegenda;
+        } 
+        else if (rootPane.getBottom() instanceof HBox) {
+            containerLegenda = (HBox) rootPane.getBottom();
+        }
+
+        if (containerLegenda != null) {
+            boolean jaExiste = containerLegenda.getChildren().stream()
+                .filter(n -> n instanceof Label)
+                .map(n -> ((Label)n).getText())
+                .anyMatch(t -> t.contains("Contas a Pagar"));
+
+            if (!jaExiste) {
+                Label lblBoleto = new Label("📄 Contas a Pagar");
+                lblBoleto.setStyle("-fx-font-size: 12px; -fx-padding: 0 0 0 15;");
+                
+                if (isModoEscuro) lblBoleto.setTextFill(Color.WHITE);
+                else lblBoleto.setTextFill(Color.BLACK);
+                
+                lblBoleto.getProperties().put("tipo", "legendaBoleto");
+
+                containerLegenda.getChildren().add(lblBoleto);
+            }
+        }
+    }
+
+    // ================================================================================
+    // LÓGICA DO MODO ESCURO / CLARO
+    // ================================================================================
+    @FXML
+    private void handleAlternarTema(ActionEvent event) {
+        isModoEscuro = btnModoNoturno.isSelected();
+        TemaManager.setModoEscuro(isModoEscuro); // Sincronizar com TemaManager
+        
+        if (isModoEscuro) {
+            btnModoNoturno.setText("☀️ Modo Claro");
+        } else {
+            btnModoNoturno.setText("🌙 Modo Escuro");
+        }
+        
+        aplicarTema(rootPane.getScene());
+        atualizarEstiloMenuSuperior(); 
+        construirCalendario(); 
+        atualizarCorLegendaBoleto();
+    }
+    
+    private void atualizarCorLegendaBoleto() {
+        HBox container = (hboxLegenda != null) ? hboxLegenda : (rootPane.getBottom() instanceof HBox ? (HBox) rootPane.getBottom() : null);
+        if (container != null) {
+            for (Node n : container.getChildren()) {
+                if (n instanceof Label && "legendaBoleto".equals(n.getProperties().get("tipo"))) {
+                    ((Label)n).setTextFill(isModoEscuro ? Color.WHITE : Color.BLACK);
+                }
+            }
+        }
+    }
+
+    private void aplicarTema(Scene scene) {
+        if (scene == null) return;
+        scene.getStylesheets().clear();
+
+        String cssParaCarregar = isModoEscuro ? cssEscuro : cssClaro;
+        URL url = getClass().getResource(cssParaCarregar);
+
+        if (url != null) {
+            scene.getStylesheets().add(url.toExternalForm());
+        } else {
+            System.err.println("Erro crítico: CSS não encontrado em " + cssParaCarregar);
+        }
+    }
+
+    public void aplicarTemaEmNovaJanela(Stage stage) {
+        if (stage != null && stage.getScene() != null) {
+            aplicarTema(stage.getScene());
+        }
+    }
+    
+    private void atualizarEstiloMenuSuperior() {
+        if (hboxMenuSuperior == null) return;
+
+        if (isModoEscuro) {
+            hboxMenuSuperior.setStyle("-fx-background-color: #333333; -fx-padding: 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 5, 0, 0, 2);");
+            for (Node node : hboxMenuSuperior.getChildren()) {
+                if (node instanceof MenuButton || node instanceof Button) {
+                    node.setStyle("-fx-background-color: transparent; -fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: white;");
+                }
+            }
+        } else {
+            hboxMenuSuperior.setStyle("-fx-background-color: white; -fx-padding: 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
+            for (Node node : hboxMenuSuperior.getChildren()) {
+                if (node instanceof MenuButton || node instanceof Button) {
+                    node.setStyle("-fx-background-color: transparent; -fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: black;");
+                }
+            }
+        }
+    }
+
+    // ================================================================================
+    // LÓGICA DO CALENDÁRIO (COM BOLETOS E LEGENDA)
+    // ================================================================================
+    private void construirCalendario() {
+        calendarioGrid.getChildren().clear();
+        
+        String corBordaNormal = isModoEscuro ? "#333333" : "#cccccc"; 
+        
+        String corBordaDestaque = isModoEscuro ? "#0d56df" : "#1976d2"; 
+        String corFundoHover = isModoEscuro ? "#121a33" : "#e3f2fd"; 
+        String corFundoPadrao = isModoEscuro ? "#333333" : "white"; 
+        String corFeriado = isModoEscuro ? "#b71c1c" : "#fff9c4"; 
+        String corHojeFundo = isModoEscuro ? "#0d56df" : "#e3f2fd"; 
+        
+        calendarioGrid.setStyle("-fx-border-color: " + corBordaNormal + "; -fx-border-width: 1px;");
+        
+        String nomeMes = mesAtualCalendario.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
+        String titulo = nomeMes.substring(0, 1).toUpperCase() + nomeMes.substring(1) + " " + mesAtualCalendario.getYear();
+        lblMesAnoCalendario.setText(titulo);
+
+        String[] diasSemana = {"Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"};
+        for (int i = 0; i < diasSemana.length; i++) {
+            Label lblDia = new Label(diasSemana[i]);
+            lblDia.setStyle("-fx-font-weight: bold; -fx-alignment: center;");
+            lblDia.setMaxWidth(Double.MAX_VALUE);
+            calendarioGrid.add(lblDia, i, 0);
+        }
+
+        LocalDate dataInicio = mesAtualCalendario.atDay(1);
+        int diaDaSemanaInicio = dataInicio.getDayOfWeek().getValue(); 
+        if (diaDaSemanaInicio == 7) diaDaSemanaInicio = 0; 
+
+        int diasNoMes = mesAtualCalendario.lengthOfMonth();
+        
+        List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+        List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+        
+        int row = 1;
+        int col = diaDaSemanaInicio;
+
+        for (int dia = 1; dia <= diasNoMes; dia++) {
+            LocalDate dataAtual = mesAtualCalendario.atDay(dia);
+            VBox cell = new VBox(2);
+            cell.getStyleClass().add("vbox-calendario"); 
+            cell.setAlignment(Pos.TOP_LEFT);
+            
+            String styleBase = "-fx-background-color: " + corFundoPadrao + "; -fx-border-color: " + corBordaNormal + "; -fx-padding: 2; -fx-cursor: hand;";
+            
+            String feriado = getFeriado(dataAtual);
+            if (feriado != null) {
+                styleBase = "-fx-background-color: " + corFeriado + "; -fx-border-color: " + corBordaNormal + "; -fx-padding: 2; -fx-cursor: hand;";
+            }
+            if (dataAtual.equals(LocalDate.now())) {
+                styleBase = "-fx-border-color: " + corBordaDestaque + "; -fx-border-width: 2; -fx-background-color: " + corHojeFundo + "; -fx-padding: 1; -fx-cursor: hand;";
+            }
+            
+            cell.setStyle(styleBase);
+            final String finalStyle = styleBase;
+            
+            cell.setOnMouseEntered(e -> cell.setStyle("-fx-border-color: " + corBordaDestaque + "; -fx-background-color: " + corFundoHover + "; -fx-padding: 2; -fx-cursor: hand;"));
+            cell.setOnMouseExited(e -> cell.setStyle(finalStyle));
+            
+            Label lblNumeroDia = new Label(String.valueOf(dia));
+            lblNumeroDia.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 0 0 0 2;");
+            
+            if (dataAtual.equals(LocalDate.now())) lblNumeroDia.setTextFill(Color.WHITE);
+            else if (feriado != null && isModoEscuro) lblNumeroDia.setTextFill(Color.WHITE);
+            else if (feriado != null) lblNumeroDia.setTextFill(Color.ORANGE);
+            
+            cell.getChildren().add(lblNumeroDia);
+            
+            if (feriado != null) {
+                Label lblFer = new Label("★ " + feriado);
+                String corTextoFeriado = isModoEscuro ? "#ffcdd2" : "#f57f17";
+                lblFer.setStyle("-fx-text-fill: " + corTextoFeriado + "; -fx-font-size: 9px; -fx-padding: 0 0 0 2;");
+                cell.getChildren().add(lblFer);
+            }
+            
+            // --- VIAGENS ---
+            for (Viagem v : viagensDoMes) {
+                if (v.getDataViagem().equals(dataAtual)) {
+                    String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
+                    Label lblViagem = new Label("🚢 " + destino);
+                    String bgViagem = isModoEscuro ? "#1a3c7d" : "#ffcdd2"; 
+                    String txtViagem = isModoEscuro ? "#ffffff" : "#c62828";
+                    lblViagem.setStyle("-fx-background-color: " + bgViagem + "; -fx-text-fill: " + txtViagem + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
+                    lblViagem.setMaxWidth(Double.MAX_VALUE);
+                    cell.getChildren().add(lblViagem);
+                }
+            }
+            
+            // --- BOLETOS ---
+            NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+            for (AgendaDAO.ResumoBoleto b : boletosDoMes) {
+                if (b.vencimento.equals(dataAtual)) {
+                    Label lblBoleto = new Label("📄 " + nf.format(b.valor));
+                    
+                    String bgBoleto = isModoEscuro ? "#b71c1c" : "#ffebee";
+                    String txtBoleto = isModoEscuro ? "#ffffff" : "#c62828";
+                    
+                    lblBoleto.setStyle("-fx-background-color: " + bgBoleto + "; -fx-text-fill: " + txtBoleto + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
+                    lblBoleto.setMaxWidth(Double.MAX_VALUE);
+                    
+                    Tooltip tt = new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nf.format(b.valor));
+                    Tooltip.install(lblBoleto, tt);
+                    
+                    cell.getChildren().add(lblBoleto);
+                }
+            }
+
+            // --- NOTAS DA AGENDA ---
+            List<String> notas = agendaDAO.buscarAnotacoesPorData(dataAtual);
+            for (String nota : notas) {
+                Label lblNota = new Label("✎ " + nota);
+                
+                String bgNota = isModoEscuro ? "#004d40" : "#b2dfdb"; // Padrão
+                String txtNota = isModoEscuro ? "#e0f2f1" : "#00695c";
+                
+                String notaLower = nota.toLowerCase();
+                
+                if (notaLower.contains("manaus") && notaLower.contains("juta")) {
+                    int idxManaus = notaLower.indexOf("manaus");
+                    int idxJutai = notaLower.indexOf("juta");
+                    if (idxManaus < idxJutai) { // IDA
+                        bgNota = isModoEscuro ? "#1b5e20" : "#a5d6a7"; 
+                        txtNota = isModoEscuro ? "#e8f5e9" : "#1b5e20";
+                    } else { // VOLTA
+                        bgNota = isModoEscuro ? "#bf360c" : "#ffccbc"; 
+                        txtNota = isModoEscuro ? "#fbe9e7" : "#bf360c";
+                    }
+                }
+                
+                lblNota.setStyle("-fx-background-color: " + bgNota + "; -fx-text-fill: " + txtNota + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
+                lblNota.setMaxWidth(Double.MAX_VALUE);
+                cell.getChildren().add(lblNota);
+            }
+            
+            cell.setOnMouseClicked(e -> gerenciarAgendaDoDia(dataAtual, viagensDoMes, notas, feriado, boletosDoMes));
+            calendarioGrid.add(cell, col, row);
+            col++;
+            if (col > 6) { col = 0; row++; }
+        }
+    }
+    
+    private String getFeriado(LocalDate date) {
+        int d = date.getDayOfMonth();
+        Month m = date.getMonth();
+        if (d == 1 && m == Month.JANUARY) return "Ano Novo";
+        if (d == 21 && m == Month.APRIL) return "Tiradentes";
+        if (d == 1 && m == Month.MAY) return "Trabalho";
+        if (d == 7 && m == Month.SEPTEMBER) return "Independência";
+        if (d == 12 && m == Month.OCTOBER) return "N. Sra. Aparecida";
+        if (d == 2 && m == Month.NOVEMBER) return "Finados";
+        if (d == 15 && m == Month.NOVEMBER) return "Proclamação Rep.";
+        if (d == 25 && m == Month.DECEMBER) return "Natal";
+        if (d == 5 && m == Month.SEPTEMBER) return "Elev. Amazonas";
+        if (d == 20 && m == Month.NOVEMBER) return "Consciência Negra";
+        return null;
+    }
+    
+    private void gerenciarAgendaDoDia(LocalDate data, List<Viagem> viagens, List<String> notas, String feriado, List<AgendaDAO.ResumoBoleto> boletos) {
+        StringBuilder resumo = new StringBuilder("Agenda de " + data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ":\n\n");
+        if (feriado != null) resumo.append("★ FERIADO: ").append(feriado).append("\n\n");
+        
+        // Exibe Viagens
+        boolean temViagem = false;
+        for (Viagem v : viagens) {
+            if (v.getDataViagem().equals(data)) {
+                resumo.append("🚢 VIAGEM: ").append(v.getNomeRotaConcatenado()).append("\n");
+                resumo.append("   Barco: ").append(v.getNomeEmbarcacao()).append("\n");
+                resumo.append("   Saída: ").append(v.getDescricaoHorarioSaida()).append("\n\n");
+                temViagem = true;
+            }
+        }
+        
+        // Exibe Boletos
+        boolean temBoleto = false;
+        NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+        for (AgendaDAO.ResumoBoleto b : boletos) {
+            if (b.vencimento.equals(data)) {
+                if (!temBoleto) resumo.append("--- CONTAS A PAGAR ---\n");
+                resumo.append("📄 ").append(b.descricao).append(" - ").append(nf.format(b.valor)).append("\n");
+                temBoleto = true;
+            }
+        }
+        if (temBoleto) resumo.append("\n");
+        
+        // Exibe Notas
+        if (!notas.isEmpty()) resumo.append("--- ANOTAÇÕES ---\n");
+        for (String nota : notas) resumo.append("✎ ").append(nota).append("\n");
+        
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Detalhes do Dia");
+        dialog.setHeaderText(resumo.toString());
+        dialog.setContentText("Nova anotação rápida:");
+        if (isModoEscuro) {
+            DialogPane dialogPane = dialog.getDialogPane();
+            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
+        }
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent() && !result.get().trim().isEmpty()) {
+            agendaDAO.adicionarAnotacao(data, result.get().trim());
+            construirCalendario();
+        }
+    }
+
+    @FXML private void mesAnterior(ActionEvent event) { mesAtualCalendario = mesAtualCalendario.minusMonths(1); construirCalendario(); }
+    @FXML private void mesProximo(ActionEvent event) { mesAtualCalendario = mesAtualCalendario.plusMonths(1); construirCalendario(); }
+    
+    @FXML 
+    private void handleGerenciarAgenda(ActionEvent event) { 
+        abrirTelaModal("/gui/TelaGerenciarAgenda.fxml", "Gerenciar Tarefas e Agenda", false); 
+    }
+
+    @FXML
+    private void handleGerarEscala(ActionEvent event) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Agendar Saídas Recorrentes");
+        dialog.setHeaderText("Marcar dias de saída na Agenda (Lembretes):");
+
+        if (isModoEscuro) {
+            DialogPane dialogPane = dialog.getDialogPane();
+            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
+        }
+
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        ComboBox<String> cmbBarcos = new ComboBox<>();
+        ComboBox<String> cmbRotas = new ComboBox<>();
+        DatePicker dtInicio = new DatePicker(LocalDate.now());
+        DatePicker dtFim = new DatePicker(LocalDate.now().plusMonths(6)); 
+        ComboBox<String> cmbFrequencia = new ComboBox<>();
+        cmbFrequencia.getItems().addAll("Semanal (7 dias)", "Quinzenal (14 dias)", "Mensal (30 dias)");
+        cmbFrequencia.getSelectionModel().select(1); 
+
+        // CARREGA BARCOS
+        carregarDadosComboSimples(cmbBarcos, "SELECT nome FROM embarcacoes ORDER BY nome");
+        
+        // CORREÇÃO AQUI: Usa 'origem' e 'destino' em vez de 'nome'
+        carregarDadosComboSimples(cmbRotas, "SELECT origem || ' / ' || destino FROM rotas ORDER BY origem");
+
+        grid.add(new Label("Embarcação:"), 0, 0);
+        grid.add(cmbBarcos, 1, 0);
+        grid.add(new Label("Rota:"), 0, 1);
+        grid.add(cmbRotas, 1, 1);
+        grid.add(new Label("Data Início:"), 0, 2);
+        grid.add(dtInicio, 1, 2);
+        grid.add(new Label("Marcar até:"), 0, 3);
+        grid.add(dtFim, 1, 3);
+        grid.add(new Label("Frequência:"), 0, 4);
+        grid.add(cmbFrequencia, 1, 4);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            String barcoNome = cmbBarcos.getValue();
+            String rotaNome = cmbRotas.getValue();
+            LocalDate inicio = dtInicio.getValue();
+            LocalDate fim = dtFim.getValue();
+            String freq = cmbFrequencia.getValue();
+
+            if (barcoNome == null || rotaNome == null || inicio == null || fim == null) {
+                showAlert(AlertType.WARNING, "Dados Incompletos", "Preencha todos os campos.");
+                return;
+            }
+
+            int diasIntervalo = 14;
+            if (freq.contains("7")) diasIntervalo = 7;
+            else if (freq.contains("30")) diasIntervalo = 30;
+
+            gerarLembretesNoBanco(barcoNome, rotaNome, inicio, fim, diasIntervalo);
+            construirCalendario();
+        }
+    }
+
+    private void carregarDadosComboSimples(ComboBox<String> combo, String sql) {
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            ObservableList<String> itens = FXCollections.observableArrayList();
+            while (rs.next()) {
+                itens.add(rs.getString(1));
+            }
+            combo.setItems(itens);
+            if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Erro ao carregar lista", 
+                "Não foi possível carregar os dados. Verifique o banco.\nErro: " + e.getMessage());
+        }
+    }
+
+    private void gerarLembretesNoBanco(String nomeBarco, String nomeRota, LocalDate inicio, LocalDate fim, int intervalo) {
+        String sqlInsert = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
+
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmtInsert = conn.prepareStatement(sqlInsert)) {
+            
+            LocalDate dataAtual = inicio;
+            int contador = 0;
+            
+            String textoLembrete = "SAÍDA: " + nomeRota;
+            
+            while (!dataAtual.isAfter(fim)) {
+                stmtInsert.setDate(1, Date.valueOf(dataAtual));
+                stmtInsert.setString(2, textoLembrete);
+                stmtInsert.executeUpdate();
+                
+                dataAtual = dataAtual.plusDays(intervalo);
+                contador++;
+            }
+            showAlert(AlertType.INFORMATION, "Sucesso", contador + " lembretes de saída agendados!");
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "Erro SQL", e.getMessage());
+        }
+    }
+
+    // --- Outros Métodos ---
+    private void setupDashboardCards() {
+        txtTotalVolumesFrete = new Text("0"); txtTotalVolumesFrete.getStyleClass().add("dashboard-card-value");
+        VBox cardFrete = createDashboardCard("Fretes (Volumes)", txtTotalVolumesFrete); dashboardGrid.add(cardFrete, 0, 0);
+
+        txtQtdEncomendas = new Text("0"); txtQtdEncomendas.getStyleClass().add("dashboard-card-value");
+        VBox cardEncomendas = createDashboardCard("Encomendas", txtQtdEncomendas); dashboardGrid.add(cardEncomendas, 1, 0);
+
+        txtTotalPassageiros = new Text("0"); txtTotalPassageiros.getStyleClass().add("dashboard-card-value");
+        VBox cardPassageiros = createDashboardCard("Passageiros", txtTotalPassageiros); dashboardGrid.add(cardPassageiros, 2, 0);
+    }
+
+    private VBox createDashboardCard(String title, Node valueNode) {
+        Label titleLabel = new Label(title); titleLabel.getStyleClass().add("dashboard-card-title");
+        VBox card = new VBox(5, titleLabel, valueNode);
+        card.getStyleClass().add("dashboard-card");
+        card.setAlignment(Pos.CENTER);
+        return card;
+    }
+
+    private void atualizarDashboard() {
+        Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+        if (viagemAtiva == null) {
+            txtTotalVolumesFrete.setText("0"); txtQtdEncomendas.setText("0"); txtTotalPassageiros.setText("0"); return;
+        }
+        long idViagemAtiva = viagemAtiva.getId();
+        executarConsultaCount("SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi JOIN fretes f ON fi.id_frete = f.id_frete WHERE f.id_viagem = ? AND (f.excluido = FALSE OR f.excluido IS NULL)", idViagemAtiva, txtTotalVolumesFrete);
+        executarConsultaCount("SELECT COUNT(*) FROM encomendas WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)", idViagemAtiva, txtQtdEncomendas);
+        executarConsultaCount("SELECT COUNT(*) FROM passagens WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)", idViagemAtiva, txtTotalPassageiros);
+    }
+    
+    private void executarConsultaCount(String sql, long idViagem, Text target) {
+        try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, idViagem);
+            try (ResultSet rs = stmt.executeQuery()) { if (rs.next()) target.setText(String.valueOf(rs.getInt(1))); }
+        } catch (SQLException e) { target.setText("-"); e.printStackTrace(); }
     }
 
     private void carregarViagensNoCombo() {
         try {
             List<String> listaViagens = viagemDAO.listarViagensParaComboBox();
-            ObservableList<String> obs = FXCollections.observableArrayList(listaViagens);
-            if (cmbViagemAtiva != null) { // Adicionado null check para cmbViagemAtiva
-                cmbViagemAtiva.setItems(obs);
+            cmbViagemAtiva.setItems(FXCollections.observableArrayList(listaViagens));
+            Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+            if (viagemAtiva != null) cmbViagemAtiva.setValue(viagemAtiva.toString());
+            else if (!cmbViagemAtiva.getItems().isEmpty()) cmbViagemAtiva.getSelectionModel().selectFirst();
+        } catch (Exception e) { showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+    }
+    
+    // =========================================================================
+    //  NOVO MÉTODO: FORÇA A ATUALIZAÇÃO NO BANCO DE DADOS DIRETO
+    // =========================================================================
+    private boolean salvarViagemAtivaNoBanco(long idViagemSelecionada) {
+        String sqlReset = "UPDATE viagens SET is_atual = false";
+        String sqlSet = "UPDATE viagens SET is_atual = true WHERE id_viagem = ?";
 
-                Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-                if (viagemAtiva != null) {
-                    String activeViagemStr = viagemAtiva.toString();
-                    if (cmbViagemAtiva.getItems().contains(activeViagemStr)) {
-                        cmbViagemAtiva.getSelectionModel().select(activeViagemStr);
-                    } else {
-                        System.err.println("Aviso: Viagem ativa não encontrada no ComboBox da Tela Principal: " + activeViagemStr);
-                        if (!obs.isEmpty()) {
-                            cmbViagemAtiva.getSelectionModel().selectFirst();
+        try (Connection con = ConexaoBD.getConnection()) {
+            con.setAutoCommit(false);
+
+            try {
+                try (PreparedStatement stmt = con.prepareStatement(sqlReset)) {
+                    stmt.executeUpdate();
+                }
+
+                try (PreparedStatement stmt = con.prepareStatement(sqlSet)) {
+                    stmt.setLong(1, idViagemSelecionada);
+                    stmt.executeUpdate();
+                }
+
+                con.commit(); 
+                return true;
+
+            } catch (Exception e) {
+                con.rollback(); 
+                e.printStackTrace();
+                return false;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // =========================================================================
+    //  MÉTODO DO BOTÃO ATUALIZADO
+    // =========================================================================
+    @FXML private void handleCarregarDadosDaViagem(ActionEvent event) {
+        String selecionada = cmbViagemAtiva.getValue();
+        if (selecionada == null || selecionada.isEmpty()) { 
+            showAlert(AlertType.WARNING, "Atenção", "Selecione uma viagem."); 
+            return; 
+        }
+        try {
+            Long idViagem = viagemDAO.obterIdViagemPelaString(selecionada);
+            
+            if (idViagem != null && salvarViagemAtivaNoBanco(idViagem)) {
+                showAlert(AlertType.INFORMATION, "Sucesso", "Viagem definida como ativa no sistema!");
+                atualizarDashboard(); 
+                construirCalendario();
+            } else { 
+                showAlert(AlertType.ERROR, "Erro", "Não foi possível definir a viagem como ativa."); 
+            }
+        } catch (SQLException e) { 
+            showAlert(AlertType.ERROR, "Erro", e.getMessage()); 
+        }
+    }
+
+    // --- MÉTODOS DE ABERTURA DE TELA ---
+    
+    // 1. Abertura MODAL (Bloqueia a tela de trás - Padrão para cadastros)
+    private void abrirTelaModal(String fxml, String titulo, boolean max) {
+        try {
+            URL url = getClass().getResource(fxml);
+            if (url == null) { showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
+            Parent pane = new FXMLLoader(url).load();
+            Stage stage = new Stage(); stage.setTitle(titulo); 
+            Scene scene = new Scene(pane);
+            aplicarTema(scene); 
+            stage.setScene(scene);
+            
+            stage.initOwner((Stage) rootPane.getScene().getWindow());
+            stage.initModality(Modality.APPLICATION_MODAL);
+            if (max) stage.setMaximized(true);
+            stage.showAndWait();
+            
+            atualizarDashboard(); construirCalendario();
+        } catch (IOException e) { e.printStackTrace(); showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+    }
+
+    // 2. Abertura em ABA (Sistema de abas dentro da janela principal)
+    private void abrirTelaLivre(String fxml, String titulo) {
+        try {
+            // Verificar se já existe uma aba com esse título
+            for (Tab tab : tabPanePrincipal.getTabs()) {
+                if (tab.getText().equals(titulo)) {
+                    // Selecionar a aba existente
+                    tabPanePrincipal.getSelectionModel().select(tab);
+                    return;
+                }
+            }
+            
+            URL url = getClass().getResource(fxml);
+            if (url == null) { showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
+            Parent pane = new FXMLLoader(url).load();
+            
+            // Criar nova aba
+            Tab novaAba = new Tab(titulo);
+            novaAba.setContent(pane);
+            novaAba.setClosable(true);
+            
+            // Armazenar referência da aba no root do conteúdo para que telas possam fechar a aba
+            pane.getProperties().put("parentTab", novaAba);
+            pane.getProperties().put("parentTabPane", tabPanePrincipal);
+            
+            // Quando fechar a aba, atualizar dashboard
+            novaAba.setOnClosed(event -> {
+                atualizarDashboard();
+                construirCalendario();
+            });
+            
+            // Adicionar e selecionar a nova aba
+            tabPanePrincipal.getTabs().add(novaAba);
+            tabPanePrincipal.getSelectionModel().select(novaAba);
+            
+        } catch (IOException e) { e.printStackTrace(); showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+    }
+    
+    /**
+     * Método utilitário estático para fechar a aba que contém um determinado Node.
+     * Telas filhas podem chamar este método no lugar de ((Stage) node.getScene().getWindow()).close()
+     * para funcionar tanto em modo de aba quanto em janela separada.
+     */
+    public static void fecharTelaAtual(Node node) {
+        if (node == null) return;
+        
+        // Procurar a propriedade parentTab nos pais do node
+        Node current = node;
+        while (current != null) {
+            Object tab = current.getProperties().get("parentTab");
+            Object tabPane = current.getProperties().get("parentTabPane");
+            if (tab instanceof Tab && tabPane instanceof TabPane) {
+                Tab parentTab = (Tab) tab;
+                TabPane parentTabPane = (TabPane) tabPane;
+                parentTabPane.getTabs().remove(parentTab);
+                return;
+            }
+            current = current.getParent();
+        }
+        
+        // Fallback: se não encontrou aba, tenta fechar como Stage (modo legado)
+        try {
+            if (node.getScene() != null && node.getScene().getWindow() != null) {
+                Stage stage = (Stage) node.getScene().getWindow();
+                // Verificar se é a janela principal (não devemos fechá-la)
+                // Se tiver TabPane, é a janela principal
+                if (stage.getScene().getRoot().lookup(".main-tab-pane") != null) {
+                    // É a janela principal - não fechar!
+                    System.out.println("Tentativa de fechar janela principal ignorada. Use fechar aba.");
+                    return;
+                }
+                stage.close();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+    
+    // 3. Abertura em JANELA SEPARADA (para casos especiais que realmente precisam)
+    private void abrirTelaJanelaSeparada(String fxml, String titulo) {
+        try {
+            URL url = getClass().getResource(fxml);
+            if (url == null) { showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
+            Parent pane = new FXMLLoader(url).load();
+            Stage stage = new Stage(); stage.setTitle(titulo); 
+            Scene scene = new Scene(pane);
+            aplicarTema(scene); 
+            stage.setScene(scene);
+            
+            stage.initModality(Modality.NONE); 
+            stage.initStyle(StageStyle.DECORATED);
+            
+            stage.setOnHidden(event -> {
+                atualizarDashboard();
+                construirCalendario();
+            });
+            
+            stage.setMaximized(true); 
+            stage.show(); 
+            
+        } catch (IOException e) { e.printStackTrace(); showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+    }
+    
+    // Método específico para telas que precisam da viagem ativa (Venda de passagem, encomenda...)
+    private void abrirTelaComViagem(String fxml, String titulo) {
+         Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+         if (viagemAtiva == null) { showAlert(AlertType.WARNING, "Atenção", "Ative uma viagem."); return; }
+         abrirTelaLivre(fxml, titulo);
+    }
+    
+    // =========================================================================
+    //  MÉTODOS DE RELATÓRIO / BALANÇO (MODIFICADO COM CORREÇÃO)
+    // =========================================================================
+    
+    // Método ATUALIZADO para abrir o Balanço Financeiro passando o ID
+    @FXML 
+    private void handleRelatorioGeralViagem(ActionEvent e) { 
+        Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+        
+        if (viagemAtiva == null) {
+            showAlert(AlertType.WARNING, "Atenção", "Nenhuma viagem ativa encontrada.\nSelecione e ative uma viagem no painel superior.");
+            return;
+        }
+
+        // Usamos .intValue() para converter o Objeto Long para int primitivo
+        abrirTelaBalancoFinanceiro(viagemAtiva.getId().intValue()); 
+    }
+    
+    // Método que faz a injeção do ID no BalancoViagemController
+    private void abrirTelaBalancoFinanceiro(int idViagem) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/BalancoViagem.fxml"));
+            Parent root = loader.load();
+
+            // Pega o controlador e passa o ID
+            BalancoViagemController controller = loader.getController();
+            controller.inicializarDados(idViagem);
+
+            Stage stage = new Stage();
+            stage.setTitle("Balanço Financeiro Detalhado");
+            Scene scene = new Scene(root);
+            aplicarTema(scene); 
+            
+            stage.setScene(scene);
+            stage.initModality(Modality.NONE);
+            stage.setMaximized(true);
+            
+            // Atualiza o dashboard quando a janela for fechada
+            stage.setOnHidden(event -> {
+                atualizarDashboard();
+                construirCalendario();
+            });
+            
+            stage.show();
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            showAlert(AlertType.ERROR, "Erro ao abrir Relatório", "Não foi possível carregar a tela de Balanço.\nErro: " + ex.getMessage());
+        }
+    }
+    
+    // =========================================================================
+    //  NOVO MÉTODO PARA O BOTÃO DE RECIBOS AVULSOS
+    // =========================================================================
+    @FXML 
+    private void handleReciboAvulso(ActionEvent e) { 
+        // Usa 'abrirTelaComViagem' para garantir que existe uma viagem ativa vinculada ao recibo
+        abrirTelaComViagem("/gui/GerarReciboAvulso.fxml", "Emissão e Histórico de Recibos"); 
+    }
+
+    // --- HANDLERS DO MENU (Outros) ---
+
+    // Financeiro e Movimentações
+    @FXML private void handleInserirEntrada(ActionEvent e) { abrirTelaLivre("/gui/FinanceiroEntrada.fxml", "Lançar Entrada Financeira"); }
+    @FXML private void handleInserirSaida(ActionEvent e) { abrirTelaLivre("/gui/FinanceiroSaida.fxml", "Lançamento de Despesas"); }
+    @FXML private void handleVenderPassagem(ActionEvent e) { abrirTelaComViagem("/gui/VenderPassagem.fxml", "Vender Passagem"); }
+    @FXML private void handleInserirEncomenda(ActionEvent e) { abrirTelaComViagem("/gui/InserirEncomenda.fxml", "Nova Encomenda"); }
+    @FXML private void handleCadastrarFrete(ActionEvent e) { abrirTelaLivre("/gui/CadastroFrete.fxml", "Lançar Novo Frete"); }
+    @FXML private void handleListaPassagensNovo(ActionEvent e) { abrirTelaLivre("/gui/ListarPassageirosViagem.fxml", "Passageiros"); }
+    @FXML private void handleListaFrete(ActionEvent e) { abrirTelaLivre("/gui/ListaFretes.fxml", "Fretes"); }
+    @FXML private void handleListaEncomenda(ActionEvent e) { abrirTelaLivre("/gui/ListaEncomenda.fxml", "Encomendas"); }
+    
+    // Outros Relatórios (CORRIGIDO AQUI O RELATÓRIO DE ENCOMENDAS)
+    @FXML private void handleRelatorioPassagem(ActionEvent e) { abrirTelaLivre("/gui/RelatorioPassagens.fxml", "Relatório Passagens"); }
+    @FXML private void handleRelatorioFrete(ActionEvent e) { abrirTelaLivre("/gui/RelatorioFretes.fxml", "Relatório Fretes"); }
+    
+    // AQUI ESTÁ A CORREÇÃO:
+    @FXML private void handleRelatorioEncomenda(ActionEvent e) { abrirTelaLivre("/gui/RelatorioEncomendaGeral.fxml", "Central de Relatórios de Encomendas"); }
+
+    // Cadastros Básicos
+    @FXML private void handleCadastrarViagem(ActionEvent e) { abrirTelaModal("/gui/CadastroViagem.fxml", "Cadastro de Viagem", true); carregarViagensNoCombo(); construirCalendario(); }
+    @FXML private void handleCadastrarEmpresa(ActionEvent e) { abrirTelaModal("/gui/CadastroEmpresa.fxml", "Configurações", false); }
+    @FXML private void handleCadastrarUsuario(ActionEvent e) { abrirTelaModal("/gui/CadastroUsuario.fxml", "Usuários", false); }
+    @FXML private void handleCadastrarRotas(ActionEvent e) { abrirTelaModal("/gui/Rotas.fxml", "Rotas", false); }
+    @FXML private void handleCadastroTarifa(ActionEvent e) { abrirTelaModal("/gui/CadastroTarifa.fxml", "Tarifas", false); }
+    @FXML private void handleCadastrarConferente(ActionEvent e) { abrirTelaModal("/gui/CadastroConferente.fxml", "Conferentes", false); }
+    @FXML private void handleCadastrarCaixa(ActionEvent e) { abrirTelaModal("/gui/CadastroCaixa.fxml", "Caixas", false); }
+    @FXML private void handleProductos(ActionEvent e) { abrirTelaModal("/gui/CadastroItem.fxml", "Itens", false); }
+    @FXML private void handleTabelasAuxiliares(ActionEvent e) { abrirTelaModal("/gui/TabelasAuxiliares.fxml", "Auxiliares", false); }
+    @FXML private void handleClientesEncomenda(ActionEvent e) { abrirTelaModal("/gui/CadastroClientesEncomenda.fxml", "Clientes", false); }
+    @FXML private void handleTabelaPrecoFrete(ActionEvent e) { abrirTelaModal("/gui/TabelaPrecoFrete.fxml", "Tabela de Preços", false); }
+    @FXML private void handlePrecoEncomenda(ActionEvent e) { abrirTelaModal("/gui/TabelaPrecosEncomenda.fxml", "Tabela de Preços", false); }
+    
+    // =========================================================================
+    // FUNCIONALIDADE 1: BACKUP PROFISSIONAL COM PG_DUMP
+    // =========================================================================
+    @FXML 
+    private void handleBackup(ActionEvent e) {
+        try {
+            // Criar FileChooser para salvar o arquivo
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Salvar Backup do Banco de Dados");
+            fileChooser.setInitialFileName("backup_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".sql");
+            fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Arquivo SQL", "*.sql"),
+                new FileChooser.ExtensionFilter("Todos os arquivos", "*.*")
+            );
+            
+            // Definir diretório inicial (pasta do usuário)
+            fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+            
+            // Abrir diálogo de salvar
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            File arquivoDestino = fileChooser.showSaveDialog(stage);
+            
+            if (arquivoDestino == null) {
+                // Usuário cancelou
+                return;
+            }
+            
+            // Configurações do banco (podem vir de um arquivo de config)
+            String host = "localhost";
+            String porta = "5432";
+            String banco = "embarcacao"; // Nome do seu banco
+            String usuario = "postgres";
+            String senha = ""; // Deixe vazio se usar pgpass ou autenticação trust
+            
+            // Tentar buscar configurações do ConexaoBD
+            try {
+                // Se você tiver as configs no ConexaoBD, use-as aqui
+                // host = ConexaoBD.getHost();
+                // porta = ConexaoBD.getPorta();
+                // banco = ConexaoBD.getBanco();
+                // usuario = ConexaoBD.getUsuario();
+            } catch (Exception ex) {
+                // Usar valores padrão
+            }
+            
+            // Mostrar alerta de progresso
+            Alert alertProgresso = new Alert(AlertType.INFORMATION);
+            alertProgresso.setTitle("Backup em Andamento");
+            alertProgresso.setHeaderText("Aguarde...");
+            alertProgresso.setContentText("Gerando backup do banco de dados.\nIsso pode levar alguns segundos.");
+            alertProgresso.show();
+            
+            // Executar pg_dump em uma nova thread para não travar a UI
+            new Thread(() -> {
+                try {
+                    // Construir comando pg_dump
+                    ProcessBuilder pb = new ProcessBuilder(
+                        "pg_dump",
+                        "-h", host,
+                        "-p", porta,
+                        "-U", usuario,
+                        "-d", banco,
+                        "-f", arquivoDestino.getAbsolutePath(),
+                        "--format=plain",
+                        "--no-owner",
+                        "--no-privileges"
+                    );
+                    
+                    // Configurar variável de ambiente para senha (se necessário)
+                    if (senha != null && !senha.isEmpty()) {
+                        pb.environment().put("PGPASSWORD", senha);
+                    }
+                    
+                    pb.redirectErrorStream(true);
+                    Process processo = pb.start();
+                    
+                    // Ler saída do processo
+                    StringBuilder output = new StringBuilder();
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(processo.getInputStream()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            output.append(line).append("\n");
                         }
                     }
-                } else {
-                    if (!obs.isEmpty()) {
-                        cmbViagemAtiva.getSelectionModel().selectFirst();
+                    
+                    int exitCode = processo.waitFor();
+                    
+                    // Fechar alerta de progresso e mostrar resultado
+                    Platform.runLater(() -> {
+                        alertProgresso.close();
+                        
+                        if (exitCode == 0 && arquivoDestino.exists()) {
+                            LogService.registrarInfo("Backup realizado com sucesso: " + arquivoDestino.getAbsolutePath());
+                            
+                            Alert sucesso = new Alert(AlertType.INFORMATION);
+                            sucesso.setTitle("Backup Concluído");
+                            sucesso.setHeaderText("Backup realizado com sucesso!");
+                            sucesso.setContentText(
+                                "O arquivo foi salvo em:\n" + arquivoDestino.getAbsolutePath() + 
+                                "\n\nTamanho: " + formatarTamanhoArquivo(arquivoDestino.length())
+                            );
+                            aplicarEstiloAlerta(sucesso);
+                            sucesso.showAndWait();
+                        } else {
+                            LogService.registrarErro("Falha ao gerar backup. Exit code: " + exitCode + ". Output: " + output.toString());
+                            
+                            Alert erro = new Alert(AlertType.ERROR);
+                            erro.setTitle("Erro no Backup");
+                            erro.setHeaderText("Não foi possível gerar o backup");
+                            erro.setContentText(
+                                "Verifique se o PostgreSQL está instalado e se o comando 'pg_dump' está disponível.\n\n" +
+                                "Detalhes: " + output.toString()
+                            );
+                            aplicarEstiloAlerta(erro);
+                            erro.showAndWait();
+                        }
+                    });
+                    
+                } catch (IOException ex) {
+                    Platform.runLater(() -> {
+                        alertProgresso.close();
+                        
+                        LogService.registrarErro("Erro de IO ao executar pg_dump", ex);
+                        
+                        Alert erro = new Alert(AlertType.ERROR);
+                        erro.setTitle("Erro no Backup");
+                        erro.setHeaderText("Comando pg_dump não encontrado");
+                        erro.setContentText(
+                            "O utilitário 'pg_dump' do PostgreSQL não foi encontrado no sistema.\n\n" +
+                            "SOLUÇÃO:\n" +
+                            "1. Verifique se o PostgreSQL está instalado\n" +
+                            "2. Adicione o caminho do PostgreSQL às variáveis de ambiente\n" +
+                            "   Geralmente: C:\\Program Files\\PostgreSQL\\17\\bin\n" +
+                            "3. Reinicie o sistema após configurar"
+                        );
+                        aplicarEstiloAlerta(erro);
+                        erro.showAndWait();
+                    });
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    LogService.registrarErro("Backup interrompido", ex);
+                }
+            }).start();
+            
+        } catch (Exception ex) {
+            LogService.registrarErro("Erro ao iniciar backup", ex);
+            showAlert(AlertType.ERROR, "Erro", "Erro ao iniciar o backup: " + ex.getMessage());
+        }
+    }
+    
+    /**
+     * Formata o tamanho do arquivo para exibição
+     */
+    private String formatarTamanhoArquivo(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.2f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024) return String.format("%.2f MB", bytes / (1024.0 * 1024));
+        return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
+    }
+    
+    // =========================================================================
+    // FUNCIONALIDADE 2: CONFIGURAR IMPRESSORAS
+    // =========================================================================
+    @FXML 
+    private void handleConfigurarImpressoras(ActionEvent e) {
+        RelatorioUtil.configurarImpressoras();
+    }
+    
+    // =========================================================================
+    // FUNCIONALIDADE 2.5: CONFIGURAR API WEB
+    // =========================================================================
+    @FXML 
+    private void handleConfigurarApi(ActionEvent e) {
+        ConfigurarApiController.abrir();
+    }
+    
+    // =========================================================================
+    // FUNCIONALIDADE 3: RELATÓRIO DE ERROS (LOGS)
+    // =========================================================================
+    @FXML 
+    private void handleRelatorioErros(ActionEvent e) {
+        if (LogService.arquivoExiste()) {
+            // Perguntar se quer abrir ou limpar
+            Alert opcoes = new Alert(AlertType.CONFIRMATION);
+            opcoes.setTitle("Relatório de Erros");
+            opcoes.setHeaderText("O que você deseja fazer?");
+            opcoes.setContentText("Escolha uma opção para o arquivo de log de erros:");
+            
+            ButtonType btnAbrir = new ButtonType("Abrir Log", ButtonBar.ButtonData.LEFT);
+            ButtonType btnLimpar = new ButtonType("Limpar Log", ButtonBar.ButtonData.LEFT);
+            ButtonType btnCancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+            
+            opcoes.getButtonTypes().setAll(btnAbrir, btnLimpar, btnCancelar);
+            aplicarEstiloAlerta(opcoes);
+            
+            Optional<ButtonType> result = opcoes.showAndWait();
+            
+            if (result.isPresent()) {
+                if (result.get() == btnAbrir) {
+                    boolean abriu = LogService.abrirArquivoLog();
+                    if (!abriu) {
+                        showAlert(AlertType.WARNING, "Aviso", "Não foi possível abrir o arquivo de log.");
+                    }
+                } else if (result.get() == btnLimpar) {
+                    // Confirmar limpeza
+                    Alert confirma = new Alert(AlertType.WARNING);
+                    confirma.setTitle("Confirmar Limpeza");
+                    confirma.setHeaderText("Tem certeza?");
+                    confirma.setContentText("Isso irá apagar todo o histórico de erros registrados.");
+                    confirma.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                    aplicarEstiloAlerta(confirma);
+                    
+                    if (confirma.showAndWait().orElse(ButtonType.NO) == ButtonType.YES) {
+                        LogService.limparLog();
+                        showAlert(AlertType.INFORMATION, "Sucesso", "Log de erros limpo com sucesso!");
                     }
                 }
             }
-        } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro de Carregamento", "Não foi possível carregar as viagens: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    @FXML
-    private void handleCarregarDadosDaViagem(ActionEvent event) {
-        String selecionada = cmbViagemAtiva.getValue();
-        if (selecionada == null || selecionada.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Atenção", "Selecione uma viagem antes de continuar.");
-            return;
-        }
-
-        Long idViagem = -1L; // Usar Long para consistência e -1L para erro
-        try {
-            // CORRIGIDO AQUI: Usando o valor do cmbViagemAtiva
-        	Long resolvedId = viagemDAO.obterIdViagemPelaString(selecionada);
-            if(resolvedId != null) {
-                idViagem = resolvedId;
-            } else {
-                showAlert(AlertType.ERROR, "Erro", "Não foi possível identificar o ID da viagem selecionada.");
-                return;
-            }
-
-        } catch (SQLException e) {
-            showAlert(AlertType.ERROR, "Erro de Banco de Dados", "Erro de conexão ao obter ID da viagem: " + e.getMessage());
-            e.printStackTrace();
-            return;
-        } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro", "Erro inesperado ao processar seleção da viagem: " + e.getMessage());
-            e.printStackTrace();
-            return;
-        }
-
-        if (idViagem != -1L) { // Comparar com -1L
-            try {
-                if (viagemDAO.definirViagemAtiva(idViagem)) { // definirViagemAtiva espera long
-                    showAlert(AlertType.INFORMATION, "Viagem Selecionada", "Viagem ID " + idViagem + " definida como ativa com sucesso!");
-                } else {
-                    showAlert(AlertType.ERROR, "Erro", "Não foi possível definir a viagem como ativa.");
-                }
-            } catch (Exception e) {
-                showAlert(AlertType.ERROR, "Erro", "Erro ao definir viagem ativa: " + e.getMessage());
-                e.printStackTrace();
-            }
         } else {
-            showAlert(AlertType.WARNING, "ID Inválido", "Não foi possível identificar um ID de viagem válido para definir como ativa.");
+            // Arquivo não existe
+            Alert info = new Alert(AlertType.INFORMATION);
+            info.setTitle("Relatório de Erros");
+            info.setHeaderText("Nenhum erro registrado");
+            info.setContentText(
+                "O sistema não registrou nenhum erro até o momento.\n\n" +
+                "Isso é uma boa notícia! Significa que a aplicação está funcionando corretamente.\n\n" +
+                "Quando ocorrer algum erro, ele será automaticamente registrado no arquivo:\n" +
+                LogService.getCaminhoArquivo()
+            );
+            aplicarEstiloAlerta(info);
+            info.showAndWait();
         }
     }
-
-    // --------- Menu “Cadastro” ---------
-
-    @FXML
-    private void handleCadastrarEmpresa(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroEmpresa.fxml", "Cadastro de Empresa/Configurações");
-    }
-
-    @FXML
-    private void handleCadastrarUsuario(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroUsuario.fxml", "Cadastro de Usuários");
-    }
-
-    @FXML
-    private void handleCadastrarViagem(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroViagem.fxml", "Cadastro de Viagem");
-    }
-
-    @FXML
-    private void handleCadastrarRotas(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/Rotas.fxml", "Cadastro de Rotas");
-    }
-
-    @FXML
-    private void handleCadastroTarifa(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroTarifa.fxml", "Cadastro de Tarifas (Passagem/Frete)");
-    }
-
-    @FXML
-    private void handleCadastrarConferente(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroConferente.fxml", "Cadastro de Conferentes");
-    }
-
-    @FXML
-    private void handleCadastrarCaixa(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroCaixa.fxml", "Cadastro de Tipos de Caixa");
-    }
-
-    @FXML
-    private void handleProductos(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroItem.fxml", "Cadastro de Itens");
-    }
-
-    @FXML
-    private void handleTabelasAuxiliares(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/TabelasAuxiliares.fxml", "Outros Cadastros Auxiliares");
-    }
-
-    // --------- Menu “Frete” ---------
-
-    @FXML
-    private void handleCadastrarFrete(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroFrete.fxml", "Lançar Novo Frete");
-    }
-
-    @FXML
-    private void handleListaFrete(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/ListaFretes.fxml", "Listar Fretes da Viagem");
-    }
-
-    @FXML
-    private void handleRelatorioFrete(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/RelatorioFretes.fxml", "Relatório de Fretes");
-    }
-
-    @FXML
-    private void handleEditarMercadoria(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/EditarMercadoriaFrete.fxml", "Editar Mercadoria (Frete)");
-    }
-
-    // --------- Menu “Passagens” ---------
-
-    @FXML
-    private void handleVenderPassagem(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/VenderPassagem.fxml", "Vender Nova Passagem");
-    }
-
-    @FXML
-    private void handleListaPassagensNovo(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/ListarPassageirosViagem.fxml", "Listar Passageiros da Viagem");
-    }
-
-    @FXML
-    private void handleRelatorioPassagem(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/RelatorioPassagens.fxml", "Relatório de Passagens");
-    }
-
-    // --------- Menu “Encomendas” ---------
-
-    @FXML
-    private void handleInserirEncomenda(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/InserirEncomenda.fxml", "Registrar Nova Encomenda");
-    }
-
-    @FXML
-    private void handleListaEncomenda(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/ListaEncomenda.fxml", "Listar Encomendas da Viagem");
-    }
-
-    @FXML
-    private void handleRelatorioEncomenda(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/RelatorioEncomendas.fxml", "Relatório de Encomendas");
-    }
-
-    @FXML
-    private void handlePrecoEncomenda(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/TabelaPrecoEncomenda.fxml", "Tabela de Preços de Encomenda");
-    }
-
-    @FXML
-    private void handleClientesEncomenda(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroClientesEncomenda.fxml", "Cadastro de Clientes (Encomendas)");
-    }
-
-    // --------- Menu “Financeiro” ---------
-
-    @FXML
-    private void handleInserirEntrada(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroEntrada.fxml", "Lançar Entrada (Avulsa)");
-    }
-
-    @FXML
-    private void handleInserirSaida(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroSaida.fxml", "Lançar Saída (Despesa)");
-    }
-
-    @FXML
-    private void handleRelatorioEntrada(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/RelatorioEntradas.fxml", "Relatório de Entradas");
-    }
-
-    @FXML
-    private void handleRelatorioSaida(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/RelatorioSaidas.fxml", "Relatório de Saídas");
-    }
-
-    @FXML
-    private void handleRelatorioGeralViagem(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/RelatorioGeralViagem.fxml", "Relatório Geral Financeiro da Viagem");
-    }
-
-    @FXML
-    private void handleVentas(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/CadastroVendasBar.fxml", "Registrar Vendas (Bar/Serviços)");
-    }
-
-    // --------- Menu “Manutenção” ---------
-
-    @FXML
-    private void handleBackup(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/Backup.fxml", "Backup do Sistema");
-    }
-
-    // --------- Menu “Ajuda” ---------
-
-    @FXML
-    private void handleDuvidasFrequentes(ActionEvent event) {
-        abrirTelaOUAlerta("/gui/DuvidasFrequentes.fxml", "Dúvidas Frequentes");
-    }
-
-    // --------- Menu “Sair” ---------
-
-    @FXML
-    private void handleLogout(ActionEvent event) {
-        Node source = (Node) event.getSource();
-        if (source != null && source.getScene() != null) {
-            javafx.stage.Stage stage = (javafx.stage.Stage) source.getScene().getWindow();
-            if (stage != null) stage.close();
-        }
-    }
-
-    private void abrirTelaOUAlerta(String recursoFXML, String titulo) {
+    
+    // =========================================================================
+    // FUNCIONALIDADE 4: AJUDA / SOBRE
+    // =========================================================================
+    @FXML 
+    private void handleAjuda(ActionEvent e) {
+        Alert sobre = new Alert(AlertType.INFORMATION);
+        sobre.setTitle("Sobre o Sistema");
+        sobre.setHeaderText(null);
+        
+        // Criar conteúdo personalizado
+        VBox content = new VBox(15);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(20));
+        content.setStyle("-fx-background-color: white;");
+        
+        // Logo/Ícone do sistema (se existir)
         try {
-            URL fxmlUrl = getClass().getResource(recursoFXML);
-
-            if (fxmlUrl == null) {
-                System.err.println("Erro Crítico: Não foi possível encontrar o arquivo FXML no caminho: " + recursoFXML);
-                showAlert(AlertType.ERROR, "Erro ao Carregar Tela",
-                    "O arquivo FXML especificado não foi encontrado no classpath:\n" +
-                    recursoFXML +
-                    "\n\nPor favor, verifique se:\n" +
-                    "1. O nome e o caminho do arquivo estão corretos.\n" +
-                    "2. O arquivo existe no diretório 'src' do projeto (ex: src/gui/NomeDoArquivo.fxml).\n" +
-                    "3. O arquivo está sendo copiado para o diretório de saída da compilação (ex: bin/gui/).");
-                return;
-            }
-
-            FXMLLoader loader = new FXMLLoader(fxmlUrl);
-            Parent pane = loader.load();
-            Stage stage = new Stage();
-            stage.setScene(new javafx.scene.Scene(pane));
-            stage.setTitle(titulo);
-
-            if (rootPane != null && rootPane.getScene() != null && rootPane.getScene().getWindow() != null) {
-                Stage owner = (Stage) rootPane.getScene().getWindow();
-                stage.initOwner(owner);
-                stage.initModality(Modality.APPLICATION_MODAL);
-            }
-            stage.showAndWait();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao Carregar Tela",
-                "Ocorreu um erro ao tentar carregar a interface da tela:\n" + recursoFXML +
-                "\n\nDetalhes do erro: " + e.getMessage());
+            ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/menu_sistema.png")));
+            logo.setFitWidth(64);
+            logo.setFitHeight(64);
+            content.getChildren().add(logo);
+        } catch (Exception ex) {
+            // Sem logo, usar texto
+        }
+        
+        // Nome do Sistema
+        Label lblNome = new Label("Sistema de Gerenciamento de Embarcação");
+        lblNome.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0d47a1;");
+        
+        // Versão
+        Label lblVersao = new Label("Versão 1.0");
+        lblVersao.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #666;");
+        
+        // Separador
+        Separator sep = new Separator();
+        sep.setPrefWidth(250);
+        
+        // Créditos
+        Label lblCreditos = new Label("Desenvolvido por Jessica");
+        lblCreditos.setStyle("-fx-font-size: 13px; -fx-text-fill: #333;");
+        
+        // Ano
+        Label lblAno = new Label("© " + LocalDate.now().getYear() + " - Todos os direitos reservados");
+        lblAno.setStyle("-fx-font-size: 11px; -fx-text-fill: #999;");
+        
+        // Separador
+        Separator sep2 = new Separator();
+        sep2.setPrefWidth(250);
+        
+        // Suporte
+        Label lblSuporte = new Label("📧 Suporte Técnico");
+        lblSuporte.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #333;");
+        
+        Label lblContatoSuporte = new Label("Para dúvidas ou problemas, entre em\ncontato com o suporte técnico.");
+        lblContatoSuporte.setStyle("-fx-font-size: 11px; -fx-text-fill: #666; -fx-text-alignment: center;");
+        lblContatoSuporte.setWrapText(true);
+        
+        // Informações do ambiente
+        Label lblAmbiente = new Label(
+            "Java: " + System.getProperty("java.version") + 
+            " | JavaFX | PostgreSQL 17"
+        );
+        lblAmbiente.setStyle("-fx-font-size: 10px; -fx-text-fill: #aaa;");
+        
+        content.getChildren().addAll(
+            lblNome, lblVersao, sep, 
+            lblCreditos, lblAno, sep2,
+            lblSuporte, lblContatoSuporte,
+            lblAmbiente
+        );
+        
+        sobre.getDialogPane().setContent(content);
+        sobre.getDialogPane().setPrefWidth(350);
+        sobre.getDialogPane().setPrefHeight(400);
+        
+        aplicarEstiloAlerta(sobre);
+        sobre.showAndWait();
+    }
+    
+    // =========================================================================
+    // SINCRONIZAÇÃO COM API
+    // =========================================================================
+    
+    @FXML
+    private void handleSincronizarAgora(ActionEvent event) {
+        try {
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Sincronização");
+            alert.setHeaderText("Iniciando sincronização...");
+            alert.setContentText("Aguarde enquanto os dados são sincronizados com o servidor.");
+            aplicarEstiloAlerta(alert);
+            alert.show();
+            
+            gui.util.SyncClient syncClient = gui.util.SyncClient.getInstance();
+            
+            // Executar sincronização em thread separada
+            new Thread(() -> {
+                try {
+                    syncClient.sincronizarTudo();
+                    Platform.runLater(() -> {
+                        alert.close();
+                        showAlert(AlertType.INFORMATION, "Sincronização Concluída", 
+                            "Dados sincronizados com sucesso!");
+                    });
+                } catch (Exception e) {
+                    Platform.runLater(() -> {
+                        alert.close();
+                        showAlert(AlertType.ERROR, "Erro na Sincronização", 
+                            "Não foi possível sincronizar os dados:\n" + e.getMessage());
+                    });
+                    LogService.registrarErro("Erro ao sincronizar", e);
+                }
+            }).start();
+            
         } catch (Exception e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro Inesperado",
-                "Um erro inesperado ocorreu ao tentar abrir a tela: " + titulo +
-                "\n\nDetalhes: " + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro", "Erro ao iniciar sincronização: " + e.getMessage());
+            LogService.registrarErro("Erro ao iniciar sincronização", e);
+        }
+    }
+    
+    @FXML
+    private void handleConfigurarSincronizacao(ActionEvent event) {
+        abrirTelaSincronizacao();
+    }
+    
+    private void abrirTelaSincronizacao() {
+        try {
+            URL url = getClass().getResource("/gui/ConfigurarSincronizacao.fxml");
+            if (url == null) { 
+                showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: /gui/ConfigurarSincronizacao.fxml"); 
+                return; 
+            }
+            
+            Parent pane = new FXMLLoader(url).load();
+            Stage stage = new Stage();
+            stage.setTitle("Configurar Sincronização");
+            
+            Scene scene = new Scene(pane, 850, 700);
+            
+            // Aplicar CSS específico da tela de sincronização
+            URL cssUrl = getClass().getResource("/gui/ConfigurarSincronizacao.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            }
+            
+            // Aplicar tema atual (claro ou escuro)
+            aplicarTema(scene);
+            
+            // Se estiver em modo escuro, adicionar classe dark-mode
+            if (isModoEscuro) {
+                scene.getRoot().getStyleClass().add("dark-mode");
+            }
+            
+            stage.setScene(scene);
+            stage.initOwner((Stage) rootPane.getScene().getWindow());
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setResizable(true);
+            stage.setMinWidth(800);
+            stage.setMinHeight(650);
+            
+            stage.showAndWait();
+            
+            // Atualiza o dashboard após fechar a tela de sincronização
+            atualizarDashboard();
+            
+        } catch (Exception e) { 
+            e.printStackTrace(); 
+            showAlert(AlertType.ERROR, "Erro", "Erro ao abrir tela: " + e.getMessage()); 
+        }
+    }
+    
+    @FXML
+    private void handleStatusSincronizacao(ActionEvent event) {
+        try {
+            gui.util.SyncClient syncClient = gui.util.SyncClient.getInstance();
+            String status = syncClient.obterStatusSincronizacao();
+            
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Status da Sincronização");
+            alert.setHeaderText("Informações de Sincronização");
+            alert.setContentText(status);
+            aplicarEstiloAlerta(alert);
+            alert.showAndWait();
+            
+        } catch (Exception e) {
+            showAlert(AlertType.ERROR, "Erro", "Erro ao obter status: " + e.getMessage());
+            LogService.registrarErro("Erro ao obter status de sincronização", e);
+        }
+    }
+    
+    // =========================================================================
+    // FUNCIONALIDADE 5: SAIR COM SEGURANÇA
+    // =========================================================================
+    @FXML 
+    private void handleSair(ActionEvent e) {
+        Alert confirma = new Alert(AlertType.CONFIRMATION);
+        confirma.setTitle("Confirmar Saída");
+        confirma.setHeaderText("Deseja realmente sair?");
+        confirma.setContentText("Tem certeza que deseja fechar o sistema?\n\nTodas as janelas abertas serão fechadas.");
+        
+        // Personalizar botões
+        ButtonType btnSim = new ButtonType("Sim, Sair", ButtonBar.ButtonData.YES);
+        ButtonType btnNao = new ButtonType("Não, Continuar", ButtonBar.ButtonData.NO);
+        confirma.getButtonTypes().setAll(btnSim, btnNao);
+        
+        aplicarEstiloAlerta(confirma);
+        
+        Optional<ButtonType> result = confirma.showAndWait();
+        
+        if (result.isPresent() && result.get() == btnSim) {
+            LogService.registrarInfo("Sistema encerrado pelo usuário.");
+            Platform.exit();
+            System.exit(0);
+        }
+    }
+    
+    /**
+     * Aplica o estilo do tema atual ao Alert
+     */
+    private void aplicarEstiloAlerta(Alert alert) {
+        if (isModoEscuro) {
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
         }
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
+    private void showAlert(AlertType type, String title, String msg) {
+        Alert alert = new Alert(type); alert.setTitle(title); alert.setHeaderText(null); alert.setContentText(msg); 
+        if (isModoEscuro) {
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
+        }
         alert.showAndWait();
     }
 }

@@ -1,0 +1,137 @@
+package gui;
+
+import java.net.URL;
+import java.util.Optional;
+import java.util.ResourceBundle;
+import dao.ClienteEncomendaDAO;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Alert.AlertType;
+import model.ClienteEncomenda;
+
+public class CadastroClientesEncomendaController implements Initializable {
+
+    @FXML private ListView<ClienteEncomenda> listViewClientes;
+    @FXML private TextField txtNomeCliente;
+    @FXML private Button btnNovo;
+    @FXML private Button btnSalvar;
+    @FXML private Button btnExcluir;
+
+    private ClienteEncomendaDAO clienteDAO;
+    private ObservableList<ClienteEncomenda> obsListaClientes;
+    private ClienteEncomenda clienteSelecionado;
+
+    @Override
+    public void initialize(URL url, ResourceBundle rb) {
+        this.clienteDAO = new ClienteEncomendaDAO();
+        this.obsListaClientes = FXCollections.observableArrayList();
+        
+        listViewClientes.setItems(obsListaClientes);
+        
+        // Listener para quando um cliente é selecionado na lista
+        listViewClientes.getSelectionModel().selectedItemProperty().addListener(
+            (obs, oldSelection, newSelection) -> {
+                if (newSelection != null) {
+                    clienteSelecionado = newSelection;
+                    txtNomeCliente.setText(clienteSelecionado.getNomeCliente());
+                    btnExcluir.setDisable(false);
+                } else {
+                    limparSelecao();
+                }
+            }
+        );
+        
+        carregarClientes();
+        limparSelecao();
+    }
+
+    private void carregarClientes() {
+        obsListaClientes.setAll(clienteDAO.listarTodos());
+    }
+    
+    private void limparSelecao() {
+        clienteSelecionado = null;
+        listViewClientes.getSelectionModel().clearSelection();
+        txtNomeCliente.clear();
+        txtNomeCliente.requestFocus();
+        btnExcluir.setDisable(true);
+    }
+
+    @FXML
+    private void handleNovo(ActionEvent event) {
+        limparSelecao();
+    }
+
+    @FXML
+    private void handleSalvar(ActionEvent event) {
+        String nome = txtNomeCliente.getText();
+        if (nome == null || nome.trim().isEmpty()) {
+            showAlert(AlertType.WARNING, "Campo Obrigatório", "O nome do cliente não pode estar vazio.");
+            return;
+        }
+
+        if (clienteSelecionado == null) { // Criando um novo cliente
+            ClienteEncomenda novoCliente = new ClienteEncomenda();
+            novoCliente.setNomeCliente(nome.trim().toUpperCase());
+            
+            ClienteEncomenda clienteSalvo = clienteDAO.salvar(novoCliente);
+            if (clienteSalvo != null) {
+                showAlert(AlertType.INFORMATION, "Sucesso", "Novo cliente salvo com sucesso!");
+                carregarClientes();
+                limparSelecao();
+            } else {
+                showAlert(AlertType.ERROR, "Erro", "Não foi possível salvar o novo cliente. O nome pode já existir.");
+            }
+            
+        } else { // Atualizando um cliente existente
+            clienteSelecionado.setNomeCliente(nome.trim().toUpperCase());
+            if (clienteDAO.atualizar(clienteSelecionado)) {
+                showAlert(AlertType.INFORMATION, "Sucesso", "Cliente atualizado com sucesso!");
+                carregarClientes();
+                limparSelecao();
+            } else {
+                showAlert(AlertType.ERROR, "Erro", "Não foi possível atualizar o cliente.");
+            }
+        }
+    }
+
+    @FXML
+    private void handleExcluir(ActionEvent event) {
+        if (clienteSelecionado == null) {
+            showAlert(AlertType.WARNING, "Nenhuma Seleção", "Por favor, selecione um cliente na lista para excluir.");
+            return;
+        }
+        
+        Alert alert = new Alert(AlertType.CONFIRMATION);
+        alert.setTitle("Confirmar Exclusão");
+        alert.setHeaderText("Excluir Cliente");
+        alert.setContentText("Você tem certeza que deseja excluir o cliente '" + clienteSelecionado.getNomeCliente() + "'?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            if (clienteDAO.excluir(clienteSelecionado.getIdCliente())) {
+                showAlert(AlertType.INFORMATION, "Sucesso", "Cliente excluído com sucesso!");
+                carregarClientes();
+                limparSelecao();
+            } else {
+                showAlert(AlertType.ERROR, "Erro", "Não foi possível excluir o cliente.");
+            }
+        }
+    }
+    
+    private void showAlert(AlertType alertType, String title, String message) {
+        Alert alert = new Alert(alertType);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+}

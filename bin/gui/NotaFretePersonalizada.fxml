@@ -11,7 +11,7 @@
             fx:id="rootPane"
             fx:controller="gui.NotaFretePersonalizadaController"
             prefWidth="500" prefHeight="700"
-            style="-fx-background-color: white; -fx-padding:10;">
+            styleClass="root-financeiro" style="-fx-padding:10;">
 
     <Label layoutX="20" layoutY="10" 
            fx:id="lblRemetente" 

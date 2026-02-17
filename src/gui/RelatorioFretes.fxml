@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane fx:id="rootPane" prefHeight="750.0" prefWidth="1200.0" styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RelatorioFretesController">
+   <top>
+      <VBox alignment="CENTER" prefHeight="70.0" styleClass="header-panel" style="-fx-background-color: #2b2b2b;" BorderPane.alignment="CENTER">
+         <children>
+            <Label styleClass="title-main-screen" text="CENTRAL DE RELATÓRIOS DE FRETES" textFill="#cccccc">
+               <font>
+                  <Font name="System Bold" size="24.0" />
+               </font>
+            </Label>
+         </children>
+      </VBox>
+   </top>
+   
+   <left>
+      <VBox prefWidth="280.0" spacing="10.0" style="-fx-padding: 15; -fx-background-color: #1e1e1e;">
+         <children>
+            <Label text="FILTROS" textFill="#cccccc" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+            <Separator />
+            
+            <Label text="Viagem:" textFill="#aaaaaa" />
+            <ComboBox fx:id="cmbViagem" maxWidth="1.7976931348623157E308" prefHeight="35.0" />
+            
+            <Label text="Rota:" textFill="#aaaaaa" />
+            <ComboBox fx:id="cmbRota" maxWidth="1.7976931348623157E308" prefHeight="35.0" />
+            
+            <Label text="Cliente (Destinatário):" textFill="#aaaaaa" />
+            <ComboBox fx:id="cmbCliente" maxWidth="1.7976931348623157E308" prefHeight="35.0" promptText="Todos os Clientes" />
+            
+            <Separator />
+            
+            <Label text="Devedores da Viagem:" textFill="#ff6666" style="-fx-font-weight: bold;" />
+            <ComboBox fx:id="cmbDevedores" maxWidth="1.7976931348623157E308" prefHeight="35.0" promptText="Selecione um devedor" />
+            
+            <Separator />
+            
+            <Label text="OPÇÕES DE IMPRESSÃO" textFill="#cccccc" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+            
+            <Button fx:id="btnRelatorio" text="📄 Relatório" onAction="#imprimirRelatorio" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" />
+            
+            <Button fx:id="btnCobranca" text="💰 Cobrança" onAction="#imprimirCobranca" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" />
+            
+            <Button fx:id="btnGeral" text="📋 Geral (A4)" onAction="#imprimirGeral" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" />
+            
+            <Button fx:id="btnResumido" text="📝 Resumido" onAction="#imprimirResumido" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" />
+            
+            <Button fx:id="btnConfereViagem" text="✅ Confere de Viagem (A4)" onAction="#imprimirConfereViagem" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;" />
+            
+            <Button fx:id="btnExtrato" text="📊 Extrato" onAction="#imprimirExtrato" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #7b1fa2; -fx-text-fill: white; -fx-font-weight: bold;" />
+            
+            <VBox VBox.vgrow="ALWAYS" />
+            
+            <Button fx:id="btnFechar" text="FECHAR" onAction="#handleFechar" prefWidth="250.0" prefHeight="35.0" style="-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-font-weight: bold;" />
+         </children>
+      </VBox>
+   </left>
+   
+   <center>
+      <VBox spacing="15.0" style="-fx-padding: 15;">
+         <children>
+            <!-- Tabela de Fretes -->
+            <Label text="FRETES DO CLIENTE:" textFill="#cccccc" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+            <TableView fx:id="tabelaFretes" VBox.vgrow="ALWAYS" prefHeight="300.0">
+               <columns>
+                  <TableColumn fx:id="colCodFrete" prefWidth="80.0" text="Cód. Frete" />
+                  <TableColumn fx:id="colDataViagem" prefWidth="100.0" text="Viagem" />
+                  <TableColumn fx:id="colRemetente" prefWidth="180.0" text="Remetente" />
+                  <TableColumn fx:id="colItem" prefWidth="200.0" text="Item" />
+                  <TableColumn fx:id="colQuant" prefWidth="80.0" text="Quant." />
+                  <TableColumn fx:id="colPreco" prefWidth="100.0" text="Preço" />
+                  <TableColumn fx:id="colTotal" prefWidth="100.0" text="Total" />
+               </columns>
+               <placeholder>
+                  <Label text="Selecione um cliente para ver seus fretes." />
+               </placeholder>
+            </TableView>
+            
+            <!-- Resumo de Totais -->
+            <HBox alignment="CENTER_RIGHT" spacing="20.0">
+               <children>
+                  <Label text="Total Fretes por item:" textFill="#cccccc" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+                  <Label fx:id="lblTotalItens" text="R$ 0,00" textFill="#00ff00" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-background-color: #333; -fx-padding: 5 15;" />
+               </children>
+            </HBox>
+            
+            <Separator />
+            
+            <!-- Tabela de Devedores -->
+            <Label text="SITUAÇÃO FINANCEIRA:" textFill="#ff6666" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+            <TableView fx:id="tabelaDevedores" prefHeight="150.0">
+               <columns>
+                  <TableColumn fx:id="colDevTotal" prefWidth="120.0" text="Total" />
+                  <TableColumn fx:id="colDevBaixado" prefWidth="120.0" text="Baixado" />
+                  <TableColumn fx:id="colDevDevedor" prefWidth="120.0" text="Devedor" />
+                  <TableColumn fx:id="colDevNumFrete" prefWidth="100.0" text="Nº Frete" />
+               </columns>
+               <placeholder>
+                  <Label text="Nenhum registro financeiro." />
+               </placeholder>
+            </TableView>
+            
+            <!-- Total Em Aberto -->
+            <HBox alignment="CENTER_RIGHT" spacing="20.0">
+               <children>
+                  <Label text="Em Aberto:" textFill="#cccccc" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+                  <Label fx:id="lblEmAberto" text="R$ 0,00" textFill="#ff4444" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-background-color: #333; -fx-padding: 5 20;" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </center>
+</BorderPane>

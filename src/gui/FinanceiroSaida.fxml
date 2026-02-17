@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.FinanceiroSaidaController">
+   
+   <top>
+      <VBox spacing="10.0" styleClass="painel-cabecalho" style="-fx-padding: 10 15 10 15;" BorderPane.alignment="CENTER">
+         <children>
+            <HBox alignment="CENTER_LEFT" spacing="20.0">
+               <children>
+                  <Label styleClass="titulo-tela" text="CONTROLE DE DESPESAS E SAÍDAS" textFill="#cccccc">
+                     <font><Font name="System Bold" size="24.0" /></font>
+                  </Label>
+                  <Pane HBox.hgrow="ALWAYS" />
+                  
+                  <VBox alignment="CENTER_RIGHT" styleClass="card-total" style="-fx-padding: 5 25 5 25;">
+                     <children>
+                        <Label text="TOTAL GASTO (FILTRADO)" textFill="#757575"><font><Font name="System Bold" size="12.0" /></font></Label>
+                        <Label fx:id="lblTotalGasto" text="R$ 0,00" textFill="#c62828"><font><Font name="System Bold" size="42.0" /></font></Label>
+                     </children>
+                  </VBox>
+               </children>
+            </HBox>
+            
+            <HBox alignment="BOTTOM_LEFT" spacing="10.0" styleClass="painel-filtros" style="-fx-padding: 10;">
+               <children>
+                  <Label text="FILTRAR:" textFill="WHITE">
+                     <font><Font name="System Bold" size="13.0" /></font>
+                     <HBox.margin><Insets bottom="5.0" /></HBox.margin>
+                  </Label>
+                  <Separator orientation="VERTICAL" />
+                  
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label text="Viagem / Data" textFill="WHITE"><font><Font name="System Bold" size="11.0" /></font></Label>
+                        <ComboBox fx:id="cmbFiltroViagem" prefHeight="30.0" prefWidth="240.0" />
+                     </children>
+                  </VBox>
+
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label text="Categoria" textFill="WHITE"><font><Font name="System Bold" size="11.0" /></font></Label>
+                        <ComboBox fx:id="cmbFiltroCategoria" prefHeight="30.0" prefWidth="140.0" promptText="Todas" />
+                     </children>
+                  </VBox>
+                  
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label text="Forma Pagto" textFill="WHITE"><font><Font name="System Bold" size="11.0" /></font></Label>
+                        <ComboBox fx:id="cmbFiltroPagamento" prefHeight="30.0" prefWidth="120.0" promptText="Todas" />
+                     </children>
+                  </VBox>
+                  
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label text="Data Específica" textFill="WHITE"><font><Font name="System Bold" size="11.0" /></font></Label>
+                        <DatePicker fx:id="dpFiltroData" prefHeight="30.0" prefWidth="110.0" promptText="Data" />
+                     </children>
+                  </VBox>
+
+                  <Button mnemonicParsing="false" onAction="#filtrar" prefHeight="30.0" styleClass="botao-busca" text="BUSCAR">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                     <VBox.margin><Insets top="15.0" /></VBox.margin>
+                  </Button>
+                  
+                  <Button mnemonicParsing="false" onAction="#limparFiltros" prefHeight="30.0" styleClass="botao-limpar" text="LIMPAR">
+                      <cursor><Cursor fx:constant="HAND" /></cursor>
+                      <VBox.margin><Insets top="15.0" /></VBox.margin>
+                  </Button>
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </top>
+   
+   <left>
+      <ScrollPane fitToHeight="true" fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent;" BorderPane.alignment="CENTER">
+         <content>
+            <VBox prefWidth="320.0" spacing="6.0" styleClass="painel-lateral" style="-fx-padding: 15;">
+               <children>
+                  <Label styleClass="titulo-secao" text="Lançamento Rápido" textFill="#cccccc">
+                     <font><Font name="System Bold" size="18.0" /></font>
+                  </Label>
+                  <Label text="Despesa do dia-a-dia" textFill="#90a4ae">
+                     <font><Font size="11.0" /></font>
+                  </Label>
+                  <Separator />
+                  
+                  <Label text="Data do Gasto" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <DatePicker fx:id="dpDataGasto" maxWidth="1.7976931348623157E308" style="-fx-font-size: 13px;" />
+
+                  <Label text="Data do Pagamento" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <DatePicker fx:id="dpDataPrimeiroPagamento" maxWidth="1.7976931348623157E308" style="-fx-font-size: 13px;" />
+                  
+                  <Label text="Descrição / Fornecedor" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <TextField fx:id="txtDescricao" promptText="Ex: Padaria Central" style="-fx-border-color: #cfd8dc; -fx-font-size: 13px;" />
+                  
+                  <Label text="Categoria" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <HBox spacing="5.0">
+                     <children>
+                        <ComboBox fx:id="cmbCategoria" maxWidth="1.7976931348623157E308" promptText="Selecione..." style="-fx-font-size: 13px;" HBox.hgrow="ALWAYS" />
+                        <Button onAction="#novaCategoria" style="-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-weight: bold;" text="+">
+                            <font><Font size="12.0" /></font>
+                        </Button>
+                     </children>
+                  </HBox>
+                  
+                  <Label text="Valor (R$)" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <TextField fx:id="txtValor" promptText="0,00" styleClass="campo-valor" />
+                  
+                  <Label text="Forma de Pagamento" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <ComboBox fx:id="cmbFormaPagamento" maxWidth="1.7976931348623157E308" style="-fx-font-size: 13px;" />
+                  
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#salvarLancamento" prefHeight="40.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="SALVAR DESPESA">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                     <VBox.margin><Insets top="5.0" /></VBox.margin>
+                  </Button>
+                  
+                  <Separator>
+                     <VBox.margin><Insets top="5.0" /></VBox.margin>
+                  </Separator>
+                  
+                  <Label text="Lançamento Complexo:" textFill="#757575"><font><Font size="11.0" /></font></Label>
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirCadastroBoleto" prefHeight="35.0" style="-fx-background-color: #ef6c00; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;" text="BOLETOS / A PRAZO">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                  </Button>
+
+                  <Separator>
+                     <VBox.margin><Insets top="5.0" /></VBox.margin>
+                  </Separator>
+                  <Label text="Recursos Humanos:" textFill="#757575"><font><Font size="11.0" /></font></Label>
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirGestaoFuncionarios" prefHeight="35.0" style="-fx-background-color: #1976d2; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;" text="GESTÃO DE FUNCIONÁRIOS">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                  </Button>
+                  </children>
+            </VBox>
+         </content>
+      </ScrollPane>
+   </left>
+   
+   <center>
+      <VBox spacing="10.0">
+         <padding><Insets bottom="10.0" left="15.0" right="15.0" top="10.0" /></padding>
+         <children>
+            <TableView fx:id="tabela" style="-fx-font-size: 13px;" VBox.vgrow="ALWAYS">
+              <columns>
+                <TableColumn fx:id="colData" prefWidth="100.0" style="-fx-alignment: CENTER;" text="Data" />
+                <TableColumn fx:id="colDescricao" prefWidth="280.0" text="Descrição" />
+                  <TableColumn fx:id="colCategoria" prefWidth="150.0" text="Categoria" />
+                  <TableColumn fx:id="colForma" prefWidth="120.0" text="Forma Pgto" />
+                  <TableColumn fx:id="colValor" prefWidth="130.0" style="-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold;" text="Valor" />
+                  <TableColumn fx:id="colStatus" prefWidth="100.0" style="-fx-alignment: CENTER;" text="Status" />
+              </columns>
+               <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+            </TableView>
+            <HBox alignment="CENTER_RIGHT" spacing="15.0">
+               <children>
+                   <Button mnemonicParsing="false" onAction="#abrirAuditoria" prefHeight="40.0" style="-fx-background-color: #616161; -fx-text-fill: white; -fx-font-weight: bold;" text="👁 AUDITORIA">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                     <font><Font size="12.0" /></font>
+                  </Button>
+
+                   <Button mnemonicParsing="false" onAction="#imprimirRelatorio" prefHeight="40.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" text="🖨 IMPRIMIR RELATÓRIO">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                     <font><Font size="12.0" /></font>
+                  </Button>
+               
+                   <Button mnemonicParsing="false" onAction="#excluir" prefHeight="40.0" style="-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-weight: bold;" text="🗑 EXCLUIR SELECIONADO">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                     <font><Font size="12.0" /></font>
+                  </Button>
+                  
+                  <Button fx:id="btnSair" mnemonicParsing="false" onAction="#sair" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" text="🚪 SAIR">
+                     <cursor><Cursor fx:constant="HAND" /></cursor>
+                     <font><Font size="12.0" /></font>
+                  </Button>
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </center>
+</BorderPane>

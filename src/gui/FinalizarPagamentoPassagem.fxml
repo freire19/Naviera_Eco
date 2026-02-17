@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane prefWidth="550.0"
+           stylesheets="@../css/main.css"
+           xmlns="http://javafx.com/javafx/23.0.1"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="gui.FinalizarPagamentoPassagemController">
+
+    <top>
+        <VBox alignment="CENTER" styleClass="header-panel" BorderPane.alignment="CENTER">
+            <children>
+                <Label styleClass="title-main-screen" text="Finalizar Pagamento (Misto)" />
+            </children>
+            <padding>
+                <Insets top="10.0" bottom="10.0" />
+            </padding>
+        </VBox>
+    </top>
+
+    <center>
+        <GridPane hgap="10.0" vgap="8.0" BorderPane.alignment="CENTER">
+            <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" prefWidth="170.0" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="200.0" prefWidth="260.0" />
+            </columnConstraints>
+            <rowConstraints>
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+                <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />
+            </rowConstraints>
+
+            <children>
+                <Label text="VALOR A PAGAR:" styleClass="label-highlight" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                <TextField fx:id="txtAPagar"
+                           editable="false"
+                           styleClass="campo-destaque"
+                           GridPane.columnIndex="1" />
+
+                <Label text="Dinheiro (R$):" GridPane.rowIndex="1" />
+                <TextField fx:id="txtDinheiro"
+                           promptText="0,00"
+                           GridPane.columnIndex="1"
+                           GridPane.rowIndex="1" />
+
+                <Label text="Pix (R$):" GridPane.rowIndex="2" />
+                <TextField fx:id="txtPix"
+                           promptText="0,00"
+                           GridPane.columnIndex="1"
+                           GridPane.rowIndex="2" />
+
+                <Label text="Cartão (R$):" GridPane.rowIndex="3" />
+                <TextField fx:id="txtCartao"
+                           promptText="0,00"
+                           GridPane.columnIndex="1"
+                           GridPane.rowIndex="3" />
+                
+                <Label text="TOTAL RECEBIDO:" style="-fx-font-weight: bold;" GridPane.rowIndex="4" />
+                <TextField fx:id="txtTotalRecebido"
+                           editable="false"
+                           styleClass="campo-destaque"
+                           GridPane.columnIndex="1"
+                           GridPane.rowIndex="4" />
+
+                <Label text="FALTA (Devedor):" styleClass="label-highlight" GridPane.rowIndex="5" />
+                <TextField fx:id="txtDevedor"
+                           editable="false"
+                           styleClass="text-field-highlight-total"
+                           GridPane.columnIndex="1"
+                           GridPane.rowIndex="5" />
+
+                <Label text="TROCO:" styleClass="label-highlight" GridPane.rowIndex="6" />
+                <TextField fx:id="txtTroco"
+                           editable="false"
+                           styleClass="text-field-highlight-total"
+                           GridPane.columnIndex="1"
+                           GridPane.rowIndex="6" />
+
+                <Label text="Lançar no Caixa:" GridPane.rowIndex="7" />
+                <ComboBox fx:id="cmbCaixa"
+                          maxWidth="1.7976931348623157E308"
+                          GridPane.columnIndex="1"
+                          GridPane.rowIndex="7" />
+            </children>
+
+            <padding>
+                <Insets top="15.0" right="20.0" bottom="15.0" left="20.0" />
+            </padding>
+        </GridPane>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" spacing="15.0" BorderPane.alignment="CENTER">
+            <children>
+                <Button fx:id="btnConfirmar"
+                        text="Confirmar (Enter)"
+                        defaultButton="true"
+                        mnemonicParsing="false"
+                        onAction="#handleConfirmar"
+                        prefHeight="40.0"
+                        prefWidth="200.0" 
+                        style="-fx-base: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;"/>
+
+                <Button fx:id="btnCancelar"
+                        text="Cancelar (Esc)"
+                        cancelButton="true"
+                        mnemonicParsing="false"
+                        onAction="#handleCancelar"
+                        prefHeight="40.0"
+                        prefWidth="130.0"
+                        styleClass="button-cancel" />
+            </children>
+            <padding>
+                <Insets top="5.0" bottom="15.0" />
+            </padding>
+        </HBox>
+    </bottom>
+</BorderPane>

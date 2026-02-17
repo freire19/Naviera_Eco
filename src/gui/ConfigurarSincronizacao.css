@@ -1,0 +1,328 @@
+/* ============================================
+   Configurar Sincronização - Modo Claro
+   ============================================ */
+
+/* Scroll Pane */
+.sync-scroll {
+    -fx-background-color: #f5f6fa;
+}
+
+.sync-scroll > .viewport {
+    -fx-background-color: #f5f6fa;
+}
+
+/* Container Principal */
+.sync-container {
+    -fx-background-color: #f5f6fa;
+    -fx-padding: 30;
+}
+
+/* Cabeçalho */
+.sync-header {
+    -fx-padding: 0 0 10 0;
+}
+
+.sync-icon {
+    -fx-font-size: 32px;
+}
+
+.sync-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e3c72;
+}
+
+.sync-subtitle {
+    -fx-text-fill: #666;
+    -fx-font-size: 13px;
+}
+
+/* Separador */
+.sync-separator {
+    -fx-background-color: #ddd;
+}
+
+/* Seções */
+.sync-section {
+    -fx-background-color: white;
+    -fx-padding: 20;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333;
+}
+
+/* Labels */
+.field-label {
+    -fx-text-fill: #555;
+    -fx-font-size: 13px;
+}
+
+.status-label {
+    -fx-font-weight: bold;
+}
+
+.ultima-sync-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e3c72;
+}
+
+/* TextFields */
+.sync-textfield {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 8;
+}
+
+.sync-textfield:focused {
+    -fx-border-color: #2196F3;
+    -fx-border-width: 2;
+}
+
+/* CheckBox */
+.sync-checkbox {
+    -fx-text-fill: #333;
+}
+
+.sync-checkbox .box {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+}
+
+.sync-checkbox:selected .mark {
+    -fx-background-color: #2196F3;
+}
+
+/* Spinner */
+.sync-spinner {
+    -fx-background-color: white;
+}
+
+.sync-spinner .text-field {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+}
+
+/* Status Cards */
+.stat-box {
+    -fx-padding: 10;
+}
+
+.stat-number {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.stat-blue { -fx-text-fill: #2196F3; }
+.stat-green { -fx-text-fill: #4CAF50; }
+.stat-orange { -fx-text-fill: #FF9800; }
+.stat-purple { -fx-text-fill: #9C27B0; }
+.stat-red { -fx-text-fill: #F44336; }
+
+.stat-label {
+    -fx-text-fill: #666;
+    -fx-font-size: 12px;
+}
+
+/* Log TextArea */
+.sync-log {
+    -fx-font-family: 'Consolas', 'Courier New', monospace;
+    -fx-font-size: 12px;
+    -fx-background-color: #f9f9f9;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-text-fill: #333;
+}
+
+/* Botões */
+.btn-testar {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: white;
+    -fx-padding: 10 20;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.btn-testar:hover {
+    -fx-background-color: #1976D2;
+}
+
+.btn-atualizar {
+    -fx-background-color: #607D8B;
+    -fx-text-fill: white;
+    -fx-padding: 8 15;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.btn-atualizar:hover {
+    -fx-background-color: #546E7A;
+}
+
+.btn-sincronizar {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 12 30;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.btn-sincronizar:hover {
+    -fx-background-color: #45a049;
+}
+
+.btn-salvar {
+    -fx-background-color: #1e3c72;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 12 30;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.btn-salvar:hover {
+    -fx-background-color: #163057;
+}
+
+.btn-fechar {
+    -fx-background-color: #9E9E9E;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 12 30;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.btn-fechar:hover {
+    -fx-background-color: #757575;
+}
+
+/* ============================================
+   Configurar Sincronização - Modo Escuro
+   ============================================ */
+
+.dark-mode .sync-scroll,
+.dark-mode .sync-scroll > .viewport,
+.dark-mode .sync-container {
+    -fx-background-color: #1a1a1a;
+}
+
+.dark-mode .sync-title {
+    -fx-text-fill: #64B5F6;
+}
+
+.dark-mode .sync-subtitle {
+    -fx-text-fill: #aaa;
+}
+
+.dark-mode .sync-separator {
+    -fx-background-color: #444;
+}
+
+.dark-mode .sync-section {
+    -fx-background-color: #2d2d2d;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 3);
+}
+
+.dark-mode .section-title {
+    -fx-text-fill: #fff;
+}
+
+.dark-mode .field-label {
+    -fx-text-fill: #ccc;
+}
+
+.dark-mode .ultima-sync-label {
+    -fx-text-fill: #64B5F6;
+}
+
+.dark-mode .sync-textfield {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #555;
+    -fx-text-fill: #fff;
+}
+
+.dark-mode .sync-textfield:focused {
+    -fx-border-color: #64B5F6;
+}
+
+.dark-mode .sync-checkbox {
+    -fx-text-fill: #fff;
+}
+
+.dark-mode .sync-checkbox .box {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #555;
+}
+
+.dark-mode .sync-checkbox:selected .mark {
+    -fx-background-color: #64B5F6;
+}
+
+.dark-mode .sync-spinner {
+    -fx-background-color: #3a3a3a;
+}
+
+.dark-mode .sync-spinner .text-field {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #555;
+    -fx-text-fill: #fff;
+}
+
+.dark-mode .stat-label {
+    -fx-text-fill: #aaa;
+}
+
+.dark-mode .sync-log {
+    -fx-background-color: #1e1e1e;
+    -fx-border-color: #444;
+    -fx-text-fill: #ddd;
+}
+
+.dark-mode .btn-testar {
+    -fx-background-color: #1976D2;
+}
+
+.dark-mode .btn-testar:hover {
+    -fx-background-color: #1565C0;
+}
+
+.dark-mode .btn-atualizar {
+    -fx-background-color: #546E7A;
+}
+
+.dark-mode .btn-atualizar:hover {
+    -fx-background-color: #455A64;
+}
+
+.dark-mode .btn-sincronizar {
+    -fx-background-color: #388E3C;
+}
+
+.dark-mode .btn-sincronizar:hover {
+    -fx-background-color: #2E7D32;
+}
+
+.dark-mode .btn-salvar {
+    -fx-background-color: #1e3c72;
+}
+
+.dark-mode .btn-salvar:hover {
+    -fx-background-color: #163057;
+}
+
+.dark-mode .btn-fechar {
+    -fx-background-color: #616161;
+}
+
+.dark-mode .btn-fechar:hover {
+    -fx-background-color: #424242;
+}

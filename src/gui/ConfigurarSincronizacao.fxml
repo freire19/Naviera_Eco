@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="gui.ConfigurarSincronizacaoController"
+            fitToWidth="true" fitToHeight="true" 
+            styleClass="sync-scroll">
+    
+<VBox spacing="20" styleClass="sync-container">
+    
+    <!-- Título -->
+    <HBox alignment="CENTER_LEFT" spacing="15" styleClass="sync-header">
+        <Label text="⚙️" styleClass="sync-icon"/>
+        <VBox>
+            <Label text="Configurar Sincronização" styleClass="sync-title"/>
+            <Label text="Configure a conexão com o servidor na nuvem" styleClass="sync-subtitle"/>
+        </VBox>
+    </HBox>
+    
+    <Separator styleClass="sync-separator"/>
+    
+    <!-- Configurações do Servidor -->
+    <VBox spacing="15" styleClass="sync-section">
+        <Label text="🌐 Servidor" styleClass="section-title"/>
+        
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="URL do Servidor:" styleClass="field-label"/>
+                <TextField fx:id="txtServerUrl" promptText="https://seu-servidor.com" prefWidth="400" styleClass="sync-textfield"/>
+            </VBox>
+            <Button fx:id="btnTestarConexao" text="🔗 Testar Conexão" onAction="#testarConexao" styleClass="btn-testar"/>
+        </HBox>
+        
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="Token de Autenticação (opcional):" styleClass="field-label"/>
+                <PasswordField fx:id="txtToken" promptText="Token JWT" styleClass="sync-textfield"/>
+            </VBox>
+        </HBox>
+        
+        <Label fx:id="lblStatusConexao" text="" styleClass="status-label"/>
+    </VBox>
+    
+    <!-- Configurações de Sincronização -->
+    <VBox spacing="15" styleClass="sync-section">
+        <Label text="🔄 Sincronização Automática" styleClass="section-title"/>
+        
+        <HBox spacing="20" alignment="CENTER_LEFT">
+            <CheckBox fx:id="chkAutoSync" text="Habilitar sincronização automática" styleClass="sync-checkbox"/>
+            
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Intervalo:" styleClass="field-label"/>
+                <Spinner fx:id="spnIntervalo" prefWidth="80" styleClass="sync-spinner"/>
+                <Label text="minutos" styleClass="field-label"/>
+            </HBox>
+        </HBox>
+        
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <Label text="Última sincronização:" styleClass="field-label"/>
+            <Label fx:id="lblUltimaSync" text="-" styleClass="ultima-sync-label"/>
+        </HBox>
+    </VBox>
+    
+    <!-- Status de Pendências -->
+    <VBox spacing="15" styleClass="sync-section">
+        <Label text="📊 Status de Pendências" styleClass="section-title"/>
+        
+        <HBox spacing="30">
+            <VBox alignment="CENTER" spacing="5" styleClass="stat-box">
+                <Label fx:id="lblPassageirosPend" text="0" styleClass="stat-number stat-blue"/>
+                <Label text="Passageiros" styleClass="stat-label"/>
+            </VBox>
+            <VBox alignment="CENTER" spacing="5" styleClass="stat-box">
+                <Label fx:id="lblPassagensPend" text="0" styleClass="stat-number stat-green"/>
+                <Label text="Passagens" styleClass="stat-label"/>
+            </VBox>
+            <VBox alignment="CENTER" spacing="5" styleClass="stat-box">
+                <Label fx:id="lblViagensPend" text="0" styleClass="stat-number stat-orange"/>
+                <Label text="Viagens" styleClass="stat-label"/>
+            </VBox>
+            <VBox alignment="CENTER" spacing="5" styleClass="stat-box">
+                <Label fx:id="lblEncomendasPend" text="0" styleClass="stat-number stat-purple"/>
+                <Label text="Encomendas" styleClass="stat-label"/>
+            </VBox>
+            <VBox alignment="CENTER" spacing="5" styleClass="stat-box">
+                <Label fx:id="lblFretesPend" text="0" styleClass="stat-number stat-red"/>
+                <Label text="Fretes" styleClass="stat-label"/>
+            </VBox>
+        </HBox>
+        
+        <Button fx:id="btnAtualizarPendencias" text="🔄 Atualizar Contagem" onAction="#atualizarPendencias" styleClass="btn-atualizar"/>
+    </VBox>
+    
+    <!-- Log de Sincronização -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS" styleClass="sync-section">
+        <Label text="📋 Log de Sincronização" styleClass="section-title"/>
+        <TextArea fx:id="txtLog" editable="false" prefRowCount="8" wrapText="true" styleClass="sync-log"/>
+    </VBox>
+    
+    <!-- Botões de Ação -->
+    <HBox spacing="15" alignment="CENTER" styleClass="sync-actions">
+        <Button fx:id="btnSincronizarAgora" text="🚀 Sincronizar Agora" onAction="#sincronizarAgora" styleClass="btn-sincronizar"/>
+        <Button fx:id="btnSalvar" text="💾 Salvar Configurações" onAction="#salvarConfiguracoes" styleClass="btn-salvar"/>
+        <Button fx:id="btnFechar" text="❌ Fechar" onAction="#fechar" styleClass="btn-fechar"/>
+    </HBox>
+    
+</VBox>
+</ScrollPane>

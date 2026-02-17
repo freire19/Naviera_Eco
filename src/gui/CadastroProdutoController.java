@@ -1,9 +1,9 @@
 package gui;
 
 import dao.ItemFreteDAO;
-import dao.EncomendaItemDAO;
+import dao.ItemEncomendaPadraoDAO; 
 import model.ItemFrete;
-import model.EncomendaItem;
+import model.ItemEncomendaPadrao; 
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -14,67 +14,62 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 
 import java.math.BigDecimal;
-import java.sql.SQLException;
+// import java.sql.SQLException; // Não é mais necessário importar explicitamente se não for lançado
 import java.util.List;
 
 public class CadastroProdutoController {
 
     // === ABA “Itens de Frete” ===
-    @FXML private TextField        txtNomeFrete;
-    @FXML private TextField        txtDescFrete;
-    @FXML private TextField        txtUnidFrete;
-    @FXML private TextField        txtPrecoNormalFrete;
-    @FXML private TextField        txtPrecoDescFrete;
-    @FXML private Button           btnSalvarFrete;
+    @FXML private TextField         txtNomeFrete;
+    @FXML private TextField         txtDescFrete;
+    @FXML private TextField         txtUnidFrete;
+    @FXML private TextField         txtPrecoNormalFrete;
+    @FXML private TextField         txtPrecoDescFrete;
+    @FXML private Button            btnSalvarFrete;
 
     @FXML private TableView<ItemFrete>                tableFrete;
-    @FXML private TableColumn<ItemFrete,String>      colNomeFrete;
-    @FXML private TableColumn<ItemFrete,String>      colDescFrete;
-    @FXML private TableColumn<ItemFrete,String>      colUnidFrete;
-    @FXML private TableColumn<ItemFrete,BigDecimal>  colPrecoNormFrete;
-    @FXML private TableColumn<ItemFrete,BigDecimal>  colPrecoDescFrete;
-    @FXML private TableColumn<ItemFrete,Boolean>     colAtivoFrete;
+    @FXML private TableColumn<ItemFrete,String>       colNomeFrete;
+    @FXML private TableColumn<ItemFrete,String>       colDescFrete;
+    @FXML private TableColumn<ItemFrete,String>       colUnidFrete;
+    @FXML private TableColumn<ItemFrete,BigDecimal>   colPrecoNormFrete;
+    @FXML private TableColumn<ItemFrete,BigDecimal>   colPrecoDescFrete;
+    @FXML private TableColumn<ItemFrete,Boolean>      colAtivoFrete;
 
     private final ObservableList<ItemFrete> listaFrete = FXCollections.observableArrayList();
 
     // === ABA “Itens de Encomenda” ===
-    @FXML private TextField            txtNomeEnc;
-    @FXML private TextField            txtDescEnc;
-    @FXML private TextField            txtUnidEnc;
-    @FXML private TextField            txtPrecoEnc;
-    @FXML private CheckBox             chkPermiteValorDeclaradoEnc;
-    @FXML private Button               btnSalvarEnc;
+    @FXML private TextField             txtNomeEnc;
+    @FXML private TextField             txtDescEnc;
+    @FXML private TextField             txtUnidEnc;
+    @FXML private TextField             txtPrecoEnc;
+    @FXML private CheckBox              chkPermiteValorDeclaradoEnc;
+    @FXML private Button                btnSalvarEnc;
 
-    @FXML private TableView<EncomendaItem>              tableEncomenda;
-    @FXML private TableColumn<EncomendaItem,String>     colNomeEnc;
-    @FXML private TableColumn<EncomendaItem,String>     colDescEnc;
-    @FXML private TableColumn<EncomendaItem,String>     colUnidEnc;
-    @FXML private TableColumn<EncomendaItem,BigDecimal> colPrecoEnc;
-    @FXML private TableColumn<EncomendaItem,Boolean>    colPermiteValorDecEnc;
-    @FXML private TableColumn<EncomendaItem,Boolean>    colAtivoEnc;
+    @FXML private TableView<ItemEncomendaPadrao>              tableEncomenda;
+    @FXML private TableColumn<ItemEncomendaPadrao,String>     colNomeEnc;
+    @FXML private TableColumn<ItemEncomendaPadrao,String>     colDescEnc;
+    @FXML private TableColumn<ItemEncomendaPadrao,String>     colUnidEnc;
+    @FXML private TableColumn<ItemEncomendaPadrao,BigDecimal> colPrecoEnc;
+    @FXML private TableColumn<ItemEncomendaPadrao,Boolean>    colPermiteValorDecEnc;
+    @FXML private TableColumn<ItemEncomendaPadrao,Boolean>    colAtivoEnc;
 
-    private final ObservableList<EncomendaItem> listaEncomenda = FXCollections.observableArrayList();
+    private final ObservableList<ItemEncomendaPadrao> listaEncomenda = FXCollections.observableArrayList();
 
-    // === BOTÃO “Fechar” NA JANELA ===
+    // === BOTÃO “Fechar” ===
     @FXML private Button btnFecharProduto;
 
     @FXML
     public void initialize() {
-        // Configura colunas
         configurarTabelaFrete();
         configurarTabelaEncomenda();
-
-        // Carrega dados
         carregarFrete();
         carregarEncomenda();
 
-        // Liga botões
         btnSalvarFrete.setOnAction(e -> onSalvarFrete());
         btnSalvarEnc .setOnAction(e -> onSalvarEncomenda());
         btnFecharProduto.setOnAction(e -> fecharJanela());
     }
 
-    // Configura colunas da tabela de Frete
     private void configurarTabelaFrete() {
         tableFrete.setItems(listaFrete);
         colNomeFrete     .setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNomeItem()));
@@ -85,7 +80,6 @@ public class CadastroProdutoController {
         colAtivoFrete    .setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().isAtivo()));
     }
 
-    // Configura colunas da tabela de Encomenda
     private void configurarTabelaEncomenda() {
         tableEncomenda.setItems(listaEncomenda);
         colNomeEnc           .setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getNomeItem()));
@@ -96,40 +90,44 @@ public class CadastroProdutoController {
         colAtivoEnc          .setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().isAtivo()));
     }
 
-    // Carrega todos os itens de frete ativos
     private void carregarFrete() {
         listaFrete.clear();
         try {
             List<ItemFrete> itens = new ItemFreteDAO().listarTodos(false);
             if (itens != null) listaFrete.addAll(itens);
-        } catch (SQLException ex) {
+        } catch (Exception ex) { // CORREÇÃO: Mudado de SQLException para Exception
             ex.printStackTrace();
             showAlert(Alert.AlertType.WARNING, "Erro ao carregar Itens de Frete:\n" + ex.getMessage());
         }
     }
 
-    // Carrega todos os itens de encomenda-padrão ativos
     private void carregarEncomenda() {
         listaEncomenda.clear();
         try {
-            List<EncomendaItem> itens = new EncomendaItemDAO().listarTodos(false);
+            List<ItemEncomendaPadrao> itens = new ItemEncomendaPadraoDAO().listarTodos(false);
             if (itens != null) listaEncomenda.addAll(itens);
-        } catch (SQLException ex) {
+        } catch (Exception ex) { // CORREÇÃO: Mudado de SQLException para Exception
             ex.printStackTrace();
             showAlert(Alert.AlertType.WARNING, "Erro ao carregar Itens de Encomenda:\n" + ex.getMessage());
         }
     }
 
-    // Salva um novo Item de Frete no banco e atualiza a tabela
     private void onSalvarFrete() {
         try {
             ItemFrete it = new ItemFrete();
             it.setNomeItem(txtNomeFrete.getText().trim());
             it.setDescricao(txtDescFrete.getText().trim());
             it.setUnidadeMedida(txtUnidFrete.getText().trim());
-            // não existe setPermiteValorDeclarado em ItemFrete
-            it.setPrecoUnitarioPadrao(new BigDecimal(txtPrecoNormalFrete.getText().replace(",", ".")));
-            it.setPrecoUnitarioDesconto(new BigDecimal(txtPrecoDescFrete.getText().replace(",", ".")));
+            
+            // Tratamento simples para troca de vírgula por ponto
+            String precoNorm = txtPrecoNormalFrete.getText().replace(",", ".");
+            if(precoNorm.isEmpty()) precoNorm = "0.00";
+            it.setPrecoUnitarioPadrao(new BigDecimal(precoNorm));
+
+            String precoDesc = txtPrecoDescFrete.getText().replace(",", ".");
+            if(precoDesc.isEmpty()) precoDesc = "0.00";
+            it.setPrecoUnitarioDesconto(new BigDecimal(precoDesc));
+            
             it.setAtivo(true);
 
             new ItemFreteDAO().inserir(it);
@@ -142,18 +140,22 @@ public class CadastroProdutoController {
         }
     }
 
-    // Salva um novo Item de Encomenda no banco e atualiza a tabela
     private void onSalvarEncomenda() {
         try {
-            EncomendaItem it = new EncomendaItem();
+            ItemEncomendaPadrao it = new ItemEncomendaPadrao();
             it.setNomeItem(txtNomeEnc.getText().trim());
             it.setDescricao(txtDescEnc.getText().trim());
             it.setUnidadeMedida(txtUnidEnc.getText().trim());
-            it.setPrecoUnit(new BigDecimal(txtPrecoEnc.getText().replace(",", ".")));
+            
+            String preco = txtPrecoEnc.getText().replace(",", ".");
+            if(preco.isEmpty()) preco = "0.00";
+            it.setPrecoUnit(new BigDecimal(preco));
+            
             it.setPermiteValorDeclarado(chkPermiteValorDeclaradoEnc.isSelected());
             it.setAtivo(true);
 
-            new EncomendaItemDAO().inserir(it);
+            new ItemEncomendaPadraoDAO().inserir(it);
+            
             showAlert(Alert.AlertType.INFORMATION, "Item de Encomenda cadastrado com sucesso!");
             limparCamposEncomenda();
             carregarEncomenda();
@@ -163,7 +165,6 @@ public class CadastroProdutoController {
         }
     }
 
-    // Limpa os campos da aba de Frete
     private void limparCamposFrete() {
         txtNomeFrete.clear();
         txtDescFrete.clear();
@@ -172,7 +173,6 @@ public class CadastroProdutoController {
         txtPrecoDescFrete.clear();
     }
 
-    // Limpa os campos da aba de Encomenda
     private void limparCamposEncomenda() {
         txtNomeEnc.clear();
         txtDescEnc.clear();
@@ -181,17 +181,14 @@ public class CadastroProdutoController {
         txtPrecoEnc.clear();
     }
 
-    // Fecha a janela
     private void fecharJanela() {
         Stage stage = (Stage) btnFecharProduto.getScene().getWindow();
         stage.close();
     }
 
-    // Helper para mostrar alertas
     private void showAlert(Alert.AlertType tipo, String msg) {
         Alert a = new Alert(tipo, msg, ButtonType.OK);
         a.setHeaderText(null);
         a.showAndWait();
     }
 }
-

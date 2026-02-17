@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="gui.ConfigurarApiController"
+            fitToWidth="true" fitToHeight="true" 
+            styleClass="sync-scroll">
+    
+<VBox spacing="20" styleClass="sync-container" style="-fx-padding: 30;">
+    
+    <!-- Título -->
+    <HBox alignment="CENTER_LEFT" spacing="15" styleClass="sync-header">
+        <Label text="🔌" style="-fx-font-size: 32px;"/>
+        <VBox>
+            <Label text="Configuração da API" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+            <Label text="Configure a conexão com o servidor web e recursos de automação" style="-fx-text-fill: #7f8c8d;"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblStatus" text="● Não Configurado" style="-fx-text-fill: #e67e22; -fx-font-weight: bold;"/>
+    </HBox>
+    
+    <Separator/>
+    
+    <!-- Conexão com API Web -->
+    <TitledPane text="🌐 Conexão com API Web" expanded="true" collapsible="false" 
+                style="-fx-font-size: 14px;">
+        <VBox spacing="15" style="-fx-padding: 15;">
+            <HBox spacing="15" alignment="CENTER_LEFT">
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="URL da API Web:"/>
+                    <HBox spacing="10">
+                        <TextField fx:id="txtUrlApi" promptText="http://sistemabarco.navdeusdealianca.com.br/api" 
+                                   prefWidth="450" style="-fx-font-size: 13px;"/>
+                        <Button fx:id="btnTestar" text="🔗 Testar" onAction="#testarConexao" 
+                                style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+                    </HBox>
+                    <Label text="URL base do sistema web para sincronização" style="-fx-text-fill: #95a5a6; -fx-font-size: 11px;"/>
+                </VBox>
+            </HBox>
+            
+            <HBox spacing="15" alignment="CENTER_LEFT">
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="Token de Acesso:"/>
+                    <HBox spacing="10">
+                        <PasswordField fx:id="txtToken" promptText="Token de autenticação" 
+                                       prefWidth="300" style="-fx-font-size: 13px;"/>
+                        <Button text="👁" onAction="#toggleToken" prefWidth="40"/>
+                        <Button text="🔑 Gerar" onAction="#gerarToken" 
+                                style="-fx-background-color: #9b59b6; -fx-text-fill: white;"/>
+                    </HBox>
+                </VBox>
+            </HBox>
+            
+            <Label fx:id="lblStatusConexao" text="" style="-fx-font-weight: bold;"/>
+        </VBox>
+    </TitledPane>
+    
+    <!-- Armazenamento de Arquivos -->
+    <TitledPane text="📁 Armazenamento de Arquivos" expanded="true" collapsible="false"
+                style="-fx-font-size: 14px;">
+        <VBox spacing="15" style="-fx-padding: 15;">
+            <HBox spacing="20" alignment="CENTER_LEFT">
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="Pasta Local para Arquivos (Fotos, Áudios, XMLs):"/>
+                    <HBox spacing="10">
+                        <TextField fx:id="txtPastaArquivos" promptText="C:\SistemaEmbarcacao\uploads" 
+                                   prefWidth="400" style="-fx-font-size: 13px;"/>
+                        <Button text="📂 Selecionar" onAction="#selecionarPasta" 
+                                style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
+                    </HBox>
+                </VBox>
+            </HBox>
+            
+            <HBox spacing="30" alignment="CENTER_LEFT">
+                <VBox spacing="5">
+                    <Label text="Tamanho Máximo (MB):"/>
+                    <Spinner fx:id="spnTamanhoMax" prefWidth="100" min="1" max="100"/>
+                </VBox>
+                <VBox spacing="5">
+                    <Label text="Qualidade de Imagem:"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Slider fx:id="sldQualidade" min="50" max="100" value="85" prefWidth="150"/>
+                        <Label fx:id="lblQualidade" text="85%"/>
+                    </HBox>
+                </VBox>
+            </HBox>
+            
+            <Separator/>
+            
+            <CheckBox fx:id="chkUsarNuvem" text="☁️ Enviar arquivos para a nuvem automaticamente"/>
+            
+            <VBox fx:id="pnlNuvem" spacing="10" visible="false" managed="false" style="-fx-padding: 10; -fx-background-color: #ecf0f1; -fx-background-radius: 5;">
+                <HBox spacing="15">
+                    <VBox spacing="5" HBox.hgrow="ALWAYS">
+                        <Label text="URL do Serviço de Nuvem:"/>
+                        <TextField fx:id="txtUrlNuvem" promptText="https://seu-bucket.s3.amazonaws.com"/>
+                    </VBox>
+                    <VBox spacing="5" HBox.hgrow="ALWAYS">
+                        <Label text="Chave de Acesso:"/>
+                        <PasswordField fx:id="txtChaveNuvem" promptText="Chave secreta"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </VBox>
+    </TitledPane>
+    
+    <!-- Recursos de Automação -->
+    <TitledPane text="🤖 Recursos de Automação" expanded="true" collapsible="false"
+                style="-fx-font-size: 14px;">
+        <VBox spacing="15" style="-fx-padding: 15;">
+            <HBox spacing="40">
+                <VBox spacing="10">
+                    <CheckBox fx:id="chkHabilitarXml" text="📄 Parser de XML NFe" selected="true"/>
+                    <Label text="Preencher formulários automaticamente a partir de arquivos XML de Nota Fiscal" 
+                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                </VBox>
+            </HBox>
+            
+            <Separator/>
+            
+            <HBox spacing="40">
+                <VBox spacing="10">
+                    <CheckBox fx:id="chkHabilitarFoto" text="📷 Captura de Fotos" selected="true"/>
+                    <Label text="Anexar fotos de mercadorias e documentos" 
+                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                </VBox>
+                <VBox spacing="10">
+                    <CheckBox fx:id="chkHabilitarOcr" text="🔍 OCR em Fotos"/>
+                    <Label text="Extrair texto de imagens automaticamente" 
+                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                </VBox>
+            </HBox>
+            
+            <Separator/>
+            
+            <HBox spacing="40">
+                <VBox spacing="10">
+                    <CheckBox fx:id="chkHabilitarAudio" text="🎤 Gravação de Áudio" selected="true"/>
+                    <Label text="Gravar áudios para anotações e observações" 
+                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                </VBox>
+                <VBox spacing="10">
+                    <CheckBox fx:id="chkHabilitarVoz" text="🗣️ Transcrição de Voz"/>
+                    <Label text="Converter áudio em texto automaticamente (requer API)" 
+                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </TitledPane>
+    
+    <!-- Informações -->
+    <TitledPane text="ℹ️ Informações da API" expanded="false" collapsible="true"
+                style="-fx-font-size: 14px;">
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f8f9fa;">
+            <Label text="Endpoints Disponíveis:" style="-fx-font-weight: bold;"/>
+            <HBox spacing="20">
+                <VBox spacing="5">
+                    <Label text="• POST /api/anexos/xml/nfe" style="-fx-font-family: monospace;"/>
+                    <Label text="• POST /api/anexos/foto" style="-fx-font-family: monospace;"/>
+                    <Label text="• POST /api/anexos/audio" style="-fx-font-family: monospace;"/>
+                </VBox>
+                <VBox spacing="5">
+                    <Label text="Upload de XML da NFe"/>
+                    <Label text="Upload de Fotos"/>
+                    <Label text="Upload de Áudios"/>
+                </VBox>
+            </HBox>
+            <Separator/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="URL do Sistema Web:"/>
+                <TextField fx:id="txtUrlSistemaWeb" text="http://sistemabarco.navdeusdealianca.com.br" 
+                           editable="false" prefWidth="350" style="-fx-background-color: #ecf0f1;"/>
+                <Button text="📋 Copiar" onAction="#copiarUrl"/>
+            </HBox>
+        </VBox>
+    </TitledPane>
+    
+    <!-- Botões de Ação -->
+    <HBox spacing="15" alignment="CENTER_RIGHT" style="-fx-padding: 20 0 0 0;">
+        <Button text="🔄 Restaurar Padrões" onAction="#restaurarPadroes" 
+                style="-fx-background-color: #95a5a6; -fx-text-fill: white;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="❌ Cancelar" onAction="#cancelar" 
+                style="-fx-background-color: #e74c3c; -fx-text-fill: white;" prefWidth="120"/>
+        <Button text="💾 Salvar" onAction="#salvar" 
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;" prefWidth="150"/>
+    </HBox>
+    
+</VBox>
+</ScrollPane>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="rootPane"
+            prefHeight="700.0" prefWidth="1200.0"
+            styleClass="root-financeiro"
+            xmlns="http://javafx.com/javafx/23.0.2"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="gui.TabelaPrecosEncomendaController">
+
+    <top>
+        <VBox spacing="8.0" BorderPane.alignment="CENTER_LEFT" styleClass="header-panel" style="-fx-padding: 10;">
+            <children>
+
+                <Label text="Tabela de Preços de Encomenda"
+                       styleClass="title-main-screen"/>
+
+                <HBox spacing="8.0" alignment="CENTER_LEFT">
+                    <children>
+                        <Label text="Pesquisar:" styleClass="label-bold"/>
+                        <TextField fx:id="txtPesquisaItem"
+                                   promptText="Digite parte da descrição"
+                                   HBox.hgrow="ALWAYS"/>
+                    </children>
+                </HBox>
+
+                <HBox spacing="10.0" alignment="CENTER_RIGHT">
+                    <children>
+                        <Button fx:id="btnAdicionar"
+                                text="Adicionar"
+                                onAction="#handleAdicionar"/>
+
+                        <Button fx:id="btnEditar"
+                                text="Editar"
+                                disable="true"
+                                onAction="#handleEditar"/>
+
+                        <Button fx:id="btnExcluir"
+                                text="Excluir"
+                                disable="true"
+                                onAction="#handleExcluir" styleClass="button-danger"/>
+
+                        <Button fx:id="btnImprimir"
+                                text="Imprimir Tabela"
+                                onAction="#handleImprimirTabela" styleClass="button-primary"/>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </top>
+
+    <center>
+        <TableView fx:id="tablePrecos"
+                   BorderPane.alignment="CENTER">
+            <columns>
+                <TableColumn fx:id="colDescricao"
+                             text="Descrição"/>
+                <TableColumn fx:id="colUnidade"
+                             text="Unidade"
+                             prefWidth="120.0"/>
+                <TableColumn fx:id="colPreco"
+                             text="Preço Padrão (R$)"
+                             prefWidth="200.0"/>
+            </columns>
+            <columnResizePolicy>
+                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+            </columnResizePolicy>
+        </TableView>
+    </center>
+
+</BorderPane>

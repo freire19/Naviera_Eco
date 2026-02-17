@@ -2,70 +2,77 @@ package model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Objects; 
 
 public class Passagem {
-    // --- Atributos de persistência (mapeiam diretamente para colunas do DB) ---
-    private Long id; // id_passagem (PK)
-    private Integer numBilhete; // numero_bilhete
+    // --- Atributos de persistência ---
+    private Long id; 
+    private Integer numBilhete; 
 
-    // FKs (IDs) - Usamos Long para consistência com IDs de DB, Integer para int do DB
-    private Long idPassageiro; // fk para passageiros
-    private Long idViagem; // fk para viagens
-    private Long idRota; // fk para rotas (da viagem ou da passagem)
-    private Integer idAcomodacao; // fk para aux_acomodacoes (Assumindo INTEGER no DB)
-    private Integer idTipoPassagem; // fk para aux_tipos_passagem (Assumindo INTEGER no DB)
-    private Integer idAgente; // fk para aux_agentes (Assumindo INTEGER no DB)
-    private Integer idFormaPagamento; // fk para aux_formas_pagamento (Assumindo INTEGER no DB)
-    private Integer idCaixa; // fk para caixas (Assumindo INTEGER no DB)
-    private Integer idUsuarioEmissor; // fk para usuarios (Assumindo INTEGER no DB)
-    private Integer idHorarioSaida; // fk para aux_horarios_saida (Assumindo INTEGER no DB)
+    private Long idPassageiro; 
+    private Long idViagem; 
+    private Long idRota; 
+    private Integer idAcomodacao; 
+    private Integer idTipoPassagem; 
+    private Integer idAgente; 
+    
+    // Mantido apenas para compatibilidade com código legado, mas não usamos mais para lógica nova
+    private Integer idFormaPagamento; 
+    
+    private Integer idCaixa; 
+    private Integer idUsuarioEmissor; 
+    private Integer idHorarioSaida; 
 
-    // --- Outros atributos persistentes da Passagem ---
-    private LocalDate dataEmissao; // data_emissao
+    private LocalDate dataEmissao; 
     private String assento;
-    private String requisicao; // numero_requisicao
-    private BigDecimal valorAlimentacao; // valor_alimentacao
-    private BigDecimal valorTransporte; // valor_transporte
-    private BigDecimal valorCargas; // valor_cargas
-    private BigDecimal valorDescontoTarifa; // valor_desconto_tarifa
-    private BigDecimal valorTotal; // valor_total
-    private BigDecimal valorDesconto; // valor_desconto_geral
-    private BigDecimal valorAPagar; // valor_a_pagar
-    private BigDecimal valorPago; // valor_pago
+    private String requisicao; 
+    private BigDecimal valorAlimentacao; 
+    private BigDecimal valorTransporte; 
+    private BigDecimal valorCargas; 
+    private BigDecimal valorDescontoTarifa; 
+    private BigDecimal valorTotal; 
+    private BigDecimal valorDesconto; 
+    private BigDecimal valorAPagar; 
+    
+    // --- NOVOS CAMPOS MISTOS ---
+    private BigDecimal valorPago; 
+    private BigDecimal valorPagamentoDinheiro = BigDecimal.ZERO; 
+    private BigDecimal valorPagamentoCartao = BigDecimal.ZERO;   
+    private BigDecimal valorPagamentoPix = BigDecimal.ZERO;      
+    
     private BigDecimal troco;
-    private BigDecimal devedor; // valor_devedor
-    private String statusPassagem; // status_passagem
+    private BigDecimal devedor; 
+    private String statusPassagem; 
     private String observacoes;
 
-    // --- Atributos para exibição em GUI (obtidos via JOINs ou cálculo) ---
-    private String nomePassageiro; // nome_passageiro do Passageiro
-    private String numeroDoc; // numero_documento do Passageiro
-    private LocalDate dataNascimento; // data_nascimento do Passageiro
-    private String sexo; // nome_sexo do Passageiro
-    private String tipoDoc; // nome_tipo_doc do Passageiro
-    private String nacionalidade; // nome_nacionalidade do Passageiro
-    private int idade; // Idade calculada
+    // --- Atributos de exibição ---
+    private String nomePassageiro; 
+    private String numeroDoc; 
+    private LocalDate dataNascimento; 
+    private String sexo; 
+    private String tipoDoc; 
+    private String nacionalidade; 
+    private int idade; 
 
-    private LocalDate dataViagem; // data_viagem da Viagem
-    private String descricaoHorarioSaida; // descricao_horario_saida da aux_horarios_saida
-    private String origem; // origem da Rota
-    private String destino; // destino da Rota
-    private String strViagem; // Representação em String da viagem (para ComboBox)
+    private LocalDate dataViagem; 
+    private String descricaoHorarioSaida; 
+    private String origem; 
+    private String destino; 
+    private String strViagem; 
 
-    // NOVOS ATRIBUTOS PARA ARMAZENAR OS NOMES DAS AUXILIARES PARA USO NA GUI E DAO.
-    private String acomodacao; // Nome da acomodação (ex: "Poltrona")
-    private String tipoPassagemAux; // Nome do tipo de passagem (ex: "Ida", "Ida e Volta")
-    private String agenteAux; // Nome do agente (ex: "Venda Direta", "Agência X")
-    private String formaPagamento; // Nome da forma de pagamento (ex: "Dinheiro", "Cartão")
-    private String caixa; // Nome do caixa (ex: "Caixa Principal")
-
-    // --- Atributo para número sequencial em listas (coluna ORD) ---
+    private String acomodacao; 
+    private String tipoPassagemAux; 
+    private String agenteAux; 
+    
+    // Vamos manter a variável interna, mas o GETTER será inteligente
+    private String formaPagamento; 
+    
+    private String caixa; 
     private Integer ordem;
 
-    // --- Construtor vazio (essencial) ---
     public Passagem() {}
 
-    // --- Getters e Setters (todos) ---
+    // --- Getters e Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -90,8 +97,10 @@ public class Passagem {
     public Integer getIdAgente() { return idAgente; }
     public void setIdAgente(Integer idAgente) { this.idAgente = idAgente; }
 
+    // >>> MÉTODOS REINTEGRADOS PARA NÃO QUEBRAR O DAO <<<
     public Integer getIdFormaPagamento() { return idFormaPagamento; }
     public void setIdFormaPagamento(Integer idFormaPagamento) { this.idFormaPagamento = idFormaPagamento; }
+    // ----------------------------------------------------
 
     public Integer getIdCaixa() { return idCaixa; }
     public void setIdCaixa(Integer idCaixa) { this.idCaixa = idCaixa; }
@@ -135,6 +144,16 @@ public class Passagem {
     public BigDecimal getValorPago() { return valorPago; }
     public void setValorPago(BigDecimal valorPago) { this.valorPago = valorPago; }
 
+    // --- NOVOS GETTERS E SETTERS PAGAMENTO MISTO ---
+    public BigDecimal getValorPagamentoDinheiro() { return valorPagamentoDinheiro != null ? valorPagamentoDinheiro : BigDecimal.ZERO; }
+    public void setValorPagamentoDinheiro(BigDecimal valorPagamentoDinheiro) { this.valorPagamentoDinheiro = valorPagamentoDinheiro; }
+
+    public BigDecimal getValorPagamentoCartao() { return valorPagamentoCartao != null ? valorPagamentoCartao : BigDecimal.ZERO; }
+    public void setValorPagamentoCartao(BigDecimal valorPagamentoCartao) { this.valorPagamentoCartao = valorPagamentoCartao; }
+
+    public BigDecimal getValorPagamentoPix() { return valorPagamentoPix != null ? valorPagamentoPix : BigDecimal.ZERO; }
+    public void setValorPagamentoPix(BigDecimal valorPagamentoPix) { this.valorPagamentoPix = valorPagamentoPix; }
+
     public BigDecimal getTroco() { return troco; }
     public void setTroco(BigDecimal troco) { this.troco = troco; }
 
@@ -147,7 +166,6 @@ public class Passagem {
     public String getObservacoes() { return observacoes; }
     public void setObservacoes(String observacoes) { this.observacoes = observacoes; }
 
-    // Atributos para exibição em GUI
     public String getNomePassageiro() { return nomePassageiro; }
     public void setNomePassageiro(String nomePassageiro) { this.nomePassageiro = nomePassageiro; }
 
@@ -175,15 +193,12 @@ public class Passagem {
     public String getDescricaoHorarioSaida() { return descricaoHorarioSaida; }
     public void setDescricaoHorarioSaida(String descricaoHorarioSaida) { this.descricaoHorarioSaida = descricaoHorarioSaida; }
 
-    // Conveniência para FXML/Strings formatadas (mantido para compatibilidade, mas o DAO usará descricaoHorarioSaida)
     public String getHorarioSaidaStr() {
         return descricaoHorarioSaida != null ? descricaoHorarioSaida : "N/A";
     }
-    // Adicionado setter para HorarioSaidaStr se for usado em alguma tela de edição, embora seja redundante com setDescricaoHorarioSaida
     public void setHorarioSaidaStr(String horarioSaidaStr) {
         this.descricaoHorarioSaida = horarioSaidaStr;
     }
-
 
     public String getOrigem() { return origem; }
     public void setOrigem(String origem) { this.origem = origem; }
@@ -194,63 +209,65 @@ public class Passagem {
     public String getStrViagem() { return strViagem; }
     public void setStrViagem(String strViagem) { this.strViagem = strViagem; }
 
-    // NOVOS GETTERS E SETTERS PARA OS NOMES DAS TABELAS AUXILIARES
-    public String getAcomodacao() {
-        return acomodacao;
+    public String getAcomodacao() { return acomodacao; }
+    public void setAcomodacao(String acomodacao) { this.acomodacao = acomodacao; }
+
+    public String getTipoPassagemAux() { return tipoPassagemAux; }
+    public void setTipoPassagemAux(String tipoPassagemAux) { this.tipoPassagemAux = tipoPassagemAux; }
+
+    public String getAgenteAux() { return agenteAux; }
+    public void setAgenteAux(String agenteAux) { this.agenteAux = agenteAux; }
+
+    // >>> CORREÇÃO DO RELATÓRIO: GET INTELIGENTE <<<
+    public String getFormaPagamento() {
+        // Se já tiver uma forma de pagamento "texto" definida (ex: carregada do banco antigo), usa ela
+        if (this.formaPagamento != null && !this.formaPagamento.isEmpty()) {
+            return this.formaPagamento;
+        }
+        
+        // Senão, calcula baseado nos valores
+        boolean temDinheiro = getValorPagamentoDinheiro().compareTo(BigDecimal.ZERO) > 0;
+        boolean temPix = getValorPagamentoPix().compareTo(BigDecimal.ZERO) > 0;
+        boolean temCartao = getValorPagamentoCartao().compareTo(BigDecimal.ZERO) > 0;
+
+        int qtd = 0;
+        if (temDinheiro) qtd++;
+        if (temPix) qtd++;
+        if (temCartao) qtd++;
+
+        if (qtd > 1) return "MISTO";
+        if (temDinheiro) return "DINHEIRO";
+        if (temPix) return "PIX";
+        if (temCartao) return "CARTÃO";
+        
+        return "PENDENTE";
     }
 
-    public void setAcomodacao(String acomodacao) {
-        this.acomodacao = acomodacao;
-    }
-
-    public String getTipoPassagemAux() { // Renomeado de getPassagemAux para maior clareza
-        return tipoPassagemAux;
-    }
-
-    public void setTipoPassagemAux(String tipoPassagemAux) { // Renomeado de setPassagemAux
-        this.tipoPassagemAux = tipoPassagemAux;
-    }
-
-    public String getAgenteAux() {
-        return agenteAux;
-    }
-
-    public void setAgenteAux(String agenteAux) {
-        this.agenteAux = agenteAux;
-    }
-
-    public String getFormaPagamento() { // Renomeado de getTipoPagamento para consistência
-        return formaPagamento;
-    }
-
-    public void setFormaPagamento(String formaPagamento) { // Renomeado de setTipoPagamento
+    public void setFormaPagamento(String formaPagamento) {
         this.formaPagamento = formaPagamento;
     }
 
-    public String getCaixa() {
-        return caixa;
-    }
+    public String getCaixa() { return caixa; }
+    public void setCaixa(String caixa) { this.caixa = caixa; }
 
-    public void setCaixa(String caixa) {
-        this.caixa = caixa;
-    }
-
-    // Atributo para número sequencial em listas (coluna ORD)
     public Integer getOrdem() { return ordem; }
     public void setOrdem(Integer ordem) { this.ordem = ordem; }
 
-    // Método toString para depuração ou exibição
     @Override
     public String toString() {
-        return "Passagem{" +
-                "id=" + id +
-                ", numBilhete=" + numBilhete +
-                ", nomePassageiro='" + nomePassageiro + '\'' +
-                ", dataViagem=" + dataViagem +
-                ", horarioSaida='" + descricaoHorarioSaida + '\'' +
-                ", origem='" + origem + '\'' +
-                ", destino='" + destino + '\'' +
-                ", valorTotal=" + valorTotal +
-                '}';
+        return "Passagem{id=" + id + ", numBilhete=" + numBilhete + "}";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Passagem passagem = (Passagem) o;
+        return Objects.equals(id, passagem.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

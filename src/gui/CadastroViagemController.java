@@ -257,15 +257,21 @@ public class CadastroViagemController implements Initializable {
 
     @FXML
     private void handleNovaViagem(ActionEvent event) {
+        // Primeiro limpa todos os campos
         limparCampos();
         viagemSelecionada = null;
+        
+        // Gera um novo ID
         Long proximoId = viagemDAO.gerarProximoIdViagem();
         if (proximoId != null && proximoId > 0) {
             txtIdViagem.setText(String.valueOf(proximoId));
         } else {
             txtIdViagem.clear();
-            showAlert(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID para a viagem. Verifique a sequence 'seq_viagem'.");
+            showAlert(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID para a viagem. Verifique a sequence 'seq_viagem' no banco de dados.");
+            return;
         }
+        
+        // Foca no campo de data
         dpDataViagem.requestFocus();
     }
 
@@ -280,20 +286,53 @@ public class CadastroViagemController implements Initializable {
         String horarioSaidaSelecionado = cmbHorarioSaida.getValue();
         boolean ativa = chkAtivaViagem.isSelected();
 
-        if (idStr.isEmpty() || dataPartida == null || dataChegada == null || embarcacaoSelecionada == null || rotaSelecionada == null || horarioSaidaSelecionado == null || horarioSaidaSelecionado.isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "ID (clique em Nova Viagem), Data de Viagem, Data de Chegada, Embarcação, Rota e HORÁRIO DE SAÍDA são obrigatórios.");
+        // Validação dos campos obrigatórios
+        if (idStr == null || idStr.trim().isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "ID é obrigatório. Clique em 'Nova Viagem' para gerar um novo ID.");
             return;
         }
+        
+        if (dataPartida == null) {
+            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Data de Viagem é obrigatória.");
+            dpDataViagem.requestFocus();
+            return;
+        }
+        
+        if (dataChegada == null) {
+            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Data de Chegada é obrigatória.");
+            dpDataChegada.requestFocus();
+            return;
+        }
+        
+        if (embarcacaoSelecionada == null) {
+            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Embarcação é obrigatória.");
+            cmbEmbarcacao.requestFocus();
+            return;
+        }
+        
+        if (rotaSelecionada == null) {
+            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Rota é obrigatória.");
+            cmbRotaViagem.requestFocus();
+            return;
+        }
+        
+        if (horarioSaidaSelecionado == null || horarioSaidaSelecionado.trim().isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Horário de Saída é obrigatório.");
+            cmbHorarioSaida.requestFocus();
+            return;
+        }
+        
         if (dataChegada.isBefore(dataPartida)) {
             showAlert(Alert.AlertType.WARNING, "Data Inválida", "A Data de Chegada não pode ser anterior à Data de Viagem.");
+            dpDataChegada.requestFocus();
             return;
         }
 
         Long idViagemLong;
         try {
-            idViagemLong = Long.parseLong(idStr);
+            idViagemLong = Long.parseLong(idStr.trim());
         } catch (NumberFormatException e) {
-            showAlert(Alert.AlertType.ERROR, "Erro de ID", "ID da viagem inválido.");
+            showAlert(Alert.AlertType.ERROR, "Erro de ID", "ID da viagem inválido. Use apenas números.");
             return;
         }
 
@@ -403,20 +442,28 @@ public class CadastroViagemController implements Initializable {
         dpDataViagem.setValue(null);
         dpDataChegada.setValue(null);
         txtDescricaoViagem.clear();
+        
         if (cmbEmbarcacao != null) {
             cmbEmbarcacao.getSelectionModel().clearSelection();
             cmbEmbarcacao.setValue(null);
         }
+        
         if (cmbRotaViagem != null) {
             cmbRotaViagem.getSelectionModel().clearSelection();
             cmbRotaViagem.setValue(null);
         }
+        
         if (cmbHorarioSaida != null) {
             cmbHorarioSaida.getSelectionModel().clearSelection();
             cmbHorarioSaida.setValue(null);
         }
+        
         chkAtivaViagem.setSelected(false);
-        if (tabelaViagens != null) tabelaViagens.getSelectionModel().clearSelection();
+        
+        if (tabelaViagens != null) {
+            tabelaViagens.getSelectionModel().clearSelection();
+        }
+        
         viagemSelecionada = null;
     }
 

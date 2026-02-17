@@ -4,7 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.CadastroItensController" prefWidth="750" prefHeight="550"> <children>
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.CadastroItensController" prefWidth="750" prefHeight="550" styleClass="root-financeiro"> <children>
         <TabPane fx:id="tabPane" layoutX="15" layoutY="15" prefWidth="720" prefHeight="520" tabClosingPolicy="UNAVAILABLE" AnchorPane.topAnchor="10" AnchorPane.bottomAnchor="10" AnchorPane.leftAnchor="10" AnchorPane.rightAnchor="10">
             <tabs>
                 <Tab text="Itens de Frete">

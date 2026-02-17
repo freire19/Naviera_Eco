@@ -14,7 +14,8 @@
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="gui.CadastroProdutoController"
-            prefWidth="600.0" prefHeight="500.0">
+            prefWidth="600.0" prefHeight="500.0"
+            styleClass="root-financeiro">
 
     <children>
         <VBox spacing="10.0" AnchorPane.topAnchor="10" AnchorPane.leftAnchor="10"

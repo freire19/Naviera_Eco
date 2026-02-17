@@ -1,0 +1,298 @@
+package gui;
+
+import dao.ConexaoBD;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+public class CadastroBoletoController {
+
+    @FXML private TextField txtDescricao;
+    @FXML private TextField txtValor;
+    @FXML private ComboBox<String> cmbCategoria;
+    @FXML private Spinner<Integer> spParcelas;
+    @FXML private VBox boxDatas; 
+    @FXML private TextArea txtObs;
+    
+    // Lado Direito (Lista)
+    @FXML private TableView<Boleto> tabela;
+    @FXML private TableColumn<Boleto, String> colVencimento;
+    @FXML private TableColumn<Boleto, String> colDescricao;
+    @FXML private TableColumn<Boleto, String> colParcela;
+    @FXML private TableColumn<Boleto, String> colValor;
+    @FXML private TableColumn<Boleto, String> colStatus;
+    @FXML private DatePicker dpFiltroData;
+    
+    @FXML private Button btnSair; // Botão novo
+    
+    private List<DatePicker> pickersDatas = new ArrayList<>();
+    private int idViagemAtual = 0;
+    private static final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+
+    @FXML
+    public void initialize() {
+        buscarViagemAtual();
+        carregarCategorias();
+        configurarTabela();
+        spParcelas.valueProperty().addListener((obs, oldVal, newVal) -> gerarCamposData(newVal));
+        gerarCamposData(1);
+        filtrar();
+    }
+    
+    @FXML
+    public void sair() {
+        Stage stage = (Stage) btnSair.getScene().getWindow();
+        stage.close();
+    }
+    
+    private void buscarViagemAtual() {
+        String sql = "SELECT id_viagem FROM viagens WHERE is_atual = true ORDER BY id_viagem DESC LIMIT 1";
+        try (Connection con = ConexaoBD.getConnection();
+             ResultSet rs = con.prepareStatement(sql).executeQuery()) {
+            if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
+            else buscarUltimaViagem();
+        } catch (Exception e) { buscarUltimaViagem(); }
+    }
+    
+    private void buscarUltimaViagem() {
+        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT id_viagem FROM viagens ORDER BY id_viagem DESC LIMIT 1").executeQuery()){
+            if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
+        } catch(Exception e){}
+    }
+
+    private void gerarCamposData(int qtd) {
+        boxDatas.getChildren().clear();
+        pickersDatas.clear();
+        LocalDate base = LocalDate.now();
+        for(int i = 0; i < qtd; i++) {
+            DatePicker dp = new DatePicker();
+            dp.setValue(base.plusMonths(i + 1)); 
+            dp.setPromptText("Vencimento Parcela " + (i+1));
+            dp.setMaxWidth(Double.MAX_VALUE);
+            boxDatas.getChildren().add(dp);
+            pickersDatas.add(dp);
+        }
+    }
+
+    private void carregarCategorias() {
+        ObservableList<String> cats = FXCollections.observableArrayList();
+        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()){
+            while(rs.next()) cats.add(rs.getString(1));
+        } catch(Exception e) {}
+        cmbCategoria.setItems(cats);
+        configurarAutocomplete(cmbCategoria, cats);
+    }
+    
+    private void configurarAutocomplete(ComboBox<String> comboBox, ObservableList<String> dados) {
+        comboBox.setEditable(true);
+        comboBox.getEditor().textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null) return;
+            ObservableList<String> filtrados = FXCollections.observableArrayList();
+            for (String item : dados) {
+                if (item.toUpperCase().contains(newVal.toUpperCase())) filtrados.add(item);
+            }
+            if(newVal.isEmpty()) comboBox.setItems(dados);
+            else comboBox.setItems(filtrados);
+            if(!comboBox.isShowing()) comboBox.show();
+        });
+    }
+
+    @FXML
+    public void salvar() {
+        if(txtDescricao.getText().isEmpty() || txtValor.getText().isEmpty()) {
+            alert("Preencha descrição e valor."); return;
+        }
+        
+        try {
+            double total = Double.parseDouble(txtValor.getText().replace(",", "."));
+            int parcelas = spParcelas.getValue();
+            double valorParcela = total / parcelas;
+            String cat = cmbCategoria.getValue();
+            if(cat == null) cat = cmbCategoria.getEditor().getText();
+            int idCat = buscarOuCriarCategoria(cat);
+            
+            Connection con = ConexaoBD.getConnection();
+            con.setAutoCommit(false);
+            
+            String sqlFinanceiro = "INSERT INTO financeiro_saidas (descricao, valor_total, data_vencimento, status, forma_pagamento, id_categoria, numero_parcela, total_parcelas, observacoes, id_viagem) VALUES (?, ?, ?, 'PENDENTE', 'BOLETO', ?, ?, ?, ?, ?)";
+            String sqlAgenda = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
+
+            try(PreparedStatement stmtFin = con.prepareStatement(sqlFinanceiro);
+                PreparedStatement stmtAgenda = con.prepareStatement(sqlAgenda)) {
+                
+                for(int i=0; i<parcelas; i++) {
+                    LocalDate vencimento = pickersDatas.get(i).getValue();
+                    if(vencimento == null) vencimento = LocalDate.now().plusMonths(i+1);
+                    
+                    // 1. Insere no Financeiro
+                    stmtFin.setString(1, txtDescricao.getText());
+                    stmtFin.setDouble(2, valorParcela);
+                    stmtFin.setDate(3, Date.valueOf(vencimento));
+                    stmtFin.setInt(4, idCat);
+                    stmtFin.setInt(5, i + 1);
+                    stmtFin.setInt(6, parcelas);
+                    stmtFin.setString(7, txtObs.getText());
+                    stmtFin.setInt(8, idViagemAtual);
+                    stmtFin.addBatch();
+                    
+                    // 2. Insere na Agenda (Aviso de Vencimento)
+                    stmtAgenda.setDate(1, Date.valueOf(vencimento));
+                    stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i+1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorParcela));
+                    stmtAgenda.addBatch();
+                }
+                stmtFin.executeBatch();
+                stmtAgenda.executeBatch();
+                
+                con.commit();
+                
+                alert("Boletos gerados e adicionados à Agenda!");
+                txtDescricao.clear();
+                txtValor.clear();
+                filtrar(); 
+                
+            } catch(Exception ex) {
+                con.rollback();
+                ex.printStackTrace();
+            } finally { con.setAutoCommit(true); }
+            
+        } catch (Exception e) { e.printStackTrace(); alert("Erro: " + e.getMessage()); }
+    }
+    
+    private int buscarOuCriarCategoria(String nome) throws SQLException {
+        if(nome == null || nome.isEmpty()) return 1;
+        Connection con = ConexaoBD.getConnection();
+        try (PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ?")) {
+            stmt.setString(1, nome.toUpperCase());
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()) return rs.getInt(1);
+        }
+        try (PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome) VALUES (?) RETURNING id")) {
+            stmt.setString(1, nome.toUpperCase());
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()) return rs.getInt(1);
+        }
+        return 1;
+    }
+    
+    private void configurarTabela() {
+        colVencimento.setCellValueFactory(new PropertyValueFactory<>("vencimento"));
+        colDescricao.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+        colParcela.setCellValueFactory(new PropertyValueFactory<>("parcelaStr"));
+        colValor.setCellValueFactory(new PropertyValueFactory<>("valorFormatado"));
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        
+        colStatus.setCellFactory(col -> new TableCell<Boleto, String>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); }
+                else {
+                    setText(item);
+                    if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;");
+                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                }
+            }
+        });
+        
+        // Tenta carregar o CSS
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){}
+    }
+    
+    @FXML
+    public void filtrar() {
+        ObservableList<Boleto> lista = FXCollections.observableArrayList();
+        StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE forma_pagamento = 'BOLETO' ");
+        
+        if(dpFiltroData.getValue() != null) {
+            sql.append(" AND data_vencimento = '").append(dpFiltroData.getValue()).append("'");
+        }
+        sql.append(" ORDER BY data_vencimento ASC");
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement(sql.toString()).executeQuery()){
+            while(rs.next()){
+                lista.add(new Boleto(
+                    rs.getInt("id"),
+                    sdf.format(rs.getDate("data_vencimento")),
+                    rs.getString("descricao"),
+                    rs.getInt("numero_parcela") + "/" + rs.getInt("total_parcelas"),
+                    rs.getDouble("valor_total"),
+                    rs.getString("status")
+                ));
+            }
+            tabela.setItems(lista);
+        } catch(Exception e){e.printStackTrace();}
+    }
+    
+    @FXML public void limparFiltros() { dpFiltroData.setValue(null); filtrar(); }
+    
+    @FXML
+    public void darBaixa() {
+        Boleto sel = tabela.getSelectionModel().getSelectedItem();
+        if(sel == null) { alert("Selecione um boleto."); return; }
+        if(sel.getStatus().equals("PAGO")) { alert("Já está pago."); return; }
+        
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("DINHEIRO", "DINHEIRO", "PIX", "CARTAO", "TRANSFERENCIA");
+        dialog.setTitle("Pagar Boleto");
+        dialog.setHeaderText("Confirmar pagamento de " + sel.getValorFormatado());
+        dialog.setContentText("Como foi pago?");
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent()) {
+            String formaEscolhida = result.get();
+            try(Connection c = ConexaoBD.getConnection(); PreparedStatement s = c.prepareStatement("UPDATE financeiro_saidas SET status='PAGO', forma_pagamento=?, data_pagamento=CURRENT_DATE, valor_pago=valor_total WHERE id=?")) {
+                s.setString(1, formaEscolhida); 
+                s.setInt(2, sel.getId());
+                s.executeUpdate();
+                filtrar();
+            } catch(Exception e) { e.printStackTrace(); }
+        }
+    }
+    
+    @FXML
+    public void excluir() {
+        Boleto sel = tabela.getSelectionModel().getSelectedItem();
+        if(sel == null) return;
+        if(new Alert(Alert.AlertType.CONFIRMATION, "Excluir?").showAndWait().get() == ButtonType.OK) {
+            try(Connection c = ConexaoBD.getConnection(); PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=?")) {
+                s.setInt(1, sel.getId());
+                s.executeUpdate();
+                filtrar();
+            } catch(Exception e) { e.printStackTrace(); }
+        }
+    }
+
+    private void alert(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).show(); }
+
+    public static class Boleto {
+        private int id;
+        private String vencimento, descricao, parcelaStr, status;
+        private Double valor;
+        public Boleto(int id, String v, String d, String p, Double val, String s) {
+            this.id=id; this.vencimento=v; this.descricao=d; this.parcelaStr=p; this.valor=val; this.status=s;
+        }
+        public int getId() { return id; }
+        public String getVencimento() { return vencimento; }
+        public String getDescricao() { return descricao; }
+        public String getParcelaStr() { return parcelaStr; }
+        public Double getValor() { return valor; }
+        public String getStatus() { return status; }
+        public String getValorFormatado() { return NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(valor); }
+    }
+}

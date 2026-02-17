@@ -1,0 +1,999 @@
+/* ================================================================== */
+/* MODO ESCURO - NAVY BLUE THEME - PALETA COMPLETA                    */
+/* ================================================================== */
+
+/* --- 1. FUNDO GERAL E ROOT --- */
+.root, .scene, .dialog-pane, .border-pane, .stack-pane, .flow-pane {
+    -fx-base: #121212 !important;
+    -fx-background: #121212 !important;
+    -fx-background-color: #121212 !important;
+    -fx-control-inner-background: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-accent: #0d56df !important;
+    -fx-font-family: "Segoe UI", Arial, sans-serif !important;
+    -fx-font-size: 14px !important;
+}
+
+/* --- 1.1 SISTEMA DE ABAS PRINCIPAL (MODO ESCURO) --- */
+.main-tab-pane {
+    -fx-background-color: #121212 !important;
+}
+
+.main-tab-pane .tab-header-area {
+    -fx-background-color: #1a1a2e !important;
+    -fx-padding: 0;
+}
+
+.main-tab-pane .tab-header-background {
+    -fx-background-color: #1a1a2e !important;
+}
+
+.main-tab-pane .tab {
+    -fx-background-color: #16213e !important;
+    -fx-background-radius: 5 5 0 0;
+    -fx-padding: 8 20 8 20;
+    -fx-cursor: hand;
+}
+
+.main-tab-pane .tab .tab-label {
+    -fx-text-fill: #b0b0b0 !important;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.main-tab-pane .tab:selected {
+    -fx-background-color: #252526 !important;
+}
+
+.main-tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #4db8ff !important;
+}
+
+.main-tab-pane .tab:hover {
+    -fx-background-color: #0f3460 !important;
+}
+
+.main-tab-pane .tab:selected:hover {
+    -fx-background-color: #252526 !important;
+}
+
+.main-tab-pane .tab-close-button {
+    -fx-background-color: #aaaaaa !important;
+    -fx-shape: "M 0,0 H1 L 4,3 7,0 H8 V1 L 5,4 8,7 V8 H7 L 4,5 1,8 H0 V7 L 3,4 0,1 Z";
+    -fx-background-insets: 0;
+    -fx-padding: 4;
+    -fx-cursor: hand;
+}
+
+.main-tab-pane .tab:selected .tab-close-button {
+    -fx-background-color: #ff5252 !important;
+}
+
+.main-tab-pane .tab .tab-close-button:hover {
+    -fx-background-color: #ff1744 !important;
+}
+
+.main-tab-pane .tab-content-area {
+    -fx-background-color: #121212 !important;
+    -fx-padding: 0;
+}
+
+/* --- 2. PAINÉIS E CONTAINERS (PRETO SUAVE) --- */
+.content-panel, .card-panel, .main-background, .anchor-pane, 
+.vbox, .hbox, .grid-pane, .split-pane, .titled-pane,
+.scroll-pane, .scroll-pane > .viewport {
+    -fx-background: #121212 !important;
+    -fx-background-color: #121212 !important;
+    -fx-border-color: transparent !important;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: #333333 !important;
+}
+
+/* --- 3. BOTÕES --- */
+.button-acesso-rapido {
+    -fx-background-color: #1e1e1e !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-border-color: #333 !important;
+    -fx-font-size: 14px !important;
+    -fx-font-weight: bold !important;
+    -fx-background-radius: 5px;
+}
+.button-acesso-rapido:hover {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #0d56df !important;
+    -fx-effect: dropshadow(three-pass-box, rgba(13, 86, 223, 0.6), 10, 0, 0, 0) !important;
+    -fx-cursor: hand;
+}
+.button {
+    -fx-background-color: #333333 !important;
+    -fx-text-fill: white !important;
+    -fx-border-color: #555 !important;
+    -fx-font-weight: bold !important;
+    -fx-font-size: 13px !important;
+}
+.button:hover {
+    -fx-background-color: #0d47a1 !important;
+    -fx-border-color: white !important;
+}
+
+/* --- DASHBOARD CARDS --- */
+.dashboard-card {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333 !important;
+    -fx-border-radius: 5 !important;
+    -fx-padding: 15 !important;
+    -fx-alignment: center !important;
+}
+.dashboard-card-title {
+    -fx-text-fill: #888888 !important;
+    -fx-font-size: 14px !important;
+}
+.dashboard-card-value {
+    -fx-font-size: 24px !important;
+    -fx-font-weight: bold !important;
+    -fx-fill: #aaaaaa !important;
+}
+
+/* --- 4. CALENDÁRIO (SEM AZUL NAS BORDAS) --- */
+.calendar-grid {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333333 !important; /* Cinza escuro discreto */
+}
+.vbox-calendario {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333333 !important; /* Cinza escuro discreto */
+}
+.vbox-calendario:hover { 
+    -fx-background-color: #252526 !important; 
+}
+
+/* --- 5. TABELAS --- */
+.table-view {
+    -fx-background-color: #121212 !important;
+    -fx-border-color: #333 !important;
+}
+
+/* Cabeçalho da Tabela - AZUL */
+.table-view .column-header-background {
+    -fx-background-color: #0d47a1 !important;
+    -fx-border-bottom-color: #1565c0 !important;
+}
+
+.table-view .column-header {
+    -fx-background-color: #0d47a1 !important;
+    -fx-border-color: #1565c0 !important;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: bold !important;
+}
+
+/* Células da Tabela */
+.table-row-cell {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: transparent transparent #333 transparent !important;
+    -fx-text-fill: white !important;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #252526 !important;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #0d56df !important;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #2a2a2a !important;
+}
+
+/* Células individuais */
+.table-cell {
+    -fx-text-fill: #ffffff !important;
+    -fx-background-color: transparent !important;
+}
+
+.table-cell:selected {
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Viewport da tabela (área branca que sobra) */
+.table-view .virtual-flow .clipped-container,
+.table-view .virtual-flow .scroll-bar {
+    -fx-background-color: #121212 !important;
+}
+
+.table-view .corner {
+    -fx-background-color: #1e1e1e !important;
+}
+
+/* Placeholder quando a tabela está vazia */
+.table-view .placeholder {
+    -fx-background-color: #121212 !important;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: #999999 !important;
+}
+
+/* --- 6. CAMPOS DE ENTRADA (CINZA ESCURO) --- */
+.text-field, .text-area, .text-input, 
+.combo-box, .combo-box-base,
+.combo-box .list-cell,
+.date-picker, .date-picker .text-field,
+.spinner, .spinner .text-field,
+.choice-box {
+    -fx-background-color: #252526 !important;
+    -fx-background: #252526 !important;
+    -fx-control-inner-background: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-width: 1px !important;
+    -fx-prompt-text-fill: #9e9e9e !important;
+}
+
+/* Campos desabilitados */
+.text-field:disabled, .combo-box:disabled, .date-picker:disabled {
+    -fx-background-color: #1a1a1a !important;
+    -fx-text-fill: #666666 !important;
+    -fx-opacity: 0.6 !important;
+}
+
+/* Campos com foco */
+.text-field:focused, .combo-box:focused, .date-picker:focused {
+    -fx-border-color: #0d56df !important;
+    -fx-border-width: 2px !important;
+    -fx-background-color: #2d2d30 !important;
+}
+
+/* ComboBox - Editor interno */
+.combo-box .text-field {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+/* ComboBox - Dropdown */
+.combo-box .list-view {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #444444 !important;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+.combo-box .list-cell:hover, .combo-box .list-cell:selected {
+    -fx-background-color: #333333 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+/* ComboBox - Seta */
+.combo-box .arrow-button {
+    -fx-background-color: #333333 !important;
+}
+
+.combo-box .arrow {
+    -fx-background-color: #ffffff !important;
+}
+
+/* --- 7. LABELS E TEXTOS --- */
+.dashboard-title, .title-main-screen, .label-bold, .label-highlight {
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: 900 !important;
+}
+
+.label, .text {
+    -fx-text-fill: #e0e0e0 !important;
+}
+
+.label-small-bold {
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: bold !important;
+}
+
+/* --- 8. MENUS E CONTEXTOS --- */
+.menu-bar {
+    -fx-background-color: #121212 !important;
+    -fx-border-color: #333333 !important;
+}
+
+.menu-bar .label {
+    -fx-text-fill: #ffffff !important;
+}
+
+.menu-item, .menu {
+    -fx-background-color: #252526 !important;
+}
+
+.menu-item .label {
+    -fx-text-fill: #e0e0e0 !important;
+}
+
+.menu-item:hover, .menu:hover {
+    -fx-background-color: #333333 !important;
+}
+
+.context-menu {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #444444 !important;
+}
+
+/* ========================================================================= */
+/* TELA FINANCEIRO SAÍDA - CORREÇÃO DE CORES                                */
+/* ========================================================================= */
+
+.root-financeiro {
+    -fx-background-color: #121212 !important;
+}
+
+/* Painéis Cinzas */
+.painel-cabecalho, .painel-lateral {
+    -fx-background-color: #1e1e1e !important;
+    -fx-effect: none !important;
+    -fx-border-color: #333 !important;
+}
+
+/* Painel de Filtros */
+.painel-filtros {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333 !important;
+    -fx-border-width: 1px !important;
+}
+
+/* Títulos e Labels - FORÇAR BRANCO */
+.titulo-tela, 
+.titulo-secao,
+.painel-lateral .label,
+.painel-filtros .label {
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Labels Cinza Claro para subtítulos */
+.painel-lateral .label-subtitle {
+    -fx-text-fill: #bbbbbb !important;
+}
+
+/* Card Total Gasto */
+.card-total {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #b71c1c !important;
+}
+.card-total .label {
+    -fx-text-fill: #ef5350 !important; /* Vermelho claro */
+}
+
+/* Inputs da Tela Financeira e Filtros */
+.painel-lateral .text-field, 
+.painel-lateral .combo-box, 
+.painel-lateral .date-picker .text-field,
+.painel-filtros .combo-box,
+.painel-filtros .date-picker .text-field,
+.painel-filtros .text-field {
+    -fx-background-color: #252526 !important; 
+    -fx-border-color: #444444 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Campo de Valor - Destaque laranja */
+.campo-valor {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #ff9800 !important;
+    -fx-text-fill: #ffcc80 !important;
+}
+
+/* Scroll Panes */
+.scroll-pane, .scroll-pane > .viewport {
+    -fx-background: #121212 !important;
+    -fx-background-color: #121212 !important;
+}
+
+.scroll-bar {
+    -fx-background-color: #121212 !important;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #444444 !important;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #555555 !important;
+}
+
+/* Botões Específicos */
+.botao-busca {
+    -fx-background-color: #0d47a1 !important;
+    -fx-text-fill: white !important;
+    -fx-border-color: #444444 !important;
+}
+
+.botao-limpar {
+    -fx-background-color: #424242 !important;
+    -fx-text-fill: white !important;
+}
+
+/* Separadores */
+.separator, .separator .line {
+    -fx-background-color: #333333 !important;
+    -fx-border-color: #333333 !important;
+    -fx-border-width: 1px !important;
+}
+
+/* --- 9. RADIO BUTTONS E CHECKBOXES --- */
+.radio-button, .check-box {
+    -fx-text-fill: #e0e0e0 !important;
+    -fx-cursor: hand;
+}
+
+.radio-button .radio {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #888888 !important;
+    -fx-border-width: 2px;
+    -fx-border-radius: 50%;
+    -fx-background-radius: 50%;
+    -fx-min-width: 18px;
+    -fx-min-height: 18px;
+    -fx-max-width: 18px;
+    -fx-max-height: 18px;
+}
+
+.check-box .box {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #888888 !important;
+    -fx-border-width: 2px;
+}
+
+.radio-button:selected .radio {
+    -fx-background-color: #4db8ff !important;
+    -fx-border-color: #4db8ff !important;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #4db8ff !important;
+}
+
+.radio-button .dot {
+    -fx-background-color: transparent;
+    -fx-background-radius: 50%;
+    -fx-min-width: 8px;
+    -fx-min-height: 8px;
+    -fx-max-width: 8px;
+    -fx-max-height: 8px;
+}
+
+.radio-button:selected .dot {
+    -fx-background-color: #ffffff !important;
+    -fx-background-radius: 50%;
+    -fx-min-width: 8px;
+    -fx-min-height: 8px;
+    -fx-max-width: 8px;
+    -fx-max-height: 8px;
+}
+
+.radio-button:hover .radio {
+    -fx-border-color: #4db8ff !important;
+    -fx-effect: dropshadow(gaussian, rgba(77,184,255,0.5), 4, 0, 0, 0);
+}
+
+/* --- 10. PROGRESS BAR E INDICATORS --- */
+.progress-bar {
+    -fx-background-color: #252526 !important;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #0d56df !important;
+}
+
+.progress-indicator {
+    -fx-progress-color: #0d56df !important;
+}
+
+/* --- 11. TOOLTIPS --- */
+.tooltip {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-border-color: #444444 !important;
+}
+
+/* --- 12. SIDEBAR E PAINÉIS LATERAIS --- */
+.sidebar-panel {
+    -fx-background-color: #121212 !important;
+    -fx-border-color: #333333 !important;
+}
+
+/* --- 13. FOOTER --- */
+.footer-panel {
+    -fx-background-color: #121212 !important;
+    -fx-border-color: #333333 !important;
+}
+
+/* ================================================================== */
+/* REGRAS GLOBAIS PARA PREVENIR CAMPOS BRANCOS                       */
+/* ================================================================== */
+
+/* Forçar todos os TextField que possam ter fundo branco */
+TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-border-color: #444444 !important;
+}
+
+/* Sobrescrever TODOS os estilos inline com cores claras */
+*[style*="background-color: white"],
+*[style*="background-color: #fff"],
+*[style*="background-color: #ffffff"],
+*[style*="-fx-background-color: white"],
+*[style*="-fx-background-color: #fff"],
+*[style*="-fx-background-color: #ffffff"],
+*[style*="-fx-background-color: #e0f2f1"],
+*[style*="-fx-background-color: #fff3e0"],
+*[style*="-fx-background-color: #e3f2fd"],
+*[style*="-fx-background-color: #f5f5f5"],
+*[style*="-fx-background-color: #fafafa"],
+*[style*="-fx-background-color: #eceff1"],
+*[style*="background-color: #e0f2f1"],
+*[style*="background-color: #fff3e0"],
+*[style*="background-color: #e3f2fd"],
+*[style*="background-color: #f5f5f5"] {
+    -fx-background-color: #252526 !important;
+}
+
+/* Sobrescrever bordas claras */
+*[style*="-fx-border-color: #b2dfdb"],
+*[style*="-fx-border-color: #ffe0b2"],
+*[style*="-fx-border-color: #cfd8dc"],
+*[style*="border-color: #b2dfdb"],
+*[style*="border-color: #ffe0b2"] {
+    -fx-border-color: #444444 !important;
+}
+
+/* Forçar texto preto para branco */
+*[style*="text-fill: black"],
+*[style*="-fx-text-fill: black"],
+*[style*="-fx-text-fill: #000"] {
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Qualquer painel com fundo branco vira preto */
+*[style*="background: white"],
+*[style*="background: #fff"] {
+    -fx-background: #121212 !important;
+    -fx-background-color: #121212 !important;
+}
+
+/* Lista de células (List View) */
+.list-view {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #444444 !important;
+}
+
+.list-cell {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+.list-cell:hover {
+    -fx-background-color: #333333 !important;
+}
+
+.list-cell:selected {
+    -fx-background-color: #0d56df !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Tree View */
+.tree-view, .tree-cell {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+.tree-cell:selected {
+    -fx-background-color: #0d56df !important;
+}
+
+/* Tab Pane */
+.tab-pane {
+    -fx-background-color: #121212 !important;
+}
+
+.tab {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+.tab:selected {
+    -fx-background-color: #333333 !important;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: #121212 !important;
+}
+
+/* Accordion */
+.accordion .titled-pane > .title {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+.accordion .titled-pane > .content {
+    -fx-background-color: #121212 !important;
+}
+
+/* Dialog Pane Buttons */
+.dialog-pane .button-bar .button {
+    -fx-background-color: #0d47a1 !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+/* ================================================================== */
+/* GARANTIR QUE NOVOS COMPONENTES SIGAM O PADRÃO                     */
+/* ================================================================== */
+
+/* Qualquer controle que não foi especificado */
+.control {
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Campos de input genéricos */
+.text-input {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-prompt-text-fill: #9e9e9e !important;
+}
+
+/* Região genérica */
+.region {
+    -fx-background-color: transparent !important;
+}
+
+/* Panes genéricos */
+.pane {
+    -fx-background-color: #121212 !important;
+}
+
+/* Painéis de informação (sem cores claras) */
+.info-panel {
+    -fx-background-color: #252526 !important;
+    -fx-background-radius: 5px !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-radius: 5px !important;
+    -fx-padding: 10px !important;
+}
+
+/* Painel de input/adicionar (sem cores claras) */
+.input-panel {
+    -fx-background-color: #252526 !important;
+    -fx-background-radius: 5px !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-radius: 5px !important;
+    -fx-padding: 10px !important;
+}
+
+/* Painel de totais */
+.totals-panel {
+    -fx-background-color: #252526 !important;
+    -fx-background-radius: 5px 5px 0 0 !important;
+    -fx-border-color: #444444 !important;
+    -fx-padding: 8px 20px !important;
+}
+
+/* Painel de botões */
+.buttons-panel {
+    -fx-background-color: #1a1a1a !important;
+    -fx-background-radius: 0 0 5px 5px !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-width: 1px 0 0 0 !important;
+    -fx-padding: 10px !important;
+}
+
+/* ================================================================== */
+/* CLASSES PARA TELAS FINANCEIRAS                                     */
+/* ================================================================== */
+
+/* Root de telas financeiras */
+.root-financeiro {
+    -fx-background-color: #121212 !important;
+}
+
+/* Painel de cabeçalho */
+.painel-cabecalho {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333333 !important;
+}
+
+/* Painel de filtros */
+.painel-filtros {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-radius: 5px !important;
+    -fx-padding: 10px !important;
+}
+
+/* Painel lateral */
+.painel-lateral {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333333 !important;
+}
+
+/* Cards de informação */
+.card-info {
+    -fx-background-color: #252526 !important;
+    -fx-background-radius: 8px !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-width: 1px !important;
+}
+
+/* Card de total/destaque */
+.card-total {
+    -fx-background-color: #2d2d30 !important;
+    -fx-background-radius: 8px !important;
+    -fx-border-color: #c62828 !important;
+    -fx-border-width: 0 0 0 6 !important;
+    -fx-padding: 5px 25px !important;
+}
+
+/* Painel de totais (rodapé) */
+.painel-totais {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333333 !important;
+    -fx-border-width: 1px 0 0 0 !important;
+}
+
+/* Botões de categoria/ação */
+.botao-categoria {
+    -fx-background-color: #333333 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-border-color: #555555 !important;
+    -fx-border-radius: 6px !important;
+    -fx-background-radius: 6px !important;
+    -fx-font-weight: bold !important;
+}
+
+.botao-categoria:hover {
+    -fx-background-color: #444444 !important;
+    -fx-border-color: #0d56df !important;
+}
+
+/* Botão de busca */
+.botao-busca {
+    -fx-background-color: #0d56df !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: bold !important;
+}
+
+.botao-busca:hover {
+    -fx-background-color: #0d47a1 !important;
+}
+
+/* Botão de limpar */
+.botao-limpar {
+    -fx-background-color: #444444 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: bold !important;
+}
+
+.botao-limpar:hover {
+    -fx-background-color: #555555 !important;
+}
+
+/* Campo de valor com destaque */
+.campo-valor {
+    -fx-background-color: #2d2d30 !important;
+    -fx-border-color: #ff9800 !important;
+    -fx-border-width: 2px !important;
+    -fx-font-weight: bold !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+/* Painel de formulário */
+.painel-formulario {
+    -fx-background-color: #252526 !important;
+    -fx-background-radius: 5px !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-radius: 5px !important;
+}
+
+/* Campo de destaque (somente leitura) */
+.campo-destaque {
+    -fx-background-color: #2d2d30 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: bold !important;
+}
+
+/* Painel de taxas */
+.painel-taxas {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-radius: 4px !important;
+}
+
+/* Barra de pesquisa */
+.barra-pesquisa {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333333 !important;
+}
+
+/* Painel de rodapé */
+.painel-rodape {
+    -fx-background-color: #1e1e1e !important;
+    -fx-border-color: #333333 !important;
+}
+
+/* Painel de login */
+.painel-login {
+    -fx-background-color: #252526 !important;
+    -fx-background-radius: 10px !important;
+    -fx-border-color: #444444 !important;
+    -fx-border-radius: 10px !important;
+}
+
+/* Dialog de pagamento */
+.dialog-pagamento {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #0d56df !important;
+    -fx-border-width: 2px !important;
+}
+
+/* Painel info pagamento */
+.painel-info-pagamento {
+    -fx-background-color: #2d2d30 !important;
+    -fx-padding: 10px !important;
+    -fx-background-radius: 5px !important;
+    -fx-border-color: #0d56df !important;
+}
+
+/* Botão cancelar */
+.botao-cancelar {
+    -fx-background-color: #444444 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-cursor: hand !important;
+}
+
+.botao-cancelar:hover {
+    -fx-background-color: #555555 !important;
+}
+
+/* Dialog estorno */
+.dialog-estorno {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #c62828 !important;
+    -fx-border-width: 4px !important;
+}
+
+/* Painel de alerta */
+.painel-alerta {
+    -fx-background-color: #3d2626 !important;
+    -fx-border-radius: 5px !important;
+    -fx-border-color: #c62828 !important;
+}
+
+/* Dialog quitar dívida */
+.dialog-quitar {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #2e7d32 !important;
+    -fx-border-width: 3px !important;
+}
+
+/* Dialog baixa */
+.dialog-baixa {
+    -fx-background-color: #252526 !important;
+    -fx-border-color: #0d56df !important;
+    -fx-border-width: 2px !important;
+}
+
+/* Painel resumo pagamento */
+.painel-resumo-pagamento {
+    -fx-background-color: #2d2d30 !important;
+    -fx-background-radius: 8px !important;
+    -fx-border-color: #2e7d32 !important;
+}
+
+/* Campo destaque viagem */
+.campo-destaque-viagem {
+    -fx-background-color: #2d2d30 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-border-color: #0d56df !important;
+    -fx-border-width: 2px !important;
+}
+
+/* Campo de tarifa */
+.campo-tarifa {
+    -fx-background-color: #252526 !important;
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: bold !important;
+}
+
+/* Botão secundário */
+.botao-secundario {
+    -fx-background-color: #444444 !important;
+    -fx-text-fill: #0d56df !important;
+    -fx-font-weight: bold !important;
+}
+
+.botao-secundario:hover {
+    -fx-background-color: #555555 !important;
+}
+
+/* ========================================================================= */
+/* SCROLL PANE E ÁREAS BRANCAS                                              */
+/* ========================================================================= */
+
+.scroll-pane {
+    -fx-background-color: #121212 !important;
+    -fx-background: #121212 !important;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: #121212 !important;
+}
+
+.scroll-pane .content {
+    -fx-background-color: #121212 !important;
+}
+
+/* ScrollBar vertical e horizontal */
+.scroll-bar {
+    -fx-background-color: #1e1e1e !important;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #444444 !important;
+    -fx-background-radius: 5px !important;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #555555 !important;
+}
+
+.scroll-bar .thumb:pressed {
+    -fx-background-color: #0d56df !important;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #1e1e1e !important;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: #1e1e1e !important;
+    -fx-padding: 0 !important;
+}
+
+/* ========================================================================= */
+/* LISTA E LISTVIEW                                                         */
+/* ========================================================================= */
+
+.list-view {
+    -fx-background-color: #121212 !important;
+    -fx-border-color: #333333 !important;
+}
+
+.list-cell {
+    -fx-background-color: #1e1e1e !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+.list-cell:odd {
+    -fx-background-color: #252526 !important;
+}
+
+.list-cell:selected {
+    -fx-background-color: #0d56df !important;
+    -fx-text-fill: #ffffff !important;
+}
+
+.list-cell:hover {
+    -fx-background-color: #2a2a2a !important;
+}
+
+/* ========================================================================= */
+/* FILLER E CORNER (CANTOS DE SCROLL)                                       */
+/* ========================================================================= */
+
+.filler, .corner {
+    -fx-background-color: #1e1e1e !important;
+}

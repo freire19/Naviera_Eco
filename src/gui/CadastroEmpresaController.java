@@ -6,11 +6,11 @@ import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.event.ActionEvent;
-import javafx.scene.Node; // Para fechar janela
+import javafx.scene.Node;
 import model.Empresa;
-import model.Embarcacao; // Adicionado
+import model.Embarcacao;
 import dao.EmpresaDAO;
-import dao.EmbarcacaoDAO; // Adicionado
+import dao.EmbarcacaoDAO;
 
 import java.net.URL;
 import java.io.File;
@@ -32,29 +32,33 @@ public class CadastroEmpresaController implements Initializable {
     @FXML private TextField txtTelefone;
     @FXML private TextField txtFrase;
     @FXML private TextField txtCaminhoFoto;
-    @FXML private Label lblMensagem; // Adicionado para feedback
-
-    // Botões fx:id devem corresponder ao FXML
+    
+    @FXML private TextArea txtRecomendacoes; // O TextArea já aceita Enter nativamente
+    
+    @FXML private Label lblMensagem;
     @FXML private Button btnNovo;
     @FXML private Button btnSalvar;
     @FXML private Button btnSair;
     @FXML private Button btnEscolherFoto;
 
     private EmpresaDAO empresaDAO;
-    private EmbarcacaoDAO embarcacaoDAO; // DAO para Embarcação
+    private EmbarcacaoDAO embarcacaoDAO;
     private Empresa empresaAtual = null;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         empresaDAO = new EmpresaDAO();
         embarcacaoDAO = new EmbarcacaoDAO();
-        // Ao abrir, tentamos carregar o registro com ID=1
+        
+        // Garante que o texto quebre linha visualmente se for muito longo, mas preserva os Enters
+        txtRecomendacoes.setWrapText(true);
+        
         carregarEmpresa(1); 
-        lblMensagem.setText(""); // Limpa mensagem inicial
+        lblMensagem.setText("");
     }
 
     private void carregarEmpresa(int id) {
-        Empresa e = empresaDAO.buscarPorId(id); // Presume que ID=1 é o registro de configuração
+        Empresa e = empresaDAO.buscarPorId(id);
         if (e != null) {
             empresaAtual = e;
             txtCompanhia.setText(e.getCompanhia());
@@ -71,32 +75,42 @@ public class CadastroEmpresaController implements Initializable {
             txtTelefone.setText(e.getTelefone());
             txtFrase.setText(e.getFrase());
             txtCaminhoFoto.setText(e.getCaminhoFoto());
-            lblMensagem.setText("Dados carregados. Modifique e clique em Salvar.");
+            
+            // Carrega as recomendações
+            try {
+                if(e.getRecomendacoesBilhete() != null) {
+                    txtRecomendacoes.setText(e.getRecomendacoesBilhete());
+                }
+            } catch (Exception ex) {
+                // Ignora se o model ainda não tiver o getter
+            }
+            
+            lblMensagem.setText("Dados carregados.");
         } else {
             empresaAtual = null;
             limparCampos();
-            lblMensagem.setText("Nenhuma configuração salva. Preencha os dados.");
+            lblMensagem.setText("Nenhuma configuração salva.");
         }
     }
 
     @FXML
     private void handleNovo(ActionEvent event) {
-        empresaAtual = null; // Indica que será uma nova inserção (embora sempre atualizaremos ID=1)
+        empresaAtual = null;
         limparCampos();
-        lblMensagem.setText("Campos limpos. Preencha os dados para salvar a configuração.");
+        lblMensagem.setText("Campos limpos para novo cadastro.");
         txtCompanhia.requestFocus();
     }
 
     @FXML
     private void handleSalvar(ActionEvent event) {
         if (txtCompanhia.getText().isEmpty() || txtEmbarcacao.getText().isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Nome da Companhia e Nome da Embarcação são obrigatórios.");
+            showAlert(Alert.AlertType.WARNING, "Atenção", "Nome da Companhia e Embarcação são obrigatórios.");
             return;
         }
 
         if (empresaAtual == null) {
             empresaAtual = new Empresa();
-            empresaAtual.setId(1); // ID fixo para a tabela configuracao_empresa
+            empresaAtual.setId(1);
         }
 
         empresaAtual.setCompanhia(txtCompanhia.getText().trim());
@@ -115,31 +129,27 @@ public class CadastroEmpresaController implements Initializable {
         empresaAtual.setTelefone(txtTelefone.getText().trim());
         empresaAtual.setFrase(txtFrase.getText().trim());
         empresaAtual.setCaminhoFoto(txtCaminhoFoto.getText().trim());
+        
+        // Pega o texto exatamente como digitado (com quebras de linha)
+        empresaAtual.setRecomendacoesBilhete(txtRecomendacoes.getText());
 
         boolean configOk = empresaDAO.salvarOuAtualizar(empresaAtual);
 
         if (configOk) {
-            lblMensagem.setText("Configurações da empresa salvas com sucesso!");
-            // Agora, salva/atualiza a embarcação principal
+            lblMensagem.setText("Salvo com sucesso!");
+            
             if (!nomeEmbarcacaoPrincipal.isEmpty()) {
                 Embarcacao embPrincipal = new Embarcacao(nomeEmbarcacaoPrincipal);
-                // Se você coletar mais dados da embarcação nesta tela, sete-os aqui.
-                // Ex: embPrincipal.setRegistroCapitania(...);
-                
-                Embarcacao embSalva = embarcacaoDAO.inserirOuBuscar(embPrincipal); 
-                
-                if (embSalva != null && embSalva.getId() > 0) {
-                    showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Configurações da Empresa e dados da Embarcação principal salvos!");
-                } else {
-                    showAlert(Alert.AlertType.WARNING, "Aviso", "Configurações da empresa salvas, mas houve um problema ao registrar a embarcação principal na tabela 'embarcacoes'.");
-                }
-            } else {
-                 showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Configurações da Empresa salvas!");
+                embarcacaoDAO.inserirOuBuscar(embPrincipal); 
             }
-            carregarEmpresa(1); // Recarrega os dados salvos nos campos
+            
+            showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Configurações atualizadas!");
+            
+            // >>> MUDANÇA AQUI: NÃO LIMPA MAIS OS CAMPOS, APENAS RECARREGA PARA CONFIRMAR
+            carregarEmpresa(1); 
+            
         } else {
-            showAlert(Alert.AlertType.ERROR, "Erro", "Falha ao salvar as configurações da Empresa.");
-            lblMensagem.setText("Erro ao salvar. Verifique o console.");
+            showAlert(Alert.AlertType.ERROR, "Erro", "Falha ao salvar no banco de dados.");
         }
     }
 
@@ -154,12 +164,11 @@ public class CadastroEmpresaController implements Initializable {
         FileChooser fc = new FileChooser();
         fc.setTitle("Selecionar Imagem da Logo");
         fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Imagens", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp")
+            new FileChooser.ExtensionFilter("Imagens", "*.png", "*.jpg", "*.jpeg")
         );
         File arquivoSelecionado = fc.showOpenDialog(((Node) event.getSource()).getScene().getWindow());
         if (arquivoSelecionado != null) {
             txtCaminhoFoto.setText(arquivoSelecionado.getAbsolutePath());
-            lblMensagem.setText("Caminho da foto selecionado. Clique em Salvar.");
         }
     }
 
@@ -178,6 +187,7 @@ public class CadastroEmpresaController implements Initializable {
         txtTelefone.clear();
         txtFrase.clear();
         txtCaminhoFoto.clear();
+        txtRecomendacoes.clear();
         lblMensagem.setText("");
     }
 

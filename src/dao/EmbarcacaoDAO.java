@@ -5,20 +5,10 @@ import model.Embarcacao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects; // Adicionado para Objects.equals se for usar aqui, não estritamente necessário para os erros atuais.
+import java.util.Objects; 
 
-/**
- * DAO para CRUD de embarcações.
- * Usa a tabela 'embarcacoes' com colunas:
- * id_embarcacao, nome, registro_capitania, capacidade_passageiros,
- * capacidade_carga_toneladas, observacoes
- */
 public class EmbarcacaoDAO {
 
-    /**
-     * Se existir embarcação com o mesmo nome, retorna o objeto existente.
-     * Caso contrário, insere e retorna o próprio objeto com o ID preenchido.
-     */
     public Embarcacao inserirOuBuscar(Embarcacao embarcacao) {
         Embarcacao existente = buscarPorNome(embarcacao.getNome());
         if (existente != null) {
@@ -46,7 +36,7 @@ public class EmbarcacaoDAO {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    embarcacao.setId((Long) rs.getObject("id_embarcacao")); // CORRIGIDO AQUI: getObject e casting para Long
+                    embarcacao.setId(rs.getLong("id_embarcacao"));
                     return embarcacao;
                 }
             }
@@ -57,9 +47,6 @@ public class EmbarcacaoDAO {
         return null;
     }
 
-    /**
-     * Busca embarcação pelo nome (igual exato). Retorna null se não encontrar.
-     */
     public Embarcacao buscarPorNome(String nome) {
         String sql = "SELECT id_embarcacao, nome, registro_capitania, capacidade_passageiros, capacidade_carga_toneladas, observacoes " +
                      "FROM embarcacoes WHERE nome = ?";
@@ -69,7 +56,7 @@ public class EmbarcacaoDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Embarcacao e = new Embarcacao();
-                    e.setId((Long) rs.getObject("id_embarcacao")); // CORRIGIDO AQUI
+                    e.setId(rs.getLong("id_embarcacao"));
                     e.setNome(rs.getString("nome"));
                     e.setRegistroCapitania(rs.getString("registro_capitania"));
                     e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
@@ -85,9 +72,6 @@ public class EmbarcacaoDAO {
         return null;
     }
 
-    /**
-     * Lista todas as embarcações ordenadas pelo nome.
-     */
     public List<Embarcacao> listarTodas() {
         List<Embarcacao> lista = new ArrayList<>();
         String sql = "SELECT id_embarcacao, nome, registro_capitania, capacidade_passageiros, capacidade_carga_toneladas, observacoes " +
@@ -97,7 +81,8 @@ public class EmbarcacaoDAO {
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 Embarcacao e = new Embarcacao();
-                e.setId((Long) rs.getObject("id_embarcacao")); // CORRIGIDO AQUI
+                // CORREÇÃO DO ERRO ClassCastException: Usar getLong diretamente.
+                e.setId(rs.getLong("id_embarcacao"));
                 e.setNome(rs.getString("nome"));
                 e.setRegistroCapitania(rs.getString("registro_capitania"));
                 e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
@@ -112,8 +97,6 @@ public class EmbarcacaoDAO {
         return lista;
     }
 
-    // Se desejar implementar atualizar/excluir, basta criar métodos update e delete aqui.
-    // Exemplo de atualizar, assumindo que id não é alterável:
     public boolean atualizar(Embarcacao embarcacao) {
         String sql = "UPDATE embarcacoes SET nome = ?, registro_capitania = ?, capacidade_passageiros = ?, capacidade_carga_toneladas = ?, observacoes = ? WHERE id_embarcacao = ?";
         try (Connection conn = ConexaoBD.getConnection();
@@ -131,7 +114,7 @@ public class EmbarcacaoDAO {
                 ps.setNull(4, Types.NUMERIC);
             }
             ps.setString(5, embarcacao.getObservacoes());
-            ps.setObject(6, embarcacao.getId()); // ID é Long
+            ps.setLong(6, embarcacao.getId());
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
@@ -141,11 +124,11 @@ public class EmbarcacaoDAO {
         return false;
     }
 
-    public boolean excluir(Long id) { // Agora espera Long
+    public boolean excluir(Long id) {
         String sql = "DELETE FROM embarcacoes WHERE id_embarcacao = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setObject(1, id); // Usa setObject para Long/null
+            ps.setLong(1, id);
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
@@ -154,5 +137,4 @@ public class EmbarcacaoDAO {
         }
         return false;
     }
-
 }

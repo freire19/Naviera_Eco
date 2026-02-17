@@ -14,6 +14,7 @@ public class AuxiliaresDAO {
 
     /**
      * Método auxiliar genérico para obter o ID de uma tabela auxiliar pelo nome.
+     * @param conn Conexão ao banco de dados (REMOVIDO: AuxiliaresDAO agora obtém a própria conexão)
      * @param tabela Nome da tabela auxiliar (ex: "aux_horarios_saida").
      * @param colunaNome Nome da coluna que contém a descrição (ex: "descricao_horario_saida").
      * @param colunaId Nome da coluna que contém o ID (ex: "id_horario_saida").
@@ -26,7 +27,7 @@ public class AuxiliaresDAO {
             return null;
         }
         String sql = "SELECT " + colunaId + " FROM " + tabela + " WHERE " + colunaNome + " ILIKE ?";
-        try (Connection conn = ConexaoBD.getConnection();
+        try (Connection conn = ConexaoBD.getConnection(); // <<< MODIFICAÇÃO: AuxiliaresDAO obtém a própria conexão >>>
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, valorNome);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -71,13 +72,22 @@ public class AuxiliaresDAO {
         return null;
     }
     
-    // Método auxiliar para buscar nomes de auxiliares pelo ID.
+    /**
+     * Método auxiliar para buscar nomes de auxiliares pelo ID.
+     * @param conn Conexão ao banco de dados (REMOVIDO: AuxiliaresDAO agora obtém a própria conexão)
+     * @param tabela Nome da tabela auxiliar.
+     * @param colunaNome Nome da coluna que contém o nome.
+     * @param colunaId Nome da coluna que contém o ID.
+     * @param id O ID a ser buscado.
+     * @return O nome correspondente (String) ou null se não encontrado ou ID for nulo/zero.
+     * @throws SQLException Se ocorrer um erro de SQL durante a operação de banco de dados.
+     */
     public String buscarNomeAuxiliarPorId(String tabela, String colunaNome, String colunaId, Integer id) throws SQLException {
         if (id == null || id == 0) {
             return null;
         }
         String sql = "SELECT " + colunaNome + " FROM " + tabela + " WHERE " + colunaId + " = ?";
-        try (Connection conn = ConexaoBD.getConnection();
+        try (Connection conn = ConexaoBD.getConnection(); // <<< MODIFICAÇÃO: AuxiliaresDAO obtém a própria conexão >>>
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -135,7 +145,7 @@ public class AuxiliaresDAO {
         }
     }
 
-    public Integer buscarIdTipoDocPorNome(String nome) throws SQLException { // Retorno Integer
+    public Integer buscarIdTipoDocPorNome(String nome) throws SQLException { 
         Integer ret = null;
         String sql = "SELECT id_tipo_doc FROM aux_tipos_documento WHERE nome_tipo_doc ILIKE ?";
         if (nome == null || nome.trim().isEmpty()) {
@@ -198,7 +208,7 @@ public class AuxiliaresDAO {
         }
     }
 
-    public Integer buscarIdSexoPorNome(String nome) throws SQLException { // Retorno Integer
+    public Integer buscarIdSexoPorNome(String nome) throws SQLException { 
         Integer ret = null;
         String sql = "SELECT id_sexo FROM aux_sexo WHERE nome_sexo ILIKE ?";
         if (nome == null || nome.trim().isEmpty()) {
@@ -261,7 +271,7 @@ public class AuxiliaresDAO {
         }
     }
 
-    public Integer buscarIdNacionalidadePorNome(String nome) throws SQLException { // Retorno Integer
+    public Integer buscarIdNacionalidadePorNome(String nome) throws SQLException { 
         Integer ret = null;
         String sql = "SELECT id_nacionalidade FROM aux_nacionalidades WHERE nome_nacionalidade ILIKE ?";
         if (nome == null || nome.trim().isEmpty()) {
@@ -290,7 +300,8 @@ public class AuxiliaresDAO {
         }
     }
 
-    public List<String> listarPassagemAux() throws SQLException { // Usado no CadastroTarifaController
+    public List<String> listarPassagemAux() throws SQLException {
+        System.out.println("--- DAO: Entrando em listarPassagemAux ---");
         List<String> lista = new ArrayList<>();
         String sql = "SELECT nome_tipo_passagem FROM aux_tipos_passagem ORDER BY nome_tipo_passagem";
         try (Connection conn = ConexaoBD.getConnection();
@@ -300,6 +311,7 @@ public class AuxiliaresDAO {
                 lista.add(rs.getString("nome_tipo_passagem"));
             }
         }
+        System.out.println("--- DAO: Saindo de listarPassagemAux. Itens encontrados: " + lista.size() + " ---");
         return lista;
     }
 
@@ -324,7 +336,7 @@ public class AuxiliaresDAO {
         }
     }
 
-    public Integer buscarIdTipoPassagemPorNome(String nomeTipoPassagem) throws SQLException { // Retorno Integer
+    public Integer buscarIdTipoPassagemPorNome(String nomeTipoPassagem) throws SQLException {
         Integer ret = null;
         String sql = "SELECT id_tipo_passagem FROM aux_tipos_passagem WHERE nome_tipo_passagem ILIKE ?";
         if (nomeTipoPassagem == null || nomeTipoPassagem.trim().isEmpty()) {
@@ -387,7 +399,7 @@ public class AuxiliaresDAO {
         }
     }
 
-    public Integer buscarIdAgenteAuxPorNome(String nome) throws SQLException { // Retorno Integer
+    public Integer buscarIdAgenteAuxPorNome(String nome) throws SQLException {
         Integer ret = null;
         String sql = "SELECT id_agente FROM aux_agentes WHERE nome_agente ILIKE ?";
         if (nome == null || nome.trim().isEmpty()) {
@@ -450,7 +462,7 @@ public class AuxiliaresDAO {
         }
     }
 
-    public Integer obterIdHorarioSaidaPorNome(String descricao) throws SQLException { // Renomeado, retorna Integer
+    public Integer obterIdHorarioSaidaPorNome(String descricao) throws SQLException {
         Integer ret = null;
         String sql = "SELECT id_horario_saida FROM aux_horarios_saida WHERE descricao_horario_saida ILIKE ?";
         if (descricao == null || descricao.trim().isEmpty() || "N/A".equalsIgnoreCase(descricao)) {
@@ -513,7 +525,7 @@ public class AuxiliaresDAO {
         }
     }
 
-    public Integer buscarIdAcomodacaoPorNome(String nome) throws SQLException { // Retorno Integer
+    public Integer buscarIdAcomodacaoPorNome(String nome) throws SQLException {
         Integer ret = null;
         String sql = "SELECT id_acomodacao FROM aux_acomodacoes WHERE nome_acomodacao ILIKE ?";
         if (nome == null || nome.trim().isEmpty()) {
@@ -589,5 +601,38 @@ public class AuxiliaresDAO {
             }
         }
         return lista;
+    }
+
+    // <<< MODIFICAÇÕES: Adicionado método listarCaixas para uso no RelatórioPassagensController >>>
+    public List<String> listarCaixas() throws SQLException {
+        List<String> lista = new ArrayList<>();
+        String sql = "SELECT nome_caixa FROM caixas ORDER BY nome_caixa";
+        try (Connection conn = ConexaoBD.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                lista.add(rs.getString("nome_caixa"));
+            }
+        }
+        return lista;
+    }
+    // FIM MODIFICAÇÕES
+
+    // =====================================================================
+    // <<< MÉTODO NOVO ADICIONADO PARA CORRIGIR O ERRO "obterDescricaoHorario" >>>
+    // =====================================================================
+    public String obterDescricaoHorario(Long idHorario) throws SQLException {
+        if (idHorario == null || idHorario == 0) return "";
+        String sql = "SELECT descricao_horario_saida FROM aux_horarios_saida WHERE id_horario_saida = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, idHorario);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("descricao_horario_saida");
+                }
+            }
+        }
+        return "";
     }
 }

@@ -16,6 +16,7 @@ public class Empresa {
     private String telefone;
     private String frase;
     private String caminhoFoto;
+    private String recomendacoesBilhete;
 
     // Getters e Setters
     public int getId() { return id; }
@@ -62,4 +63,7 @@ public class Empresa {
 
     public String getCaminhoFoto() { return caminhoFoto; }
     public void setCaminhoFoto(String caminhoFoto) { this.caminhoFoto = caminhoFoto; }
+
+    public String getRecomendacoesBilhete() { return recomendacoesBilhete; }
+    public void setRecomendacoesBilhete(String recomendacoesBilhete) { this.recomendacoesBilhete = recomendacoesBilhete; }
 }

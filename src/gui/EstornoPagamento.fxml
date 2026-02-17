@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="15.0" styleClass="dialog-estorno" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.EstornoPagamentoController">
+   <padding><Insets bottom="25.0" left="30.0" right="30.0" top="25.0" /></padding>
+   <children>
+      <Label text="REALIZAR ESTORNO" textFill="#cccccc">
+         <font><Font name="System Bold" size="24.0" /></font>
+      </Label>
+      <Separator />
+      
+      <VBox spacing="5.0">
+         <Label text="Valor Total da Encomenda:" textFill="#757575"><font><Font size="14.0" /></font></Label>
+         <Label fx:id="lblValorTotal" text="R$ 0,00" textFill="#546e7a"><font><Font name="System Bold" size="18.0" /></font></Label>
+      </VBox>
+      
+      <VBox spacing="5.0">
+         <Label text="Valor Disponível (Pago):" textFill="#757575"><font><Font size="14.0" /></font></Label>
+         <Label fx:id="lblValorPago" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="18.0" /></font></Label>
+      </VBox>
+      
+      <VBox spacing="5.0">
+         <Label text="Quanto deseja estornar (R$)?" textFill="#c62828"><font><Font name="System Bold" size="14.0" /></font></Label>
+         <TextField fx:id="txtValorEstorno" promptText="0,00" style="-fx-border-color: #c62828; -fx-font-weight: bold; -fx-font-size: 16px;" />
+      </VBox>
+      
+      <VBox spacing="5.0">
+         <Label text="Motivo do Estorno (Obrigatório):" textFill="#546e7a"><font><Font size="14.0" /></font></Label>
+         <TextField fx:id="txtMotivo" promptText="Ex: Cobrança duplicada" style="-fx-font-size: 14px;" />
+      </VBox>
+      
+      <VBox spacing="5.0">
+         <Label text="Forma de Devolução:" textFill="#546e7a"><font><Font size="14.0" /></font></Label>
+         <ComboBox fx:id="cmbFormaDevolucao" maxWidth="1.7976931348623157E308" style="-fx-font-size: 14px;" />
+      </VBox>
+      
+      <Separator />
+      
+      <VBox spacing="5.0" styleClass="painel-alerta" style="-fx-padding: 10;">
+         <Label text="🔒 Senha do Gerente:" textFill="#c62828"><font><Font name="System Bold" size="14.0" /></font></Label>
+         <PasswordField fx:id="txtSenhaAutorizador" promptText="Digite a senha" style="-fx-font-size: 14px;" />
+      </VBox>
+      
+      <HBox alignment="CENTER_RIGHT" spacing="15.0" style="-fx-padding: 10 0 0 0;">
+         <children>
+            <Button mnemonicParsing="false" onAction="#cancelar" prefHeight="40.0" style="-fx-background-color: #cfd8dc; -fx-font-size: 14px;" text="CANCELAR" />
+            <Button fx:id="btnConfirmar" defaultButton="true" mnemonicParsing="false" onAction="#confirmar" prefHeight="40.0" style="-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="CONFIRMAR ESTORNO" />
+         </children>
+      </HBox>
+   </children>
+</VBox>

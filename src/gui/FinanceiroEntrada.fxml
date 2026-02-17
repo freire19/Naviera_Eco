@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.FinanceiroEntradaController">
+   
+   <top>
+      <VBox spacing="0.0" styleClass="painel-cabecalho" BorderPane.alignment="CENTER">
+         <children>
+            <HBox alignment="CENTER_LEFT" spacing="20.0" style="-fx-padding: 15 25 15 25;">
+               <children>
+                  <VBox>
+                     <children>
+                        <Label fx:id="lblTituloViagem" text="Visão Geral da Viagem" textFill="#1a237e">
+                           <font>
+                              <Font name="System Bold" size="22.0" />
+                           </font>
+                        </Label>
+                        <Label fx:id="lblDataAtual" text="Data de Hoje: --/--/----" textFill="#757575">
+                           <font>
+                              <Font size="14.0" />
+                           </font>
+                        </Label>
+                     </children>
+                  </VBox>
+                  <Pane HBox.hgrow="ALWAYS" />
+                  <Button mnemonicParsing="false" onAction="#atualizarDashboard" style="-fx-background-color: #1a237e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;" text="🔄 ATUALIZAR DADOS">
+                     <font>
+                        <Font size="13.0" />
+                     </font>
+                     <cursor>
+                        <Cursor fx:constant="HAND" />
+                     </cursor>
+                  </Button>
+               </children>
+            </HBox>
+            
+            <Separator />
+            
+            <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="painel-filtros" style="-fx-padding: 15 25 20 25;">
+               <children>
+                  <Label text="FILTRAR POR:" textFill="#546e7a">
+                     <font><Font name="System Bold" size="12.0" /></font>
+                  </Label>
+                  
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label text="Viagem / Data" textFill="#607d8b"><font><Font size="11.0" /></font></Label>
+                        <ComboBox fx:id="cmbFiltroViagem" prefWidth="280.0" promptText="Selecione..." />
+                     </children>
+                  </VBox>
+                  
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label text="Categoria" textFill="#607d8b"><font><Font size="11.0" /></font></Label>
+                        <ComboBox fx:id="cmbFiltroCategoria" prefWidth="140.0" promptText="Todas" />
+                     </children>
+                  </VBox>
+                  
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label text="Forma Pagto" textFill="#607d8b"><font><Font size="11.0" /></font></Label>
+                        <ComboBox fx:id="cmbFiltroPagamento" prefWidth="140.0" promptText="Todas" />
+                     </children>
+                  </VBox>
+                  
+                  <VBox spacing="2.0" HBox.hgrow="ALWAYS">
+                     <children>
+                        <Label text="Caixa/Usuário" textFill="#607d8b"><font><Font size="11.0" /></font></Label>
+                        <ComboBox fx:id="cmbFiltroCaixa" maxWidth="1.7976931348623157E308" promptText="Todos" />
+                     </children>
+                  </VBox>
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </top>
+   
+   <center>
+      <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED" vbarPolicy="AS_NEEDED" style="-fx-background-color: transparent;" BorderPane.alignment="CENTER">
+         <content>
+            <VBox spacing="20.0">
+               <padding>
+                  <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
+               </padding>
+               <children>
+                  
+                  <HBox spacing="20.0" prefHeight="140.0">
+                     <children>
+                        <VBox alignment="CENTER_LEFT" spacing="0.0" styleClass="card-info" HBox.hgrow="ALWAYS">
+                           <padding>
+                              <Insets bottom="10.0" left="20.0" right="20.0" top="10.0" />
+                           </padding>
+                           <children>
+                              <Label text="FATURAMENTO TOTAL" textFill="#78909c">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                              <Label fx:id="lblTotalGeral" style="-fx-font-size: 48px;" text="R$ 0,00" textFill="#cccccc">
+                                 <font><Font name="System Bold" size="48.0" /></font>
+                              </Label>
+                              <Label text="Soma Geral" textFill="#b0bec5">
+                                 <font><Font size="11.0" /></font>
+                              </Label>
+                           </children>
+                           <effect>
+                              <DropShadow color="#00000010" offsetY="2.0" radius="5.0" />
+                           </effect>
+                        </VBox>
+                        
+                        <VBox alignment="CENTER_LEFT" spacing="0.0" styleClass="card-info" HBox.hgrow="ALWAYS">
+                           <padding>
+                              <Insets bottom="10.0" left="20.0" right="20.0" top="10.0" />
+                           </padding>
+                           <children>
+                              <Label text="TOTAL RECEBIDO (CAIXA)" textFill="#78909c">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                              <Label fx:id="lblRecebido" style="-fx-font-size: 48px;" text="R$ 0,00" textFill="#2e7d32">
+                                 <font><Font name="System Bold" size="48.0" /></font>
+                              </Label>
+                              <Label text="Confirmados" textFill="#b0bec5">
+                                 <font><Font size="11.0" /></font>
+                              </Label>
+                           </children>
+                           <effect>
+                              <DropShadow color="#00000010" offsetY="2.0" radius="5.0" />
+                           </effect>
+                        </VBox>
+                        
+                        <VBox alignment="CENTER_LEFT" spacing="0.0" styleClass="card-info" HBox.hgrow="ALWAYS">
+                           <padding>
+                              <Insets bottom="10.0" left="20.0" right="20.0" top="10.0" />
+                           </padding>
+                           <children>
+                              <Label text="A RECEBER (PENDENTE)" textFill="#78909c">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                              <Label fx:id="lblPendente" style="-fx-font-size: 48px;" text="R$ 0,00" textFill="#c62828">
+                                 <font><Font name="System Bold" size="48.0" /></font>
+                              </Label>
+                              <Label text="Falta receber" textFill="#b0bec5">
+                                 <font><Font size="11.0" /></font>
+                              </Label>
+                           </children>
+                           <effect>
+                              <DropShadow color="#00000010" offsetY="2.0" radius="5.0" />
+                           </effect>
+                        </VBox>
+                     </children>
+                  </HBox>
+                  
+                  <HBox spacing="20.0" VBox.vgrow="ALWAYS">
+                     <children>
+                        <VBox styleClass="card-info" HBox.hgrow="ALWAYS">
+                           <children>
+                              <Label alignment="CENTER" maxWidth="1.7976931348623157E308" text="Receita por Categoria" textFill="#455a64">
+                                 <font><Font name="System Bold" size="15.0" /></font>
+                                 <padding><Insets top="15.0" /></padding>
+                              </Label>
+                              <PieChart fx:id="graficoPizza" labelsVisible="true" legendVisible="false" VBox.vgrow="ALWAYS" />
+                           </children>
+                           <effect>
+                              <DropShadow color="#00000010" offsetY="2.0" />
+                           </effect>
+                        </VBox>
+                        
+                        <VBox styleClass="card-info" HBox.hgrow="ALWAYS">
+                           <children>
+                              <Label alignment="CENTER" maxWidth="1.7976931348623157E308" text="Formas de Pagamento (Recebido)" textFill="#455a64">
+                                 <font><Font name="System Bold" size="15.0" /></font>
+                                 <padding><Insets top="15.0" /></padding>
+                              </Label>
+                              <BarChart fx:id="graficoBarra" legendVisible="false" VBox.vgrow="ALWAYS">
+                                <xAxis><CategoryAxis label="Método" side="BOTTOM" /></xAxis>
+                                <yAxis><NumberAxis label="Valor (R$)" side="LEFT" /></yAxis>
+                              </BarChart>
+                           </children>
+                           <effect>
+                              <DropShadow color="#00000010" offsetY="2.0" />
+                           </effect>
+                        </VBox>
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+         </content>
+      </ScrollPane>
+   </center>
+   
+   <right>
+      <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
+         <content>
+            <VBox prefWidth="260.0" spacing="15.0" styleClass="painel-lateral" style="-fx-padding: 20;">
+               <children>
+                  <VBox alignment="TOP_CENTER" spacing="5.0">
+                     <children>
+                        <Label text="Acesso Rápido" textFill="#cccccc">
+                           <font><Font name="System Bold" size="18.0" /></font>
+                        </Label>
+                        <Separator prefWidth="150.0" />
+                        <Label text="Ver lista detalhada:" textAlignment="CENTER" textFill="#90a4ae">
+                           <font>
+                              <Font size="11.0" />
+                           </font>
+                        </Label>
+                     </children>
+                  </VBox>
+                  
+                  <VBox spacing="15.0">
+                      <children>
+                         <Button contentDisplay="TOP" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirTelaEncomendas" prefHeight="65.0" styleClass="botao-categoria" text="📦 ENCOMENDAS">
+                            <font><Font size="12.0" /></font>
+                            <cursor><Cursor fx:constant="HAND" /></cursor>
+                         </Button>
+                         <Button contentDisplay="TOP" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirTelaPassagens" prefHeight="65.0" styleClass="botao-categoria" text="🎫 PASSAGENS">
+                            <font><Font size="12.0" /></font>
+                            <cursor><Cursor fx:constant="HAND" /></cursor>
+                         </Button>
+                         <Button contentDisplay="TOP" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirTelaFretes" prefHeight="65.0" styleClass="botao-categoria" text="🚚 FRETES">
+                            <font><Font size="12.0" /></font>
+                            <cursor><Cursor fx:constant="HAND" /></cursor>
+                         </Button>
+                         <Separator />
+                         <Button contentDisplay="TOP" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirTelaGeral" prefHeight="50.0" styleClass="botao-categoria" text="📋 LISTA GERAL">
+                            <font><Font size="12.0" /></font>
+                            <cursor><Cursor fx:constant="HAND" /></cursor>
+                         </Button>
+                         
+                         <Button fx:id="btnSair" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#sair" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" text="🚪 SAIR">
+                            <cursor><Cursor fx:constant="HAND" /></cursor>
+                         </Button>
+                      </children>
+                  </VBox>
+               </children>
+            </VBox>
+         </content>
+      </ScrollPane>
+   </right>
+</BorderPane>

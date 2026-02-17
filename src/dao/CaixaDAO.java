@@ -1,39 +1,85 @@
 package dao;
 
-import java.util.Collections;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import model.Caixa;
 
-/**
- * Stub de CaixaDAO para compilar sem erros.
- * 
- * Se você, futuramente, quiser reimplementar acesso real ao banco,
- * basta alterar estes métodos para usar sua conexão JDBC/ORM, etc.
- */
 public class CaixaDAO {
 
-    /**
-     * Retorna lista vazia de caixas.
-     * Se precisar, troque por query real ao banco.
-     */
-    public List<String> listarTodos() {
-        return Collections.emptyList();
+    // LISTAR (Lê os dados da tabela 'caixas')
+    public List<Caixa> listarTodos() {
+        List<Caixa> lista = new ArrayList<>();
+        // Ajustado para sua tabela 'caixas'
+        String sql = "SELECT * FROM caixas ORDER BY id_caixa"; 
+
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Caixa c = new Caixa();
+                // Mapeando as colunas da sua foto: id_caixa e nome_caixa
+                c.setId(rs.getInt("id_caixa")); 
+                c.setNome(rs.getString("nome_caixa"));
+                lista.add(c);
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar caixas: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return lista;
+    }
+    
+    // INSERIR (Salva na tabela 'caixas')
+    public boolean inserir(Caixa caixa) {
+        String sql = "INSERT INTO caixas (nome_caixa) VALUES (?)";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setString(1, caixa.getNome());
+            return stmt.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao inserir caixa: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
-    /**
-     * Stub para inserir um novo caixa.
-     * Retorna 'false' para indicar “não implementado”.
-     */
-    public boolean inserir(String nomeCaixa) {
-        // TODO: implementar inserção real no banco, se desejar.
-        return false;
+    // ALTERAR (Atualiza usando 'id_caixa')
+    public boolean alterar(Caixa caixa) {
+        String sql = "UPDATE caixas SET nome_caixa = ? WHERE id_caixa = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setString(1, caixa.getNome());
+            stmt.setInt(2, caixa.getId());
+            return stmt.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao alterar caixa: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
-    /**
-     * Stub para gerar novo ID de caixa.
-     * Retorna 0 apenas para não quebrar o frontend.
-     */
-    public int gerarNovoIdCaixa() {
-        // TODO: retornar realmente o próximo ID a partir do banco, se desejar.
-        return 0;
+    // EXCLUIR (Remove usando 'id_caixa')
+    public boolean excluir(int id) {
+        String sql = "DELETE FROM caixas WHERE id_caixa = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, id);
+            return stmt.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            System.err.println("Erro ao excluir caixa: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 }

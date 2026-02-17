@@ -1,0 +1,892 @@
+package gui;
+
+import dao.ConexaoBD;
+import gui.util.SessaoUsuario; 
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.print.PageLayout;
+import javafx.print.Printer;
+import javafx.print.PrinterJob;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
+import javafx.scene.text.TextAlignment;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.util.Pair;
+
+import java.io.File;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+
+public class FinanceiroSaidaController {
+
+    @FXML private TextField txtDescricao;
+    @FXML private TextField txtValor;
+    @FXML private ComboBox<String> cmbCategoria; 
+    @FXML private DatePicker dpDataGasto;
+    @FXML private DatePicker dpDataPrimeiroPagamento; 
+    @FXML private ComboBox<String> cmbFormaPagamento;
+    
+    @FXML private Label lblTotalGasto;
+    @FXML private ComboBox<String> cmbFiltroCategoria;
+    @FXML private ComboBox<String> cmbFiltroPagamento; 
+    @FXML private ComboBox<OpcaoViagem> cmbFiltroViagem; 
+    @FXML private DatePicker dpFiltroData;
+    @FXML private Button btnSair;
+
+    @FXML private TableView<Despesa> tabela;
+    @FXML private TableColumn<Despesa, String> colData;
+    @FXML private TableColumn<Despesa, String> colDescricao;
+    @FXML private TableColumn<Despesa, String> colCategoria;
+    @FXML private TableColumn<Despesa, String> colForma;
+    @FXML private TableColumn<Despesa, String> colValor;
+    @FXML private TableColumn<Despesa, String> colStatus;
+
+    private static final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+    
+    private ObservableList<String> listaCategoriasOriginal = FXCollections.observableArrayList();
+    private boolean ignoreFilter = false;
+
+    @FXML
+    public void initialize() {
+        // 1. Configurações visuais iniciais
+        carregarCategorias(); 
+        configurarTabela();
+        
+        dpDataGasto.setValue(LocalDate.now());
+        if (dpDataPrimeiroPagamento != null) {
+            dpDataPrimeiroPagamento.setValue(LocalDate.now());
+        }
+        
+        cmbFormaPagamento.setItems(FXCollections.observableArrayList("DINHEIRO", "PIX", "CARTAO", "TRANSFERENCIA", "BOLETO"));
+        cmbFormaPagamento.getSelectionModel().selectFirst();
+        
+        ObservableList<String> formasFiltro = FXCollections.observableArrayList("Todas");
+        formasFiltro.addAll(cmbFormaPagamento.getItems());
+        cmbFiltroPagamento.setItems(formasFiltro);
+        cmbFiltroPagamento.getSelectionModel().selectFirst();
+        
+        dpFiltroData.setValue(null);
+        cmbFiltroCategoria.getSelectionModel().selectFirst();
+        
+        // 2. CARREGAMENTO E SELEÇÃO DA VIAGEM
+        // Este método carrega a lista e FORÇA a seleção da viagem ativa antes de adicionarmos os listeners.
+        carregarViagens(); 
+        
+        // 3. LISTENERS
+        // Adicionamos os observadores APÓS carregar os dados. 
+        // Como o valor já foi setado corretamente em carregarViagens(), isso previne comportamento errático.
+        cmbFiltroViagem.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+        cmbFiltroCategoria.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+        cmbFiltroPagamento.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+        dpFiltroData.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+        
+        // 4. Executa o filtro inicial com os dados corretos já carregados
+        filtrar();
+    }
+    
+    // --- LÓGICA CORRIGIDA DE CARREGAMENTO DE VIAGENS ---
+    private void carregarViagens() {
+        ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
+        OpcaoViagem opcaoTodas = new OpcaoViagem(0, "TODAS AS VIAGENS");
+        lista.add(opcaoTodas);
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        
+        // Mantemos a ordem visual Decrescente (Data Futura -> Passada)
+        String sql = "SELECT id_viagem, descricao, data_viagem, is_atual FROM viagens ORDER BY data_viagem DESC LIMIT 50";
+        
+        OpcaoViagem opcaoAtivaEncontrada = null;
+
+        try (Connection con = ConexaoBD.getConnection();
+             ResultSet rs = con.prepareStatement(sql).executeQuery()) {
+             
+            while(rs.next()) {
+                int id = rs.getInt("id_viagem");
+                String desc = rs.getString("descricao");
+                java.sql.Date dt = rs.getDate("data_viagem");
+                boolean isAtual = rs.getBoolean("is_atual"); 
+                
+                if(dt != null) {
+                    desc += " (" + sdf.format(dt) + ")";
+                }
+                
+                if (isAtual) {
+                    desc += " (ATUAL)";
+                }
+                
+                OpcaoViagem op = new OpcaoViagem(id, desc);
+                lista.add(op);
+                
+                // Se esta for a viagem atual, guardamos a referência dela
+                if (isAtual) {
+                    opcaoAtivaEncontrada = op;
+                }
+            }
+            
+            // Popula o ComboBox
+            cmbFiltroViagem.setItems(lista);
+            
+            // LÓGICA DE SELEÇÃO OBRIGATÓRIA:
+            if (opcaoAtivaEncontrada != null) {
+                // Seleciona EXATAMENTE a viagem ativa, não importa a posição na lista
+                cmbFiltroViagem.getSelectionModel().select(opcaoAtivaEncontrada);
+            } else {
+                // Se não houver nenhuma ativa, aí sim pega a primeira da lista (mais recente)
+                if (lista.size() > 1) {
+                    cmbFiltroViagem.getSelectionModel().select(1); // Pula o "TODAS" e pega a primeira real
+                } else {
+                    cmbFiltroViagem.getSelectionModel().selectFirst();
+                }
+            }
+            
+        } catch (Exception e) { 
+            e.printStackTrace(); 
+            alert("Erro ao carregar viagens: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void filtrar() {
+        // Se o combo estiver nulo (ainda carregando), não faz nada
+        if(cmbFiltroViagem.getValue() == null) return;
+        
+        int idFiltro = cmbFiltroViagem.getValue().id;
+        ObservableList<Despesa> lista = FXCollections.observableArrayList();
+        double total = 0;
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        StringBuilder sql = new StringBuilder();
+        
+        sql.append("SELECT s.*, c.nome as cat_nome FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE 1=1 ");
+        
+        if(idFiltro > 0) {
+            sql.append(" AND s.id_viagem = ").append(idFiltro);
+        }
+        
+        // Exibe apenas PAGOS ou NÃO BOLETOS nesta tela
+        sql.append(" AND (s.forma_pagamento != 'BOLETO' OR s.status = 'PAGO') ");
+        
+        if (dpFiltroData.getValue() != null) sql.append(" AND s.data_vencimento = '").append(dpFiltroData.getValue()).append("'");
+        if (cmbFiltroCategoria.getValue() != null && !cmbFiltroCategoria.getValue().equals("Todas") && !cmbFiltroCategoria.getValue().equals("Todas as Categorias")) {
+            sql.append(" AND c.nome = '").append(cmbFiltroCategoria.getValue()).append("'");
+        }
+        if (cmbFiltroPagamento.getValue() != null && !cmbFiltroPagamento.getValue().equals("Todas")) {
+            sql.append(" AND s.forma_pagamento = '").append(cmbFiltroPagamento.getValue()).append("'");
+        }
+        sql.append(" ORDER BY s.data_vencimento DESC");
+
+        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql.toString())) {
+            ResultSet rs = stmt.executeQuery();
+            while(rs.next()) {
+                Despesa d = new Despesa(
+                    rs.getInt("id"), 
+                    sdf.format(rs.getDate("data_vencimento")), 
+                    rs.getString("descricao"), 
+                    rs.getString("cat_nome"), 
+                    rs.getString("forma_pagamento"), 
+                    rs.getDouble("valor_total"), 
+                    rs.getString("status"),
+                    rs.getBoolean("is_excluido") 
+                );
+                lista.add(d);
+                if (!d.isExcluido()) {
+                    total += d.getValor();
+                }
+            }
+            tabela.setItems(lista);
+            lblTotalGasto.setText(nf.format(total));
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+    
+    @FXML
+    public void sair() {
+        Node nodeRef = (btnSair != null) ? btnSair : txtDescricao;
+        TelaPrincipalController.fecharTelaAtual(nodeRef);
+    }
+
+    @FXML
+    public void abrirGestaoFuncionarios() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/GestaoFuncionarios.fxml"));
+            Parent root = loader.load();
+            Stage stage = new Stage();
+            stage.setTitle("Gestão Completa de Funcionários e Pagamentos");
+            stage.setScene(TemaManager.criarSceneComTema(root));
+            stage.initModality(Modality.APPLICATION_MODAL); 
+            stage.setMaximized(true);
+            stage.showAndWait();
+            
+            filtrar(); 
+        } catch (Exception e) {
+            e.printStackTrace();
+            // alert("Erro ao abrir tela de funcionários: " + e.getMessage());
+        }
+    }
+
+    private void configurarAutoComplete(ComboBox<String> cmb) {
+        cmb.setEditable(true);
+        cmb.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                ignoreFilter = true; 
+                cmb.getEditor().setText(newVal);
+                Platform.runLater(() -> ignoreFilter = false); 
+            }
+        });
+        cmb.getEditor().textProperty().addListener((obs, oldText, newText) -> {
+            if (ignoreFilter) return; 
+            Platform.runLater(() -> {
+                if (newText == null || newText.isEmpty()) {
+                    cmb.setItems(listaCategoriasOriginal);
+                    return;
+                }
+                ObservableList<String> sublista = FXCollections.observableArrayList();
+                for (String item : listaCategoriasOriginal) {
+                    if (item.toUpperCase().contains(newText.toUpperCase())) {
+                        sublista.add(item);
+                    }
+                }
+                cmb.setItems(sublista);
+                if (!cmb.isShowing() && !sublista.isEmpty()) cmb.show();
+                if (sublista.isEmpty()) cmb.hide();
+            });
+        });
+    }
+
+    @FXML
+    public void salvarLancamento() {
+        if (txtDescricao.getText().isEmpty() || txtValor.getText().isEmpty() || cmbCategoria.getValue() == null) {
+            alert("Preencha os campos obrigatórios."); return;
+        }
+        
+        if (dpDataPrimeiroPagamento.getValue() == null) {
+            alert("Por favor, informe a Data do 1º Pagamento.");
+            return;
+        }
+        
+        int idParaSalvar = 0;
+        
+        if (cmbFiltroViagem.getValue() != null && cmbFiltroViagem.getValue().id != 0) {
+            idParaSalvar = cmbFiltroViagem.getValue().id;
+        } 
+
+        if (idParaSalvar == 0) {
+            alert("ERRO CRÍTICO: Não foi possível identificar a viagem selecionada.\nVerifique o filtro de viagens no topo da tela.");
+            return;
+        }
+
+        try {
+            String valorTexto = txtValor.getText().replace(",", ".");
+            double valor = Double.parseDouble(valorTexto);
+            
+            String forma = cmbFormaPagamento.getValue();
+            String status = forma.equals("BOLETO") ? "PENDENTE" : "PAGO";
+            int idCat = buscarIdCategoria(cmbCategoria.getValue());
+
+            String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, id_viagem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            
+            try (Connection con = ConexaoBD.getConnection();
+                 PreparedStatement stmt = con.prepareStatement(sql)) {
+                
+                stmt.setString(1, txtDescricao.getText().toUpperCase());
+                stmt.setDouble(2, valor);
+                stmt.setDouble(3, status.equals("PAGO") ? valor : 0.0);
+                
+                java.sql.Date dataFinanceira = java.sql.Date.valueOf(dpDataPrimeiroPagamento.getValue());
+                
+                stmt.setDate(4, dataFinanceira); // data_vencimento
+                stmt.setDate(5, status.equals("PAGO") ? dataFinanceira : null); // data_pagamento
+                
+                stmt.setString(6, status);
+                stmt.setString(7, forma);
+                stmt.setInt(8, idCat);
+                stmt.setInt(9, idParaSalvar);
+                
+                stmt.executeUpdate();
+                alert("Despesa salva com sucesso!");
+                
+                txtDescricao.clear();
+                txtValor.clear();
+                cmbCategoria.setValue(null);
+                cmbCategoria.getEditor().clear(); 
+                cmbCategoria.setItems(listaCategoriasOriginal);
+                
+                dpDataGasto.setValue(LocalDate.now());
+                dpDataPrimeiroPagamento.setValue(LocalDate.now());
+                
+                filtrar();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            alert("Erro ao salvar: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void excluir() {
+        Despesa sel = tabela.getSelectionModel().getSelectedItem();
+        if (sel == null) return;
+        
+        if (sel.isExcluido()) {
+            alert("Este item já está excluído.");
+            return;
+        }
+
+        String nomeOperador = "DESCONHECIDO";
+        if (SessaoUsuario.isUsuarioLogado()) {
+            nomeOperador = SessaoUsuario.getUsuarioLogado().getNomeCompleto(); 
+        }
+        final String solicitanteFinal = nomeOperador;
+
+        Dialog<Pair<String, String>> dialog = new Dialog<>();
+        dialog.setTitle("Exclusão Administrativa");
+        dialog.setHeaderText("Solicitante Identificado: " + solicitanteFinal);
+
+        ButtonType loginButtonType = new ButtonType("Confirmar Exclusão", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        Label lblOperador = new Label(solicitanteFinal);
+        lblOperador.setStyle("-fx-font-weight: bold; -fx-text-fill: #1565c0;");
+
+        PasswordField password = new PasswordField();
+        password.setPromptText("Senha do Gerente/Admin");
+        
+        TextArea motivo = new TextArea();
+        motivo.setPromptText("Motivo detalhado...");
+        motivo.setPrefHeight(60);
+
+        grid.add(new Label("Solicitante:"), 0, 0);
+        grid.add(lblOperador, 1, 0);
+        grid.add(new Label("Senha Admin:"), 0, 1);
+        grid.add(password, 1, 1);
+        grid.add(new Label("Motivo:"), 0, 2);
+        grid.add(motivo, 1, 2);
+
+        dialog.getDialogPane().setContent(grid);
+        Platform.runLater(() -> password.requestFocus());
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == loginButtonType) {
+                return new Pair<>(password.getText(), motivo.getText());
+            }
+            return null;
+        });
+
+        Optional<Pair<String, String>> result = dialog.showAndWait();
+
+        result.ifPresent(dados -> {
+            String pass = dados.getKey();
+            String reason = dados.getValue();
+            
+            if (reason.isEmpty()) {
+                alert("É obrigatório informar o motivo da exclusão.");
+                return;
+            }
+
+            String nomeAdmin = validarPermissaoGerente(pass);
+            if (nomeAdmin == null) {
+                alert("Senha incorreta ou usuário sem permissão de Gerente/Administrador.");
+                return;
+            }
+
+            try (Connection con = ConexaoBD.getConnection()) {
+                con.setAutoCommit(false); 
+                
+                int idViagemDaDespesa = buscarIdViagemDaDespesa(sel.getId(), con);
+                String infoViagem = buscarInfoViagem(sel.getId(), con);
+                String responsaveis = solicitanteFinal.toUpperCase() + " / " + nomeAdmin.toUpperCase();
+
+                String sqlUpdate = "UPDATE financeiro_saidas SET is_excluido = true, motivo_exclusao = ? WHERE id = ?";
+                try (PreparedStatement stmt = con.prepareStatement(sqlUpdate)) {
+                    stmt.setString(1, reason.toUpperCase());
+                    stmt.setInt(2, sel.getId());
+                    stmt.executeUpdate();
+                }
+
+                String sqlAudit = "INSERT INTO auditoria_financeiro (acao, usuario, motivo, detalhe_valor, id_viagem) VALUES (?, ?, ?, ?, ?)";
+                try (PreparedStatement stmt = con.prepareStatement(sqlAudit)) {
+                    stmt.setString(1, "EXCLUSAO_DESPESA");
+                    stmt.setString(2, responsaveis); 
+                    stmt.setString(3, reason.toUpperCase());
+                    stmt.setString(4, sel.getDescricao() + " | " + sel.getValorFormatado() + " | " + infoViagem);
+                    stmt.setInt(5, idViagemDaDespesa);
+                    stmt.executeUpdate();
+                }
+                
+                con.commit();
+                alert("Registro marcado como excluído com sucesso!");
+                filtrar();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                alert("Erro ao excluir: " + e.getMessage());
+            }
+        });
+    }
+    
+    private String validarPermissaoGerente(String senha) {
+        String sql = "SELECT login_usuario FROM usuarios WHERE senha_hash = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, senha);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return rs.getString("login_usuario"); 
+        } catch (Exception e) { e.printStackTrace(); }
+        return null;
+    }
+
+    private String buscarInfoViagem(int idDespesa, Connection con) {
+        String info = "VIAGEM N/D";
+        String sql = "SELECT v.data_viagem, v.data_chegada FROM financeiro_saidas s JOIN viagens v ON s.id_viagem = v.id_viagem WHERE s.id = ?";
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM");
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, idDespesa);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                java.sql.Date dtIda = rs.getDate("data_viagem");
+                java.sql.Date dtVolta = rs.getDate("data_chegada");
+                String sIda = (dtIda != null) ? sdf.format(dtIda) : "?";
+                String sVolta = (dtVolta != null) ? sdf.format(dtVolta) : "?";
+                info = "REF. VIAGEM: " + sIda + " A " + sVolta;
+            }
+        } catch (Exception e) {}
+        return info;
+    }
+    
+    private int buscarIdViagemDaDespesa(int idDespesa, Connection con) {
+        String sql = "SELECT id_viagem FROM financeiro_saidas WHERE id = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, idDespesa);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return rs.getInt("id_viagem");
+        } catch (Exception e) {}
+        return 0;
+    }
+
+    @FXML
+    public void imprimirRelatorio() {
+        PrinterJob job = PrinterJob.createPrinterJob();
+        if (job != null && job.showPrintDialog(tabela.getScene().getWindow())) {
+            
+            Printer printer = job.getPrinter();
+            PageLayout pageLayout = printer.createPageLayout(javafx.print.Paper.A4, javafx.print.PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
+            double alturaUtilPagina = pageLayout.getPrintableHeight() - 80; 
+            double larguraPagina = pageLayout.getPrintableWidth();
+
+            List<VBox> paginas = new ArrayList<>();
+            List<Label> labelsNumeracao = new ArrayList<>(); 
+
+            VBox paginaAtual = new VBox(5);
+            paginaAtual.setPrefWidth(larguraPagina);
+            paginaAtual.setStyle("-fx-background-color: white; -fx-padding: 0;");
+            paginaAtual.setAlignment(javafx.geometry.Pos.TOP_CENTER);
+            
+            double alturaAtual = 0;
+
+            VBox cabecalho = criarCabecalhoEmpresa();
+            paginaAtual.getChildren().add(cabecalho);
+            alturaAtual += 140; 
+
+            VBox filtros = criarCabecalhoFiltros();
+            paginaAtual.getChildren().add(filtros);
+            alturaAtual += 50;
+
+            GridPane gridTabela = new GridPane();
+            configurarGridTabela(gridTabela, larguraPagina);
+            adicionarCabecalhoColunas(gridTabela);
+            paginaAtual.getChildren().add(gridTabela);
+            alturaAtual += 30; 
+
+            ObservableList<Despesa> itens = tabela.getItems();
+            Map<String, Double> totaisPorTipo = new HashMap<>();
+            double totalGeral = 0;
+            int rowGrid = 1; 
+
+            for (Despesa d : itens) {
+                double alturaLinha = 30; 
+                if (d.getDescricao().length() > 55) alturaLinha = 50; 
+
+                if (alturaAtual + alturaLinha > alturaUtilPagina) {
+                    paginas.add(paginaAtual); 
+                    paginaAtual = new VBox(5);
+                    paginaAtual.setPrefWidth(larguraPagina);
+                    paginaAtual.setStyle("-fx-background-color: white; -fx-padding: 20 0 0 0;");
+                    paginaAtual.setAlignment(javafx.geometry.Pos.TOP_CENTER);
+                    Label lblNumPag = new Label("Página ?/?");
+                    lblNumPag.setStyle("-fx-font-size: 10px; -fx-text-fill: #666;");
+                    labelsNumeracao.add(lblNumPag);
+                    paginaAtual.getChildren().add(lblNumPag);
+                    gridTabela = new GridPane();
+                    configurarGridTabela(gridTabela, larguraPagina);
+                    adicionarCabecalhoColunas(gridTabela);
+                    paginaAtual.getChildren().add(gridTabela);
+                    alturaAtual += 70; 
+                    rowGrid = 1; 
+                }
+
+                String corFundo = (rowGrid % 2 == 0) ? "#f2f2f2" : "#ffffff";
+                adicionarLinhaGrid(gridTabela, d, rowGrid, corFundo);
+                
+                if (!d.isExcluido()) {
+                    totaisPorTipo.put(d.getForma(), totaisPorTipo.getOrDefault(d.getForma(), 0.0) + d.getValor());
+                    totalGeral += d.getValor();
+                }
+                
+                alturaAtual += alturaLinha;
+                rowGrid++;
+            }
+
+            if (alturaAtual + 150 > alturaUtilPagina) {
+                 paginas.add(paginaAtual);
+                 paginaAtual = new VBox(5);
+                 paginaAtual.setPrefWidth(larguraPagina);
+                 paginaAtual.setStyle("-fx-background-color: white; -fx-padding: 20 0 0 0;");
+                 paginaAtual.setAlignment(javafx.geometry.Pos.TOP_CENTER);
+                 Label lblNumPag = new Label("Página ?/?");
+                 labelsNumeracao.add(lblNumPag);
+                 paginaAtual.getChildren().add(lblNumPag);
+            }
+            
+            paginaAtual.getChildren().add(criarRodape(totaisPorTipo, totalGeral));
+            paginas.add(paginaAtual);
+
+            int totalPaginas = paginas.size();
+            for (int i = 0; i < labelsNumeracao.size(); i++) {
+                labelsNumeracao.get(i).setText("Página " + (i + 2) + "/" + totalPaginas);
+            }
+            for (VBox p : paginas) { job.printPage(pageLayout, p); }
+            job.endJob();
+        }
+    }
+    
+    private VBox criarRodape(Map<String, Double> totais, double geral) {
+        VBox box = new VBox(5);
+        box.setStyle("-fx-padding: 20 0 0 0; -fx-border-color: #333; -fx-border-width: 1 0 0 0;");
+        
+        GridPane grid = new GridPane();
+        grid.setHgap(20);
+        int col = 0;
+        int row = 0;
+        
+        for (Map.Entry<String, Double> entry : totais.entrySet()) {
+            Label lbl = new Label(entry.getKey() + ": " + nf.format(entry.getValue()));
+            lbl.setStyle("-fx-font-size: 10px;");
+            grid.add(lbl, col, row);
+            col++;
+            if (col > 3) { col = 0; row++; }
+        }
+        
+        Label lblTotal = new Label("TOTAL GERAL: " + nf.format(geral));
+        lblTotal.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1565c0;");
+        
+        box.getChildren().addAll(grid, lblTotal);
+        return box;
+    }
+
+    private VBox criarCabecalhoEmpresa() {
+        VBox cabecalho = new VBox(5);
+        cabecalho.setAlignment(javafx.geometry.Pos.CENTER);
+        DadosEmpresa dados = buscarDadosEmpresa();
+        if (dados.pathLogo != null && !dados.pathLogo.isEmpty()) {
+            try {
+                File file = new File(dados.pathLogo);
+                if (file.exists()) {
+                    ImageView imgLogo = new ImageView(new Image(file.toURI().toString()));
+                    imgLogo.setFitHeight(60); 
+                    imgLogo.setPreserveRatio(true);
+                    cabecalho.getChildren().add(imgLogo);
+                }
+            } catch (Exception e) {}
+        }
+        String nomeEmpresa = (dados.nome != null && !dados.nome.isEmpty()) ? dados.nome : "F/B DEUS DE ALIANÇA V";
+        Label lblEmpresa = new Label(nomeEmpresa.toUpperCase());
+        lblEmpresa.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1565c0;"); 
+        Label lblTitulo = new Label("RELATÓRIO FINANCEIRO - SAÍDAS");
+        lblTitulo.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #333;");
+        cabecalho.getChildren().addAll(lblEmpresa, lblTitulo);
+        return cabecalho;
+    }
+
+    private VBox criarCabecalhoFiltros() {
+        VBox box = new VBox(2);
+        box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        box.setStyle("-fx-padding: 10 0 10 0;");
+        String nomeViagem = cmbFiltroViagem.getValue() != null ? cmbFiltroViagem.getValue().label : "Todas";
+        Label lblInfo = new Label("VIAGEM: " + nomeViagem);
+        Label lblData = new Label("EMISSÃO: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) + " | FILTROS: " + (cmbFiltroCategoria.getValue() != null ? cmbFiltroCategoria.getValue() : "Geral"));
+        lblInfo.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
+        lblData.setStyle("-fx-font-size: 9px;");
+        box.getChildren().addAll(lblInfo, lblData);
+        return box;
+    }
+
+    private void configurarGridTabela(GridPane grid, double largura) {
+        grid.setPrefWidth(largura);
+        grid.setMaxWidth(largura);
+        ColumnConstraints col1 = new ColumnConstraints(); col1.setPercentWidth(12); // Data
+        ColumnConstraints col2 = new ColumnConstraints(); col2.setPercentWidth(42); // Descrição
+        ColumnConstraints col3 = new ColumnConstraints(); col3.setPercentWidth(18); // Categoria
+        ColumnConstraints col4 = new ColumnConstraints(); col4.setPercentWidth(14); // Forma
+        ColumnConstraints col5 = new ColumnConstraints(); col5.setPercentWidth(14); // Valor
+        grid.getColumnConstraints().addAll(col1, col2, col3, col4, col5);
+    }
+
+    private void adicionarCabecalhoColunas(GridPane grid) {
+        adicionarCelulaCabecalho(grid, "DATA", 0);
+        adicionarCelulaCabecalho(grid, "DESCRIÇÃO / FORNECEDOR", 1);
+        adicionarCelulaCabecalho(grid, "CATEGORIA", 2);
+        adicionarCelulaCabecalho(grid, "FORMA", 3);
+        adicionarCelulaCabecalho(grid, "VALOR", 4);
+    }
+    
+    private void adicionarCelulaCabecalho(GridPane grid, String texto, int col) {
+        StackPane pane = new StackPane();
+        pane.setStyle("-fx-background-color: #1565c0; -fx-padding: 6;"); 
+        Label label = new Label(texto);
+        label.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        label.setWrapText(true);
+        label.setTextAlignment(TextAlignment.CENTER);
+        pane.getChildren().add(label);
+        grid.add(pane, col, 0);
+    }
+
+    private void adicionarLinhaGrid(GridPane grid, Despesa d, int row, String corFundo) {
+        boolean riscado = d.isExcluido();
+        String corPadrao = riscado ? "#999999" : "black";
+        String corForma = riscado ? "#999999" : getCorPorForma(d.getForma());
+        adicionarCelulaDado(grid, d.getData(), 0, row, corFundo, false, corPadrao, riscado);
+        String desc = d.getDescricao();
+        if (riscado) desc += " (EXCLUÍDO)";
+        adicionarCelulaDado(grid, desc, 1, row, corFundo, true, corPadrao, riscado);
+        adicionarCelulaDado(grid, d.getCategoria(), 2, row, corFundo, true, corPadrao, riscado);
+        adicionarCelulaDado(grid, d.getForma(), 3, row, corFundo, false, corForma, riscado);
+        adicionarCelulaDado(grid, d.getValorFormatado(), 4, row, corFundo, false, corPadrao, riscado);
+    }
+
+    private void adicionarCelulaDado(GridPane grid, String texto, int col, int row, String corFundo, boolean wrap, String corTexto, boolean riscado) {
+        StackPane pane = new StackPane();
+        pane.setStyle("-fx-background-color: " + corFundo + "; -fx-padding: 5;");
+        Label label = new Label(texto);
+        String style = "-fx-text-fill: " + corTexto + "; -fx-font-size: 9px;";
+        if (riscado) { style += "-fx-strikethrough: true;"; } else { if (col == 3) style += "-fx-font-weight: bold;"; }
+        label.setStyle(style);
+        label.setWrapText(wrap);
+        if(!wrap) label.setTextOverrun(OverrunStyle.CLIP);
+        if (col == 4) pane.setAlignment(javafx.geometry.Pos.CENTER_RIGHT); else pane.setAlignment(javafx.geometry.Pos.CENTER_LEFT); 
+        pane.getChildren().add(label);
+        grid.add(pane, col, row);
+    }
+    
+    private String getCorPorForma(String forma) {
+        if (forma == null) return "black";
+        switch (forma.toUpperCase()) {
+            case "DINHEIRO": return "#2e7d32"; case "PIX": return "#1565c0"; case "CARTAO": return "#e65100"; case "TRANSFERENCIA": return "#6a1b9a"; case "BOLETO": return "#c62828"; default: return "black";
+        }
+    }
+
+    @FXML
+    public void abrirCadastroBoleto() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/CadastroBoleto.fxml"));
+            Parent root = loader.load();
+            Stage stage = new Stage();
+            stage.setTitle("Gestão de Boletos e Prazos");
+            stage.setScene(TemaManager.criarSceneComTema(root));
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setMaximized(true);
+            stage.showAndWait();
+            
+            filtrar(); 
+        } catch (Exception e) { 
+            e.printStackTrace(); 
+            // alert("Erro ao abrir tela: " + e.getMessage()); // Use seu método de alerta se preferir
+        }
+    }
+    
+    @FXML
+    public void novaCategoria() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Nova Categoria");
+        dialog.setHeaderText("Cadastrar Categoria de Despesa");
+        dialog.setContentText("Nome:");
+        Optional<String> res = dialog.showAndWait();
+        if(res.isPresent() && !res.get().isEmpty()) {
+            try(Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome) VALUES (?)")) {
+                stmt.setString(1, res.get().toUpperCase());
+                stmt.executeUpdate();
+                carregarCategorias(); 
+            } catch(Exception e) { alert("Erro: " + e.getMessage()); }
+        }
+    }
+    
+    @FXML public void limparFiltros() {
+        dpFiltroData.setValue(null);
+        dpFiltroData.getEditor().clear(); 
+        cmbFiltroCategoria.getSelectionModel().clearSelection();
+        cmbFiltroPagamento.getSelectionModel().clearSelection();
+        cmbFiltroPagamento.getSelectionModel().select("Todas");
+        cmbFiltroCategoria.getSelectionModel().select("Todas");
+        filtrar();
+    }
+
+    @FXML
+    public void abrirAuditoria() {
+        if (cmbFiltroViagem.getValue() == null || cmbFiltroViagem.getValue().id == 0) {
+            alert("Selecione uma viagem específica no filtro para ver a auditoria.\nO sistema precisa saber de qual viagem você quer ver o histórico.");
+            return;
+        }
+        
+        AuditoriaExclusoesSaida tela = new AuditoriaExclusoesSaida();
+        tela.abrir(cmbFiltroViagem.getValue().id, cmbFiltroViagem.getValue().label);
+    }
+    
+    private void carregarCategorias() {
+        listaCategoriasOriginal.clear();
+        listaCategoriasOriginal.add("Todas"); 
+        ObservableList<String> catsParaCadastro = FXCollections.observableArrayList();
+        try (Connection con = ConexaoBD.getConnection(); ResultSet rs = con.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()) {
+            while(rs.next()) {
+                String nome = rs.getString(1);
+                listaCategoriasOriginal.add(nome);
+                catsParaCadastro.add(nome);
+            }
+        } catch(Exception e) {}
+        cmbCategoria.setItems(catsParaCadastro);
+        this.listaCategoriasOriginal = catsParaCadastro; 
+        configurarAutoComplete(cmbCategoria); 
+        ObservableList<String> catsFiltro = FXCollections.observableArrayList("Todas");
+        catsFiltro.addAll(catsParaCadastro);
+        cmbFiltroCategoria.setItems(catsFiltro);
+    }
+    
+    private int buscarIdCategoria(String nome) throws SQLException {
+        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ?")) {
+            stmt.setString(1, nome);
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()) return rs.getInt(1);
+        }
+        return 1; 
+    }
+
+    private void configuringTabela() {
+        colData.setCellValueFactory(new PropertyValueFactory<>("data"));
+        colDescricao.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+        colCategoria.setCellValueFactory(new PropertyValueFactory<>("categoria"));
+        colForma.setCellValueFactory(new PropertyValueFactory<>("forma"));
+        colValor.setCellValueFactory(new PropertyValueFactory<>("valorFormatado"));
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        
+        colStatus.setCellFactory(col -> new TableCell<Despesa, String>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { 
+                    setText(null); setStyle(""); 
+                } else {
+                    Despesa d = getTableView().getItems().get(getIndex());
+                    if (d.isExcluido()) {
+                        setText("EXCLUÍDO");
+                        setStyle("-fx-text-fill: #999; -fx-strikethrough: true;");
+                    } else {
+                        setText(item);
+                        if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;");
+                        else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                    }
+                }
+            }
+        });
+
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){}
+    }
+    private void configurarTabela() { configuringTabela(); }
+
+    private void alert(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).show(); }
+
+    private static class DadosEmpresa {
+        String nome;
+        String pathLogo;
+    }
+
+    private DadosEmpresa buscarDadosEmpresa() {
+        DadosEmpresa d = new DadosEmpresa();
+        String sql = "SELECT nome_embarcacao, path_logo FROM configuracao_empresa LIMIT 1";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                d.nome = rs.getString("nome_embarcacao");
+                d.pathLogo = rs.getString("path_logo");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return d;
+    }
+
+    public static class Despesa {
+        private int id;
+        private String data, descricao, categoria, forma, status;
+        private Double valor;
+        private boolean excluido; 
+        
+        public Despesa(int id, String d, String desc, String cat, String forma, Double val, String st, boolean excluido) {
+            this.id = id; this.data = d; this.descricao = desc; this.categoria = cat;
+            this.forma = forma; this.valor = val; this.status = st;
+            this.excluido = excluido;
+        }
+        public int getId() { return id; }
+        public String getData() { return data; }
+        public String getDescricao() { return descricao; }
+        public String getCategoria() { return categoria; }
+        public String getForma() { return forma; }
+        public Double getValor() { return valor; }
+        public String getStatus() { return status; }
+        public boolean isExcluido() { return excluido; } 
+        public String getValorFormatado() { return NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(valor); }
+    }
+    
+    public static class OpcaoViagem {
+        int id; String label;
+        public OpcaoViagem(int id, String label) { this.id = id; this.label = label; }
+        @Override public String toString() { return label; }
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            OpcaoViagem that = (OpcaoViagem) obj;
+            return id == that.id;
+        }
+        
+        @Override
+        public int hashCode() {
+            return Integer.hashCode(id);
+        }
+    }
+}

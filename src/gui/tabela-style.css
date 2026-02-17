@@ -1,0 +1,28 @@
+/* Estilo para cabeçalhos da tabela - Azul */
+.table-view .column-header {
+    -fx-background-color: #0056b3;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* Mantém o estilo zebra padrão nas células */
+.table-view .table-row-cell {
+    -fx-background-color: white;
+}
+
+.table-view .table-row-cell:odd {
+    -fx-background-color: #f0f0f0;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #0078d7;
+}
+
+/* Aumenta a fonte das células */
+.table-view .table-cell {
+    -fx-font-size: 13px;
+}

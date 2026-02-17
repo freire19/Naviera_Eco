@@ -1,14 +1,50 @@
 package gui;
 
+import gui.util.LogService;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert; // IMPORT ADICIONADO
+import javafx.scene.control.Alert;
 import javafx.scene.layout.BorderPane; 
 import javafx.stage.Stage;
 import java.net.URL;
 
 public class TelaPrincipalApp extends Application {
+
+    @Override
+    public void init() throws Exception {
+        super.init();
+        
+        // =========================================================================
+        // CONFIGURAR HANDLER GLOBAL DE EXCEÇÕES NÃO CAPTURADAS
+        // Captura erros fatais e grava no log automaticamente
+        // =========================================================================
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            // Registrar erro no arquivo de log
+            LogService.registrarErroFatal(thread, throwable);
+            
+            // Exibir alerta para o usuário (na thread do JavaFX)
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Erro Crítico");
+                alert.setHeaderText("Ocorreu um erro inesperado no sistema");
+                alert.setContentText(
+                    "O erro foi registrado no arquivo de log.\n\n" +
+                    "Tipo: " + throwable.getClass().getSimpleName() + "\n" +
+                    "Mensagem: " + throwable.getMessage() + "\n\n" +
+                    "Por favor, entre em contato com o suporte técnico."
+                );
+                alert.showAndWait();
+            });
+            
+            // Imprimir no console também
+            System.err.println("ERRO FATAL CAPTURADO:");
+            throwable.printStackTrace();
+        });
+        
+        LogService.registrarInfo("Sistema inicializado com sucesso.");
+    }
 
     @Override
     public void start(Stage primaryStage) {

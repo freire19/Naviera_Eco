@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -12,159 +13,87 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="590.0" prefWidth="670.0"
-            stylesheets="@/css/main.css"
+<AnchorPane prefHeight="650.0" prefWidth="700.0"
             xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="gui.CadastroEmpresaController">
 
     <children>
         <VBox alignment="TOP_CENTER"
-              layoutX="10.0" layoutY="10.0"
-              spacing="20.0"
-              AnchorPane.bottomAnchor="10.0"
-              AnchorPane.leftAnchor="10.0"
-              AnchorPane.rightAnchor="10.0"
-              AnchorPane.topAnchor="10.0">
+              spacing="15.0"
+              styleClass="painel-formulario" style="-fx-padding: 20;"
+              AnchorPane.bottomAnchor="0.0"
+              AnchorPane.leftAnchor="0.0"
+              AnchorPane.rightAnchor="0.0"
+              AnchorPane.topAnchor="0.0">
             <children>
 
-                <!-- Título -->
-                <Label text="Cadastro da Empresa/Configurações do Sistema"
-                       styleClass="tela-titulo">
+                <Label text="Configurações da Empresa &amp; Bilhete" textFill="#cccccc">
                     <font>
-                        <Font name="System Bold" size="18.0" />
+                        <Font name="System Bold" size="20.0" />
                     </font>
-                    <VBox.margin>
-                        <Insets bottom="20.0" />
-                    </VBox.margin>
                 </Label>
 
-                <!-- Grade com todos os campos de texto -->
                 <GridPane hgap="10.0" vgap="10.0">
                     <columnConstraints>
-                        <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="200.0" />
-                        <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="200.0" />
+                        <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" minWidth="100.0" />
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="200.0" />
+                        <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" minWidth="100.0" />
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="200.0" />
                     </columnConstraints>
-                    <rowConstraints>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                    </rowConstraints>
+                    
                     <children>
-                        <!-- Linha 0: Caminho da foto + botão -->
-                        <Label text="Caminho Foto:" GridPane.rowIndex="0" />
-                        <TextField fx:id="txtCaminhoFoto"
-                                   editable="false"
-                                   promptText="Clique em 'Foto' para selecionar"
-                                   GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="0" />
-                        <Button fx:id="btnEscolherFoto"
-                                mnemonicParsing="false"
-                                onAction="#onBtnEscolherFoto"
-                                text="Foto"
-                                GridPane.columnIndex="3" GridPane.rowIndex="0" />
+                        <Label text="Logo (Caminho):" GridPane.rowIndex="0" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtCaminhoFoto" editable="false" promptText="Selecione a imagem..." GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="0" />
+                        <Button fx:id="btnEscolherFoto" onAction="#onBtnEscolherFoto" text="Buscar Foto" GridPane.columnIndex="3" GridPane.rowIndex="0" />
 
-                        <!-- Linha 1: Companhia + Embarcação -->
-                        <Label text="Companhia:" GridPane.rowIndex="1" />
-                        <TextField fx:id="txtCompanhia"
-                                   promptText="Nome da sua empresa"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <Label text="Embarcação:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                        <TextField fx:id="txtEmbarcacao"
-                                   promptText="Nome da sua embarcação"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                        <Label text="Companhia:" GridPane.rowIndex="1" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtCompanhia" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                        <Label text="Embarcação:" GridPane.columnIndex="2" GridPane.rowIndex="1" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtEmbarcacao" GridPane.columnIndex="3" GridPane.rowIndex="1" />
 
-                        <!-- Linha 2: Comandante + Proprietário -->
-                        <Label text="Comandante:" GridPane.rowIndex="2" />
-                        <TextField fx:id="txtComandante"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="2" />
-                        <Label text="Proprietário:" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                        <TextField fx:id="txtProprietario"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                        <Label text="Comandante:" GridPane.rowIndex="2" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtComandante" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                        <Label text="Proprietário:" GridPane.columnIndex="2" GridPane.rowIndex="2" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtProprietario" GridPane.columnIndex="3" GridPane.rowIndex="2" />
 
-                        <!-- Linha 3: Origem Padrão + Gerente -->
-                        <Label text="Origem Padrão:" GridPane.rowIndex="3" />
-                        <TextField fx:id="txtOrigem"
-                                   promptText="Cidade/Porto de origem usual"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                        <Label text="Gerente:" GridPane.columnIndex="2" GridPane.rowIndex="3" />
-                        <TextField fx:id="txtGerente"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="3" />
+                        <Label text="Origem:" GridPane.rowIndex="3" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtOrigem" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                        <Label text="Gerente:" GridPane.columnIndex="2" GridPane.rowIndex="3" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtGerente" GridPane.columnIndex="3" GridPane.rowIndex="3" />
 
-                        <!-- Linha 4: Linha do Rio + CNPJ -->
-                        <Label text="Linha do Rio:" GridPane.rowIndex="4" />
-                        <TextField fx:id="txtLinhaDoRio"
-                                   promptText="Rota fluvial principal"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="4" />
-                        <Label text="CNPJ:" GridPane.columnIndex="2" GridPane.rowIndex="4" />
-                        <TextField fx:id="txtCnpj"
-                                   promptText="XX.XXX.XXX/YYYY-ZZ"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="4" />
+                        <Label text="Linha/Rio:" GridPane.rowIndex="4" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtLinhaDoRio" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                        <Label text="CNPJ:" GridPane.columnIndex="2" GridPane.rowIndex="4" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtCnpj" GridPane.columnIndex="3" GridPane.rowIndex="4" />
 
-                        <!-- Linha 5: IE + Endereço -->
-                        <Label text="IE (Insc. Estadual):" GridPane.rowIndex="5" />
-                        <TextField fx:id="txtIe"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="5" />
-                        <Label text="Endereço:" GridPane.columnIndex="2" GridPane.rowIndex="5" />
-                        <TextField fx:id="txtEndereco"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="5" />
+                        <Label text="IE:" GridPane.rowIndex="5" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtIe" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                        <Label text="Endereço:" GridPane.columnIndex="2" GridPane.rowIndex="5" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtEndereco" GridPane.columnIndex="3" GridPane.rowIndex="5" />
 
-                        <!-- Linha 6: CEP + Telefone -->
-                        <Label text="CEP:" GridPane.rowIndex="6" />
-                        <TextField fx:id="txtCep"
-                                   promptText="XXXXX-XXX"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="6" />
-                        <Label text="Telefone:" GridPane.columnIndex="2" GridPane.rowIndex="6" />
-                        <TextField fx:id="txtTelefone"
-                                   promptText="(XX) XXXXX-XXXX"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="6" />
+                        <Label text="CEP:" GridPane.rowIndex="6" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtCep" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                        <Label text="Telefone:" GridPane.columnIndex="2" GridPane.rowIndex="6" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtTelefone" GridPane.columnIndex="3" GridPane.rowIndex="6" />
 
-                        <!-- Linha 7: Frase (para relatórios) -->
-                        <Label text="Frase (Relatórios):" GridPane.rowIndex="7" />
-                        <TextField fx:id="txtFrase"
-                                   promptText="Frase para cabeçalho de relatórios"
-                                   GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="7" />
+                        <Label text="Frase Rodapé:" GridPane.rowIndex="7" style="-fx-font-weight: bold;"/>
+                        <TextField fx:id="txtFrase" GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="7" />
+                        
+                        <Label text="Regras/Avisos do Bilhete:" GridPane.rowIndex="8" GridPane.valignment="TOP" style="-fx-font-weight: bold; -fx-text-fill: #d32f2f;"/>
+                        <TextArea fx:id="txtRecomendacoes" wrapText="true" prefRowCount="4" promptText="Digite aqui as regras que sairão na lateral do bilhete..." GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="8" />
+                        
                     </children>
                 </GridPane>
 
-                <!-- Mensagem de erro ou validação -->
-                <Label fx:id="lblMensagem"
-                       style="-fx-text-fill: #D32F2F;"
-                       textAlignment="CENTER">
-                    <VBox.margin>
-                        <Insets top="15.0" />
-                    </VBox.margin>
-                </Label>
+                <Label fx:id="lblMensagem" style="-fx-text-fill: green; -fx-font-weight: bold;" />
 
-                <!-- Botões de ação: Novo, Salvar, Sair -->
                 <HBox alignment="CENTER" spacing="20.0">
                     <children>
-                        <Button fx:id="btnNovo"
-                                mnemonicParsing="false"
-                                onAction="#handleNovo"
-                                prefWidth="120.0"
-                                text="Limpar (Novo)" />
-                        <Button fx:id="btnSalvar"
-                                mnemonicParsing="false"
-                                onAction="#handleSalvar"
-                                prefWidth="120.0"
-                                text="Salvar Configurações"
-                                styleClass="button-primary" />
-                        <Button fx:id="btnSair"
-                                mnemonicParsing="false"
-                                onAction="#handleSair"
-                                prefWidth="120.0"
-                                text="Sair" />
+                        <Button fx:id="btnNovo" onAction="#handleNovo" prefWidth="100.0" text="Limpar" />
+                        <Button fx:id="btnSalvar" onAction="#handleSalvar" prefWidth="150.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;" text="SALVAR DADOS" />
+                        <Button fx:id="btnSair" onAction="#handleSair" prefWidth="100.0" text="Sair" />
                     </children>
-                    <VBox.margin>
-                        <Insets top="20.0" />
-                    </VBox.margin>
                 </HBox>
 
             </children>

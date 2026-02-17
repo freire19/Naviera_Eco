@@ -3,7 +3,9 @@ package model;
 import java.math.BigDecimal;
 
 public class ItemFrete {
-    private int idItemFrete; // Mantenho int conforme seu uso atual, embora Long seja geralmente preferível para IDs
+    
+    // Suas variáveis originais
+    private int idItemFrete; 
     private String nomeItem;
     private BigDecimal precoUnitarioPadrao;
     private BigDecimal precoUnitarioDesconto;
@@ -11,11 +13,11 @@ public class ItemFrete {
     private String descricao;
     private String unidadeMedida;
 
-    // Construtor vazio (boa prática, muitas vezes exigido por frameworks)
+    // Construtor vazio
     public ItemFrete() {
     }
 
-    // CONSTRUTOR COMPLETO: Este é o construtor que foi adicionado para resolver o erro
+    // CONSTRUTOR COMPLETO
     public ItemFrete(int idItemFrete, String nomeItem, String descricao,
                      String unidadeMedida, BigDecimal precoUnitarioPadrao,
                      BigDecimal precoUnitarioDesconto, boolean ativo) {
@@ -28,9 +30,17 @@ public class ItemFrete {
         this.ativo = ativo;
     }
 
-    // Getters e setters
+    // --- GETTERS E SETTERS ---
+
     public int getIdItemFrete() { return idItemFrete; }
     public void setIdItemFrete(int idItemFrete) { this.idItemFrete = idItemFrete; }
+
+    // *** MÉTODO DE CORREÇÃO (A PONTE) ***
+    // Adicionei estes dois métodos para que o sistema funcione 
+    // tanto se chamar getId() quanto getIdItemFrete()
+    public int getId() { return idItemFrete; }
+    public void setId(int id) { this.idItemFrete = id; }
+    // ************************************
 
     public String getNomeItem() { return nomeItem; }
     public void setNomeItem(String nomeItem) { this.nomeItem = nomeItem; }
@@ -49,4 +59,9 @@ public class ItemFrete {
 
     public String getUnidadeMedida() { return unidadeMedida; }
     public void setUnidadeMedida(String unidadeMedida) { this.unidadeMedida = unidadeMedida; }
+    
+    @Override
+    public String toString() {
+        return nomeItem; 
+    }
 }

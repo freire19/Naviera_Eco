@@ -7,54 +7,45 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="gui.CadastroClienteController"
-            prefWidth="600.0" prefHeight="400.0">
+            prefWidth="600.0" prefHeight="400.0"
+            styleClass="root-financeiro">
 
-    <!-- Usando VBox com 'padding' via 4 valores (top,right,bottom,left) -->
-    <VBox spacing="10.0" alignment="TOP_LEFT">
-        <!-- Definindo padding manualmente -->
-        <padding>
-            <Insets top="20.0" right="20.0" bottom="20.0" left="20.0" />
-        </padding>
+    <VBox spacing="10.0" alignment="TOP_LEFT" styleClass="content-panel" style="-fx-padding: 20;">
+        
+        <Label text="Cadastro de Cliente" styleClass="title-main-screen" />
 
-        <Label text="Cadastro de Cliente"
-               style="-fx-font-size: 16; -fx-font-weight: bold;" />
-
-        <!-- Campo Razão Social -->
         <HBox spacing="10.0">
-            <Label text="Razão Social:" minWidth="100.0"/>
+            <Label text="Razão Social:" minWidth="100.0" styleClass="label-bold"/>
             <TextField fx:id="txtRazaoSocial"
                        promptText="Nome ou Razão Social" prefWidth="200.0"/>
         </HBox>
 
-        <!-- Campo CNPJ -->
         <HBox spacing="10.0">
-            <Label text="CNPJ:" minWidth="100.0"/>
+            <Label text="CNPJ:" minWidth="100.0" styleClass="label-bold"/>
             <TextField fx:id="txtCnpj"
                        promptText="CPF ou CNPJ" prefWidth="200.0"/>
         </HBox>
 
-        <!-- Campo Endereço -->
         <HBox spacing="10.0">
-            <Label text="Endereço:" minWidth="100.0"/>
+            <Label text="Endereço:" minWidth="100.0" styleClass="label-bold"/>
             <TextField fx:id="txtEndereco"
                        promptText="Endereço completo" prefWidth="300.0"/>
         </HBox>
 
-        <!-- Campo Telefone -->
         <HBox spacing="10.0">
-            <Label text="Telefone:" minWidth="100.0"/>
+            <Label text="Telefone:" minWidth="100.0" styleClass="label-bold"/>
             <TextField fx:id="txtTelefone"
                        promptText="Telefone" prefWidth="150.0"/>
         </HBox>
 
-        <!-- Botões -->
         <HBox spacing="10.0" alignment="CENTER_RIGHT">
-            <Button fx:id="btnSalvar" text="Salvar" />
+            <Button fx:id="btnSalvar" text="Salvar" styleClass="button-success"/>
             <Button fx:id="btnEditar" text="Editar" disable="true" />
-            <Button fx:id="btnFechar" text="Fechar" />
+            <Button fx:id="btnFechar" text="Fechar" styleClass="button-cancel"/>
         </HBox>
     </VBox>
 

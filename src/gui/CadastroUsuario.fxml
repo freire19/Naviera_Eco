@@ -17,11 +17,11 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="680.0" prefWidth="850.0" stylesheets="@/css/main.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.CadastroUsuarioController">
+<AnchorPane prefHeight="680.0" prefWidth="850.0" styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.CadastroUsuarioController">
    <children>
-      <VBox spacing="15.0" AnchorPane.bottomAnchor="14.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" AnchorPane.topAnchor="14.0">
+      <VBox spacing="15.0" AnchorPane.bottomAnchor="14.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" AnchorPane.topAnchor="14.0" styleClass="content-panel" style="-fx-padding: 15;">
          <children>
-            <Label styleClass="tela-titulo" text="Cadastro de Usuário">
+            <Label styleClass="title-main-screen" text="Cadastro de Usuário">
                <font>
                   <Font name="System Bold" size="18.0" />
                </font>
@@ -41,28 +41,28 @@
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
-                  <Label text="ID:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                  <Label text="ID:" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="label-bold"/>
                   <TextField fx:id="txtId" disable="true" editable="false" promptText="Gerado Automaticamente" GridPane.columnIndex="1" GridPane.rowIndex="0" />
                   
-                  <Label text="Nome Completo:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                  <Label text="Nome Completo:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="label-bold"/>
                   <TextField fx:id="txtNomeCompleto" promptText="Nome completo do usuário" GridPane.columnIndex="1" GridPane.rowIndex="1" GridPane.columnSpan="3" />
                   
-                  <Label text="Login de Usuário:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                  <Label text="Login de Usuário:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="label-bold"/>
                   <TextField fx:id="txtLoginUsuario" promptText="Nome para login (único)" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                   
-                  <Label text="Email:" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+                  <Label text="Email:" GridPane.columnIndex="2" GridPane.rowIndex="2" styleClass="label-bold"/>
                   <TextField fx:id="txtEmail" promptText="email@dominio.com (opcional)" GridPane.columnIndex="3" GridPane.rowIndex="2" />
                   
-                  <Label text="Senha:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                  <Label text="Senha:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="label-bold"/>
                   <PasswordField fx:id="txtSenha" promptText="Mínimo 6 caracteres" GridPane.columnIndex="1" GridPane.rowIndex="3" />
                   
-                  <Label text="Confirmar Senha:" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+                  <Label text="Confirmar Senha:" GridPane.columnIndex="2" GridPane.rowIndex="3" styleClass="label-bold"/>
                   <PasswordField fx:id="txtConfirmarSenha" promptText="Repita a senha" GridPane.columnIndex="3" GridPane.rowIndex="3" />
                   
-                  <Label text="Função:" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+                  <Label text="Função:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="label-bold"/>
                   <ComboBox fx:id="cmbFuncao" prefWidth="250.0" promptText="Selecione a função" GridPane.columnIndex="1" GridPane.rowIndex="4" />
                   
-                  <Label text="Permissão:" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+                  <Label text="Permissão:" GridPane.columnIndex="2" GridPane.rowIndex="4" styleClass="label-bold"/>
                   <ComboBox fx:id="cmbPermissao" prefWidth="250.0" promptText="Selecione o nível de permissão" GridPane.columnIndex="3" GridPane.rowIndex="4" />
                   
                   <CheckBox fx:id="chkAtivo" mnemonicParsing="false" selected="true" text="Usuário Ativo" GridPane.columnIndex="1" GridPane.rowIndex="5" />
@@ -71,9 +71,9 @@
             <HBox alignment="CENTER" spacing="10.0">
                <children>
                   <Button fx:id="btnNovo" mnemonicParsing="false" onAction="#handleNovo" prefWidth="100.0" text="Novo" />
-                  <Button fx:id="btnSalvar" mnemonicParsing="false" onAction="#handleSalvar" prefWidth="100.0" text="Salvar" />
-                  <Button fx:id="btnExcluir" mnemonicParsing="false" onAction="#handleExcluir" prefWidth="100.0" text="Excluir" />
-                  <Button fx:id="btnSair" mnemonicParsing="false" onAction="#handleSair" prefWidth="100.0" text="Sair" />
+                  <Button fx:id="btnSalvar" mnemonicParsing="false" onAction="#handleSalvar" prefWidth="100.0" styleClass="button-success" text="Salvar" />
+                  <Button fx:id="btnExcluir" mnemonicParsing="false" onAction="#handleExcluir" prefWidth="100.0" styleClass="button-danger" text="Excluir" />
+                  <Button fx:id="btnSair" mnemonicParsing="false" onAction="#handleSair" prefWidth="100.0" styleClass="button-cancel" text="Sair" />
                </children>
                <VBox.margin>
                   <Insets top="10.0" />
