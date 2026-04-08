@@ -3,7 +3,9 @@ package dao;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AgendaDAO {
 
@@ -73,6 +75,32 @@ public class AgendaDAO {
         return notas;
     }
     
+    /**
+     * Busca TODAS as anotações não-concluídas do mês inteiro de uma vez só.
+     * Retorna um Map(data -> lista de descrições), eliminando N+1 queries.
+     */
+    public Map<LocalDate, List<String>> buscarAnotacoesDoMes(int mes, int ano) {
+        Map<LocalDate, List<String>> mapa = new HashMap<>();
+        String sql = "SELECT data_evento, descricao FROM agenda_anotacoes " +
+                     "WHERE concluida = false " +
+                     "AND EXTRACT(MONTH FROM data_evento) = ? " +
+                     "AND EXTRACT(YEAR FROM data_evento) = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, mes);
+            stmt.setInt(2, ano);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    LocalDate data = rs.getDate("data_evento").toLocalDate();
+                    mapa.computeIfAbsent(data, k -> new ArrayList<>()).add(rs.getString("descricao"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return mapa;
+    }
+
     // --- NOVO MÉTODO: Busca Boletos Pendentes para exibir no Calendário ---
     public List<ResumoBoleto> buscarBoletosPendentesNoMes(int mes, int ano) {
         List<ResumoBoleto> boletos = new ArrayList<>();

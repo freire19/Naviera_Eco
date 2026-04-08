@@ -5,6 +5,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.layout.BorderPane?>
@@ -14,112 +15,113 @@
 
 <BorderPane fx:id="rootPane" prefHeight="700.0" prefWidth="950.0" styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RelatorioEncomendaGeralController">
    <top>
-      <HBox alignment="CENTER" prefHeight="70.0" styleClass="header-panel" BorderPane.alignment="CENTER">
+      <HBox alignment="CENTER" prefHeight="60.0" styleClass="header-panel" BorderPane.alignment="CENTER">
          <children>
             <Label text="CENTRAL DE RELATÓRIOS" styleClass="title-main-screen">
                <font>
-                  <Font name="System Bold" size="26.0" />
+                  <Font name="System Bold" size="24.0" />
                </font>
             </Label>
          </children>
       </HBox>
    </top>
    <center>
-      <VBox alignment="TOP_CENTER" spacing="15.0" BorderPane.alignment="CENTER" styleClass="main-background">
-         <padding>
-            <Insets bottom="20.0" left="40.0" right="40.0" top="20.0" />
-         </padding>
-         <children>
-            <VBox spacing="10.0" styleClass="content-panel" style="-fx-padding: 20;">
+      <ScrollPane fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;">
+         <content>
+            <VBox alignment="TOP_CENTER" spacing="10.0" styleClass="main-background">
+               <padding>
+                  <Insets bottom="15.0" left="40.0" right="40.0" top="15.0" />
+               </padding>
                <children>
-                  <Label styleClass="label-highlight" text="1. FILTROS:">
-                     <font>
-                        <Font name="System Black" size="16.0" />
-                     </font>
-                  </Label>
-                  <Separator />
-                  <Label text="Selecione a Viagem (Obrigatório):" styleClass="label-small-bold" />
-                  <ComboBox fx:id="cmbViagem" maxWidth="1.7976931348623157E308" prefHeight="35.0" promptText="Escolha a viagem..." />
-                  <Label text="Selecione a Rota (Opcional):" styleClass="label-small-bold" />
-                  <ComboBox fx:id="cmbRota" maxWidth="1.7976931348623157E308" prefHeight="35.0" promptText="Todas as Rotas" />
+                  <VBox spacing="8.0" styleClass="content-panel" style="-fx-padding: 15;">
+                     <children>
+                        <Label styleClass="label-highlight" text="1. FILTROS:">
+                           <font>
+                              <Font name="System Black" size="15.0" />
+                           </font>
+                        </Label>
+                        <Separator />
+                        <Label text="Selecione a Viagem (Obrigatório):" styleClass="label-small-bold" />
+                        <ComboBox fx:id="cmbViagem" maxWidth="1.7976931348623157E308" prefHeight="32.0" promptText="Escolha a viagem..." />
+                        <Label text="Selecione a Rota (Opcional):" styleClass="label-small-bold" />
+                        <ComboBox fx:id="cmbRota" maxWidth="1.7976931348623157E308" prefHeight="32.0" promptText="Todas as Rotas" />
+                     </children>
+                  </VBox>
+                  <VBox spacing="8.0" styleClass="content-panel" style="-fx-padding: 15;">
+                     <children>
+                        <Label styleClass="label-highlight" text="2. MODELO DE IMPRESSÃO:">
+                           <font>
+                              <Font name="System Black" size="15.0" />
+                           </font>
+                        </Label>
+                        <Separator />
+
+                        <RadioButton fx:id="rbCompleto" mnemonicParsing="false" selected="true" styleClass="label-highlight" text="1. CONFERÊNCIA GERAL (Relatório Detalhado)">
+                           <font>
+                              <Font name="System Bold" size="13.0" />
+                           </font>
+                           <toggleGroup>
+                              <ToggleGroup fx:id="grupoRelatorio" />
+                           </toggleGroup>
+                        </RadioButton>
+                        <Label text="   (Padrão) Exibe remetente, destinatário, todos os itens, valores e resumo." styleClass="label-small" wrapText="true">
+                           <VBox.margin><Insets left="25.0" top="-3.0" /></VBox.margin>
+                        </Label>
+
+                        <Separator />
+
+                        <RadioButton fx:id="rbSimples" mnemonicParsing="false" styleClass="label-highlight" text="2. LISTA RÁPIDA DE ENTREGA (Simplificado)" toggleGroup="$grupoRelatorio">
+                           <font>
+                              <Font name="System Bold" size="13.0" />
+                           </font>
+                        </RadioButton>
+                        <Label text="   Exibe APENAS o Número da Encomenda e o Nome do Destinatário." styleClass="label-small" wrapText="true">
+                           <VBox.margin><Insets left="25.0" top="-3.0" /></VBox.margin>
+                        </Label>
+
+                        <Separator />
+
+                        <RadioButton fx:id="rbListaTabular" mnemonicParsing="false" styleClass="label-highlight" text="3. LISTA DE ENCOMENDAS (Tabela da Viagem)" toggleGroup="$grupoRelatorio">
+                           <font>
+                              <Font name="System Bold" size="13.0" />
+                           </font>
+                        </RadioButton>
+                        <Label text="   Gera uma tabela com linhas e colunas (Nº, Remetente, Destinatário, Valor, Status)." styleClass="label-small" wrapText="true">
+                           <VBox.margin><Insets left="25.0" top="-3.0" /></VBox.margin>
+                        </Label>
+
+                        <Separator />
+
+                        <RadioButton fx:id="rbTabelaPrecos" mnemonicParsing="false" styleClass="label-highlight" text="4. TABELA DE PREÇOS GERAL (Sistema)" toggleGroup="$grupoRelatorio">
+                           <font>
+                              <Font name="System Bold" size="13.0" />
+                           </font>
+                        </RadioButton>
+                        <Label text="   Imprime a tabela de preços cadastrada no sistema (não depende da viagem)." styleClass="label-small" wrapText="true">
+                           <VBox.margin><Insets left="25.0" top="-3.0" /></VBox.margin>
+                        </Label>
+
+                     </children>
+                  </VBox>
+
+                  <!-- BOTÕES DE AÇÃO - agora dentro do conteúdo rolável para sempre serem visíveis -->
+                  <HBox alignment="CENTER_RIGHT" spacing="20.0" style="-fx-padding: 10 0 5 0;">
+                     <children>
+                        <Button fx:id="btnSair" mnemonicParsing="false" onAction="#handleSair" prefHeight="45.0" prefWidth="120.0" styleClass="button-cancel" text="SAIR">
+                           <font>
+                              <Font name="System Bold" size="14.0" />
+                           </font>
+                        </Button>
+                        <Button fx:id="btnGerarRelatorio" defaultButton="true" mnemonicParsing="false" onAction="#handleGerarRelatorio" prefHeight="50.0" prefWidth="220.0" styleClass="button-primary" text="GERAR RELATÓRIO">
+                           <font>
+                              <Font name="System Bold" size="15.0" />
+                           </font>
+                        </Button>
+                     </children>
+                  </HBox>
                </children>
             </VBox>
-            <VBox spacing="12.0" styleClass="content-panel" style="-fx-padding: 20;" VBox.vgrow="ALWAYS">
-               <children>
-                  <Label styleClass="label-highlight" text="2. MODELO DE IMPRESSÃO:">
-                     <font>
-                        <Font name="System Black" size="16.0" />
-                     </font>
-                  </Label>
-                  <Separator />
-                  
-                  <RadioButton fx:id="rbCompleto" mnemonicParsing="false" selected="true" styleClass="label-highlight" text="1. CONFERÊNCIA GERAL (Relatório Detalhado)">
-                     <font>
-                        <Font name="System Bold" size="14.0" />
-                     </font>
-                     <toggleGroup>
-                        <ToggleGroup fx:id="grupoRelatorio" />
-                     </toggleGroup>
-                  </RadioButton>
-                  <Label text="   (Padrão) Exibe remetente, destinatário, todos os itens, valores e resumo." styleClass="label-small" wrapText="true">
-                     <VBox.margin><Insets left="25.0" top="-5.0" /></VBox.margin>
-                  </Label>
-                  
-                  <Separator />
-                  
-                  <RadioButton fx:id="rbSimples" mnemonicParsing="false" styleClass="label-highlight" text="2. LISTA RÁPIDA DE ENTREGA (Simplificado)" toggleGroup="$grupoRelatorio">
-                     <font>
-                        <Font name="System Bold" size="14.0" />
-                     </font>
-                  </RadioButton>
-                  <Label text="   Exibe APENAS o Número da Encomenda e o Nome do Destinatário." styleClass="label-small" wrapText="true">
-                     <VBox.margin><Insets left="25.0" top="-5.0" /></VBox.margin>
-                  </Label>
-
-                  <Separator />
-
-                  <RadioButton fx:id="rbListaTabular" mnemonicParsing="false" styleClass="label-highlight" text="3. LISTA DE ENCOMENDAS (Tabela da Viagem)" toggleGroup="$grupoRelatorio">
-                     <font>
-                        <Font name="System Bold" size="14.0" />
-                     </font>
-                  </RadioButton>
-                  <Label text="   Gera uma tabela com linhas e colunas (Nº, Remetente, Destinatário, Valor, Status)." styleClass="label-small" wrapText="true">
-                     <VBox.margin><Insets left="25.0" top="-5.0" /></VBox.margin>
-                  </Label>
-
-                  <Separator />
-
-                  <RadioButton fx:id="rbTabelaPrecos" mnemonicParsing="false" styleClass="label-highlight" text="4. TABELA DE PREÇOS GERAL (Sistema)" toggleGroup="$grupoRelatorio">
-                     <font>
-                        <Font name="System Bold" size="14.0" />
-                     </font>
-                  </RadioButton>
-                  <Label text="   Imprime a tabela de preços cadastrada no sistema (não depende da viagem)." styleClass="label-small" wrapText="true">
-                     <VBox.margin><Insets left="25.0" top="-5.0" /></VBox.margin>
-                  </Label>
-
-               </children>
-            </VBox>
-         </children>
-      </VBox>
+         </content>
+      </ScrollPane>
    </center>
-   <bottom>
-      <HBox alignment="CENTER_RIGHT" prefHeight="80.0" spacing="20.0" styleClass="footer-panel" BorderPane.alignment="CENTER">
-         <padding>
-            <Insets right="40.0" />
-         </padding>
-         <children>
-            <Button fx:id="btnSair" mnemonicParsing="false" onAction="#handleSair" prefHeight="45.0" prefWidth="120.0" styleClass="button-cancel" text="SAIR">
-               <font>
-                  <Font name="System Bold" size="14.0" />
-               </font>
-            </Button>
-            <Button fx:id="btnGerarRelatorio" defaultButton="true" mnemonicParsing="false" onAction="#handleGerarRelatorio" prefHeight="50.0" prefWidth="200.0" styleClass="button-primary" text="GERAR RELATÓRIO">
-               <font>
-                  <Font name="System Bold" size="15.0" />
-               </font>
-            </Button>
-         </children>
-      </HBox>
-   </bottom>
 </BorderPane>

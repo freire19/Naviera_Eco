@@ -78,7 +78,7 @@ import java.util.ResourceBundle;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
-// Imports para Impressão AWT (Térmica) e Rotação de Imagem
+// Imports para Impressao AWT (Termica) e Rotacao de Imagem
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
@@ -153,7 +153,7 @@ public class VenderPassagemController implements Initializable {
     @FXML private TableColumn<Passagem, BigDecimal> colValorAPagar;
     @FXML private TableColumn<Passagem, BigDecimal> colDevedor;
 
-    // DAOs e Variáveis de Controle
+    // DAOs e Variaveis de Controle
     private PassageiroDAO passageiroDAO;
     private PassagemDAO passagemDAO;
     private TarifaDAO tarifaDAO;
@@ -176,19 +176,19 @@ public class VenderPassagemController implements Initializable {
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private boolean isUpdatingFromCode = false;
 
-    // Variáveis para Dados da Empresa
+    // Variaveis para Dados da Empresa
     private String empPathLogo = "";
-    private String empCompanhia = "EMPRESA DE NAVEGAÇÃO";
-    private String empEmbarcacao = "F/B DEUS DE ALIANÇA V"; 
+    private String empCompanhia = "EMPRESA DE NAVEGA\u00c7\u00c3O";
+    private String empEmbarcacao = "F/B DEUS DE ALIAN\u00c7A V";
     private String empProprietario = "Francisco Cintra"; 
     private String empCnpj = "";
     private String empTelefone = "";
     private String empEndereco = "";
-    private String empFrase = "Jesus não desiste de você"; 
-    private String empRecomendacoes = "Sem recomendações cadastradas.";
+    private String empFrase = "Jesus n\u00e3o desiste de voc\u00ea";
+    private String empRecomendacoes = "Sem recomenda\u00e7\u00f5es cadastradas.";
 
     // =======================================================================
-    // <<< INITIALIZE E CONFIGURAÇÕES >>>
+    // <<< INITIALIZE E CONFIGURAÃ‡Ã•ES >>>
     // =======================================================================
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -207,7 +207,6 @@ public class VenderPassagemController implements Initializable {
         }
 
         carregarDadosEmBackground();
-        carregarConfiguracaoEmpresa();
 
         limparCamposTarifa();
         configurarTabelaPassagens();
@@ -227,8 +226,8 @@ public class VenderPassagemController implements Initializable {
 
         setupCalculoTotalPassagem();
 
-        // >>> CORREÇÃO CRÍTICA DO CAMPO DOCUMENTO <<<
-        // Se sair do campo e não encontrar o Doc, NÃO LIMPA O NOME, apenas aceita como novo Doc.
+        // >>> CORREÃ‡ÃƒO CRÃTICA DO CAMPO DOCUMENTO <<<
+        // Se sair do campo e nao encontrar o Doc, NÃƒO LIMPA O NOME, apenas aceita como novo Doc.
         if (txtNumeroDoc != null) {
             txtNumeroDoc.focusedProperty().addListener((obs, oldVal, newVal) -> {
                 if (!newVal && txtNumeroDoc.getText() != null && !txtNumeroDoc.getText().isEmpty()) {
@@ -260,31 +259,19 @@ public class VenderPassagemController implements Initializable {
 
         new Thread(() -> {
             try {
-                List<Passageiro> listaP = passageiroDAO.listarTodos();
-                
-                List<String> rotasStrings = new ArrayList<>();
-                try {
-                    List<model.Rota> rotasObjects = new dao.RotaDAO().listarTodasAsRotasComoObjects();
-                    if (rotasObjects != null) {
-                        for (model.Rota r : rotasObjects) rotasStrings.add(r.toString());
-                    }
-                } catch (Exception e) {}
-                
-                List<String> tipoPassagem = auxiliaresDAO.listarPassagemAux();
-                List<String> sexos = auxiliaresDAO.listarSexo();
-                List<String> tiposDoc = auxiliaresDAO.listarTipoDoc();
-                List<String> nac = auxiliaresDAO.listarNacionalidade();
-                List<String> agentes = auxiliaresDAO.listarAgenteAux();
-                List<String> acomodacoes = auxiliaresDAO.listarAcomodacao();
+                // =============================================================
+                // FASE 1: Carregar VIAGEM primeiro para habilitar NOVO rapido
+                // =============================================================
+                carregarConfiguracaoEmpresa();
 
                 listaViagensCarregadas = new ArrayList<>();
                 List<String> viagensFormatadas = new ArrayList<>();
-                
+
                 String sql = "SELECT id_viagem, data_viagem, data_chegada, descricao, id_horario_saida, is_atual FROM viagens ORDER BY data_viagem DESC";
                 try (Connection conn = ConexaoBD.getConnection();
                      PreparedStatement stmt = conn.prepareStatement(sql);
                      ResultSet rs = stmt.executeQuery()) {
-                    
+
                     while (rs.next()) {
                         Viagem v = new Viagem();
                         v.setId(rs.getLong("id_viagem"));
@@ -293,9 +280,9 @@ public class VenderPassagemController implements Initializable {
                         v.setDescricao(rs.getString("descricao"));
                         v.setIdHorarioSaida(rs.getLong("id_horario_saida"));
                         v.setIsAtual(rs.getBoolean("is_atual"));
-                        
+
                         listaViagensCarregadas.add(v);
-                        
+
                         String dt = (v.getDataViagem() != null) ? dateFormatter.format(v.getDataViagem()) : "--";
                         String prev = (v.getDataChegada() != null) ? dateFormatter.format(v.getDataChegada()) : "??";
                         viagensFormatadas.add(v.getId() + " - " + dt + " - Prev: " + prev);
@@ -304,28 +291,51 @@ public class VenderPassagemController implements Initializable {
                     System.err.println("Erro ao carregar viagens: " + e.getMessage());
                 }
 
+                // Habilitar NOVO e Pesquisar IMEDIATAMENTE (antes de carregar passageiros/rotas)
+                final List<String> viagensF1 = new ArrayList<>(viagensFormatadas);
+                Platform.runLater(() -> {
+                    configurarAutoCompleteComboBox(cmbViagem, FXCollections.observableArrayList(viagensF1), false);
+                    if (cmbPesquisarModo != null) {
+                        cmbPesquisarModo.setItems(FXCollections.observableArrayList("N\u00famero Bilhete", "Passageiro", "N\u00ba Documento", "Data Partida"));
+                        cmbPesquisarModo.getSelectionModel().selectFirst();
+                    }
+                    carregarViagemAtualAoIniciar(); // <<< Habilita NOVO aqui
+                });
+
+                // =============================================================
+                // FASE 2: Carregar demais dados (passageiros, rotas, auxiliares)
+                // =============================================================
+                List<Passageiro> listaP = passageiroDAO.listarTodos();
+
+                List<String> rotasStrings = new ArrayList<>();
+                try {
+                    List<model.Rota> rotasObjects = new dao.RotaDAO().listarTodasAsRotasComoObjects();
+                    if (rotasObjects != null) {
+                        for (model.Rota r : rotasObjects) rotasStrings.add(r.toString());
+                    }
+                } catch (Exception e) {}
+
+                List<String> tipoPassagem = auxiliaresDAO.listarPassagemAux();
+                List<String> sexos = auxiliaresDAO.listarSexo();
+                List<String> tiposDoc = auxiliaresDAO.listarTipoDoc();
+                List<String> nac = auxiliaresDAO.listarNacionalidade();
+                List<String> agentes = auxiliaresDAO.listarAgenteAux();
+                List<String> acomodacoes = auxiliaresDAO.listarAcomodacao();
+
                 Platform.runLater(() -> {
                     todosOsPassageiros.setAll(listaP);
                     nomesOrigemPassageiros.setAll(todosOsPassageiros.stream().map(Passageiro::getNome).collect(Collectors.toList()));
-                    
+
                     configurarAutoCompleteComboBox(cmbPassageiroAuto, nomesOrigemPassageiros, true);
                     configurarAutoCompleteComboBox(cmbRota, FXCollections.observableArrayList(rotasStrings), true);
                     configurarAutoCompleteComboBox(cmbTipoPassagemAux, FXCollections.observableArrayList(tipoPassagem), false);
-                    configurarAutoCompleteComboBox(cmbViagem, FXCollections.observableArrayList(viagensFormatadas), false);
                     configurarAutoCompleteComboBox(cmbSexo, FXCollections.observableArrayList(sexos), false);
                     configurarAutoCompleteComboBox(cmbTipoDoc, FXCollections.observableArrayList(tiposDoc), false);
                     configurarAutoCompleteComboBox(cmbNacionalidade, FXCollections.observableArrayList(nac), false);
                     configurarAutoCompleteComboBox(cmbAgenteAux, FXCollections.observableArrayList(agentes), false);
                     configurarAutoCompleteComboBox(cmbAcomodacao, FXCollections.observableArrayList(acomodacoes), false);
-                    
-                    if (cmbPesquisarModo != null) {
-                        cmbPesquisarModo.setItems(FXCollections.observableArrayList("Número Bilhete", "Passageiro", "Nº Documento", "Data Partida"));
-                        cmbPesquisarModo.getSelectionModel().selectFirst();
-                    }
-                    
-                    carregarViagemAtualAoIniciar();
                 });
-                
+
             } catch (Exception e) {
                 e.printStackTrace();
                 Platform.runLater(() -> { if(rootPane!=null) rootPane.setDisable(false); });
@@ -561,19 +571,34 @@ public class VenderPassagemController implements Initializable {
     }
 
     // =======================================================================
-    // <<< MÉTODOS DE AÇÃO >>>
+    // <<< MÃ‰TODOS DE AÃ‡ÃƒO >>>
     // =======================================================================
+
+    private String obterValorCombo(ComboBox<String> combo) {
+        if (combo == null) return null;
+        String val = combo.getValue();
+        if (val != null && !val.trim().isEmpty()) return val.trim();
+        // Fallback: ler direto do editor (para ComboBoxes editaveis)
+        if (combo.isEditable() && combo.getEditor() != null) {
+            String editorText = combo.getEditor().getText();
+            if (editorText != null && !editorText.trim().isEmpty()) return editorText.trim();
+        }
+        return null;
+    }
 
     @FXML
     private void handleSalvar(ActionEvent event) {
         String nomePassageiroDigitado = (cmbPassageiroAuto != null && cmbPassageiroAuto.getEditor() != null) ? cmbPassageiroAuto.getEditor().getText() : "";
-        String selectedRotaStr = (cmbRota != null) ? cmbRota.getSelectionModel().getSelectedItem() : null;
+        String selectedRotaStr = obterValorCombo(cmbRota);
+        String tipoPassagem = obterValorCombo(cmbTipoPassagemAux);
+        String acomodacao = obterValorCombo(cmbAcomodacao);
+        String agente = obterValorCombo(cmbAgenteAux);
 
         if (nomePassageiroDigitado.isEmpty() ||
-            dpDataNascimento.getValue() == null || cmbTipoPassagemAux.getValue() == null ||
-            cmbAcomodacao.getValue() == null || selectedRotaStr == null || selectedRotaStr.trim().isEmpty() ||
-            cmbAgenteAux.getValue() == null || (txtAPagar != null && parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) <= 0)) {
-            showAlert(AlertType.WARNING, "Campos Obrigatórios", "Por favor, preencha todos os campos obrigatórios e verifique se o valor a pagar é maior que zero.");
+            dpDataNascimento.getValue() == null || tipoPassagem == null ||
+            acomodacao == null || selectedRotaStr == null ||
+            agente == null || (txtAPagar != null && parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) <= 0)) {
+            showAlert(AlertType.WARNING, "Campos Obrigat\u00f3rios", "Por favor, preencha todos os campos obrigat\u00f3rios e verifique se o valor a pagar \u00e9 maior que zero.");
             return;
         }
 
@@ -594,7 +619,7 @@ public class VenderPassagemController implements Initializable {
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro Crítico", "Ocorreu um erro inesperado ao preparar a venda: " + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro Cr\u00edtico", "Ocorreu um erro inesperado ao preparar a venda: " + e.getMessage());
         }
     }
 
@@ -652,12 +677,12 @@ public class VenderPassagemController implements Initializable {
 
         if (sucesso) {
             Alert alertPrint = new Alert(AlertType.CONFIRMATION);
-            alertPrint.setTitle("Venda Concluída");
+            alertPrint.setTitle("Venda Conclu\u00edda");
             alertPrint.setHeaderText("Passagem salva com sucesso!");
             alertPrint.setContentText("Deseja imprimir o bilhete agora?");
 
             ButtonType btnSim = new ButtonType("Sim", ButtonBar.ButtonData.YES);
-            ButtonType btnNao = new ButtonType("Não", ButtonBar.ButtonData.NO);
+            ButtonType btnNao = new ButtonType("N\u00e3o", ButtonBar.ButtonData.NO);
             alertPrint.getButtonTypes().setAll(btnSim, btnNao);
 
             Optional<ButtonType> result = alertPrint.showAndWait();
@@ -677,7 +702,7 @@ public class VenderPassagemController implements Initializable {
                 configurarTelaComViagemAtiva();
 
                 if(tablePassagens != null) tablePassagens.setDisable(false);
-                // Habilitar campos automaticamente para a próxima venda — sem necessidade de clicar NOVO
+                // Habilitar campos automaticamente para a proxima venda â€” sem necessidade de clicar NOVO
                 habilitarCamposParaNovaVenda(true);
                 if(btnNovo != null) btnNovo.setDisable(true);
 
@@ -696,7 +721,7 @@ public class VenderPassagemController implements Initializable {
             try {
                 passagem.setNumBilhete(Integer.parseInt(txtNumBilhete.getText()));
             } catch (NumberFormatException e) {
-                throw new SQLException("Número de bilhete inválido.");
+                throw new SQLException("N\u00famero de bilhete inv\u00e1lido.");
             }
         }
 
@@ -705,7 +730,7 @@ public class VenderPassagemController implements Initializable {
         String destino = (rotaParts.length > 1) ? rotaParts[1].trim() : "";
         Integer idRotaInteger = auxiliaresDAO.obterIdRotaPelaOrigemDestino(origem, destino);
         if (idRotaInteger == null) {
-            throw new SQLException("ID da Rota não encontrado.");
+            throw new SQLException("ID da Rota n\u00e3o encontrado.");
         }
 
         passagem.setIdRota(idRotaInteger.longValue());
@@ -720,9 +745,9 @@ public class VenderPassagemController implements Initializable {
             passagem.setIdade(Integer.parseInt(txtIdade.getText()));
         }
         passagem.setNomePassageiro(nomePassageiro);
-        passagem.setTipoPassagemAux(cmbTipoPassagemAux.getValue());
-        passagem.setAgenteAux(cmbAgenteAux.getValue());
-        passagem.setAcomodacao(cmbAcomodacao.getValue());
+        passagem.setTipoPassagemAux(obterValorCombo(cmbTipoPassagemAux));
+        passagem.setAgenteAux(obterValorCombo(cmbAgenteAux));
+        passagem.setAcomodacao(obterValorCombo(cmbAcomodacao));
         passagem.setOrigem(origem);
         passagem.setDestino(destino);
         passagem.setDataViagem(viagemSelecionada.getDataViagem());
@@ -739,7 +764,7 @@ public class VenderPassagemController implements Initializable {
     }
 
     // =======================================================================
-    // <<< OUTROS MÉTODOS AUXILIARES >>>
+    // <<< OUTROS MÃ‰TODOS AUXILIARES >>>
     // =======================================================================
 
     private void configurarAutoCompleteComboBox(ComboBox<String> comboBox, ObservableList<String> items, boolean customAction) {
@@ -748,44 +773,112 @@ public class VenderPassagemController implements Initializable {
         comboBox.setEditable(true);
         comboBox.setItems(items);
 
-        // Cópia fixa dos itens originais para restaurar ao filtrar
         final ObservableList<String> itemsOriginal = FXCollections.observableArrayList(items);
-        // Flag local para evitar loop infinito durante filtragem
         final boolean[] isFiltering = {false};
+        final boolean[] userNavigated = {false};
 
-        // Interceptar KEY_TYPED de ESPAÇO antes que o skin nativo do ComboBox processe.
-        // O ComboBoxListViewSkin do JavaFX ao receber ESPAÇO confirma o item destacado
-        // no dropdown e muda o texto do editor — isso é o que causava o preenchimento
-        // automático ao digitar "JOAO " com "JOAO GUILHERME" destacado.
-        // Consumindo o evento e reinserindo o espaço manualmente, o textProperty listener
-        // continua funcionando normalmente SEM que o skin interfira.
-        comboBox.addEventFilter(javafx.scene.input.KeyEvent.KEY_TYPED, keyEvent -> {
-            if (" ".equals(keyEvent.getCharacter()) && comboBox.isShowing()) {
-                keyEvent.consume(); // Impede o skin de tratar espaço como confirmação
-                int pos = comboBox.getEditor().getCaretPosition();
-                comboBox.getEditor().insertText(pos, " "); // Insere o espaço normalmente
+        // =====================================================================
+        // NAVEGACAO COM SETAS — para TODOS os ComboBoxes editaveis
+        // Intercepta UP/DOWN antes do editor (TextField) mover o cursor.
+        // =====================================================================
+        comboBox.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, arrowEvent -> {
+            if (arrowEvent.getCode() == KeyCode.DOWN || arrowEvent.getCode() == KeyCode.UP) {
+                arrowEvent.consume(); // Impede o editor de mover o cursor
+                userNavigated[0] = true;
+                if (!comboBox.isShowing()) {
+                    comboBox.show();
+                }
+                if (!comboBox.getItems().isEmpty()) {
+                    int currentIndex = comboBox.getSelectionModel().getSelectedIndex();
+                    int newIndex;
+                    if (arrowEvent.getCode() == KeyCode.DOWN) {
+                        newIndex = (currentIndex < comboBox.getItems().size() - 1) ? currentIndex + 1 : 0;
+                    } else {
+                        newIndex = (currentIndex > 0) ? currentIndex - 1 : comboBox.getItems().size() - 1;
+                    }
+                    isUpdatingFromCode = true;
+                    comboBox.getSelectionModel().select(newIndex);
+                    String selected = comboBox.getItems().get(newIndex);
+                    comboBox.getEditor().setText(selected);
+                    comboBox.getEditor().positionCaret(selected.length());
+                    isUpdatingFromCode = false;
+                }
             }
         });
 
-        // Listener de texto: filtra letra por letra (estilo Google)
+        // =====================================================================
+        // INTERCEPTORES DE ESPAÇO — SOMENTE para o campo de passageiro
+        // O skin do ComboBox ao receber SPACE confirma o item destacado.
+        // Para os outros combos (rota, sexo, etc.) isso não é problema.
+        // =====================================================================
+        if (comboBox == cmbPassageiroAuto) {
+            // KEY_PRESSED: consumir SPACE + inserir manualmente (unica insercao).
+            comboBox.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, spaceEvent -> {
+                if (spaceEvent.getCode() == KeyCode.SPACE && !spaceEvent.isControlDown() && !spaceEvent.isAltDown()) {
+                    spaceEvent.consume();
+                    TextField editor = comboBox.getEditor();
+                    String textoAtual = editor.getText();
+                    int pos = editor.getCaretPosition();
+                    // Evitar espacos consecutivos
+                    if (pos > 0 && textoAtual != null && pos <= textoAtual.length()
+                            && textoAtual.charAt(pos - 1) == ' ') {
+                        return;
+                    }
+                    isUpdatingFromCode = true;
+                    editor.insertText(pos, " ");
+                    isUpdatingFromCode = false;
+                }
+            });
+
+            // KEY_TYPED: apenas consumir para impedir processamento nativo (sem insercao)
+            comboBox.addEventFilter(javafx.scene.input.KeyEvent.KEY_TYPED, keyEvent -> {
+                if (" ".equals(keyEvent.getCharacter())) {
+                    keyEvent.consume();
+                }
+            });
+        }
+
+        // =====================================================================
+        // LISTENER DE TEXTO: filtra letra por letra
+        // =====================================================================
         comboBox.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
             if (isUpdatingFromCode || isFiltering[0]) return;
+            // Se o usuario esta navegando com setas, nao filtrar (manter lista intacta)
+            if (userNavigated[0]) return;
 
-            // *** CORREÇÃO CRÍTICA ***
-            // Captura o texto AGORA (síncrono), antes do Platform.runLater.
-            // O skin nativo do ComboBox pode alterar o texto do editor no intervalo entre
-            // o listener disparar e o Platform.runLater executar (race condition).
-            // Exemplo: o usuário digita "JOAO " → o skin muda o editor para "JOAO GUILHERME"
-            // antes do Platform.runLater rodar. Capturando newValue aqui, garantimos que
-            // usamos o texto que o usuário REALMENTE digitou.
-            final String textoDigitado = (newValue != null) ? newValue : "";
+            final String textoDigitado;
+
+            // DETECÇÃO ANTI-SKIN (só para passageiro):
+            // Se o texto pulou de "JOAO" para "JOAO GUILHERME" (>1 char e é item da lista),
+            // o skin interferiu. Reverter para oldValue + espaço.
+            if (comboBox == cmbPassageiroAuto && oldValue != null && newValue != null
+                    && newValue.length() > oldValue.length() + 1) {
+                boolean skinInterferiu = false;
+                for (String item : itemsOriginal) {
+                    if (item.equalsIgnoreCase(newValue)) {
+                        skinInterferiu = true;
+                        break;
+                    }
+                }
+                if (skinInterferiu) {
+                    String textoCorreto = oldValue.endsWith(" ") ? oldValue : oldValue + " ";
+                    textoDigitado = textoCorreto;
+                    isUpdatingFromCode = true;
+                    comboBox.getEditor().setText(textoCorreto);
+                    comboBox.getEditor().positionCaret(textoCorreto.length());
+                    isUpdatingFromCode = false;
+                } else {
+                    textoDigitado = newValue;
+                }
+            } else {
+                textoDigitado = (newValue != null) ? newValue : "";
+            }
 
             Platform.runLater(() -> {
                 if (isUpdatingFromCode || isFiltering[0]) return;
 
                 isFiltering[0] = true;
                 try {
-                    // Limpa seleção para impedir que o skin use item auto-selecionado
                     comboBox.getSelectionModel().clearSelection();
 
                     if (textoDigitado.isEmpty()) {
@@ -801,9 +894,6 @@ public class VenderPassagemController implements Initializable {
                         comboBox.setItems(filtrados);
                     }
 
-                    // Força o editor de volta ao texto exato que o usuário digitou.
-                    // O skin pode ter alterado para o item selecionado (ex: "JOAO GUILHERME").
-                    // O isUpdatingFromCode=true evita loop infinito neste setText.
                     if (!textoDigitado.equals(comboBox.getEditor().getText())) {
                         isUpdatingFromCode = true;
                         comboBox.getEditor().setText(textoDigitado);
@@ -817,7 +907,6 @@ public class VenderPassagemController implements Initializable {
                     isFiltering[0] = false;
                 }
 
-                // SÓ abre o dropdown se este combo tiver o foco
                 if (comboBox.isFocused() || comboBox.getEditor().isFocused()) {
                     if (!comboBox.getItems().isEmpty()) {
                         if (!comboBox.isShowing()) {
@@ -830,19 +919,39 @@ public class VenderPassagemController implements Initializable {
             });
         });
 
-        // ENTER/TAB: se navegou com setas no dropdown, confirma a seleção
+        // =====================================================================
+        // ENTER/TAB
+        // =====================================================================
         comboBox.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER || event.getCode() == KeyCode.TAB) {
                 String selectedItem = comboBox.getSelectionModel().getSelectedItem();
-                if (selectedItem != null && !selectedItem.isEmpty()) {
+
+                // Para o passageiro: só preencher se o usuário navegou com setas
+                // Para os outros combos: comportamento normal (qualquer seleção vale)
+                boolean deveUsarSelecao;
+                if (comboBox == cmbPassageiroAuto) {
+                    deveUsarSelecao = userNavigated[0] && selectedItem != null && !selectedItem.isEmpty();
+                } else {
+                    deveUsarSelecao = selectedItem != null && !selectedItem.isEmpty();
+                }
+
+                if (deveUsarSelecao) {
                     isUpdatingFromCode = true;
                     comboBox.getEditor().setText(selectedItem);
+                    comboBox.setValue(selectedItem);
                     isUpdatingFromCode = false;
                     if (customAction && comboBox == cmbPassageiroAuto) {
                         preencherPassageiroPorNome(selectedItem);
                     }
+                } else if (comboBox != cmbPassageiroAuto) {
+                    // Para combos nao-passageiro: commitar o texto digitado como valor
+                    String editorText = comboBox.getEditor().getText();
+                    if (editorText != null && !editorText.trim().isEmpty()) {
+                        isUpdatingFromCode = true;
+                        comboBox.setValue(editorText.trim());
+                        isUpdatingFromCode = false;
+                    }
                 } else if (customAction && comboBox == cmbPassageiroAuto) {
-                    // Sem item selecionado no dropdown — verificar se o nome digitado existe no banco
                     String textoDigitado = comboBox.getEditor().getText();
                     if (textoDigitado != null && !textoDigitado.trim().isEmpty()) {
                         String nomeTrimmed = textoDigitado.trim();
@@ -851,7 +960,6 @@ public class VenderPassagemController implements Initializable {
                         if (existe) {
                             preencherPassageiroPorNome(nomeTrimmed);
                         } else {
-                            // Passageiro não encontrado — perguntar se deseja continuar como novo
                             Alert alertNovo = new Alert(AlertType.CONFIRMATION);
                             alertNovo.setTitle("Passageiro não encontrado");
                             alertNovo.setHeaderText("\"" + nomeTrimmed + "\" não está cadastrado.");
@@ -867,29 +975,27 @@ public class VenderPassagemController implements Initializable {
                                 isUpdatingFromCode = false;
                                 comboBox.requestFocus();
                             }
-                            // Se confirmou, mantém o nome digitado sem auto-preencher os demais campos
                         }
                     }
                 }
                 comboBox.hide();
+                userNavigated[0] = false;
                 event.consume();
-            } else if (event.getCode() == KeyCode.DOWN) {
-                if (!comboBox.isShowing()) {
-                    comboBox.show();
-                }
             } else if (event.getCode() == KeyCode.ESCAPE) {
                 comboBox.hide();
+                userNavigated[0] = false;
                 event.consume();
+            } else if (!event.getCode().isModifierKey() && !event.getCode().isFunctionKey()
+                    && event.getCode() != KeyCode.DOWN && event.getCode() != KeyCode.UP) {
+                // Qualquer tecla que nao seja seta/modificador/funcao: resetar navegacao
+                userNavigated[0] = false;
             }
         });
 
-        // O preenchimento dos dados do passageiro acontece SOMENTE quando:
-        // 1. ENTER/TAB (acima) com item selecionado no dropdown
-        // 2. Clique explícito do mouse num item do dropdown (via skinProperty abaixo)
-
+        // =====================================================================
+        // CLIQUE no dropdown: preencher dados do passageiro
+        // =====================================================================
         if (customAction && comboBox == cmbPassageiroAuto) {
-            // Detectar clique explícito do usuário no ListView interno do dropdown
-            // Isso evita que o skin nativo do ComboBox acione o preenchimento ao digitar espaço
             comboBox.skinProperty().addListener((obsSkin, oldSkin, newSkin) -> {
                 if (newSkin instanceof javafx.scene.control.skin.ComboBoxListViewSkin) {
                     @SuppressWarnings("unchecked")
@@ -911,11 +1017,17 @@ public class VenderPassagemController implements Initializable {
             });
         }
 
-        // Ao perder o foco: apenas fecha o dropdown — não preenche automaticamente
-        // O usuário deve confirmar explicitamente via ENTER ou clique no dropdown
+        // Ao perder foco: fechar dropdown e commitar valor
         comboBox.getEditor().focusedProperty().addListener((obs4, wasFocused, isFocused) -> {
             if (!isFocused) {
                 comboBox.hide();
+                // Commitar o texto do editor como valor do ComboBox
+                String editorText = comboBox.getEditor().getText();
+                if (editorText != null && !editorText.trim().isEmpty() && !isUpdatingFromCode) {
+                    isUpdatingFromCode = true;
+                    comboBox.setValue(editorText.trim());
+                    isUpdatingFromCode = false;
+                }
             }
         });
         comboBox.focusedProperty().addListener((obs3, wasFocused, isFocused) -> {
@@ -973,8 +1085,8 @@ public class VenderPassagemController implements Initializable {
         if (tablePassagens != null && tablePassagens.getSelectionModel() != null) {
             tablePassagens.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
                 boolean haSelecao = (newV != null);
-                // >>> CORREÇÃO DE EDIÇÃO <<<
-                // Se houver seleção, SEMPRE habilita os botões de edição, independente do estado anterior
+                // >>> CORREÃ‡ÃƒO DE EDIÃ‡ÃƒO <<<
+                // Se houver selecao, SEMPRE habilita os botoes de edicao, independente do estado anterior
                 if (haSelecao) {
                     if (btnEditar != null) btnEditar.setDisable(false);
                     if (btnExcluir != null) btnExcluir.setDisable(false);
@@ -1003,10 +1115,10 @@ public class VenderPassagemController implements Initializable {
                     isUpdatingFromCode = false;
                 }
             } else {
-                // >>> CORREÇÃO: DOC NÃO ENCONTRADO <<<
-                // Se não achou o doc, NÃO limpa o nome. Apenas assume que é um novo doc para o passageiro atual (ou novo).
-                // Mantém passageiroEmEdicao como null se estava null (novo), ou mantém o passageiro se estava editando e mudou o doc.
-                // Na dúvida, para novo cadastro, passageiroEmEdicao fica null.
+                // >>> CORREÃ‡ÃƒO: DOC NÃƒO ENCONTRADO <<<
+                // Se nao achou o doc, NÃƒO limpa o nome. Apenas assume que e um novo doc para o passageiro atual (ou novo).
+                // Mantem passageiroEmEdicao como null se estava null (novo), ou mantem o passageiro se estava editando e mudou o doc.
+                // Na duvida, para novo cadastro, passageiroEmEdicao fica null.
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1203,13 +1315,23 @@ public class VenderPassagemController implements Initializable {
             Node currentNode = focusableNodes.get(i);
 
             if (currentNode instanceof ComboBox) {
-                ComboBox<?> combo = (ComboBox<?>) currentNode;
-                combo.getEditor().setOnKeyPressed(event -> {
-                    if (event.getCode() == KeyCode.ENTER && !combo.isShowing()) {
-                        event.consume();
-                        Platform.runLater(() -> focusableNodes.get(nextIndex).requestFocus());
-                    }
-                });
+                @SuppressWarnings("unchecked")
+                ComboBox<String> combo = (ComboBox<String>) currentNode;
+                if (combo != cmbPassageiroAuto) {
+                    combo.getEditor().setOnKeyPressed(event -> {
+                        if (event.getCode() == KeyCode.ENTER && !combo.isShowing()) {
+                            // Commitar valor do editor antes de mover foco
+                            String editorText = combo.getEditor().getText();
+                            if (editorText != null && !editorText.trim().isEmpty()) {
+                                isUpdatingFromCode = true;
+                                combo.setValue(editorText.trim());
+                                isUpdatingFromCode = false;
+                            }
+                            event.consume();
+                            Platform.runLater(() -> focusableNodes.get(nextIndex).requestFocus());
+                        }
+                    });
+                }
             } else if (currentNode instanceof TextField) {
                 currentNode.setOnKeyPressed(event -> {
                     if (event.getCode() == KeyCode.ENTER) {
@@ -1302,7 +1424,7 @@ public class VenderPassagemController implements Initializable {
 
     @FXML private void handleNovo(ActionEvent event) {
         if (viagemSelecionada == null) {
-            showAlert(AlertType.INFORMATION, "Viagem Necessária", "Nenhuma viagem foi informada. Verifique se existe uma viagem 'Atual'.");
+            showAlert(AlertType.INFORMATION, "Viagem Necess\u00e1ria", "Nenhuma viagem foi informada. Verifique se existe uma viagem 'Atual'.");
             return;
         }
         limparCamposParaNovaVendaAutomatica();
@@ -1314,7 +1436,7 @@ public class VenderPassagemController implements Initializable {
     @FXML private void handleCancelar(ActionEvent event) {
         Alert alert = new Alert(AlertType.CONFIRMATION);
         alert.setTitle("Confirmar Cancelamento");
-        alert.setHeaderText("Cancelar operação?");
+        alert.setHeaderText("Cancelar opera\u00e7\u00e3o?");
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             configurarEstadoInicialDaTela();
@@ -1354,7 +1476,7 @@ public class VenderPassagemController implements Initializable {
             if (p == null) return false;
 
             switch (modo) {
-                case "Número Bilhete":
+                case "N\u00famero Bilhete":
                     String num = String.valueOf(p.getNumBilhete());
                     return num != null && num.contains(termo);
 
@@ -1362,7 +1484,7 @@ public class VenderPassagemController implements Initializable {
                     String nome = p.getNomePassageiro();
                     return nome != null && nome.toUpperCase().contains(termoUpper);
 
-                case "Nº Documento":
+                case "N\u00ba Documento":
                     String doc = p.getNumeroDoc();
                     return doc != null && doc.toUpperCase().contains(termoUpper);
 
@@ -1379,14 +1501,14 @@ public class VenderPassagemController implements Initializable {
     }
 
     // =======================================================================
-    // <<< MÉTODOS DE EDIÇÃO, EXCLUSÃO E IMPRESSÃO >>>
+    // <<< MÃ‰TODOS DE EDIÃ‡ÃƒO, EXCLUSÃƒO E IMPRESSÃƒO >>>
     // =======================================================================
 
     @FXML
     private void handleEditar(ActionEvent event) {
         Passagem selected = tablePassagens.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert(AlertType.WARNING, "Seleção", "Selecione uma passagem na tabela para editar.");
+            showAlert(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem na tabela para editar.");
             return;
         }
 
@@ -1434,7 +1556,7 @@ public class VenderPassagemController implements Initializable {
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro", "Erro ao carregar dados para edição: " + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro", "Erro ao carregar dados para edi\u00e7\u00e3o: " + e.getMessage());
             configurarEstadoInicialDaTela();
         } finally {
             isUpdatingFromCode = false;
@@ -1445,14 +1567,14 @@ public class VenderPassagemController implements Initializable {
     private void handleExcluir(ActionEvent event) {
         Passagem selected = tablePassagens.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert(AlertType.WARNING, "Seleção", "Selecione uma passagem para excluir.");
+            showAlert(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem para excluir.");
             return;
         }
 
         Alert alert = new Alert(AlertType.CONFIRMATION);
         alert.setTitle("Excluir Passagem");
         alert.setHeaderText("Deseja realmente excluir a passagem do bilhete " + selected.getNumBilhete() + "?");
-        alert.setContentText("Essa ação não poderá ser desfeita.");
+        alert.setContentText("Essa a\u00e7\u00e3o n\u00e3o poder\u00e1 ser desfeita.");
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -1463,10 +1585,10 @@ public class VenderPassagemController implements Initializable {
                     tablePassagens.getItems().remove(selected);
                     txtTotalPassageiros.setText(String.valueOf(passagensDaViagemAtual.size()));
 
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Passagem excluída com sucesso.");
+                    showAlert(AlertType.INFORMATION, "Sucesso", "Passagem exclu\u00edda com sucesso.");
                     limparTodosOsCamposGUI();
                 } else {
-                    showAlert(AlertType.ERROR, "Erro", "Não foi possível excluir a passagem.");
+                    showAlert(AlertType.ERROR, "Erro", "N\u00e3o foi poss\u00edvel excluir a passagem.");
                 }
             } catch (Exception e) {
                 showAlert(AlertType.ERROR, "Erro", "Erro ao excluir: " + e.getMessage());
@@ -1478,7 +1600,7 @@ public class VenderPassagemController implements Initializable {
     private void handleImprimirBilhete(ActionEvent event) {
         Passagem selected = tablePassagens.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert(AlertType.WARNING, "Seleção", "Selecione uma passagem para imprimir o bilhete.");
+            showAlert(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem para imprimir o bilhete.");
             return;
         }
 
@@ -1503,18 +1625,18 @@ public class VenderPassagemController implements Initializable {
     }
 
     // =================================================================================================
-    // >>> PREVIEW DE IMPRESSÃO + IMPRESSÃO CORRIGIDA (LAYOUT TÉRMICO) <<<
+    // >>> PREVIEW DE IMPRESSÃƒO + IMPRESSÃƒO CORRIGIDA (LAYOUT TÃ‰RMICO) <<<
     // =================================================================================================
 
     private void mostrarPreviewImpressao(Passagem p) {
         Stage previewStage = new Stage();
-        previewStage.setTitle("Visualização do Bilhete (Impressora Térmica)");
+        previewStage.setTitle("Visualizacao do Bilhete (Impressora Termica)");
         previewStage.initModality(Modality.WINDOW_MODAL);
         previewStage.initOwner(rootPane.getScene().getWindow());
 
         Node bilheteNode = criarLayoutBilheteVisual(p);
 
-        Button btnConfirmar = new Button("🖨️ IMPRIMIR AGORA");
+        Button btnConfirmar = new Button("IMPRIMIR AGORA");
         btnConfirmar.setStyle("-fx-font-size: 16px; -fx-background-color: #2e7d32; -fx-text-fill: white; -fx-padding: 10px 20px;");
         btnConfirmar.setOnAction(e -> {
             Node nodeParaImpressora = criarLayoutBilheteVisual(p);
@@ -1551,7 +1673,7 @@ public class VenderPassagemController implements Initializable {
         Font fontHeaderCNPJ = Font.font("Arial", FontWeight.NORMAL, 12);
         Font fontHeaderPhrase = Font.font("Arial", FontWeight.NORMAL, 11);
         
-                // CORRIGIDO: Variável adicionada
+                // CORRIGIDO: Variavel adicionada
         Font fontHeaderSmall = Font.font("Arial", FontWeight.NORMAL, 10); 
 
         Font fontSectionTitle = Font.font("Arial", FontWeight.BOLD, 11);
@@ -1572,7 +1694,7 @@ public class VenderPassagemController implements Initializable {
         VBox leftPanel = new VBox(2);
         leftPanel.setPrefWidth(logicWidth * 0.65);
 
-        // --- CABEÇALHO ---
+        // --- CABEÃ‡ALHO ---
         VBox headerContent = new VBox(0);
         headerContent.setAlignment(Pos.CENTER_LEFT);
         
@@ -1686,12 +1808,12 @@ public class VenderPassagemController implements Initializable {
         if (falta.compareTo(BigDecimal.ZERO) > 0) payBox.getChildren().add(criarLinhaValor("Falta:", falta, fontValores)); 
         
         String formaPagtoTexto = (falta.compareTo(BigDecimal.ZERO) <= 0) ? "A VISTA" : "PENDENTE";
-        payBox.getChildren().add(criarLinhaDupla("Situação:", formaPagtoTexto, fontLabel, fontData));
+        payBox.getChildren().add(criarLinhaDupla("Situacao:", formaPagtoTexto, fontLabel, fontData));
 
         finBox.getChildren().addAll(tarBox, payBox);
         leftPanel.getChildren().add(finBox);
         
-        leftPanel.getChildren().add(new Text("Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))) {{ setFont(fontHeaderSmall); }});
+        leftPanel.getChildren().add(new Text("Emissao: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))) {{ setFont(fontHeaderSmall); }});
 
         // Right Panel
         VBox rightPanel = new VBox(5);
@@ -1723,7 +1845,7 @@ public class VenderPassagemController implements Initializable {
         return mainLayout;
     }
 
-    // CRIA CAIXAS COM LINHA FINA (PADRÃO 0.5)
+    // CRIA CAIXAS COM LINHA FINA (PADRÃƒO 0.5)
     private VBox createSectionBox(String title, Font fontTitle, double width) {
         VBox box = new VBox(1);
         box.setPrefWidth(width);
@@ -1757,7 +1879,7 @@ public class VenderPassagemController implements Initializable {
         return line;
     }
 
-    // IMPRESSÃO (COM ROTAÇÃO)
+    // IMPRESSÃƒO (COM ROTAÃ‡ÃƒO)
     private BufferedImage rotateImage90(BufferedImage img) {
         int width = img.getWidth();
         int height = img.getHeight();
@@ -1835,7 +1957,7 @@ public class VenderPassagemController implements Initializable {
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir: " + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro de Impressao", "Falha ao imprimir: " + e.getMessage());
         }
     }
 
@@ -1844,7 +1966,7 @@ public class VenderPassagemController implements Initializable {
     }
 
     @FXML private void handleRelatorio(ActionEvent event) {
-        abrirNovaJanela("/gui/RelatorioPassagens.fxml", "Relatório de Passagens");
+        abrirNovaJanela("/gui/RelatorioPassagens.fxml", "Relatorio de Passagens");
     }
 
     @FXML private void handleSair(ActionEvent event) {
@@ -1867,7 +1989,7 @@ public class VenderPassagemController implements Initializable {
             stage.show();
         } catch (IOException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao Abrir Tela", "Não foi possível carregar a tela: " + fxmlPath);
+            showAlert(AlertType.ERROR, "Erro ao Abrir Tela", "Nao foi possivel carregar a tela: " + fxmlPath);
         }
     }
 
@@ -2022,6 +2144,6 @@ public class VenderPassagemController implements Initializable {
     @FXML
     private void salvarPassagem() {
         fecharComboBoxesAbertos();
-        // ... código existente para salvar passagem ...
+        // ... codigo existente para salvar passagem ...
     }
 }

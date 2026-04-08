@@ -27,6 +27,8 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TableCell;
+import javafx.scene.layout.VBox;
 import model.Passagem;
 import model.Rota;
 import model.Viagem;
@@ -41,9 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
-import javafx.scene.control.TableCell;
-import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 public class RelatorioPassagensController implements Initializable {
 
@@ -80,10 +79,9 @@ public class RelatorioPassagensController implements Initializable {
     private AuxiliaresDAO auxiliaresDAO;
     private ObservableList<Passagem> passagensData = FXCollections.observableArrayList();
 
-    // =======================================================================
-    // <<< MÉTODO INITIALIZE MODIFICADO >>>
-    // A lógica foi simplificada para chamar um novo método que carrega os dados.
-    // =======================================================================
+    // Flag para evitar que listeners disparem durante carregamento inicial
+    private boolean inicializando = true;
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         passagemDAO = new PassagemDAO();
@@ -92,41 +90,125 @@ public class RelatorioPassagensController implements Initializable {
         auxiliaresDAO = new AuxiliaresDAO();
 
         configurarColunasTabela();
-        carregarComboBoxesFiltro();
-        configurarListenersDosFiltros();
-        carregarDadosIniciais(); // Novo método para carregar os dados da viagem ativa
+
+        // Carregar TUDO em background para nao travar a UI
+        carregarTudoEmBackground();
     }
 
-    // =======================================================================
-    // <<< NOVO MÉTODO >>>
-    // Este método agora é responsável por carregar os dados iniciais.
-    // Ele busca a viagem ativa e chama o `carregarDadosRelatorio` diretamente.
-    // =======================================================================
-    private void carregarDadosIniciais() {
-        Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-        String viagemAtivaStr = null;
+    private void carregarTudoEmBackground() {
+        new Thread(() -> {
+            try {
+                // --- Fase 1: Carregar filtros (queries leves) ---
+                Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
 
-        if (viagemAtiva != null) {
-            viagemAtivaStr = viagemAtiva.toString();
-            // Apenas atualiza o ComboBox para o usuário ver, mas não depende dele
-            if (cmbViagem.getItems().contains(viagemAtivaStr)) {
-                cmbViagem.setValue(viagemAtivaStr);
+                List<String> viagens = new ArrayList<>();
+                viagens.add("Todas");
+                viagens.addAll(viagemDAO.listarViagensParaComboBox());
+
+                List<String> rotasStrings = new ArrayList<>();
+                rotasStrings.add("Todas");
+                try {
+                    List<Rota> rotasObjects = rotaDAO.listarTodasAsRotasComoObjects();
+                    if (rotasObjects != null) {
+                        for (Rota r : rotasObjects) rotasStrings.add(r.toString());
+                    }
+                } catch (Exception e) { /* ignore */ }
+
+                List<String> tiposPagamento = new ArrayList<>();
+                tiposPagamento.add("Todos");
+                tiposPagamento.addAll(auxiliaresDAO.listarTiposPagamento());
+
+                List<String> caixas = new ArrayList<>();
+                caixas.add("Todos");
+                caixas.addAll(auxiliaresDAO.listarCaixas());
+
+                List<String> agentes = new ArrayList<>();
+                agentes.add("Todos");
+                agentes.addAll(auxiliaresDAO.listarAgenteAux());
+
+                List<String> tiposPassagemAux = new ArrayList<>();
+                tiposPassagemAux.add("Todos");
+                tiposPassagemAux.addAll(auxiliaresDAO.listarPassagemAux());
+
+                // --- Fase 2: Encontrar a string da viagem ativa no formato do ComboBox ---
+                String viagemAtivaComboStr = null;
+                if (viagemAtiva != null) {
+                    String prefixo = viagemAtiva.getId() + " - ";
+                    for (String v : viagens) {
+                        if (v.startsWith(prefixo)) {
+                            viagemAtivaComboStr = v;
+                            break;
+                        }
+                    }
+                }
+
+                // Carregar dados iniciais filtrando pela viagem ativa
+                List<Passagem> dadosIniciais;
+                try {
+                    dadosIniciais = passagemDAO.filtrarRelatorio(
+                        null, null, viagemAtivaComboStr, null, null, null, null, null, null, "Todos");
+                } catch (SQLException e) {
+                    dadosIniciais = new ArrayList<>();
+                    e.printStackTrace();
+                }
+
+                // --- Fase 3: Atualizar UI no thread do JavaFX ---
+                final List<Passagem> dadosFinais = dadosIniciais;
+                final String viagemAtivaNome = viagemAtivaComboStr;
+
+                Platform.runLater(() -> {
+                    // Preencher ComboBoxes SEM listeners ativos
+                    cmbStatusPagamento.setItems(FXCollections.observableArrayList("Todos", "Pagos", "Falta Pagar"));
+                    cmbStatusPagamento.getSelectionModel().select("Todos");
+
+                    cmbViagem.setItems(FXCollections.observableArrayList(viagens));
+                    cmbRota.setItems(FXCollections.observableArrayList(rotasStrings));
+                    cmbRota.getSelectionModel().select("Todas");
+                    cmbTipoPagamento.setItems(FXCollections.observableArrayList(tiposPagamento));
+                    cmbTipoPagamento.getSelectionModel().select("Todos");
+                    cmbCaixa.setItems(FXCollections.observableArrayList(caixas));
+                    cmbCaixa.getSelectionModel().select("Todos");
+                    cmbAgente.setItems(FXCollections.observableArrayList(agentes));
+                    cmbAgente.getSelectionModel().select("Todos");
+                    cmbTipoPassagem.setItems(FXCollections.observableArrayList(tiposPassagemAux));
+                    cmbTipoPassagem.getSelectionModel().select("Todos");
+
+                    // Selecionar viagem ativa no ComboBox (match por ID)
+                    if (viagemAtivaNome != null) {
+                        cmbViagem.setValue(viagemAtivaNome);
+                    } else {
+                        cmbViagem.setValue("Todas");
+                    }
+
+                    // Mostrar dados iniciais
+                    exibirDados(dadosFinais);
+
+                    // AGORA ativar listeners (apos tudo preenchido)
+                    inicializando = false;
+                    configurarListenersDosFiltros();
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Platform.runLater(() -> {
+                    inicializando = false;
+                    showAlert(AlertType.ERROR, "Erro", "Falha ao carregar dados do relat\u00f3rio: " + e.getMessage());
+                });
             }
-        } else {
-            cmbViagem.setValue("Todas");
-        }
-
-        // Chama o carregamento dos dados diretamente com a string da viagem ativa
-        // (ou null se não houver), ignorando os outros filtros.
-        carregarDadosRelatorio(null, null, viagemAtivaStr, null, null, null, null, null, "Todos");
+        }).start();
     }
 
     private void configurarColunasTabela() {
         colBilhete.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getNumBilhete()));
-        colRota.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getOrigem() + " - " + cellData.getValue().getDestino()));
+        colRota.setCellValueFactory(cellData -> {
+            Passagem p = cellData.getValue();
+            String origem = p.getOrigem() != null ? p.getOrigem() : "";
+            String destino = p.getDestino() != null ? p.getDestino() : "";
+            return new SimpleStringProperty(origem + " - " + destino);
+        });
         colTipoPassagem.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTipoPassagemAux()));
         colAgente.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getAgenteAux()));
-        
+
         colDataViagem.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getDataViagem()));
         colDataViagem.setCellFactory(column -> new TableCell<>() {
             private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -143,17 +225,16 @@ public class RelatorioPassagensController implements Initializable {
 
         colFormaPagamento.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFormaPagamento()));
         colCaixa.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCaixa()));
-        
+
         tableRelatorio.setItems(passagensData);
     }
-    
+
     private void formatarColunaDecimal(TableColumn<Passagem, BigDecimal> column, String propertyName) {
         column.setCellValueFactory(cellData -> {
             try {
                 if (cellData.getValue() == null) return new SimpleObjectProperty<>(null);
                 return new SimpleObjectProperty<>((BigDecimal) cellData.getValue().getClass().getMethod("get" + propertyName).invoke(cellData.getValue()));
             } catch (Exception e) {
-                e.printStackTrace();
                 return new SimpleObjectProperty<>(null);
             }
         });
@@ -167,114 +248,61 @@ public class RelatorioPassagensController implements Initializable {
         });
     }
 
-    private void carregarComboBoxesFiltro() {
-        try {
-            cmbStatusPagamento.setItems(FXCollections.observableArrayList("Todos", "Pagos", "Falta Pagar"));
-            cmbStatusPagamento.getSelectionModel().select("Todos");
-
-            List<String> viagens = new ArrayList<>();
-            viagens.add("Todas");
-            viagens.addAll(viagemDAO.listarViagensParaComboBox());
-            cmbViagem.setItems(FXCollections.observableArrayList(viagens));
-            cmbViagem.getSelectionModel().select("Todas"); // Inicia com "Todas"
-
-            List<String> rotasStrings = new ArrayList<>();
-            rotasStrings.add("Todas");
-            rotasStrings.addAll(rotaDAO.listarTodasAsRotasComoObjects().stream().map(Rota::toString).collect(Collectors.toList()));
-            cmbRota.setItems(FXCollections.observableArrayList(rotasStrings));
-            cmbRota.getSelectionModel().select("Todas");
-
-            List<String> tiposPagamento = new ArrayList<>();
-            tiposPagamento.add("Todos");
-            tiposPagamento.addAll(auxiliaresDAO.listarTiposPagamento());
-            cmbTipoPagamento.setItems(FXCollections.observableArrayList(tiposPagamento));
-            cmbTipoPagamento.getSelectionModel().select("Todos");
-
-            List<String> caixas = new ArrayList<>();
-            caixas.add("Todos");
-            caixas.addAll(auxiliaresDAO.listarCaixas());
-            cmbCaixa.setItems(FXCollections.observableArrayList(caixas));
-            cmbCaixa.getSelectionModel().select("Todos");
-
-            List<String> agentes = new ArrayList<>();
-            agentes.add("Todos");
-            agentes.addAll(auxiliaresDAO.listarAgenteAux());
-            cmbAgente.setItems(FXCollections.observableArrayList(agentes));
-            cmbAgente.getSelectionModel().select("Todos");
-
-            List<String> tiposPassagemAux = new ArrayList<>();
-            tiposPassagemAux.add("Todos");
-            tiposPassagemAux.addAll(auxiliaresDAO.listarPassagemAux());
-            cmbTipoPassagem.setItems(FXCollections.observableArrayList(tiposPassagemAux));
-            cmbTipoPassagem.getSelectionModel().select("Todos");
-
-        } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro de Carregamento", "Falha ao carregar filtros: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
     private void configurarListenersDosFiltros() {
-        // Estes listeners são para QUANDO O USUÁRIO MUDA O FILTRO
-        cmbStatusPagamento.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        dpDataInicio.valueProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        dpDataFim.valueProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        cmbViagem.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        cmbRota.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        cmbAgente.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        cmbTipoPassagem.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        cmbTipoPagamento.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
-        cmbCaixa.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> filtrarRelatorio());
+        cmbStatusPagamento.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        dpDataInicio.valueProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        dpDataFim.valueProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        cmbViagem.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        cmbRota.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        cmbAgente.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        cmbTipoPassagem.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        cmbTipoPagamento.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
+        cmbCaixa.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> { if (!inicializando) filtrarRelatorio(); });
     }
-    
-    // Este método foi removido de 'initialize' pois sua lógica agora está em 'carregarDadosIniciais'
-    // private void definirFiltroPadraoViagemAtiva() { ... }
-    
+
     private void filtrarRelatorio() {
-        // Este método agora é usado apenas pelos listeners, lendo o que o USUÁRIO selecionou
         LocalDate dataInicio = dpDataInicio.getValue();
         LocalDate dataFim = dpDataFim.getValue();
-        
+
         String viagemStr = (cmbViagem.getValue() != null && !cmbViagem.getValue().equals("Todas")) ? cmbViagem.getValue() : null;
         String rotaStr = (cmbRota.getValue() != null && !cmbRota.getValue().equals("Todas")) ? cmbRota.getValue() : null;
         String tipoPagamento = (cmbTipoPagamento.getValue() != null && !cmbTipoPagamento.getValue().equals("Todos")) ? cmbTipoPagamento.getValue() : null;
         String caixa = (cmbCaixa.getValue() != null && !cmbCaixa.getValue().equals("Todos")) ? cmbCaixa.getValue() : null;
         String agente = (cmbAgente.getValue() != null && !cmbAgente.getValue().equals("Todos")) ? cmbAgente.getValue() : null;
         String tipoPassagem = (cmbTipoPassagem.getValue() != null && !cmbTipoPassagem.getValue().equals("Todos")) ? cmbTipoPassagem.getValue() : null;
-        String statusPagamento = (cmbStatusPagamento.getValue() != null && !cmbStatusPagamento.getValue().equals("Todos")) ? cmbStatusPagamento.getValue() : "Todos";
-        
-        carregarDadosRelatorio(dataInicio, dataFim, viagemStr, rotaStr, tipoPagamento, caixa, agente, tipoPassagem, statusPagamento);
-    }
-    
-    private void carregarDadosRelatorio(LocalDate dataInicio, LocalDate dataFim, String viagemStr, String rotaStr, 
-                                        String tipoPagamento, String caixa, String agente, String tipoPassagem, String statusPagamento) {
-        try {
-            List<Passagem> passagensFiltradas = passagemDAO.filtrarRelatorio(dataInicio, dataFim, viagemStr, rotaStr,
-                                                                             tipoPagamento, caixa, agente, tipoPassagem,
-                                                                             null, statusPagamento);
-            
-            passagensData.setAll(passagensFiltradas);
-            
-            BigDecimal totalVendido = BigDecimal.ZERO;
-            BigDecimal totalRecebido = BigDecimal.ZERO;
-            BigDecimal totalAReceber = BigDecimal.ZERO;
+        String statusPagamento = cmbStatusPagamento.getValue() != null ? cmbStatusPagamento.getValue() : "Todos";
 
-            for (Passagem p : passagensFiltradas) {
-                if(p.getValorTotal() != null) totalVendido = totalVendido.add(p.getValorTotal());
-                if(p.getValorPago() != null) totalRecebido = totalRecebido.add(p.getValorPago());
-                if(p.getDevedor() != null) totalAReceber = totalAReceber.add(p.getDevedor());
+        // Executar query em background
+        new Thread(() -> {
+            try {
+                List<Passagem> resultado = passagemDAO.filtrarRelatorio(
+                    dataInicio, dataFim, viagemStr, rotaStr, tipoPagamento, caixa, agente, tipoPassagem, null, statusPagamento);
+                Platform.runLater(() -> exibirDados(resultado));
+            } catch (SQLException e) {
+                e.printStackTrace();
+                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", "Falha ao filtrar: " + e.getMessage()));
             }
+        }).start();
+    }
 
-            lblTotalVendido.setText(String.format("R$ %,.2f", totalVendido));
-            lblTotalRecebido.setText(String.format("R$ %,.2f", totalRecebido));
-            lblTotalAReceber.setText(String.format("R$ %,.2f", totalAReceber));
+    private void exibirDados(List<Passagem> dados) {
+        passagensData.setAll(dados);
 
-            atualizarGraficos(passagensFiltradas);
+        BigDecimal totalVendido = BigDecimal.ZERO;
+        BigDecimal totalRecebido = BigDecimal.ZERO;
+        BigDecimal totalAReceber = BigDecimal.ZERO;
 
-        } catch (SQLException e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Relatório", "Falha ao carregar dados do relatório: " + e.getMessage());
-            e.printStackTrace();
+        for (Passagem p : dados) {
+            if (p.getValorTotal() != null) totalVendido = totalVendido.add(p.getValorTotal());
+            if (p.getValorPago() != null) totalRecebido = totalRecebido.add(p.getValorPago());
+            if (p.getDevedor() != null) totalAReceber = totalAReceber.add(p.getDevedor());
         }
+
+        lblTotalVendido.setText(String.format("R$ %,.2f", totalVendido));
+        lblTotalRecebido.setText(String.format("R$ %,.2f", totalRecebido));
+        lblTotalAReceber.setText(String.format("R$ %,.2f", totalAReceber));
+
+        atualizarGraficos(dados);
     }
 
     private void atualizarGraficos(List<Passagem> dados) {
@@ -287,16 +315,16 @@ public class RelatorioPassagensController implements Initializable {
         chartContainer1.getChildren().clear();
 
         if (dados.isEmpty()) {
-            chartContainer1.getChildren().add(new Label("Sem dados para o gráfico de agentes."));
+            chartContainer1.getChildren().add(new Label("Sem dados para o gr\u00e1fico de agentes."));
             return;
         }
 
         Map<String, BigDecimal> vendasPorAgente = dados.stream()
             .collect(Collectors.groupingBy(
-                Passagem::getAgenteAux,
-                Collectors.mapping(Passagem::getValorTotal, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                p -> p.getAgenteAux() != null ? p.getAgenteAux() : "Sem Agente",
+                Collectors.mapping(p -> p.getValorTotal() != null ? p.getValorTotal() : BigDecimal.ZERO, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             ));
-        
+
         ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
         vendasPorAgente.forEach((agente, total) -> {
             pieChartData.add(new PieChart.Data(agente + String.format(" (R$ %,.2f)", total), total.doubleValue()));
@@ -306,6 +334,7 @@ public class RelatorioPassagensController implements Initializable {
         chart.setTitle("Vendas por Agente");
         chart.setLegendSide(Side.LEFT);
         chart.setLabelsVisible(false);
+        chart.setMaxHeight(220);
 
         chartContainer1.getChildren().add(chart);
     }
@@ -315,14 +344,14 @@ public class RelatorioPassagensController implements Initializable {
         chartContainer2.getChildren().clear();
 
         if (dados.isEmpty()) {
-            chartContainer2.getChildren().add(new Label("Sem dados para o gráfico de pagamentos."));
+            chartContainer2.getChildren().add(new Label("Sem dados para o gr\u00e1fico de pagamentos."));
             return;
         }
-        
+
         Map<String, BigDecimal> valorPorFormaPagamento = dados.stream()
             .collect(Collectors.groupingBy(
-                Passagem::getFormaPagamento,
-                Collectors.mapping(Passagem::getValorPago, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                p -> p.getFormaPagamento() != null ? p.getFormaPagamento() : "N/A",
+                Collectors.mapping(p -> p.getValorPago() != null ? p.getValorPago() : BigDecimal.ZERO, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             ));
 
         CategoryAxis xAxis = new CategoryAxis();
@@ -332,15 +361,16 @@ public class RelatorioPassagensController implements Initializable {
         BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
         barChart.setTitle("Valores Recebidos por Forma de Pagamento");
         barChart.setLegendVisible(false);
+        barChart.setMaxHeight(220);
 
         XYChart.Series<String, Number> series = new XYChart.Series<>();
-        
+
         valorPorFormaPagamento.forEach((forma, total) -> {
             series.getData().add(new XYChart.Data<>(forma, total));
         });
 
         barChart.getData().add(series);
-        
+
         Platform.runLater(() -> {
             String[] colors = {"#007bff", "#28a745", "#ffc107", "#dc3545", "#17a2b8", "#6c757d"};
             int i = 0;
@@ -352,13 +382,13 @@ public class RelatorioPassagensController implements Initializable {
                 i++;
             }
         });
-        
+
         chartContainer2.getChildren().add(barChart);
     }
 
     @FXML
     private void handleImprimirRelatorio(ActionEvent event) {
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "A impressão será implementada futuramente.");
+        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "A impress\u00e3o ser\u00e1 implementada futuramente.");
     }
 
     @FXML

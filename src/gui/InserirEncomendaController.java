@@ -757,28 +757,44 @@ public class InserirEncomendaController implements Initializable {
     public void handleEntregar(ActionEvent event) {
         if (encomendaEmEdicao == null || encomendaEmEdicao.getId() == null) {
             showAlert(AlertType.WARNING, "Operação Não Permitida", "A encomenda não foi localizada corretamente.\nTente salvar (F3) ou recarregar a tela antes de entregar.");
-            return; 
+            return;
         }
         try {
-            recarregarDadosFinanceiros(encomendaEmEdicao.getId());
+            // Salvar o ID antes de qualquer operação que possa limpar encomendaEmEdicao
+            final Long idEncomenda = encomendaEmEdicao.getId();
+            final String destinatarioOriginal = encomendaEmEdicao.getDestinatario();
+
+            recarregarDadosFinanceiros(idEncomenda);
             BigDecimal total = encomendaEmEdicao.getTotalAPagar();
             BigDecimal pagoInicial = (encomendaEmEdicao.getValorPago() != null) ? encomendaEmEdicao.getValorPago() : BigDecimal.ZERO;
 
             if (pagoInicial.compareTo(total) < 0) {
-                abrirTelaPagamento(); 
-                recarregarDadosFinanceiros(encomendaEmEdicao.getId());
+                abrirTelaPagamento();
+                // Após pagamento, finalizarSalvamento pode ter limpado encomendaEmEdicao
+                // Recarregar a encomenda do banco usando o ID salvo
+                recarregarDadosFinanceiros(idEncomenda);
+                if (encomendaEmEdicao == null) {
+                    // finalizarSalvamento limpou - recarregar manualmente
+                    encomendaEmEdicao = encomendaDAO.buscarPorId(idEncomenda);
+                    if (encomendaEmEdicao == null) {
+                        showAlert(AlertType.ERROR, "Erro", "Não foi possível recarregar a encomenda após o pagamento.");
+                        return;
+                    }
+                }
+                // Atualizar total após pagamento
+                total = encomendaEmEdicao.getTotalAPagar();
             }
 
             // Se o usuário já digitou o nome/documento no formulário principal, usar sem abrir diálogo
             String mainNome = (txtNomeRecebedor != null) ? txtNomeRecebedor.getText().trim() : "";
             String mainDoc  = (txtNDocumentoRecebedor != null) ? txtNDocumentoRecebedor.getText().trim() : "";
-            if (!mainNome.isEmpty()) {
+            if (!mainNome.isEmpty() && !mainNome.equalsIgnoreCase("Pendente de Entrega")) {
                 BigDecimal valorPagoAtualizado = (encomendaEmEdicao.getValorPago() != null) ? encomendaEmEdicao.getValorPago() : BigDecimal.ZERO;
                 String statusFinanceiroFinal = (valorPagoAtualizado.compareTo(total) >= 0) ? "PAGO" : "PENDENTE";
                 String nomeFormatado = mainNome.toUpperCase();
                 String doc = mainDoc.toUpperCase();
 
-                boolean sucesso = encomendaDAO.registrarEntrega(encomendaEmEdicao.getId(), doc, nomeFormatado, statusFinanceiroFinal);
+                boolean sucesso = encomendaDAO.registrarEntrega(idEncomenda, doc, nomeFormatado, statusFinanceiroFinal);
                 if (sucesso) {
                     encomendaEmEdicao.setEntregue(true);
                     encomendaEmEdicao.setNomeRecebedor(nomeFormatado);
@@ -792,11 +808,19 @@ public class InserirEncomendaController implements Initializable {
                 return;
             }
 
+            // Capturar referências finais para uso no lambda
+            final BigDecimal totalFinal = total;
+            final Encomenda encomendaRef = encomendaEmEdicao;
+
             Dialog<Pair<String, String>> dialog = new Dialog<>();
             dialog.setTitle("Finalizar Entrega");
             dialog.setHeaderText("Informe os dados de quem está recebendo a encomenda:");
-            Window window = rootPane.getScene().getWindow();
-            dialog.initOwner(window);
+            dialog.initModality(Modality.APPLICATION_MODAL);
+            dialog.setOnShowing(e -> {
+                Stage stg = (Stage) dialog.getDialogPane().getScene().getWindow();
+                stg.setAlwaysOnTop(true);
+                stg.toFront();
+            });
             ButtonType btnConfirmar = new ButtonType("Confirmar e Imprimir", ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(btnConfirmar, ButtonType.CANCEL);
             GridPane grid = new GridPane();
@@ -805,8 +829,8 @@ public class InserirEncomendaController implements Initializable {
             txtNomeRecebedorDlg.setPromptText("Nome do Recebedor");
             TextField txtDocRecebedorDlg = new TextField();
             txtDocRecebedorDlg.setPromptText("Documento (Opcional)");
-            if (encomendaEmEdicao.getDestinatario() != null) {
-                txtNomeRecebedorDlg.setText(encomendaEmEdicao.getDestinatario());
+            if (destinatarioOriginal != null) {
+                txtNomeRecebedorDlg.setText(destinatarioOriginal);
             }
             grid.add(new Label("Nome Recebedor:"), 0, 0); grid.add(txtNomeRecebedorDlg, 1, 0);
             grid.add(new Label("Documento:"), 0, 1); grid.add(txtDocRecebedorDlg, 1, 1);
@@ -822,20 +846,26 @@ public class InserirEncomendaController implements Initializable {
                 String doc = dadosRecebedor.getValue().trim();
                 if (nome.isEmpty()) {
                     showAlert(AlertType.WARNING, "Atenção", "O Nome do recebedor é obrigatório para finalizar.");
-                    return; 
+                    return;
                 }
-                BigDecimal valorPagoAtualizado = (encomendaEmEdicao.getValorPago() != null) ? encomendaEmEdicao.getValorPago() : BigDecimal.ZERO;
-                String statusFinanceiroFinal = (valorPagoAtualizado.compareTo(total) >= 0) ? "PAGO" : "PENDENTE";
-                String nomeFormatado = nome.toUpperCase(); 
+                // Usar encomendaRef que foi salva antes, ou recarregar do banco
+                Encomenda enc = (encomendaEmEdicao != null) ? encomendaEmEdicao : encomendaDAO.buscarPorId(idEncomenda);
+                if (enc == null) {
+                    showAlert(AlertType.ERROR, "Erro", "Não foi possível localizar a encomenda.");
+                    return;
+                }
+                BigDecimal valorPagoAtualizado = (enc.getValorPago() != null) ? enc.getValorPago() : BigDecimal.ZERO;
+                String statusFinanceiroFinal = (valorPagoAtualizado.compareTo(totalFinal) >= 0) ? "PAGO" : "PENDENTE";
+                String nomeFormatado = nome.toUpperCase();
 
-                boolean sucesso = encomendaDAO.registrarEntrega(encomendaEmEdicao.getId(), doc.toUpperCase(), nomeFormatado, statusFinanceiroFinal);
+                boolean sucesso = encomendaDAO.registrarEntrega(idEncomenda, doc.toUpperCase(), nomeFormatado, statusFinanceiroFinal);
                 if (sucesso) {
-                    encomendaEmEdicao.setEntregue(true);
-                    encomendaEmEdicao.setNomeRecebedor(nome.toUpperCase());
-                    encomendaEmEdicao.setDocRecebedor(doc.toUpperCase());
-                    // ATUALIZA A TELA IMEDIATAMENTE 
-                    setEncomendaParaEdicao(encomendaEmEdicao);
-                    imprimirCupomTermico(encomendaEmEdicao);
+                    enc.setEntregue(true);
+                    enc.setNomeRecebedor(nome.toUpperCase());
+                    enc.setDocRecebedor(doc.toUpperCase());
+                    encomendaEmEdicao = enc;
+                    setEncomendaParaEdicao(enc);
+                    imprimirCupomTermico(enc);
                     handleSair(event);
                 } else {
                     showAlert(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");

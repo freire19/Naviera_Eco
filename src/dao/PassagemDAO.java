@@ -244,12 +244,22 @@ public class PassagemDAO {
         List<String> conditions = new ArrayList<>();
         List<Object> params = new ArrayList<>();
 
+        // Filtro por viagem (extrair ID do inicio da string "16 - 04/03/2026 - ...")
+        if (viagemStr != null && !viagemStr.trim().isEmpty()) {
+            try {
+                String idPart = viagemStr.split(" - ")[0].trim();
+                long idViagem = Long.parseLong(idPart);
+                conditions.add("p.id_viagem = ?");
+                params.add(idViagem);
+            } catch (Exception e) { /* ignore parse error */ }
+        }
+
         if (dataInicio != null) { conditions.add("v.data_viagem >= ?"); params.add(Date.valueOf(dataInicio)); }
         if (dataFim != null) { conditions.add("v.data_viagem <= ?"); params.add(Date.valueOf(dataFim)); }
         if (nomePassageiro != null && !nomePassageiro.trim().isEmpty()) {
             conditions.add("pa.nome_passageiro ILIKE ?"); params.add("%" + nomePassageiro + "%");
         }
-        
+
         if (statusPagamento != null && !statusPagamento.equals("Todos")) {
             if (statusPagamento.equals("Falta Pagar")) conditions.add("p.valor_devedor > 0.01");
             else if (statusPagamento.equals("Pagos")) conditions.add("p.valor_devedor <= 0.01");
@@ -265,6 +275,27 @@ public class PassagemDAO {
                 while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
         }
+
+        // Pos-filtro em Java para campos que sao nomes (agente, tipo passagem, rota, forma pagamento, caixa)
+        if (agente != null && !agente.trim().isEmpty()) {
+            passagens.removeIf(p -> p.getAgenteAux() == null || !p.getAgenteAux().equalsIgnoreCase(agente));
+        }
+        if (tipoPassagem != null && !tipoPassagem.trim().isEmpty()) {
+            passagens.removeIf(p -> p.getTipoPassagemAux() == null || !p.getTipoPassagemAux().equalsIgnoreCase(tipoPassagem));
+        }
+        if (rotaStr != null && !rotaStr.trim().isEmpty()) {
+            passagens.removeIf(p -> {
+                String rotaPassagem = (p.getOrigem() != null ? p.getOrigem() : "") + " - " + (p.getDestino() != null ? p.getDestino() : "");
+                return !rotaPassagem.equalsIgnoreCase(rotaStr);
+            });
+        }
+        if (tipoPagamento != null && !tipoPagamento.trim().isEmpty()) {
+            passagens.removeIf(p -> p.getFormaPagamento() == null || !p.getFormaPagamento().equalsIgnoreCase(tipoPagamento));
+        }
+        if (caixa != null && !caixa.trim().isEmpty()) {
+            passagens.removeIf(p -> p.getCaixa() == null || !p.getCaixa().equalsIgnoreCase(caixa));
+        }
+
         return passagens;
     }
 

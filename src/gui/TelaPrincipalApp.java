@@ -21,9 +21,20 @@ public class TelaPrincipalApp extends Application {
         // Captura erros fatais e grava no log automaticamente
         // =========================================================================
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            // Ignorar IndexOutOfBoundsException interno do JavaFX (bug conhecido do framework)
+            // que ocorre no ListViewBehavior ao manipular seleção em ComboBox
+            if (throwable instanceof IndexOutOfBoundsException) {
+                String stackTrace = throwable.getStackTrace().length > 0
+                    ? throwable.getStackTrace()[0].getClassName() : "";
+                if (stackTrace.contains("javafx") || stackTrace.contains("com.sun.javafx")) {
+                    System.err.println("Ignorando IndexOutOfBoundsException interno do JavaFX: " + throwable.getMessage());
+                    return;
+                }
+            }
+
             // Registrar erro no arquivo de log
             LogService.registrarErroFatal(thread, throwable);
-            
+
             // Exibir alerta para o usuário (na thread do JavaFX)
             Platform.runLater(() -> {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -37,7 +48,7 @@ public class TelaPrincipalApp extends Application {
                 );
                 alert.showAndWait();
             });
-            
+
             // Imprimir no console também
             System.err.println("ERRO FATAL CAPTURADO:");
             throwable.printStackTrace();

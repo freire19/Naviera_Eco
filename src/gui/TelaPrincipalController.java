@@ -59,6 +59,9 @@ import gui.BalancoViagemController;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 
+import java.util.Collections;
+import java.util.Map;
+
 public class TelaPrincipalController implements Initializable {
 
     @FXML private BorderPane rootPane;
@@ -100,18 +103,43 @@ public class TelaPrincipalController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setupDashboardCards();
-        carregarViagensNoCombo();
-        atualizarDashboard();
-        
         mesAtualCalendario = YearMonth.now();
-        construirCalendario();
-        
         atualizarEstiloMenuSuperior();
-        configurarLegendaDinamica(); 
-        
+        configurarLegendaDinamica();
+
         if (btnModoNoturno != null) {
             btnModoNoturno.setText("🌙 Modo Escuro");
         }
+
+        // Carrega dados do banco em background para não travar a UI
+        new Thread(() -> {
+            List<String> viagens = viagemDAO.listarViagensParaComboBox();
+            Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+
+            // Dados do dashboard
+            long idViagem = viagemAtiva != null ? viagemAtiva.getId() : -1;
+            int[] counts = carregarCountsDashboard(idViagem);
+
+            // Dados do calendário
+            List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+            List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+            Map<LocalDate, List<String>> notasDoMes = agendaDAO.buscarAnotacoesDoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+
+            Platform.runLater(() -> {
+                // Preencher combo
+                cmbViagemAtiva.setItems(FXCollections.observableArrayList(viagens));
+                if (viagemAtiva != null) cmbViagemAtiva.setValue(viagemAtiva.toString());
+                else if (!cmbViagemAtiva.getItems().isEmpty()) cmbViagemAtiva.getSelectionModel().selectFirst();
+
+                // Atualizar dashboard
+                txtTotalVolumesFrete.setText(String.valueOf(counts[0]));
+                txtQtdEncomendas.setText(String.valueOf(counts[1]));
+                txtTotalPassageiros.setText(String.valueOf(counts[2]));
+
+                // Construir calendário com dados já carregados
+                construirCalendarioComDados(viagensDoMes, boletosDoMes, notasDoMes);
+            });
+        }).start();
     }
 
     // ================================================================================
@@ -222,18 +250,29 @@ public class TelaPrincipalController implements Initializable {
     // LÓGICA DO CALENDÁRIO (COM BOLETOS E LEGENDA)
     // ================================================================================
     private void construirCalendario() {
+        // Carrega dados em background e depois constrói na UI thread
+        new Thread(() -> {
+            List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+            List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+            Map<LocalDate, List<String>> notasDoMes = agendaDAO.buscarAnotacoesDoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+            Platform.runLater(() -> construirCalendarioComDados(viagensDoMes, boletosDoMes, notasDoMes));
+        }).start();
+    }
+
+    /** Constrói o calendário na UI thread usando dados já carregados */
+    private void construirCalendarioComDados(List<Viagem> viagensDoMes, List<AgendaDAO.ResumoBoleto> boletosDoMes, Map<LocalDate, List<String>> notasDoMes) {
         calendarioGrid.getChildren().clear();
-        
-        String corBordaNormal = isModoEscuro ? "#333333" : "#cccccc"; 
-        
-        String corBordaDestaque = isModoEscuro ? "#0d56df" : "#1976d2"; 
-        String corFundoHover = isModoEscuro ? "#121a33" : "#e3f2fd"; 
-        String corFundoPadrao = isModoEscuro ? "#333333" : "white"; 
-        String corFeriado = isModoEscuro ? "#b71c1c" : "#fff9c4"; 
-        String corHojeFundo = isModoEscuro ? "#0d56df" : "#e3f2fd"; 
-        
+
+        String corBordaNormal = isModoEscuro ? "#333333" : "#cccccc";
+
+        String corBordaDestaque = isModoEscuro ? "#0d56df" : "#1976d2";
+        String corFundoHover = isModoEscuro ? "#121a33" : "#e3f2fd";
+        String corFundoPadrao = isModoEscuro ? "#333333" : "white";
+        String corFeriado = isModoEscuro ? "#b71c1c" : "#fff9c4";
+        String corHojeFundo = isModoEscuro ? "#0d56df" : "#e3f2fd";
+
         calendarioGrid.setStyle("-fx-border-color: " + corBordaNormal + "; -fx-border-width: 1px;");
-        
+
         String nomeMes = mesAtualCalendario.getMonth().getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
         String titulo = nomeMes.substring(0, 1).toUpperCase() + nomeMes.substring(1) + " " + mesAtualCalendario.getYear();
         lblMesAnoCalendario.setText(titulo);
@@ -247,13 +286,10 @@ public class TelaPrincipalController implements Initializable {
         }
 
         LocalDate dataInicio = mesAtualCalendario.atDay(1);
-        int diaDaSemanaInicio = dataInicio.getDayOfWeek().getValue(); 
-        if (diaDaSemanaInicio == 7) diaDaSemanaInicio = 0; 
+        int diaDaSemanaInicio = dataInicio.getDayOfWeek().getValue();
+        if (diaDaSemanaInicio == 7) diaDaSemanaInicio = 0;
 
         int diasNoMes = mesAtualCalendario.lengthOfMonth();
-        
-        List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
-        List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
         
         int row = 1;
         int col = diaDaSemanaInicio;
@@ -328,8 +364,8 @@ public class TelaPrincipalController implements Initializable {
                 }
             }
 
-            // --- NOTAS DA AGENDA ---
-            List<String> notas = agendaDAO.buscarAnotacoesPorData(dataAtual);
+            // --- NOTAS DA AGENDA (batch do mês inteiro) ---
+            List<String> notas = notasDoMes.getOrDefault(dataAtual, Collections.emptyList());
             for (String nota : notas) {
                 Label lblNota = new Label("✎ " + nota);
                 
@@ -564,31 +600,54 @@ public class TelaPrincipalController implements Initializable {
     }
 
     private void atualizarDashboard() {
-        Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-        if (viagemAtiva == null) {
-            txtTotalVolumesFrete.setText("0"); txtQtdEncomendas.setText("0"); txtTotalPassageiros.setText("0"); return;
-        }
-        long idViagemAtiva = viagemAtiva.getId();
-        executarConsultaCount("SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi JOIN fretes f ON fi.id_frete = f.id_frete WHERE f.id_viagem = ? AND (f.excluido = FALSE OR f.excluido IS NULL)", idViagemAtiva, txtTotalVolumesFrete);
-        executarConsultaCount("SELECT COUNT(*) FROM encomendas WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)", idViagemAtiva, txtQtdEncomendas);
-        executarConsultaCount("SELECT COUNT(*) FROM passagens WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)", idViagemAtiva, txtTotalPassageiros);
+        new Thread(() -> {
+            Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+            long idViagem = viagemAtiva != null ? viagemAtiva.getId() : -1;
+            int[] counts = carregarCountsDashboard(idViagem);
+            Platform.runLater(() -> {
+                txtTotalVolumesFrete.setText(String.valueOf(counts[0]));
+                txtQtdEncomendas.setText(String.valueOf(counts[1]));
+                txtTotalPassageiros.setText(String.valueOf(counts[2]));
+            });
+        }).start();
     }
-    
-    private void executarConsultaCount(String sql, long idViagem, Text target) {
-        try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, idViagem);
-            try (ResultSet rs = stmt.executeQuery()) { if (rs.next()) target.setText(String.valueOf(rs.getInt(1))); }
-        } catch (SQLException e) { target.setText("-"); e.printStackTrace(); }
+
+    /** Executa as 3 queries do dashboard numa única conexão. Pode ser chamado de qualquer thread. */
+    private int[] carregarCountsDashboard(long idViagem) {
+        int[] counts = {0, 0, 0};
+        if (idViagem < 0) return counts;
+        String[] sqls = {
+            "SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi JOIN fretes f ON fi.id_frete = f.id_frete WHERE f.id_viagem = ? AND (f.excluido = FALSE OR f.excluido IS NULL)",
+            "SELECT COUNT(*) FROM encomendas WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)",
+            "SELECT COUNT(*) FROM passagens WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)"
+        };
+        try (Connection conn = ConexaoBD.getConnection()) {
+            for (int i = 0; i < sqls.length; i++) {
+                try (PreparedStatement stmt = conn.prepareStatement(sqls[i])) {
+                    stmt.setLong(1, idViagem);
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) counts[i] = rs.getInt(1);
+                    }
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return counts;
     }
 
     private void carregarViagensNoCombo() {
-        try {
-            List<String> listaViagens = viagemDAO.listarViagensParaComboBox();
-            cmbViagemAtiva.setItems(FXCollections.observableArrayList(listaViagens));
-            Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-            if (viagemAtiva != null) cmbViagemAtiva.setValue(viagemAtiva.toString());
-            else if (!cmbViagemAtiva.getItems().isEmpty()) cmbViagemAtiva.getSelectionModel().selectFirst();
-        } catch (Exception e) { showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+        new Thread(() -> {
+            try {
+                List<String> listaViagens = viagemDAO.listarViagensParaComboBox();
+                Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+                Platform.runLater(() -> {
+                    cmbViagemAtiva.setItems(FXCollections.observableArrayList(listaViagens));
+                    if (viagemAtiva != null) cmbViagemAtiva.setValue(viagemAtiva.toString());
+                    else if (!cmbViagemAtiva.getItems().isEmpty()) cmbViagemAtiva.getSelectionModel().selectFirst();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", e.getMessage()));
+            }
+        }).start();
     }
     
     // =========================================================================
@@ -673,40 +732,55 @@ public class TelaPrincipalController implements Initializable {
 
     // 2. Abertura em ABA (Sistema de abas dentro da janela principal)
     private void abrirTelaLivre(String fxml, String titulo) {
-        try {
-            // Verificar se já existe uma aba com esse título
-            for (Tab tab : tabPanePrincipal.getTabs()) {
-                if (tab.getText().equals(titulo)) {
-                    // Selecionar a aba existente
-                    tabPanePrincipal.getSelectionModel().select(tab);
+        // Verificar se já existe uma aba com esse título
+        for (Tab tab : tabPanePrincipal.getTabs()) {
+            if (tab.getText().equals(titulo)) {
+                tabPanePrincipal.getSelectionModel().select(tab);
+                return;
+            }
+        }
+
+        // Criar aba com indicador de carregamento
+        Tab novaAba = new Tab(titulo);
+        Label lblCarregando = new Label("Carregando...");
+        lblCarregando.setStyle("-fx-font-size: 14px; -fx-padding: 20;");
+        novaAba.setContent(lblCarregando);
+        novaAba.setClosable(true);
+        tabPanePrincipal.getTabs().add(novaAba);
+        tabPanePrincipal.getSelectionModel().select(novaAba);
+
+        // Carregar FXML em background thread
+        new Thread(() -> {
+            try {
+                URL url = getClass().getResource(fxml);
+                if (url == null) {
+                    Platform.runLater(() -> {
+                        tabPanePrincipal.getTabs().remove(novaAba);
+                        showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml);
+                    });
                     return;
                 }
+                FXMLLoader loader = new FXMLLoader(url);
+                Parent pane = loader.load();
+
+                Platform.runLater(() -> {
+                    novaAba.setContent(pane);
+                    pane.getProperties().put("parentTab", novaAba);
+                    pane.getProperties().put("parentTabPane", tabPanePrincipal);
+
+                    novaAba.setOnClosed(event -> {
+                        atualizarDashboard();
+                        construirCalendario();
+                    });
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+                Platform.runLater(() -> {
+                    tabPanePrincipal.getTabs().remove(novaAba);
+                    showAlert(AlertType.ERROR, "Erro", e.getMessage());
+                });
             }
-            
-            URL url = getClass().getResource(fxml);
-            if (url == null) { showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
-            Parent pane = new FXMLLoader(url).load();
-            
-            // Criar nova aba
-            Tab novaAba = new Tab(titulo);
-            novaAba.setContent(pane);
-            novaAba.setClosable(true);
-            
-            // Armazenar referência da aba no root do conteúdo para que telas possam fechar a aba
-            pane.getProperties().put("parentTab", novaAba);
-            pane.getProperties().put("parentTabPane", tabPanePrincipal);
-            
-            // Quando fechar a aba, atualizar dashboard
-            novaAba.setOnClosed(event -> {
-                atualizarDashboard();
-                construirCalendario();
-            });
-            
-            // Adicionar e selecionar a nova aba
-            tabPanePrincipal.getTabs().add(novaAba);
-            tabPanePrincipal.getSelectionModel().select(novaAba);
-            
-        } catch (IOException e) { e.printStackTrace(); showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+        }).start();
     }
     
     /**
@@ -775,10 +849,18 @@ public class TelaPrincipalController implements Initializable {
     }
     
     // Método específico para telas que precisam da viagem ativa (Venda de passagem, encomenda...)
+    // Verifica viagem ativa em thread de background para nao travar a UI
     private void abrirTelaComViagem(String fxml, String titulo) {
-         Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-         if (viagemAtiva == null) { showAlert(AlertType.WARNING, "Atenção", "Ative uma viagem."); return; }
-         abrirTelaLivre(fxml, titulo);
+         new Thread(() -> {
+             Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+             Platform.runLater(() -> {
+                 if (viagemAtiva == null) {
+                     showAlert(AlertType.WARNING, "Atenção", "Ative uma viagem.");
+                     return;
+                 }
+                 abrirTelaLivre(fxml, titulo);
+             });
+         }).start();
     }
     
     // =========================================================================

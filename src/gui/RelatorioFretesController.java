@@ -85,7 +85,7 @@ public class RelatorioFretesController implements Initializable {
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    // Cores e Fontes - PADRÃO DO SISTEMA
+    // Cores e Fontes - PADRÃƒO DO SISTEMA
     private final String COR_AZUL_ESCURO = "#0d47a1";
     private final String COR_CINZA_CLARO = "#f5f5f5";
     
@@ -247,7 +247,7 @@ public class RelatorioFretesController implements Initializable {
         // Carregar itens dos fretes
         StringBuilder sql = new StringBuilder(
             "SELECT f.numero_frete, v.data_viagem, f.remetente_nome_temp, " +
-            "fi.descricao, fi.quantidade, fi.valor_unitario, (fi.quantidade * fi.valor_unitario) as total_item " +
+            "fi.nome_item_ou_id_produto, fi.quantidade, fi.preco_unitario, (fi.quantidade * fi.preco_unitario) as total_item " +
             "FROM fretes f " +
             "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
             "LEFT JOIN viagens v ON f.id_viagem = v.id_viagem " +
@@ -257,7 +257,7 @@ public class RelatorioFretesController implements Initializable {
         if (filtrarCliente) {
             sql.append(" AND f.destinatario_nome_temp = ? ");
         }
-        sql.append(" ORDER BY f.numero_frete, fi.descricao");
+        sql.append(" ORDER BY f.numero_frete, fi.nome_item_ou_id_produto");
         
         double totalItens = 0;
         
@@ -273,9 +273,9 @@ public class RelatorioFretesController implements Initializable {
                 LocalDate dataViagem = rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toLocalDate() : null;
                 String dataStr = dataViagem != null ? dataViagem.format(dateFormatter) : "";
                 String remetente = rs.getString("remetente_nome_temp");
-                String item = rs.getString("descricao");
+                String item = rs.getString("nome_item_ou_id_produto");
                 double quantidade = rs.getDouble("quantidade");
-                double preco = rs.getDouble("valor_unitario");
+                double preco = rs.getDouble("preco_unitario");
                 double total = rs.getDouble("total_item");
                 
                 listaFreteItens.add(new FreteItem(codFrete, dataStr, remetente, item, quantidade, preco, total));
@@ -287,7 +287,7 @@ public class RelatorioFretesController implements Initializable {
         
         lblTotalItens.setText(String.format("R$ %.2f", totalItens));
         
-        // Carregar situação financeira
+        // Carregar situaÃ§Ã£o financeira
         StringBuilder sqlFin = new StringBuilder(
             "SELECT f.numero_frete, f.valor_total_itens, f.valor_pago, f.valor_devedor " +
             "FROM fretes f " +
@@ -324,52 +324,63 @@ public class RelatorioFretesController implements Initializable {
     }
 
     // ============================================================================
-    // IMPRESSÕES
+    // IMPRESSÃ•ES
     // ============================================================================
 
     @FXML
     private void imprimirRelatorio(ActionEvent event) {
-        // Relatório simples para impressora térmica: destinatário, data viagem, rota
-        // Itens: apenas quantidade e descrição, total de volumes no final
-        Viagem viagem = cmbViagem.getValue();
-        String cliente = cmbCliente.getValue();
-        
-        if (viagem == null) {
-            showAlert("Selecione uma viagem.");
-            return;
+        // RelatÃ³rio simples para impressora tÃ©rmica: destinatÃ¡rio, data viagem, rota
+        // Itens: apenas quantidade e descriÃ§Ã£o, total de volumes no final
+        try {
+            Viagem viagem = cmbViagem.getValue();
+            String cliente = cmbCliente.getValue();
+            
+            if (viagem == null) {
+                showAlert("Selecione uma viagem.");
+                return;
+            }
+            if (cliente == null || cliente.equals("Todos os Clientes")) {
+                showAlert("Selecione um cliente especÃ­fico para imprimir o relatÃ³rio.");
+                return;
+            }
+            
+            imprimirRelatorioTermico(viagem, cliente, false);
+        } catch (Exception ex) {
+            showErroDetalhado("gerar Relatório de Frete", ex);
         }
-        if (cliente == null || cliente.equals("Todos os Clientes")) {
-            showAlert("Selecione um cliente específico para imprimir o relatório.");
-            return;
-        }
-        
-        imprimirRelatorioTermico(viagem, cliente, false);
     }
 
     @FXML
     private void imprimirCobranca(ActionEvent event) {
-        // Igual relatório mas com valores unitários, total e soma
-        Viagem viagem = cmbViagem.getValue();
-        String cliente = cmbCliente.getValue();
-        
-        if (viagem == null) {
-            showAlert("Selecione uma viagem.");
-            return;
+        // Igual relatÃ³rio mas com valores unitÃ¡rios, total e soma
+        try {
+            Viagem viagem = cmbViagem.getValue();
+            String cliente = cmbCliente.getValue();
+            
+            if (viagem == null) {
+                showAlert("Selecione uma viagem.");
+                return;
+            }
+            if (cliente == null || cliente.equals("Todos os Clientes")) {
+                showAlert("Selecione um cliente especÃ­fico para imprimir a cobranÃ§a.");
+                return;
+            }
+            
+            imprimirRelatorioTermico(viagem, cliente, true);
+        } catch (Exception ex) {
+            showErroDetalhado("gerar Cobrança de Frete", ex);
         }
-        if (cliente == null || cliente.equals("Todos os Clientes")) {
-            showAlert("Selecione um cliente específico para imprimir a cobrança.");
-            return;
-        }
-        
-        imprimirRelatorioTermico(viagem, cliente, true);
     }
 
     private void imprimirRelatorioTermico(Viagem viagem, String cliente, boolean comValores) {
-        // Usar impressora térmica configurada
+        // Usar impressora tÃ©rmica configurada
         Printer printer = RelatorioUtil.getImpressoraTermica();
-        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada."); return; }
+        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         PrinterJob job = PrinterJob.createPrinterJob(printer);
-        if (job == null) return;
+        if (job == null) {
+            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            return;
+        }
         
         javafx.print.PageLayout pageLayout = printer.createPageLayout(
             printer.getDefaultPageLayout().getPaper(), 
@@ -388,7 +399,7 @@ public class RelatorioFretesController implements Initializable {
         root.setMaxWidth(larguraBase);
         root.setAlignment(Pos.TOP_LEFT);
         
-        // ============ CABEÇALHO COM LOGO E DADOS DA EMPRESA ============
+        // ============ CABEÃ‡ALHO COM LOGO E DADOS DA EMPRESA ============
         VBox headerBox = new VBox(2);
         headerBox.setAlignment(Pos.CENTER);
         headerBox.setPrefWidth(larguraBase);
@@ -402,7 +413,7 @@ public class RelatorioFretesController implements Initializable {
                     headerBox.getChildren().add(logo);
                 } catch (Exception e) { }
             }
-            Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÇÃO");
+            Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
             
             String dados = "";
@@ -418,17 +429,17 @@ public class RelatorioFretesController implements Initializable {
         }
         root.getChildren().add(headerBox);
         
-        // ============ TÍTULO E NÚMERO DO FRETE ============
+        // ============ TÃTULO E NÃšMERO DO FRETE ============
         VBox infoBox = new VBox(5);
         infoBox.setAlignment(Pos.CENTER);
         infoBox.setPadding(new Insets(10, 0, 5, 0));
         
-        Label lblTitulo = new Label(comValores ? "COBRANÇA DE FRETE" : "RECIBO DE FRETE");
+        Label lblTitulo = new Label(comValores ? "COBRANÃ‡A DE FRETE" : "RECIBO DE FRETE");
         lblTitulo.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: black;");
         
-        // Buscar número do frete
+        // Buscar nÃºmero do frete
         String numeroFrete = buscarNumeroFrete(viagem, cliente);
-        Label lblNum = new Label("Nº " + numeroFrete);
+        Label lblNum = new Label("NÂº " + numeroFrete);
         lblNum.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-border-color: black; -fx-border-width: 2px; -fx-padding: 3px 15px 3px 15px; -fx-text-fill: black;");
         
         infoBox.getChildren().addAll(lblTitulo, lblNum);
@@ -487,11 +498,11 @@ public class RelatorioFretesController implements Initializable {
         int totalVolumes = 0;
         int linha = 1;
         
-        String sql = "SELECT fi.quantidade, fi.descricao, fi.valor_unitario, (fi.quantidade * fi.valor_unitario) as total_item " +
+        String sql = "SELECT fi.quantidade, fi.nome_item_ou_id_produto, fi.preco_unitario, (fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
                      "WHERE f.id_viagem = ? AND f.destinatario_nome_temp = ? " +
-                     "ORDER BY f.numero_frete, fi.descricao";
+                     "ORDER BY f.numero_frete, fi.nome_item_ou_id_produto";
         
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
@@ -501,8 +512,8 @@ public class RelatorioFretesController implements Initializable {
             
             while (rs.next()) {
                 double qtd = rs.getDouble("quantidade");
-                String desc = rs.getString("descricao");
-                double unit = rs.getDouble("valor_unitario");
+                String desc = rs.getString("nome_item_ou_id_produto");
+                double unit = rs.getDouble("preco_unitario");
                 double total = rs.getDouble("total_item");
                 
                 totalVolumes += (int) qtd;
@@ -529,7 +540,7 @@ public class RelatorioFretesController implements Initializable {
                 linha++;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Erro ao buscar itens do frete no banco de dados: " + e.getMessage(), e);
         }
         
         root.getChildren().add(grid);
@@ -569,7 +580,7 @@ public class RelatorioFretesController implements Initializable {
         
         root.getChildren().add(boxValores);
         
-        // ============ RODAPÉ COM ASSINATURA ============
+        // ============ RODAPÃ‰ COM ASSINATURA ============
         String dataHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         Label lblData = new Label("\nEmitido em: " + dataHora + "\n\n__________________________\nAssinatura");
         lblData.setStyle("-fx-font-size: 9px; -fx-text-fill: black;");
@@ -579,7 +590,7 @@ public class RelatorioFretesController implements Initializable {
         footer.setAlignment(Pos.CENTER);
         root.getChildren().add(footer);
         
-        // Ajustar escala se necessário
+        // Ajustar escala se necessÃ¡rio
         double largImp = pageLayout.getPrintableWidth();
         if (largImp > 0 && largImp < larguraBase) {
             double sc = largImp / larguraBase;
@@ -587,7 +598,7 @@ public class RelatorioFretesController implements Initializable {
         }
         
         if (job.printPage(root)) job.endJob();
-        else showAlert("Falha na impressão.");
+        else showAlert("Falha na impressÃ£o.");
     }
     
     private String buscarNumeroFrete(Viagem viagem, String cliente) {
@@ -645,14 +656,18 @@ public class RelatorioFretesController implements Initializable {
 
     @FXML
     private void imprimirGeral(ActionEvent event) {
-        // Papel A4, cabeçalho com logo, todos os clientes, todos os remetentes
-        Viagem viagem = cmbViagem.getValue();
-        if (viagem == null) {
-            showAlert("Selecione uma viagem.");
-            return;
+        // Papel A4, cabeÃ§alho com logo, todos os clientes, todos os remetentes
+        try {
+            Viagem viagem = cmbViagem.getValue();
+            if (viagem == null) {
+                showAlert("Selecione uma viagem.");
+                return;
+            }
+            
+            imprimirRelatorioA4Geral(viagem);
+        } catch (Exception ex) {
+            showErroDetalhado("gerar Relatório Geral A4", ex);
         }
-        
-        imprimirRelatorioA4Geral(viagem);
     }
 
     private void imprimirRelatorioA4Geral(Viagem viagem) {
@@ -661,7 +676,7 @@ public class RelatorioFretesController implements Initializable {
         alertFiltro.setTitle("Filtros");
         alertFiltro.setHeaderText("O que deseja imprimir?");
         ButtonType btnTudo = new ButtonType("Tudo");
-        ButtonType btnPendentes = new ButtonType("Só Pendentes");
+        ButtonType btnPendentes = new ButtonType("SÃ³ Pendentes");
         ButtonType btnFinanceiro = new ButtonType("Falta Pagar");
         ButtonType btnCancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
         alertFiltro.getButtonTypes().setAll(btnTudo, btnPendentes, btnFinanceiro, btnCancelar);
@@ -669,9 +684,9 @@ public class RelatorioFretesController implements Initializable {
         if (!res.isPresent() || res.get() == btnCancelar) return;
 
         int tipoFiltro = 0;
-        String tituloRelatorio = "RELATÓRIO GERAL";
-        if (res.get() == btnPendentes) { tipoFiltro = 1; tituloRelatorio = "RELATÓRIO DE PENDÊNCIAS DE ENTREGA"; }
-        else if (res.get() == btnFinanceiro) { tipoFiltro = 2; tituloRelatorio = "RELATÓRIO DE PENDÊNCIAS FINANCEIRAS"; }
+        String tituloRelatorio = "RELATÃ“RIO GERAL";
+        if (res.get() == btnPendentes) { tipoFiltro = 1; tituloRelatorio = "RELATÃ“RIO DE PENDÃŠNCIAS DE ENTREGA"; }
+        else if (res.get() == btnFinanceiro) { tipoFiltro = 2; tituloRelatorio = "RELATÃ“RIO DE PENDÃŠNCIAS FINANCEIRAS"; }
 
         String nomeRota = "TODAS AS ROTAS";
         if (cmbRota.getValue() != null && !cmbRota.getValue().equals("Todas as Rotas")) {
@@ -680,25 +695,29 @@ public class RelatorioFretesController implements Initializable {
 
         // Usar impressora A4 configurada
         Printer printer = RelatorioUtil.getImpressoraA4();
-        if (printer == null) { showAlert("Nenhuma impressora A4 selecionada."); return; }
+        if (printer == null) { showAlert("Nenhuma impressora A4 selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         
         PrinterJob job = PrinterJob.createPrinterJob(printer);
-        if (job == null || !job.showPrintDialog(rootPane.getScene().getWindow())) return;
+        if (job == null) {
+            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            return;
+        }
+        if (!job.showPrintDialog(rootPane.getScene().getWindow())) return;
         
         PageLayout pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
         double larguraUtil = pageLayout.getPrintableWidth() - 40;
         double alturaUtil = pageLayout.getPrintableHeight();
         
-        // Buscar fretes agrupados por número de frete (destinatário)
+        // Buscar fretes agrupados por nÃºmero de frete (destinatÃ¡rio)
         Map<String, FreteCompleto> fretesMap = new LinkedHashMap<>();
         
         String sql = "SELECT f.id_frete, f.numero_frete, f.destinatario_nome_temp, f.remetente_nome_temp, " +
                      "f.valor_total_itens, f.valor_pago, f.valor_devedor, " +
-                     "fi.descricao, fi.quantidade, fi.valor_unitario, (fi.quantidade * fi.valor_unitario) as total_item " +
+                     "fi.nome_item_ou_id_produto, fi.quantidade, fi.preco_unitario, (fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
                      "WHERE f.id_viagem = ? " +
-                     "ORDER BY f.numero_frete, fi.descricao";
+                     "ORDER BY f.numero_frete, fi.nome_item_ou_id_produto";
         
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
@@ -722,20 +741,20 @@ public class RelatorioFretesController implements Initializable {
                 }
                 
                 ItemFrete item = new ItemFrete();
-                item.descricao = rs.getString("descricao");
+                item.descricao = rs.getString("nome_item_ou_id_produto");
                 item.quantidade = rs.getDouble("quantidade");
-                item.valorUnitario = rs.getDouble("valor_unitario");
+                item.valorUnitario = rs.getDouble("preco_unitario");
                 item.valorTotal = rs.getDouble("total_item");
                 frete.itens.add(item);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Erro ao buscar fretes no banco de dados: " + e.getMessage(), e);
         }
         
         // Aplicar filtros
         List<FreteCompleto> listaFiltrada = new ArrayList<>();
         for (FreteCompleto f : fretesMap.values()) {
-            if (tipoFiltro == 1) { /* Pendentes - não implementado para fretes */ listaFiltrada.add(f); }
+            if (tipoFiltro == 1) { /* Pendentes - nÃ£o implementado para fretes */ listaFiltrada.add(f); }
             else if (tipoFiltro == 2) { if (f.valorDevedor > 0.01) listaFiltrada.add(f); }
             else { listaFiltrada.add(f); }
         }
@@ -750,7 +769,7 @@ public class RelatorioFretesController implements Initializable {
             tDevedor += f.valorDevedor;
         }
         
-        // Criar páginas
+        // Criar pÃ¡ginas
         List<VBox> paginas = new ArrayList<>();
         int numPagina = 1;
         VBox paginaAtual = criarPaginaBaseA4(larguraUtil, alturaUtil, numPagina, viagem, tituloRelatorio, true, nomeRota);
@@ -793,7 +812,7 @@ public class RelatorioFretesController implements Initializable {
         adicionarRodapeA4(paginaAtual, larguraUtil);
         paginas.add(paginaAtual);
         
-        // Imprimir todas as páginas
+        // Imprimir todas as pÃ¡ginas
         for (VBox p : paginas) {
             job.printPage(pageLayout, p);
         }
@@ -818,7 +837,7 @@ public class RelatorioFretesController implements Initializable {
         box.setMaxWidth(larguraTotal);
         box.setStyle("-fx-border-color: black; -fx-border-width: 0 0 1 0; -fx-padding: 5 0 5 0;");
         
-        // Header azul com número do frete, remetente, destinatário e status
+        // Header azul com nÃºmero do frete, remetente, destinatÃ¡rio e status
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(3, 5, 3, 5));
@@ -837,7 +856,7 @@ public class RelatorioFretesController implements Initializable {
         lRem.setFont(FONT_NEGRITO);
         lRem.setTextFill(Color.WHITE);
         
-        Label lDest = new Label("DESTINATÁRIO: " + (frete.destinatario != null ? frete.destinatario : ""));
+        Label lDest = new Label("DESTINATÃRIO: " + (frete.destinatario != null ? frete.destinatario : ""));
         lDest.setFont(FONT_NEGRITO);
         lDest.setTextFill(Color.WHITE);
         
@@ -870,7 +889,7 @@ public class RelatorioFretesController implements Initializable {
             
             // Headers
             Label hQtd = new Label("QTD"); hQtd.setFont(FONT_HEADER_ITENS); hQtd.setTextFill(Color.DARKGRAY);
-            Label hDesc = new Label("DESCRIÇÃO"); hDesc.setFont(FONT_HEADER_ITENS); hDesc.setTextFill(Color.DARKGRAY);
+            Label hDesc = new Label("DESCRIÃ‡ÃƒO"); hDesc.setFont(FONT_HEADER_ITENS); hDesc.setTextFill(Color.DARKGRAY);
             Label hUnit = new Label("VL UNIT"); hUnit.setFont(FONT_HEADER_ITENS); hUnit.setTextFill(Color.DARKGRAY); hUnit.setMaxWidth(Double.MAX_VALUE); hUnit.setAlignment(Pos.CENTER_RIGHT);
             Label hTotal = new Label("VL TOTAL"); hTotal.setFont(FONT_HEADER_ITENS); hTotal.setTextFill(Color.DARKGRAY); hTotal.setMaxWidth(Double.MAX_VALUE); hTotal.setAlignment(Pos.CENTER_RIGHT);
             
@@ -888,7 +907,7 @@ public class RelatorioFretesController implements Initializable {
             box.getChildren().add(grid);
         }
         
-        // Rodapé com assinatura e valores
+        // RodapÃ© com assinatura e valores
         HBox footer = new HBox(15);
         footer.setAlignment(Pos.CENTER_RIGHT);
         footer.setPadding(new Insets(5, 5, 5, 5));
@@ -955,7 +974,7 @@ public class RelatorioFretesController implements Initializable {
             
             String dSaida = viagem.getDataViagem() != null ? viagem.getDataViagem().format(dateFormatter) : "N/D";
             String dChegada = viagem.getDataChegada() != null ? viagem.getDataChegada().format(dateFormatter) : "EM ABERTO";
-            Label lDatas = new Label("SAÍDA: " + dSaida + "  |  PREV. CHEGADA: " + dChegada);
+            Label lDatas = new Label("SAÃDA: " + dSaida + "  |  PREV. CHEGADA: " + dChegada);
             lDatas.setFont(FONT_DATAS);
             
             Label lTit = new Label(titulo);
@@ -964,7 +983,7 @@ public class RelatorioFretesController implements Initializable {
             
             header.getChildren().addAll(lEmp, lRota, lDatas, lTit);
         } else {
-            Label lSimples = new Label(titulo + " (Continuação) - Página " + pag);
+            Label lSimples = new Label(titulo + " (ContinuaÃ§Ã£o) - PÃ¡gina " + pag);
             lSimples.setFont(FONT_NEGRITO);
             header.getChildren().add(lSimples);
         }
@@ -998,7 +1017,7 @@ public class RelatorioFretesController implements Initializable {
         lblTit.setFont(FONT_TITULO_FRETE);
         box.getChildren().add(lblTit);
         
-        box.getChildren().add(criarLinhaTotalA4("TOTAL FRETES (LANÇADO):", tTotal, Color.web(COR_AZUL_ESCURO)));
+        box.getChildren().add(criarLinhaTotalA4("TOTAL FRETES (LANÃ‡ADO):", tTotal, Color.web(COR_AZUL_ESCURO)));
         box.getChildren().add(criarLinhaTotalA4("TOTAL RECEBIDO (PAGO):", tPago, Color.FORESTGREEN));
         
         Color corDevedor = (tDevedor > 0.01) ? Color.RED : Color.BLACK;
@@ -1030,28 +1049,35 @@ public class RelatorioFretesController implements Initializable {
 
     @FXML
     private void imprimirResumido(ActionEvent event) {
-        // Igual cobrança mas separado por remetente
-        Viagem viagem = cmbViagem.getValue();
-        String cliente = cmbCliente.getValue();
-        
-        if (viagem == null) {
-            showAlert("Selecione uma viagem.");
-            return;
+        // Igual cobranÃ§a mas separado por remetente
+        try {
+            Viagem viagem = cmbViagem.getValue();
+            String cliente = cmbCliente.getValue();
+            
+            if (viagem == null) {
+                showAlert("Selecione uma viagem.");
+                return;
+            }
+            if (cliente == null || cliente.equals("Todos os Clientes")) {
+                showAlert("Selecione um cliente especÃ­fico para imprimir o resumido.");
+                return;
+            }
+            
+            imprimirResumidoPorRemetente(viagem, cliente);
+        } catch (Exception ex) {
+            showErroDetalhado("gerar Relatório Resumido", ex);
         }
-        if (cliente == null || cliente.equals("Todos os Clientes")) {
-            showAlert("Selecione um cliente específico para imprimir o resumido.");
-            return;
-        }
-        
-        imprimirResumidoPorRemetente(viagem, cliente);
     }
 
     private void imprimirResumidoPorRemetente(Viagem viagem, String cliente) {
-        // Usar impressora térmica configurada
+        // Usar impressora tÃ©rmica configurada
         Printer printer = RelatorioUtil.getImpressoraTermica();
-        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada."); return; }
+        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         PrinterJob job = PrinterJob.createPrinterJob(printer);
-        if (job == null) return;
+        if (job == null) {
+            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            return;
+        }
         
         javafx.print.PageLayout pageLayout = printer.createPageLayout(
             printer.getDefaultPageLayout().getPaper(), 
@@ -1070,7 +1096,7 @@ public class RelatorioFretesController implements Initializable {
         root.setMaxWidth(larguraBase);
         root.setAlignment(Pos.TOP_LEFT);
         
-        // ============ CABEÇALHO COM LOGO E DADOS DA EMPRESA ============
+        // ============ CABEÃ‡ALHO COM LOGO E DADOS DA EMPRESA ============
         VBox headerBox = new VBox(2);
         headerBox.setAlignment(Pos.CENTER);
         headerBox.setPrefWidth(larguraBase);
@@ -1084,7 +1110,7 @@ public class RelatorioFretesController implements Initializable {
                     headerBox.getChildren().add(logo);
                 } catch (Exception e) { }
             }
-            Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÇÃO");
+            Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
             
             String dados = "";
@@ -1099,7 +1125,7 @@ public class RelatorioFretesController implements Initializable {
         }
         root.getChildren().add(headerBox);
         
-        // ============ TÍTULO ============
+        // ============ TÃTULO ============
         VBox infoBox = new VBox(5);
         infoBox.setAlignment(Pos.CENTER);
         infoBox.setPadding(new Insets(10, 0, 5, 0));
@@ -1133,12 +1159,12 @@ public class RelatorioFretesController implements Initializable {
         // Buscar itens agrupados por remetente
         Map<String, List<Map<String, Object>>> itensPorRemetente = new LinkedHashMap<>();
         
-        String sql = "SELECT f.remetente_nome_temp, fi.descricao, fi.quantidade, fi.valor_unitario, " +
-                     "(fi.quantidade * fi.valor_unitario) as total_item " +
+        String sql = "SELECT f.remetente_nome_temp, fi.nome_item_ou_id_produto, fi.quantidade, fi.preco_unitario, " +
+                     "(fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
                      "WHERE f.id_viagem = ? AND f.destinatario_nome_temp = ? " +
-                     "ORDER BY f.remetente_nome_temp, fi.descricao";
+                     "ORDER BY f.remetente_nome_temp, fi.nome_item_ou_id_produto";
         
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
@@ -1151,15 +1177,15 @@ public class RelatorioFretesController implements Initializable {
                 if (remetente == null) remetente = "SEM REMETENTE";
                 
                 Map<String, Object> item = new HashMap<>();
-                item.put("descricao", rs.getString("descricao"));
+                item.put("descricao", rs.getString("nome_item_ou_id_produto"));
                 item.put("quantidade", rs.getDouble("quantidade"));
-                item.put("valorUnit", rs.getDouble("valor_unitario"));
+                item.put("valorUnit", rs.getDouble("preco_unitario"));
                 item.put("total", rs.getDouble("total_item"));
                 
                 itensPorRemetente.computeIfAbsent(remetente, k -> new ArrayList<>()).add(item);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Erro ao buscar itens por remetente no banco de dados: " + e.getMessage(), e);
         }
         
         double totalGeral = 0;
@@ -1230,7 +1256,7 @@ public class RelatorioFretesController implements Initializable {
         boxValores.getChildren().addAll(lblTotal, lblPago, lblStatus);
         root.getChildren().add(boxValores);
         
-        // ============ RODAPÉ COM ASSINATURA ============
+        // ============ RODAPÃ‰ COM ASSINATURA ============
         String dataHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         Label lblData = new Label("\nEmitido em: " + dataHora + "\n\n__________________________\nAssinatura");
         lblData.setStyle("-fx-font-size: 9px; -fx-text-fill: black;");
@@ -1240,7 +1266,7 @@ public class RelatorioFretesController implements Initializable {
         footer.setAlignment(Pos.CENTER);
         root.getChildren().add(footer);
         
-        // Ajustar escala se necessário
+        // Ajustar escala se necessÃ¡rio
         double largImp = pageLayout.getPrintableWidth();
         if (largImp > 0 && largImp < larguraBase) {
             double sc = largImp / larguraBase;
@@ -1248,19 +1274,23 @@ public class RelatorioFretesController implements Initializable {
         }
         
         if (job.printPage(root)) job.endJob();
-        else showAlert("Falha na impressão.");
+        else showAlert("Falha na impressÃ£o.");
     }
 
     @FXML
     private void imprimirConfereViagem(ActionEvent event) {
         // Papel A4, todos os itens por cliente, separado por remetente, local para assinatura
-        Viagem viagem = cmbViagem.getValue();
-        if (viagem == null) {
-            showAlert("Selecione uma viagem.");
-            return;
+        try {
+            Viagem viagem = cmbViagem.getValue();
+            if (viagem == null) {
+                showAlert("Selecione uma viagem.");
+                return;
+            }
+            
+            imprimirConfereViagemA4(viagem);
+        } catch (Exception ex) {
+            showErroDetalhado("gerar Conferência de Viagem", ex);
         }
-        
-        imprimirConfereViagemA4(viagem);
     }
 
     private void imprimirConfereViagemA4(Viagem viagem) {
@@ -1271,10 +1301,14 @@ public class RelatorioFretesController implements Initializable {
         
         // Usar impressora A4 configurada
         Printer printer = RelatorioUtil.getImpressoraA4();
-        if (printer == null) { showAlert("Nenhuma impressora A4 selecionada."); return; }
+        if (printer == null) { showAlert("Nenhuma impressora A4 selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         
         PrinterJob job = PrinterJob.createPrinterJob(printer);
-        if (job == null || !job.showPrintDialog(rootPane.getScene().getWindow())) return;
+        if (job == null) {
+            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            return;
+        }
+        if (!job.showPrintDialog(rootPane.getScene().getWindow())) return;
         
         PageLayout pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
         double larguraUtil = pageLayout.getPrintableWidth() - 40;
@@ -1285,11 +1319,11 @@ public class RelatorioFretesController implements Initializable {
         
         String sql = "SELECT f.id_frete, f.numero_frete, f.destinatario_nome_temp, f.remetente_nome_temp, " +
                      "f.valor_total_itens, f.valor_pago, f.valor_devedor, " +
-                     "fi.descricao, fi.quantidade, fi.valor_unitario, (fi.quantidade * fi.valor_unitario) as total_item " +
+                     "fi.nome_item_ou_id_produto, fi.quantidade, fi.preco_unitario, (fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
                      "WHERE f.id_viagem = ? " +
-                     "ORDER BY f.numero_frete, fi.descricao";
+                     "ORDER BY f.numero_frete, fi.nome_item_ou_id_produto";
         
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
@@ -1313,14 +1347,14 @@ public class RelatorioFretesController implements Initializable {
                 }
                 
                 ItemFrete item = new ItemFrete();
-                item.descricao = rs.getString("descricao");
+                item.descricao = rs.getString("nome_item_ou_id_produto");
                 item.quantidade = rs.getDouble("quantidade");
-                item.valorUnitario = rs.getDouble("valor_unitario");
+                item.valorUnitario = rs.getDouble("preco_unitario");
                 item.valorTotal = rs.getDouble("total_item");
                 frete.itens.add(item);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Erro ao buscar fretes para conferência no banco de dados: " + e.getMessage(), e);
         }
         
         if (fretesMap.isEmpty()) { showAlert("Nenhum frete encontrado para esta viagem."); return; }
@@ -1333,10 +1367,10 @@ public class RelatorioFretesController implements Initializable {
             tDevedor += f.valorDevedor;
         }
         
-        // Criar páginas
+        // Criar pÃ¡ginas
         List<VBox> paginas = new ArrayList<>();
         int numPagina = 1;
-        VBox paginaAtual = criarPaginaBaseA4(larguraUtil, alturaUtil, numPagina, viagem, "CONFERÊNCIA DE VIAGEM - FRETES", true, nomeRota);
+        VBox paginaAtual = criarPaginaBaseA4(larguraUtil, alturaUtil, numPagina, viagem, "CONFERÃŠNCIA DE VIAGEM - FRETES", true, nomeRota);
         double alturaAtual = 150;
         
         for (FreteCompleto frete : fretesMap.values()) {
@@ -1351,7 +1385,7 @@ public class RelatorioFretesController implements Initializable {
                 adicionarRodapeA4(paginaAtual, larguraUtil);
                 paginas.add(paginaAtual);
                 numPagina++;
-                paginaAtual = criarPaginaBaseA4(larguraUtil, alturaUtil, numPagina, viagem, "CONFERÊNCIA DE VIAGEM - FRETES", false, nomeRota);
+                paginaAtual = criarPaginaBaseA4(larguraUtil, alturaUtil, numPagina, viagem, "CONFERÃŠNCIA DE VIAGEM - FRETES", false, nomeRota);
                 alturaAtual = 60;
             }
             
@@ -1369,14 +1403,14 @@ public class RelatorioFretesController implements Initializable {
             adicionarRodapeA4(paginaAtual, larguraUtil);
             paginas.add(paginaAtual);
             numPagina++;
-            paginaAtual = criarPaginaBaseA4(larguraUtil, alturaUtil, numPagina, viagem, "CONFERÊNCIA DE VIAGEM - FRETES", false, nomeRota);
+            paginaAtual = criarPaginaBaseA4(larguraUtil, alturaUtil, numPagina, viagem, "CONFERÃŠNCIA DE VIAGEM - FRETES", false, nomeRota);
         }
         paginaAtual.getChildren().add(blocoTotais);
         
         adicionarRodapeA4(paginaAtual, larguraUtil);
         paginas.add(paginaAtual);
         
-        // Imprimir todas as páginas
+        // Imprimir todas as pÃ¡ginas
         for (VBox p : paginas) {
             job.printPage(pageLayout, p);
         }
@@ -1392,35 +1426,42 @@ public class RelatorioFretesController implements Initializable {
                 nome = rs.getString("nome_embarcacao");
             }
         } catch (Exception e) {
-            // Usar nome padrão
+            // Usar nome padrÃ£o
         }
         return nome;
     }
 
     @FXML
     private void imprimirExtrato(ActionEvent event) {
-        // Extrato do cliente: histórico de todos os fretes com pagamentos
-        Viagem viagem = cmbViagem.getValue();
-        String cliente = cmbCliente.getValue();
-        
-        if (viagem == null) {
-            showAlert("Selecione uma viagem.");
-            return;
+        // Extrato do cliente: histÃ³rico de todos os fretes com pagamentos
+        try {
+            Viagem viagem = cmbViagem.getValue();
+            String cliente = cmbCliente.getValue();
+            
+            if (viagem == null) {
+                showAlert("Selecione uma viagem.");
+                return;
+            }
+            if (cliente == null || cliente.equals("Todos os Clientes")) {
+                showAlert("Selecione um cliente especÃ­fico para imprimir o extrato.");
+                return;
+            }
+            
+            imprimirExtratoCliente(viagem, cliente);
+        } catch (Exception ex) {
+            showErroDetalhado("gerar Extrato de Fretes", ex);
         }
-        if (cliente == null || cliente.equals("Todos os Clientes")) {
-            showAlert("Selecione um cliente específico para imprimir o extrato.");
-            return;
-        }
-        
-        imprimirExtratoCliente(viagem, cliente);
     }
 
     private void imprimirExtratoCliente(Viagem viagem, String cliente) {
-        // Usar impressora térmica configurada
+        // Usar impressora tÃ©rmica configurada
         Printer printer = RelatorioUtil.getImpressoraTermica();
-        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada."); return; }
+        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         PrinterJob job = PrinterJob.createPrinterJob(printer);
-        if (job == null) return;
+        if (job == null) {
+            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            return;
+        }
         
         javafx.print.PageLayout pageLayout = printer.createPageLayout(
             printer.getDefaultPageLayout().getPaper(), 
@@ -1439,7 +1480,7 @@ public class RelatorioFretesController implements Initializable {
         root.setMaxWidth(larguraBase);
         root.setAlignment(Pos.TOP_LEFT);
         
-        // ============ CABEÇALHO COM LOGO E DADOS DA EMPRESA ============
+        // ============ CABEÃ‡ALHO COM LOGO E DADOS DA EMPRESA ============
         VBox headerBox = new VBox(2);
         headerBox.setAlignment(Pos.CENTER);
         headerBox.setPrefWidth(larguraBase);
@@ -1453,7 +1494,7 @@ public class RelatorioFretesController implements Initializable {
                     headerBox.getChildren().add(logo);
                 } catch (Exception e) { }
             }
-            Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÇÃO");
+            Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
             
             String dados = "";
@@ -1469,7 +1510,7 @@ public class RelatorioFretesController implements Initializable {
         }
         root.getChildren().add(headerBox);
         
-        // ============ TÍTULO ============
+        // ============ TÃTULO ============
         VBox infoBox = new VBox(5);
         infoBox.setAlignment(Pos.CENTER);
         infoBox.setPadding(new Insets(10, 0, 5, 0));
@@ -1559,12 +1600,12 @@ public class RelatorioFretesController implements Initializable {
                 linha++;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Erro ao buscar extrato do cliente no banco de dados: " + e.getMessage(), e);
         }
         
         root.getChildren().add(grid);
         
-        // ============ ESPAÇO ============
+        // ============ ESPAÃ‡O ============
         Label espaco = new Label(" ");
         espaco.setMinHeight(15);
         root.getChildren().add(espaco);
@@ -1587,7 +1628,7 @@ public class RelatorioFretesController implements Initializable {
         boxValores.getChildren().addAll(lblTotalGeral, lblTotalPago, lblStatus);
         root.getChildren().add(boxValores);
         
-        // ============ RODAPÉ COM ASSINATURA ============
+        // ============ RODAPÃ‰ COM ASSINATURA ============
         String dataHora = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         Label lblData = new Label("\nEmitido em: " + dataHora + "\n\n__________________________\nAssinatura");
         lblData.setStyle("-fx-font-size: 9px; -fx-text-fill: black;");
@@ -1597,7 +1638,7 @@ public class RelatorioFretesController implements Initializable {
         footer.setAlignment(Pos.CENTER);
         root.getChildren().add(footer);
         
-        // Ajustar escala se necessário
+        // Ajustar escala se necessÃ¡rio
         double largImp = pageLayout.getPrintableWidth();
         if (largImp > 0 && largImp < larguraBase) {
             double sc = largImp / larguraBase;
@@ -1605,7 +1646,7 @@ public class RelatorioFretesController implements Initializable {
         }
         
         if (job.printPage(root)) job.endJob();
-        else showAlert("Falha na impressão.");
+        else showAlert("Falha na impressÃ£o.");
     }
 
     @FXML
@@ -1615,6 +1656,53 @@ public class RelatorioFretesController implements Initializable {
 
     private void showAlert(String msg) {
         new Alert(Alert.AlertType.WARNING, msg).showAndWait();
+    }
+
+    /**
+     * Exibe alerta detalhado com informações da exceção para facilitar diagnóstico.
+     * Mostra tipo do erro, mensagem e stack trace completo.
+     */
+    private void showErroDetalhado(String operacao, Exception ex) {
+        ex.printStackTrace(); // Manter log no console também
+
+        String tipoErro = ex.getClass().getSimpleName();
+        String mensagem = ex.getMessage() != null ? ex.getMessage() : "Sem mensagem de erro";
+
+        // Montar stack trace resumido (primeiras 15 linhas)
+        StringBuilder sb = new StringBuilder();
+        sb.append("Tipo: ").append(tipoErro).append("\n");
+        sb.append("Mensagem: ").append(mensagem).append("\n\n");
+        sb.append("Stack Trace:\n");
+        StackTraceElement[] stack = ex.getStackTrace();
+        int maxLinhas = Math.min(stack.length, 15);
+        for (int i = 0; i < maxLinhas; i++) {
+            sb.append("  ").append(stack[i].toString()).append("\n");
+        }
+        if (stack.length > maxLinhas) sb.append("  ... (mais ").append(stack.length - maxLinhas).append(" linhas)\n");
+
+        // Verificar causa raiz
+        if (ex.getCause() != null) {
+            sb.append("\nCausa raiz: ").append(ex.getCause().getClass().getSimpleName());
+            sb.append(" - ").append(ex.getCause().getMessage());
+        }
+
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Erro na Impressão");
+        alert.setHeaderText("Falha ao " + operacao);
+        alert.setContentText(tipoErro + ": " + mensagem);
+
+        // Área expansível com detalhes técnicos
+        TextArea textArea = new TextArea(sb.toString());
+        textArea.setEditable(false);
+        textArea.setWrapText(true);
+        textArea.setMaxWidth(Double.MAX_VALUE);
+        textArea.setMaxHeight(Double.MAX_VALUE);
+
+        VBox expContent = new VBox(5);
+        expContent.getChildren().addAll(new Label("Detalhes técnicos:"), textArea);
+
+        alert.getDialogPane().setExpandableContent(expContent);
+        alert.showAndWait();
     }
 
     // ============================================================================

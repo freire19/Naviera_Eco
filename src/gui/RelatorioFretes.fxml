@@ -7,6 +7,7 @@
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -69,57 +70,61 @@
    </left>
    
    <center>
-      <VBox spacing="15.0" style="-fx-padding: 15;">
-         <children>
-            <!-- Tabela de Fretes -->
-            <Label text="FRETES DO CLIENTE:" textFill="#cccccc" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-            <TableView fx:id="tabelaFretes" VBox.vgrow="ALWAYS" prefHeight="300.0">
-               <columns>
-                  <TableColumn fx:id="colCodFrete" prefWidth="80.0" text="Cód. Frete" />
-                  <TableColumn fx:id="colDataViagem" prefWidth="100.0" text="Viagem" />
-                  <TableColumn fx:id="colRemetente" prefWidth="180.0" text="Remetente" />
-                  <TableColumn fx:id="colItem" prefWidth="200.0" text="Item" />
-                  <TableColumn fx:id="colQuant" prefWidth="80.0" text="Quant." />
-                  <TableColumn fx:id="colPreco" prefWidth="100.0" text="Preço" />
-                  <TableColumn fx:id="colTotal" prefWidth="100.0" text="Total" />
-               </columns>
-               <placeholder>
-                  <Label text="Selecione um cliente para ver seus fretes." />
-               </placeholder>
-            </TableView>
-            
-            <!-- Resumo de Totais -->
-            <HBox alignment="CENTER_RIGHT" spacing="20.0">
+      <ScrollPane fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" style="-fx-background: transparent; -fx-background-color: transparent;">
+         <content>
+            <VBox spacing="15.0" style="-fx-padding: 15;">
                <children>
-                  <Label text="Total Fretes por item:" textFill="#cccccc" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
-                  <Label fx:id="lblTotalItens" text="R$ 0,00" textFill="#00ff00" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-background-color: #333; -fx-padding: 5 15;" />
+                  <!-- Tabela de Fretes -->
+                  <Label text="FRETES DO CLIENTE:" textFill="#cccccc" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+                  <TableView fx:id="tabelaFretes" VBox.vgrow="ALWAYS" prefHeight="300.0" minHeight="200.0">
+                     <columns>
+                        <TableColumn fx:id="colCodFrete" prefWidth="80.0" text="Cód. Frete" />
+                        <TableColumn fx:id="colDataViagem" prefWidth="100.0" text="Viagem" />
+                        <TableColumn fx:id="colRemetente" prefWidth="180.0" text="Remetente" />
+                        <TableColumn fx:id="colItem" prefWidth="200.0" text="Item" />
+                        <TableColumn fx:id="colQuant" prefWidth="80.0" text="Quant." />
+                        <TableColumn fx:id="colPreco" prefWidth="100.0" text="Preço" />
+                        <TableColumn fx:id="colTotal" prefWidth="100.0" text="Total" />
+                     </columns>
+                     <placeholder>
+                        <Label text="Selecione um cliente para ver seus fretes." />
+                     </placeholder>
+                  </TableView>
+
+                  <!-- Resumo de Totais -->
+                  <HBox alignment="CENTER_RIGHT" spacing="20.0">
+                     <children>
+                        <Label text="Total Fretes por item:" textFill="#cccccc" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
+                        <Label fx:id="lblTotalItens" text="R$ 0,00" textFill="#00ff00" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-background-color: #333; -fx-padding: 5 15;" />
+                     </children>
+                  </HBox>
+
+                  <Separator />
+
+                  <!-- Tabela de Devedores -->
+                  <Label text="SITUAÇÃO FINANCEIRA:" textFill="#ff6666" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+                  <TableView fx:id="tabelaDevedores" VBox.vgrow="ALWAYS" prefHeight="200.0" minHeight="150.0">
+                     <columns>
+                        <TableColumn fx:id="colDevTotal" prefWidth="120.0" text="Total" />
+                        <TableColumn fx:id="colDevBaixado" prefWidth="120.0" text="Baixado" />
+                        <TableColumn fx:id="colDevDevedor" prefWidth="120.0" text="Devedor" />
+                        <TableColumn fx:id="colDevNumFrete" prefWidth="100.0" text="Nº Frete" />
+                     </columns>
+                     <placeholder>
+                        <Label text="Nenhum registro financeiro." />
+                     </placeholder>
+                  </TableView>
+
+                  <!-- Total Em Aberto -->
+                  <HBox alignment="CENTER_RIGHT" spacing="20.0">
+                     <children>
+                        <Label text="Em Aberto:" textFill="#cccccc" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
+                        <Label fx:id="lblEmAberto" text="R$ 0,00" textFill="#ff4444" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-background-color: #333; -fx-padding: 5 20;" />
+                     </children>
+                  </HBox>
                </children>
-            </HBox>
-            
-            <Separator />
-            
-            <!-- Tabela de Devedores -->
-            <Label text="SITUAÇÃO FINANCEIRA:" textFill="#ff6666" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-            <TableView fx:id="tabelaDevedores" prefHeight="150.0">
-               <columns>
-                  <TableColumn fx:id="colDevTotal" prefWidth="120.0" text="Total" />
-                  <TableColumn fx:id="colDevBaixado" prefWidth="120.0" text="Baixado" />
-                  <TableColumn fx:id="colDevDevedor" prefWidth="120.0" text="Devedor" />
-                  <TableColumn fx:id="colDevNumFrete" prefWidth="100.0" text="Nº Frete" />
-               </columns>
-               <placeholder>
-                  <Label text="Nenhum registro financeiro." />
-               </placeholder>
-            </TableView>
-            
-            <!-- Total Em Aberto -->
-            <HBox alignment="CENTER_RIGHT" spacing="20.0">
-               <children>
-                  <Label text="Em Aberto:" textFill="#cccccc" style="-fx-font-size: 16px; -fx-font-weight: bold;" />
-                  <Label fx:id="lblEmAberto" text="R$ 0,00" textFill="#ff4444" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-background-color: #333; -fx-padding: 5 20;" />
-               </children>
-            </HBox>
-         </children>
-      </VBox>
+            </VBox>
+         </content>
+      </ScrollPane>
    </center>
 </BorderPane>

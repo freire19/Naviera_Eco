@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 /**
  * ============================================================================
@@ -270,50 +272,75 @@ public class RelatorioUtil {
      * Abre diálogo para selecionar uma impressora
      */
     public static Printer selecionarImpressora(String tipo, boolean isTermica) {
-        ObservableSet<Printer> impressoras = Printer.getAllPrinters();
-        
-        if (impressoras.isEmpty()) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Erro");
-            alert.setHeaderText("Nenhuma impressora encontrada!");
-            alert.setContentText("Por favor, instale uma impressora no sistema.");
-            alert.showAndWait();
-            return null;
-        }
-        
-        // Criar diálogo de seleção
-        ChoiceDialog<Printer> dialog = new ChoiceDialog<>(Printer.getDefaultPrinter(), impressoras);
-        dialog.setTitle("Selecionar Impressora");
-        dialog.setHeaderText("Selecione a impressora " + tipo);
-        dialog.setContentText("Impressora:");
-        
-        Optional<Printer> result = dialog.showAndWait();
-        if (result.isPresent()) {
-            Printer selecionada = result.get();
-            
-            // Salvar a escolha
-            if (isTermica) {
-                nomeImpressoraTermica = selecionada.getName();
-            } else {
-                nomeImpressoraA4 = selecionada.getName();
+        try {
+            ObservableSet<Printer> impressoras = Printer.getAllPrinters();
+
+            if (impressoras == null || impressoras.isEmpty()) {
+                mostrarAlertaNoTopo(Alert.AlertType.ERROR, "Erro",
+                    "Nenhuma impressora encontrada!", "Por favor, instale uma impressora no sistema.");
+                return null;
             }
-            salvarConfigImpressoras();
-            
-            return selecionada;
+
+            // Criar diálogo de seleção
+            Printer defaultPrinter = Printer.getDefaultPrinter();
+            ChoiceDialog<Printer> dialog = new ChoiceDialog<>(defaultPrinter, impressoras);
+            dialog.setTitle("Selecionar Impressora");
+            dialog.setHeaderText("Selecione a impressora " + tipo);
+            dialog.setContentText("Impressora:");
+            dialog.initModality(Modality.APPLICATION_MODAL);
+            dialog.setOnShowing(e -> {
+                Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+                stage.setAlwaysOnTop(true);
+                stage.toFront();
+            });
+
+            Optional<Printer> result = dialog.showAndWait();
+            if (result.isPresent()) {
+                Printer selecionada = result.get();
+
+                // Salvar a escolha
+                if (isTermica) {
+                    nomeImpressoraTermica = selecionada.getName();
+                } else {
+                    nomeImpressoraA4 = selecionada.getName();
+                }
+                salvarConfigImpressoras();
+
+                return selecionada;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            mostrarAlertaNoTopo(Alert.AlertType.ERROR, "Erro",
+                "Erro ao buscar impressoras", "Detalhes: " + e.getMessage());
         }
-        
+
         return null;
+    }
+
+    /**
+     * Mostra um alerta que SEMPRE fica na frente de todas as janelas
+     */
+    public static void mostrarAlertaNoTopo(Alert.AlertType tipo, String titulo, String header, String conteudo) {
+        Alert alert = new Alert(tipo);
+        alert.setTitle(titulo);
+        alert.setHeaderText(header);
+        alert.setContentText(conteudo);
+        alert.initModality(Modality.APPLICATION_MODAL);
+        alert.setOnShowing(e -> {
+            Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
+            stage.setAlwaysOnTop(true);
+            stage.toFront();
+        });
+        alert.showAndWait();
     }
     
     /**
      * Força a reconfiguração das impressoras (abre diálogo para ambas)
      */
     public static void configurarImpressoras() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Configurar Impressoras");
-        alert.setHeaderText("Você irá configurar as impressoras do sistema.");
-        alert.setContentText("Primeiro selecione a impressora TÉRMICA (para cupons/recibos),\ndepois selecione a impressora A4 (para relatórios).");
-        alert.showAndWait();
+        mostrarAlertaNoTopo(Alert.AlertType.INFORMATION, "Configurar Impressoras",
+            "Você irá configurar as impressoras do sistema.",
+            "Primeiro selecione a impressora TÉRMICA (para cupons/recibos),\ndepois selecione a impressora A4 (para relatórios).");
         
         // Resetar configurações
         nomeImpressoraTermica = null;
@@ -322,21 +349,15 @@ public class RelatorioUtil {
         // Selecionar impressora térmica
         Printer termica = selecionarImpressora("TÉRMICA (Cupom/Recibo)", true);
         if (termica != null) {
-            Alert ok = new Alert(Alert.AlertType.INFORMATION);
-            ok.setTitle("Sucesso");
-            ok.setHeaderText("Impressora térmica configurada!");
-            ok.setContentText("Impressora: " + termica.getName());
-            ok.showAndWait();
+            mostrarAlertaNoTopo(Alert.AlertType.INFORMATION, "Sucesso",
+                "Impressora térmica configurada!", "Impressora: " + termica.getName());
         }
-        
+
         // Selecionar impressora A4
         Printer a4 = selecionarImpressora("A4 (Relatórios)", false);
         if (a4 != null) {
-            Alert ok = new Alert(Alert.AlertType.INFORMATION);
-            ok.setTitle("Sucesso");
-            ok.setHeaderText("Impressora A4 configurada!");
-            ok.setContentText("Impressora: " + a4.getName());
-            ok.showAndWait();
+            mostrarAlertaNoTopo(Alert.AlertType.INFORMATION, "Sucesso",
+                "Impressora A4 configurada!", "Impressora: " + a4.getName());
         }
     }
     
@@ -599,11 +620,8 @@ public class RelatorioUtil {
         // Usar a impressora térmica configurada
         Printer printer = getImpressoraTermica();
         if (printer == null) {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Impressão Cancelada");
-            alert.setHeaderText("Nenhuma impressora térmica selecionada.");
-            alert.setContentText("A impressão foi cancelada.");
-            alert.showAndWait();
+            mostrarAlertaNoTopo(Alert.AlertType.WARNING, "Impressão Cancelada",
+                "Nenhuma impressora térmica selecionada.", "A impressão foi cancelada.");
             return false;
         }
         
@@ -899,11 +917,8 @@ public class RelatorioUtil {
     public boolean imprimirA4(List<VBox> paginas, Node parent, boolean showDialog) {
         Printer printer = getImpressoraA4();
         if (printer == null) {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Impressão Cancelada");
-            alert.setHeaderText("Nenhuma impressora A4 selecionada.");
-            alert.setContentText("A impressão foi cancelada.");
-            alert.showAndWait();
+            mostrarAlertaNoTopo(Alert.AlertType.WARNING, "Impressão Cancelada",
+                "Nenhuma impressora A4 selecionada.", "A impressão foi cancelada.");
             return false;
         }
         
