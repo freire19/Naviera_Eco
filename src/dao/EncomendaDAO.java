@@ -60,7 +60,7 @@ public class EncomendaDAO {
 
     public List<Encomenda> listarTodos() {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas ORDER BY id_encomenda DESC"; 
+        String sql = "SELECT * FROM encomendas ORDER BY id_encomenda DESC LIMIT 500"; 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -183,9 +183,6 @@ public class EncomendaDAO {
         return 1;
     }
     
-    public int obterProximaEncomendaNum() { return 1; }
-    public int obterProximoNumeroPorRota(Long idRota) { return 1; }
-
     private Encomenda mapearEncomenda(ResultSet rs) throws SQLException {
         Encomenda e = new Encomenda();
         e.setId(rs.getLong("id_encomenda"));

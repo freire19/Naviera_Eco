@@ -6,33 +6,106 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * DAO para tabelas auxiliares com cache em memoria.
+ * Cache elimina N+1 queries — tabelas auxiliares sao pequenas e raramente mudam.
+ *
+ * Refatorado: 35 metodos especificos agora delegam para 5 metodos genericos.
+ */
 public class AuxiliaresDAO {
 
-    // --- Métodos Auxiliares Genéricos (para obter IDs de tabelas auxiliares) ---
+    // ==================== CONFIGURACAO DAS TABELAS ====================
+
+    /** Whitelist de tabelas permitidas (previne SQL injection via nome de tabela). */
+    private static final List<String> TABELAS_PERMITIDAS = Arrays.asList(
+        "aux_tipos_documento", "aux_sexo", "aux_nacionalidades", "aux_tipos_passagem",
+        "aux_agentes", "aux_horarios_saida", "aux_acomodacoes", "aux_formas_pagamento", "caixas", "rotas"
+    );
+
+    private static void validarTabela(String tabela) {
+        if (!TABELAS_PERMITIDAS.contains(tabela)) {
+            throw new IllegalArgumentException("Tabela nao permitida: " + tabela);
+        }
+    }
+
+    // ==================== CACHE EM MEMORIA ====================
+
+    // Cache: tabela -> (nome_lower -> id)
+    private static final Map<String, Map<String, Integer>> cacheNomeParaId = new ConcurrentHashMap<>();
+    // Cache: tabela -> (id -> nome)
+    private static final Map<String, Map<Integer, String>> cacheIdParaNome = new ConcurrentHashMap<>();
+
+    /** Carrega todos os registros de uma tabela auxiliar no cache. */
+    private static void carregarCache(String tabela, String colunaNome, String colunaId) throws SQLException {
+        Map<String, Integer> nomeId = new ConcurrentHashMap<>();
+        Map<Integer, String> idNome = new ConcurrentHashMap<>();
+        String sql = "SELECT " + colunaId + ", " + colunaNome + " FROM " + tabela;
+        try (Connection conn = ConexaoBD.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                int id = rs.getInt(colunaId);
+                String nome = rs.getString(colunaNome);
+                if (nome != null) {
+                    nomeId.put(nome.toLowerCase().trim(), id);
+                    idNome.put(id, nome);
+                }
+            }
+        }
+        cacheNomeParaId.put(tabela, nomeId);
+        cacheIdParaNome.put(tabela, idNome);
+    }
+
+    /** Invalida o cache de uma tabela (apos insert/update/delete). */
+    private static void invalidarCache(String tabela) {
+        cacheNomeParaId.remove(tabela);
+        cacheIdParaNome.remove(tabela);
+    }
+
+    /** Invalida todo o cache (para uso externo se necessario). */
+    public static void invalidarTodoCache() {
+        cacheNomeParaId.clear();
+        cacheIdParaNome.clear();
+    }
+
+    // ==================== 5 METODOS GENERICOS (core) ====================
 
     /**
-     * Método auxiliar genérico para obter o ID de uma tabela auxiliar pelo nome.
-     * @param conn Conexão ao banco de dados (REMOVIDO: AuxiliaresDAO agora obtém a própria conexão)
-     * @param tabela Nome da tabela auxiliar (ex: "aux_horarios_saida").
-     * @param colunaNome Nome da coluna que contém a descrição (ex: "descricao_horario_saida").
-     * @param colunaId Nome da coluna que contém o ID (ex: "id_horario_saida").
-     * @param valorNome O valor da descrição a ser buscado (ex: "08:00 AM").
-     * @return O ID correspondente (Integer) ou null se não encontrado ou valorNome for nulo/vazio.
-     * @throws SQLException Se ocorrer um erro de SQL durante a operação de banco de dados.
+     * Busca ID pelo nome em qualquer tabela auxiliar. Usa cache.
      */
     public Integer obterIdAuxiliar(String tabela, String colunaNome, String colunaId, String valorNome) throws SQLException {
         if (valorNome == null || valorNome.trim().isEmpty() || "N/A".equalsIgnoreCase(valorNome)) {
             return null;
         }
+        validarTabela(tabela);
+
+        // Tenta cache primeiro
+        Map<String, Integer> cache = cacheNomeParaId.get(tabela);
+        if (cache == null) {
+            carregarCache(tabela, colunaNome, colunaId);
+            cache = cacheNomeParaId.get(tabela);
+        }
+        if (cache != null) {
+            Integer id = cache.get(valorNome.toLowerCase().trim());
+            if (id != null) return id;
+        }
+
+        // Fallback: busca direta (ILIKE para acentos/case)
         String sql = "SELECT " + colunaId + " FROM " + tabela + " WHERE " + colunaNome + " ILIKE ?";
-        try (Connection conn = ConexaoBD.getConnection(); // <<< MODIFICAÇÃO: AuxiliaresDAO obtém a própria conexão >>>
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, valorNome);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getInt(colunaId);
+                    int id = rs.getInt(colunaId);
+                    // Atualiza cache
+                    if (cache != null) cache.put(valorNome.toLowerCase().trim(), id);
+                    return id;
                 }
             }
         }
@@ -40,597 +113,177 @@ public class AuxiliaresDAO {
     }
 
     /**
-     * Método auxiliar para obter o ID de uma rota pela origem e destino.
-     * @param origem A string da origem da rota.
-     * @param destino A string do destino da rota.
-     * @return O ID da rota (Integer) ou null se não encontrada ou origem for nula/vazia.
-     * @throws SQLException Se ocorrer um erro de SQL durante a operação de banco de dados.
+     * Busca nome pelo ID em qualquer tabela auxiliar. Usa cache.
      */
-    public Integer obterIdRotaPelaOrigemDestino(String origem, String destino) throws SQLException {
-        if (origem == null || origem.trim().isEmpty()) {
-            return null;
+    public String buscarNomeAuxiliarPorId(String tabela, String colunaNome, String colunaId, Integer id) throws SQLException {
+        if (id == null || id == 0) return null;
+        validarTabela(tabela);
+
+        Map<Integer, String> cache = cacheIdParaNome.get(tabela);
+        if (cache == null) {
+            carregarCache(tabela, colunaNome, colunaId);
+            cache = cacheIdParaNome.get(tabela);
         }
+        if (cache != null) {
+            String nome = cache.get(id);
+            if (nome != null) return nome;
+        }
+
+        // Fallback
+        String sql = "SELECT " + colunaNome + " FROM " + tabela + " WHERE " + colunaId + " = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getString(colunaNome);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Insere um valor em qualquer tabela auxiliar (generico).
+     */
+    public boolean inserirAuxiliar(String tabela, String colunaNome, String valor) throws SQLException {
+        validarTabela(tabela);
+        String sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?)";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, valor);
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) invalidarCache(tabela);
+            return ok;
+        }
+    }
+
+    /**
+     * Lista todos os nomes de qualquer tabela auxiliar.
+     */
+    public List<String> listarAuxiliar(String tabela, String colunaNome) throws SQLException {
+        validarTabela(tabela);
+        List<String> lista = new ArrayList<>();
+        String sql = "SELECT " + colunaNome + " FROM " + tabela + " ORDER BY " + colunaNome;
+        try (Connection conn = ConexaoBD.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) lista.add(rs.getString(colunaNome));
+        }
+        return lista;
+    }
+
+    /**
+     * Atualiza um registro em qualquer tabela auxiliar.
+     */
+    public boolean atualizarAuxiliar(String tabela, String colunaNome, String colunaId, int id, String novoNome) throws SQLException {
+        validarTabela(tabela);
+        String sql = "UPDATE " + tabela + " SET " + colunaNome + "=? WHERE " + colunaId + "=?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, novoNome);
+            ps.setInt(2, id);
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) invalidarCache(tabela);
+            return ok;
+        }
+    }
+
+    /**
+     * Exclui um registro de qualquer tabela auxiliar.
+     */
+    public boolean excluirAuxiliar(String tabela, String colunaId, int id) throws SQLException {
+        validarTabela(tabela);
+        String sql = "DELETE FROM " + tabela + " WHERE " + colunaId + "=?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) invalidarCache(tabela);
+            return ok;
+        }
+    }
+
+    // ==================== METODO ESPECIAL: Rota ====================
+
+    public Integer obterIdRotaPelaOrigemDestino(String origem, String destino) throws SQLException {
+        if (origem == null || origem.trim().isEmpty()) return null;
         String sql;
         if (destino == null || destino.trim().isEmpty()) {
             sql = "SELECT id FROM rotas WHERE origem ILIKE ? AND (destino IS NULL OR destino = '')";
         } else {
             sql = "SELECT id FROM rotas WHERE origem ILIKE ? AND destino ILIKE ?";
         }
-
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, origem);
-            if (destino != null && !destino.trim().isEmpty()) {
-                stmt.setString(2, destino);
-            }
+            if (destino != null && !destino.trim().isEmpty()) stmt.setString(2, destino);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("id");
-                }
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Método auxiliar para buscar nomes de auxiliares pelo ID.
-     * @param conn Conexão ao banco de dados (REMOVIDO: AuxiliaresDAO agora obtém a própria conexão)
-     * @param tabela Nome da tabela auxiliar.
-     * @param colunaNome Nome da coluna que contém o nome.
-     * @param colunaId Nome da coluna que contém o ID.
-     * @param id O ID a ser buscado.
-     * @return O nome correspondente (String) ou null se não encontrado ou ID for nulo/zero.
-     * @throws SQLException Se ocorrer um erro de SQL durante a operação de banco de dados.
-     */
-    public String buscarNomeAuxiliarPorId(String tabela, String colunaNome, String colunaId, Integer id) throws SQLException {
-        if (id == null || id == 0) {
-            return null;
-        }
-        String sql = "SELECT " + colunaNome + " FROM " + tabela + " WHERE " + colunaId + " = ?";
-        try (Connection conn = ConexaoBD.getConnection(); // <<< MODIFICAÇÃO: AuxiliaresDAO obtém a própria conexão >>>
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString(colunaNome);
-                }
+                if (rs.next()) return rs.getInt("id");
             }
         }
         return null;
     }
 
+    // ==================== METODOS LEGADOS (delegam para genericos) ====================
+    // Mantidos para compatibilidade com callers existentes.
 
-    // --- Métodos para Tipo de Documento (tabela: aux_tipos_documento) ---
-    public boolean inserirTipoDoc(String nome) throws SQLException {
-        String sql = "INSERT INTO aux_tipos_documento (nome_tipo_doc) VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, nome);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
+    // --- TipoDoc ---
+    public boolean inserirTipoDoc(String nome) throws SQLException { return inserirAuxiliar("aux_tipos_documento", "nome_tipo_doc", nome); }
+    public List<String> listarTipoDoc() throws SQLException { return listarAuxiliar("aux_tipos_documento", "nome_tipo_doc"); }
+    public boolean atualizarTipoDoc(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", id, novoNome); }
+    public boolean excluirTipoDoc(int id) throws SQLException { return excluirAuxiliar("aux_tipos_documento", "id_tipo_doc", id); }
+    public Integer buscarIdTipoDocPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", nome); }
 
-    public List<String> listarTipoDoc() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_tipo_doc FROM aux_tipos_documento ORDER BY nome_tipo_doc";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_tipo_doc"));
-            }
-        }
-        return lista;
-    }
+    // --- Sexo ---
+    public boolean inserirSexo(String nome) throws SQLException { return inserirAuxiliar("aux_sexo", "nome_sexo", nome); }
+    public List<String> listarSexo() throws SQLException { return listarAuxiliar("aux_sexo", "nome_sexo"); }
+    public boolean atualizarSexo(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_sexo", "nome_sexo", "id_sexo", id, novoNome); }
+    public boolean excluirSexo(int id) throws SQLException { return excluirAuxiliar("aux_sexo", "id_sexo", id); }
+    public Integer buscarIdSexoPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_sexo", "nome_sexo", "id_sexo", nome); }
 
-    public boolean atualizarTipoDoc(int id, String novoNome) throws SQLException {
-        String sql = "UPDATE aux_tipos_documento SET nome_tipo_doc=? WHERE id_tipo_doc=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novoNome);
-            ps.setInt(2, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
+    // --- Nacionalidade ---
+    public boolean inserirNacionalidade(String nome) throws SQLException { return inserirAuxiliar("aux_nacionalidades", "nome_nacionalidade", nome); }
+    public List<String> listarNacionalidade() throws SQLException { return listarAuxiliar("aux_nacionalidades", "nome_nacionalidade"); }
+    public boolean atualizarNacionalidade(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", id, novoNome); }
+    public boolean excluirNacionalidade(int id) throws SQLException { return excluirAuxiliar("aux_nacionalidades", "id_nacionalidade", id); }
+    public Integer buscarIdNacionalidadePorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", nome); }
 
-    public boolean excluirTipoDoc(int id) throws SQLException {
-        String sql = "DELETE FROM aux_tipos_documento WHERE id_tipo_doc=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
+    // --- TipoPassagem ---
+    public boolean inserirTipoPassagem(String nome) throws SQLException { return inserirAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", nome); }
+    public List<String> listarPassagemAux() throws SQLException { return listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem"); }
+    public boolean atualizarTipoPassagem(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", id, novoNome); }
+    public boolean excluirTipoPassagem(int id) throws SQLException { return excluirAuxiliar("aux_tipos_passagem", "id_tipo_passagem", id); }
+    public Integer buscarIdTipoPassagemPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", nome); }
 
-    public Integer buscarIdTipoDocPorNome(String nome) throws SQLException { 
-        Integer ret = null;
-        String sql = "SELECT id_tipo_doc FROM aux_tipos_documento WHERE nome_tipo_doc ILIKE ?";
-        if (nome == null || nome.trim().isEmpty()) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nome.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_tipo_doc");
-                }
-            }
-        }
-        return ret;
-    }
+    // --- AgenteAux ---
+    public boolean inserirAgenteAux(String nome) throws SQLException { return inserirAuxiliar("aux_agentes", "nome_agente", nome); }
+    public List<String> listarAgenteAux() throws SQLException { return listarAuxiliar("aux_agentes", "nome_agente"); }
+    public boolean atualizarAgenteAux(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_agentes", "nome_agente", "id_agente", id, novoNome); }
+    public boolean excluirAgenteAux(int id) throws SQLException { return excluirAuxiliar("aux_agentes", "id_agente", id); }
+    public Integer buscarIdAgenteAuxPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_agentes", "nome_agente", "id_agente", nome); }
 
-    // --- Métodos para Sexo (tabela: aux_sexo) ---
-    public boolean inserirSexo(String nome) throws SQLException {
-        String sql = "INSERT INTO aux_sexo (nome_sexo) VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, nome);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
+    // --- HorarioSaida ---
+    public boolean inserirHorarioSaida(String descricao) throws SQLException { return inserirAuxiliar("aux_horarios_saida", "descricao_horario_saida", descricao); }
+    public List<String> listarHorarioSaida() throws SQLException { return listarAuxiliar("aux_horarios_saida", "descricao_horario_saida"); }
+    public boolean atualizarHorarioSaida(int id, String novaDescricao) throws SQLException { return atualizarAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", id, novaDescricao); }
+    public boolean excluirHorarioSaida(int id) throws SQLException { return excluirAuxiliar("aux_horarios_saida", "id_horario_saida", id); }
+    public Integer obterIdHorarioSaidaPorNome(String descricao) throws SQLException { return obterIdAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", descricao); }
 
-    public List<String> listarSexo() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_sexo FROM aux_sexo ORDER BY nome_sexo";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_sexo"));
-            }
-        }
-        return lista;
-    }
+    // --- Acomodacao ---
+    public boolean inserirAcomodacao(String nome) throws SQLException { return inserirAuxiliar("aux_acomodacoes", "nome_acomodacao", nome); }
+    public List<String> listarAcomodacao() throws SQLException { return listarAuxiliar("aux_acomodacoes", "nome_acomodacao"); }
+    public boolean atualizarAcomodacao(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_acomodacoes", "nome_acomodacao", "id_acomodacao", id, novoNome); }
+    public boolean excluirAcomodacao(int id) throws SQLException { return excluirAuxiliar("aux_acomodacoes", "id_acomodacao", id); }
+    public Integer buscarIdAcomodacaoPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_acomodacoes", "nome_acomodacao", "id_acomodacao", nome); }
 
-    public boolean atualizarSexo(int id, String novoNome) throws SQLException {
-        String sql = "UPDATE aux_sexo SET nome_sexo=? WHERE id_sexo=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novoNome);
-            ps.setInt(2, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
+    // --- FormasPagamento / Caixas (somente leitura) ---
+    public List<String> listarTiposPagamento() throws SQLException { return listarAuxiliar("aux_formas_pagamento", "nome_forma_pagamento"); }
+    public Integer buscarIdTipoPagamentoPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_formas_pagamento", "nome_forma_pagamento", "id_forma_pagamento", nome); }
+    public List<String> listarCaixas() throws SQLException { return listarAuxiliar("caixas", "nome_caixa"); }
 
-    public boolean excluirSexo(int id) throws SQLException {
-        String sql = "DELETE FROM aux_sexo WHERE id_sexo=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public Integer buscarIdSexoPorNome(String nome) throws SQLException { 
-        Integer ret = null;
-        String sql = "SELECT id_sexo FROM aux_sexo WHERE nome_sexo ILIKE ?";
-        if (nome == null || nome.trim().isEmpty()) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nome.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_sexo");
-                }
-            }
-        }
-        return ret;
-    }
-
-    // --- Métodos para Nacionalidade (tabela: aux_nacionalidades) ---
-    public boolean inserirNacionalidade(String nome) throws SQLException {
-        String sql = "INSERT INTO aux_nacionalidades (nome_nacionalidade) VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, nome);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public List<String> listarNacionalidade() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_nacionalidade FROM aux_nacionalidades ORDER BY nome_nacionalidade";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_nacionalidade"));
-            }
-        }
-        return lista;
-    }
-
-    public boolean atualizarNacionalidade(int id, String novoNome) throws SQLException {
-        String sql = "UPDATE aux_nacionalidades SET nome_nacionalidade=? WHERE id_nacionalidade=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novoNome);
-            ps.setInt(2, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public boolean excluirNacionalidade(int id) throws SQLException {
-        String sql = "DELETE FROM aux_nacionalidades WHERE id_nacionalidade=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public Integer buscarIdNacionalidadePorNome(String nome) throws SQLException { 
-        Integer ret = null;
-        String sql = "SELECT id_nacionalidade FROM aux_nacionalidades WHERE nome_nacionalidade ILIKE ?";
-        if (nome == null || nome.trim().isEmpty()) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nome.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_nacionalidade");
-                }
-            }
-        }
-        return ret;
-    }
-
-    // --- Métodos para Tipos de Passagem (tabela: aux_tipos_passagem) ---
-    public boolean inserirTipoPassagem(String nome) throws SQLException {
-        String sql = "INSERT INTO aux_tipos_passagem (nome_tipo_passagem) VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, nome);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public List<String> listarPassagemAux() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_tipo_passagem FROM aux_tipos_passagem ORDER BY nome_tipo_passagem";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_tipo_passagem"));
-            }
-        }
-        return lista;
-    }
-
-    public boolean atualizarTipoPassagem(int id, String novoNome) throws SQLException {
-        String sql = "UPDATE aux_tipos_passagem SET nome_tipo_passagem=? WHERE id_tipo_passagem=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novoNome);
-            ps.setInt(2, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public boolean excluirTipoPassagem(int id) throws SQLException {
-        String sql = "DELETE FROM aux_tipos_passagem WHERE id_tipo_passagem=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public Integer buscarIdTipoPassagemPorNome(String nomeTipoPassagem) throws SQLException {
-        Integer ret = null;
-        String sql = "SELECT id_tipo_passagem FROM aux_tipos_passagem WHERE nome_tipo_passagem ILIKE ?";
-        if (nomeTipoPassagem == null || nomeTipoPassagem.trim().isEmpty()) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nomeTipoPassagem.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_tipo_passagem");
-                }
-            }
-        }
-        return ret;
-    }
-
-    // --- Métodos para Agente Auxiliar (tabela: aux_agentes) ---
-    public boolean inserirAgenteAux(String nome) throws SQLException {
-        String sql = "INSERT INTO aux_agentes (nome_agente) VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, nome);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public List<String> listarAgenteAux() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_agente FROM aux_agentes ORDER BY nome_agente";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_agente"));
-            }
-        }
-        return lista;
-    }
-
-    public boolean atualizarAgenteAux(int id, String novoNome) throws SQLException {
-        String sql = "UPDATE aux_agentes SET nome_agente=? WHERE id_agente=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novoNome);
-            ps.setInt(2, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public boolean excluirAgenteAux(int id) throws SQLException {
-        String sql = "DELETE FROM aux_agentes WHERE id_agente=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public Integer buscarIdAgenteAuxPorNome(String nome) throws SQLException {
-        Integer ret = null;
-        String sql = "SELECT id_agente FROM aux_agentes WHERE nome_agente ILIKE ?";
-        if (nome == null || nome.trim().isEmpty()) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nome.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_agente");
-                }
-            }
-        }
-        return ret;
-    }
-
-    // --- Métodos para Horário de Saída (tabela: aux_horarios_saida) ---
-    public boolean inserirHorarioSaida(String descricao) throws SQLException {
-        String sql = "INSERT INTO aux_horarios_saida (descricao_horario_saida) VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, descricao);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public List<String> listarHorarioSaida() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT descricao_horario_saida FROM aux_horarios_saida ORDER BY descricao_horario_saida";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("descricao_horario_saida"));
-            }
-        }
-        return lista;
-    }
-
-    public boolean atualizarHorarioSaida(int id, String novaDescricao) throws SQLException {
-        String sql = "UPDATE aux_horarios_saida SET descricao_horario_saida=? WHERE id_horario_saida=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novaDescricao);
-            ps.setInt(2, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public boolean excluirHorarioSaida(int id) throws SQLException {
-        String sql = "DELETE FROM aux_horarios_saida WHERE id_horario_saida=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public Integer obterIdHorarioSaidaPorNome(String descricao) throws SQLException {
-        Integer ret = null;
-        String sql = "SELECT id_horario_saida FROM aux_horarios_saida WHERE descricao_horario_saida ILIKE ?";
-        if (descricao == null || descricao.trim().isEmpty() || "N/A".equalsIgnoreCase(descricao)) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, descricao.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_horario_saida");
-                }
-            }
-        }
-        return ret;
-    }
-
-    // --- Métodos para Acomodação (tabela: aux_acomodacoes) ---
-    public boolean inserirAcomodacao(String nome) throws SQLException {
-        String sql = "INSERT INTO aux_acomodacoes (nome_acomodacao) VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, nome);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public List<String> listarAcomodacao() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_acomodacao FROM aux_acomodacoes ORDER BY nome_acomodacao";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_acomodacao"));
-            }
-        }
-        return lista;
-    }
-
-    public boolean atualizarAcomodacao(int id, String novoNome) throws SQLException {
-        String sql = "UPDATE aux_acomodacoes SET nome_acomodacao=? WHERE id_acomodacao=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novoNome);
-            ps.setInt(2, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public boolean excluirAcomodacao(int id) throws SQLException {
-        String sql = "DELETE FROM aux_acomodacoes WHERE id_acomodacao=?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-
-    public Integer buscarIdAcomodacaoPorNome(String nome) throws SQLException {
-        Integer ret = null;
-        String sql = "SELECT id_acomodacao FROM aux_acomodacoes WHERE nome_acomodacao ILIKE ?";
-        if (nome == null || nome.trim().isEmpty()) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nome.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_acomodacao");
-                }
-            }
-        }
-        return ret;
-    }
-
-    // --- Métodos para Tipos de Pagamento (tabela: aux_tipos_pagamento) ---
-    public List<String> listarTiposPagamento() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_forma_pagamento FROM aux_formas_pagamento ORDER BY nome_forma_pagamento";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_forma_pagamento"));
-            }
-        }
-        return lista;
-    }
-    
-    public Integer buscarIdTipoPagamentoPorNome(String nome) throws SQLException {
-        Integer ret = null;
-        String sql = "SELECT id_forma_pagamento FROM aux_formas_pagamento WHERE nome_forma_pagamento ILIKE ?";
-        if (nome == null || nome.trim().isEmpty()) {
-            return null;
-        }
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nome.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = rs.getInt("id_forma_pagamento");
-                }
-            }
-        }
-        return ret;
-    }
-
-
-    // --- Métodos para Contatos (Remetentes/Destinatários) ---
-    public List<String> listarContatosRemetentes() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_razao_social FROM contatos ORDER BY nome_razao_social";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_razao_social"));
-            }
-        }
-        return lista;
-    }
-
-    public List<String> listarContatosDestinatarios() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_razao_social FROM contatos ORDER BY nome_razao_social";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_razao_social"));
-            }
-        }
-        return lista;
-    }
-
-    // <<< MODIFICAÇÕES: Adicionado método listarCaixas para uso no RelatórioPassagensController >>>
-    public List<String> listarCaixas() throws SQLException {
-        List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_caixa FROM caixas ORDER BY nome_caixa";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                lista.add(rs.getString("nome_caixa"));
-            }
-        }
-        return lista;
-    }
-    // FIM MODIFICAÇÕES
-
-    // =====================================================================
-    // <<< MÉTODO NOVO ADICIONADO PARA CORRIGIR O ERRO "obterDescricaoHorario" >>>
-    // =====================================================================
+    // --- Descricao Horario ---
     public String obterDescricaoHorario(Long idHorario) throws SQLException {
         if (idHorario == null || idHorario == 0) return "";
-        String sql = "SELECT descricao_horario_saida FROM aux_horarios_saida WHERE id_horario_saida = ?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, idHorario);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("descricao_horario_saida");
-                }
-            }
-        }
-        return "";
+        String nome = buscarNomeAuxiliarPorId("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", idHorario.intValue());
+        return nome != null ? nome : "";
     }
 }

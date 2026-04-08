@@ -379,7 +379,7 @@ public class RelatorioFretesController implements Initializable {
         job.getJobSettings().setPageLayout(pageLayout);
         
         EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(1);
+        Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
         double larguraBase = 270;
         
         VBox root = new VBox(0);
@@ -1061,7 +1061,7 @@ public class RelatorioFretesController implements Initializable {
         job.getJobSettings().setPageLayout(pageLayout);
         
         EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(1);
+        Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
         double larguraBase = 270;
         
         VBox root = new VBox(0);
@@ -1430,7 +1430,7 @@ public class RelatorioFretesController implements Initializable {
         job.getJobSettings().setPageLayout(pageLayout);
         
         EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(1);
+        Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
         double larguraBase = 270;
         
         VBox root = new VBox(0);

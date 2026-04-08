@@ -88,9 +88,9 @@ public class FreteDAO {
                         frete.setDataEmissao(dataEmissaoSql.toLocalDate());
                     }
                     
-                    frete.setValorNominal(rs.getDouble("valor_nominal"));
-                    frete.setValorDevedor(rs.getDouble("valor_devedor"));
-                    frete.setValorPago(rs.getDouble("valor_pago"));
+                    frete.setValorNominal(rs.getBigDecimal("valor_nominal"));
+                    frete.setValorDevedor(rs.getBigDecimal("valor_devedor"));
+                    frete.setValorPago(rs.getBigDecimal("valor_pago"));
                     frete.setNomeConferente(rs.getString("conferente"));
                     frete.setStatus(rs.getString("status_frete"));
                     frete.setTotalVolumes(rs.getInt("total_volumes"));

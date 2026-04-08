@@ -228,7 +228,7 @@ public class PassagemDAO {
 
     public List<Passagem> listarTodos() {
         List<Passagem> passagens = new ArrayList<>();
-        String sql = getBaseQuery() + "ORDER BY p.data_emissao DESC, p.numero_bilhete DESC";
+        String sql = getBaseQuery() + "ORDER BY p.data_emissao DESC, p.numero_bilhete DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {

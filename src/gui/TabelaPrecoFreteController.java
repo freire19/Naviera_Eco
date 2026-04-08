@@ -284,7 +284,7 @@ public class TabelaPrecoFreteController implements Initializable {
             try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao FROM configuracao_empresa LIMIT 1")) {
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) nomeEmp = rs.getString("nome_embarcacao");
-            } catch(Exception e) {}
+            } catch(Exception e) { System.err.println("Erro em TabelaPrecoFreteController.imprimirTabela (empresa): " + e.getMessage()); }
 
             Label lEmp = new Label(nomeEmp.toUpperCase()); 
             lEmp.setFont(Font.font("Arial", FontWeight.BLACK, 16)); lEmp.setAlignment(Pos.CENTER); lEmp.setMaxWidth(Double.MAX_VALUE);

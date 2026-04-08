@@ -316,7 +316,7 @@ public class AuditoriaExclusoesSaida {
                 nomeEmpresa = rs.getString("nome_embarcacao");
                 pathLogo = rs.getString("path_logo");
             }
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em AuditoriaExclusoesSaida.criarCabecalhoEmpresa (dados empresa): " + e.getMessage()); }
 
         if (pathLogo != null && !pathLogo.isEmpty()) {
             try {
@@ -327,7 +327,7 @@ public class AuditoriaExclusoesSaida {
                     imgLogo.setPreserveRatio(true);
                     cabecalho.getChildren().add(imgLogo);
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em AuditoriaExclusoesSaida.criarCabecalhoEmpresa (logo): " + e.getMessage()); }
         }
         Label lblEmpresa = new Label(nomeEmpresa != null ? nomeEmpresa.toUpperCase() : "EMPRESA");
         lblEmpresa.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1565c0;"); 

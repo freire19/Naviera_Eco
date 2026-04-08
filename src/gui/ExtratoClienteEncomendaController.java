@@ -86,7 +86,7 @@ public class ExtratoClienteEncomendaController {
         colRota.setStyle("-fx-alignment: CENTER-LEFT; -fx-font-size: 14px;");
         colData.setStyle("-fx-alignment: CENTER; -fx-font-size: 14px;");
         
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){}
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em ExtratoClienteEncomendaController.configuringTabela (CSS): " + e.getMessage()); }
     }
     
     private void configurarTabela() { configuringTabela(); } 

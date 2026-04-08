@@ -50,7 +50,7 @@ public class FinanceiroEncomendasController {
         
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        } catch (Exception e) { }
+        } catch (Exception e) { System.err.println("Erro em FinanceiroEncomendasController.initialize (CSS): " + e.getMessage()); }
     }
 
     @FXML
@@ -236,29 +236,30 @@ public class FinanceiroEncomendasController {
     }
     
     private void salvarPagamento(int idEncomenda, BaixaPagamentoController dados, double jaPago) {
-        double novoPago = jaPago + dados.getValorPago();
+        java.math.BigDecimal bdJaPago = java.math.BigDecimal.valueOf(jaPago);
+        java.math.BigDecimal novoPago = bdJaPago.add(dados.getValorPago());
 
-        // Buscar desconto já armazenado e acumular (DL010)
-        double descontoAnterior = 0;
+        // Buscar desconto ja armazenado e acumular (DL010)
+        java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM encomendas WHERE id_encomenda = ?")) {
             stmtQ.setInt(1, idEncomenda);
             try (ResultSet rs = stmtQ.executeQuery()) {
-                if (rs.next()) descontoAnterior = rs.getDouble(1);
+                if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro ao buscar desconto anterior: " + e.getMessage()); }
 
-        double descontoTotal = descontoAnterior + dados.getDesconto();
-        double totalComDesconto = dados.getValorTotalOriginal() - descontoTotal;
-        String novoStatus = (novoPago >= totalComDesconto - 0.01) ? "PAGO" : "PARCIAL";
+        java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
+        java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
+        String novoStatus = (novoPago.compareTo(totalComDesconto.subtract(model.StatusPagamento.TOLERANCIA_PAGAMENTO)) >= 0) ? "PAGO" : "PARCIAL";
 
         String sql = "UPDATE encomendas SET valor_pago = ?, desconto = ?, tipo_pagamento = ?, caixa = ?, status_pagamento = ? WHERE id_encomenda = ?";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
 
-            stmt.setDouble(1, novoPago);
-            stmt.setDouble(2, descontoTotal);
+            stmt.setBigDecimal(1, novoPago);
+            stmt.setBigDecimal(2, descontoTotal);
             stmt.setString(3, dados.getFormaPagamento());
             stmt.setString(4, dados.getCaixa());
             stmt.setString(5, novoStatus);
@@ -296,14 +297,15 @@ public class FinanceiroEncomendasController {
             stage.showAndWait();
             
             if (controller.isConfirmado()) {
-                double vEstorno = controller.getValorEstorno();
+                java.math.BigDecimal vEstorno = controller.getValorEstorno();
                 String motivo = controller.getMotivo();
                 String forma = controller.getFormaDevolucao();
                 int idAutorizador = controller.getIdAutorizador();
                 String nomeAutorizador = controller.getNomeAutorizador();
 
-                double novoPago = selecionada.getPago() - vEstorno;
-                String novoStatus = (novoPago > 0.01) ? "PARCIAL" : "PENDENTE";
+                java.math.BigDecimal bdPago = java.math.BigDecimal.valueOf(selecionada.getPago());
+                java.math.BigDecimal novoPago = bdPago.subtract(vEstorno);
+                String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PARCIAL" : "PENDENTE";
                 
                 Connection con = null;
                 try {
@@ -312,7 +314,7 @@ public class FinanceiroEncomendasController {
 
                     String sqlUp = "UPDATE encomendas SET valor_pago = ?, status_pagamento = ? WHERE id_encomenda = ?";
                     try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
-                        stmt.setDouble(1, novoPago);
+                        stmt.setBigDecimal(1, novoPago);
                         stmt.setString(2, novoStatus);
                         stmt.setInt(3, selecionada.getId());
                         stmt.executeUpdate();
@@ -321,7 +323,7 @@ public class FinanceiroEncomendasController {
                     String sqlLog = "INSERT INTO log_estornos_encomendas (id_encomenda, valor_estornado, motivo, forma_devolucao, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?, ?)";
                     try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
                         stmt.setInt(1, selecionada.getId());
-                        stmt.setDouble(2, vEstorno);
+                        stmt.setBigDecimal(2, vEstorno);
                         stmt.setString(3, motivo);
                         stmt.setString(4, forma);
                         stmt.setInt(5, idAutorizador);

@@ -50,8 +50,7 @@ public class CaixaDAO {
         }
     }
 
-    // ALTERAR (Atualiza usando 'id_caixa')
-    public boolean alterar(Caixa caixa) {
+    public boolean atualizar(Caixa caixa) {
         String sql = "UPDATE caixas SET nome_caixa = ? WHERE id_caixa = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

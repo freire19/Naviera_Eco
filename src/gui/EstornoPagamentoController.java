@@ -6,13 +6,13 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-// IMPORTANTE: Essa biblioteca é necessária para conferir a senha criptografada
-import org.mindrot.jbcrypt.BCrypt; 
+import org.mindrot.jbcrypt.BCrypt;
 
 public class EstornoPagamentoController {
 
@@ -24,14 +24,17 @@ public class EstornoPagamentoController {
     @FXML private PasswordField txtSenhaAutorizador;
     @FXML private Button btnConfirmar;
 
-    private double pagoOriginal;
+    private BigDecimal pagoOriginal = BigDecimal.ZERO;
     private boolean confirmado = false;
     private int idAutorizador = 0;
     private String nomeAutorizador = "";
 
     // Getters
-    public double getValorEstorno() { 
-        try { return Double.parseDouble(txtValorEstorno.getText().replace(",", ".").trim()); } catch(Exception e) { return 0.0; }
+    public BigDecimal getValorEstorno() {
+        try {
+            String txt = txtValorEstorno.getText().replace(".", "").replace(",", ".").trim();
+            return new BigDecimal(txt);
+        } catch(Exception e) { return BigDecimal.ZERO; }
     }
     public String getMotivo() { return txtMotivo.getText().toUpperCase(); }
     public String getFormaDevolucao() { return cmbFormaDevolucao.getValue(); }
@@ -44,11 +47,17 @@ public class EstornoPagamentoController {
         carregarFormasPagamento();
     }
 
+    public void setDados(BigDecimal total, BigDecimal pago) {
+        this.pagoOriginal = pago != null ? pago : BigDecimal.ZERO;
+        lblValorTotal.setText(String.format("R$ %,.2f", total));
+        lblValorPago.setText(String.format("R$ %,.2f", pago));
+        txtValorEstorno.setText(String.format("%.2f", pago));
+    }
+
+    /** Overload para compatibilidade com callers legados. */
+    @Deprecated
     public void setDados(double total, double pago) {
-        this.pagoOriginal = pago;
-        lblValorTotal.setText(String.format("R$ %.2f", total));
-        lblValorPago.setText(String.format("R$ %.2f", pago));
-        txtValorEstorno.setText(String.format("%.2f", pago)); 
+        setDados(BigDecimal.valueOf(total), BigDecimal.valueOf(pago));
     }
 
     private void carregarFormasPagamento() {
@@ -62,9 +71,10 @@ public class EstornoPagamentoController {
     }
 
     @FXML void confirmar() {
-        // 1. Validações básicas
-        double v = getValorEstorno();
-        if (v <= 0.001 || v > pagoOriginal + 0.01) {
+        // 1. Validacoes basicas
+        BigDecimal v = getValorEstorno();
+        BigDecimal limiteMaximo = pagoOriginal.add(model.StatusPagamento.TOLERANCIA_PAGAMENTO);
+        if (v.compareTo(new BigDecimal("0.001")) <= 0 || v.compareTo(limiteMaximo) > 0) {
             alertErro("Valor inválido! O valor deve ser maior que zero e não pode ultrapassar o valor pago.");
             return;
         }
@@ -106,17 +116,15 @@ public class EstornoPagamentoController {
                 // Verifica se a senha bate com a hash usando BCrypt
                 boolean senhaConfere = false;
                 try {
-                    if(hashDoBanco != null && hashDoBanco.startsWith("$2a$")) {
-                        // Se for hash BCrypt
+                    if(hashDoBanco != null) {
+                        // Sempre usa BCrypt — sem fallback plaintext
                         if(BCrypt.checkpw(senhaDigitada, hashDoBanco)) {
                             senhaConfere = true;
                         }
-                    } else if (hashDoBanco != null && hashDoBanco.equals(senhaDigitada)) {
-                        // Se for senha plana (texto normal - fallback)
-                        senhaConfere = true;
                     }
-                } catch (Exception e) {
-                    System.out.println("Erro ao verificar hash: " + e.getMessage());
+                } catch (IllegalArgumentException e) {
+                    // Hash nao e BCrypt valido — ignora este usuario
+                    System.err.println("Hash invalido para usuario " + nome + ": formato nao-BCrypt");
                 }
 
                 if (senhaConfere) {

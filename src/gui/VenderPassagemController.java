@@ -258,7 +258,7 @@ public class VenderPassagemController implements Initializable {
     private void carregarDadosEmBackground() {
         if (btnNovo != null) btnNovo.setDisable(true);
 
-        new Thread(() -> {
+        Thread bgThread = new Thread(() -> {
             try {
                 List<Passageiro> listaP = passageiroDAO.listarTodos();
                 
@@ -335,7 +335,9 @@ public class VenderPassagemController implements Initializable {
                     if (btnNovo != null) btnNovo.setDisable(false);
                 });
             }
-        }).start();
+        });
+        bgThread.setDaemon(true);
+        bgThread.start();
     }
 
     private void configurarDataNascimentoFlexivel() {
@@ -470,7 +472,7 @@ public class VenderPassagemController implements Initializable {
             if (descHorario == null || descHorario.isEmpty()) {
                 try {
                     descHorario = new dao.AuxiliaresDAO().obterDescricaoHorario(viagemSelecionada.getIdHorarioSaida());
-                } catch (Exception e) {}
+                } catch (Exception e) { System.err.println("Erro em VenderPassagemController.selecionarViagem (horario): " + e.getMessage()); }
             }
             if (txtHorario != null) txtHorario.setText(descHorario);
 
@@ -488,7 +490,7 @@ public class VenderPassagemController implements Initializable {
             return;
         }
         
-        new Thread(() -> {
+        Thread loadThread = new Thread(() -> {
             try {
                 List<Passagem> passagensParaExibir = passagemDAO.listarPorViagem(viagemSelecionada.getId());
                 
@@ -504,7 +506,9 @@ public class VenderPassagemController implements Initializable {
                     if (txtTotalPassageiros != null) txtTotalPassageiros.setText("0");
                 });
             }
-        }).start();
+        });
+        loadThread.setDaemon(true);
+        loadThread.start();
     }
 
     private void configurarTabelaPassagens() {
@@ -1803,12 +1807,8 @@ public class VenderPassagemController implements Initializable {
             int imgWidth = (int) fxImage.getWidth();
             int imgHeight = (int) fxImage.getHeight();
 
-            BufferedImage bufferedImage = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
-            for (int x = 0; x < imgWidth; x++) {
-                for (int y = 0; y < imgHeight; y++) {
-                    bufferedImage.setRGB(x, y, fxImage.getPixelReader().getArgb(x, y));
-                }
-            }
+            // Usa SwingFXUtils em vez de loop pixel-by-pixel (fix DP015)
+            BufferedImage bufferedImage = javafx.embed.swing.SwingFXUtils.fromFXImage(fxImage, null);
 
             if (bufferedImage.getWidth() > bufferedImage.getHeight()) {
                 bufferedImage = rotateImage90(bufferedImage);
@@ -2025,18 +2025,4 @@ public class VenderPassagemController implements Initializable {
         });
     }
 
-    private void fecharComboBoxesAbertos() {
-        List<ComboBox<?>> comboBoxes = Arrays.asList(cmbPassageiroAuto, cmbRota, cmbTipoPassagemAux, cmbViagem, cmbSexo, cmbTipoDoc);
-        comboBoxes.forEach(comboBox -> {
-            if (comboBox != null && comboBox.isShowing()) {
-                comboBox.hide();
-            }
-        });
-    }
-
-    @FXML
-    private void salvarPassagem() {
-        fecharComboBoxesAbertos();
-        // ... código existente para salvar passagem ...
-    }
 }

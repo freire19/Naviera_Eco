@@ -76,7 +76,7 @@ public class CadastroBoletoController {
     private void buscarUltimaViagem() {
         try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT id_viagem FROM viagens ORDER BY id_viagem DESC LIMIT 1").executeQuery()){
             if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
-        } catch(Exception e){}
+        } catch(Exception e){ System.err.println("Erro em CadastroBoletoController.buscarUltimaViagem: " + e.getMessage()); }
     }
 
     private void gerarCamposData(int qtd) {
@@ -97,7 +97,7 @@ public class CadastroBoletoController {
         ObservableList<String> cats = FXCollections.observableArrayList();
         try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()){
             while(rs.next()) cats.add(rs.getString(1));
-        } catch(Exception e) {}
+        } catch(Exception e) { System.err.println("Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(cats);
         configurarAutocomplete(cmbCategoria, cats);
     }
@@ -212,7 +212,7 @@ public class CadastroBoletoController {
         });
         
         // Tenta carregar o CSS
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){}
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em CadastroBoletoController.configurarTabela (CSS): " + e.getMessage()); }
     }
     
     @FXML

@@ -189,32 +189,35 @@ public class InserirEncomendaController implements Initializable {
         this.menuSugestoesRota = criarMenuConfigurado();
 
         configurarTabela();
-        carregarComboBoxes();
-        carregarCatalogoProdutos();
-        
         configurarListenersDeCampos();
         configurarValidacaoFocoClientes();
-        
+
         configurarAutocompleteGenerico(cmbRemetente, menuSugestoesRemetente, "R");
         configurarAutocompleteGenerico(cmbDestinatario, menuSugestoesDestinatario, "D");
         configurarAutoCompleteRota(cmbRota);
         configurarAutocompleteProdutosNoTextField();
-        
-        configurarNavegacaoEnterCampos();
-        aplicarEstiloBotoes(); 
 
-        viagemAtiva = viagemDAO.buscarViagemAtiva();
-        if (viagemAtiva != null) {
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            String dataStr = viagemAtiva.getDataViagem() != null ? viagemAtiva.getDataViagem().format(dtf) : "--";
-            String chegadaStr = "--";
-            if(viagemAtiva.getDataChegada() != null) chegadaStr = viagemAtiva.getDataChegada().format(dtf);
-            txtViagemAtual.setText(viagemAtiva.getId() + " - " + dataStr + " até " + chegadaStr);
-        } else {
-            txtViagemAtual.setText("NENHUMA VIAGEM ATIVA");
-            btnSalvar.setDisable(true);
-            showAlert(AlertType.ERROR, "Erro", "Não há viagem ativa.");
-        }
+        configurarNavegacaoEnterCampos();
+        aplicarEstiloBotoes();
+
+        // Carrega dados do banco em background (DR010)
+        javafx.concurrent.Task<model.Viagem> taskInit = new javafx.concurrent.Task<model.Viagem>() {
+            @Override protected model.Viagem call() throws Exception {
+                carregarComboBoxes();
+                carregarCatalogoProdutos();
+                return viagemDAO.buscarViagemAtiva();
+            }
+        };
+        taskInit.setOnSucceeded(ev -> {
+            viagemAtiva = taskInit.getValue();
+            atualizarLabelViagem();
+        });
+        taskInit.setOnFailed(ev -> {
+            System.err.println("Erro ao carregar dados iniciais: " + taskInit.getException().getMessage());
+        });
+        Thread tInit = new Thread(taskInit);
+        tInit.setDaemon(true);
+        tInit.start();
 
         cmbRota.getSelectionModel().selectedItemProperty().addListener((obs, oldRota, newRota) -> {
             if (newRota != null && encomendaEmEdicao == null) {
@@ -370,7 +373,7 @@ public class InserirEncomendaController implements Initializable {
                                 obsListaItens.add(item);
                             }
                         }
-                    } catch (Exception e) {}
+                    } catch (Exception e) { System.err.println("Erro em InserirEncomendaController.processarIA (item): " + e.getMessage()); }
                 }
             }
             atualizarTotaisEncomenda(); 
@@ -828,7 +831,7 @@ public class InserirEncomendaController implements Initializable {
         javafx.print.PageLayout pageLayout = printer.createPageLayout(printer.getDefaultPageLayout().getPaper(), javafx.print.PageOrientation.PORTRAIT, Printer.MarginType.HARDWARE_MINIMUM);
         job.getJobSettings().setPageLayout(pageLayout);
         EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(1);
+        Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
         double larguraBase = 270; 
         VBox root = new VBox(0);
         root.setPadding(new Insets(0, 0, 0, 2));
@@ -1177,7 +1180,7 @@ public class InserirEncomendaController implements Initializable {
     }
 
     private void carregarCatalogoProdutos() {
-        try { this.listaMestraProdutosObjetos = itemPadraoDAO.listarTodos(true); } catch (Exception e) {}
+        try { this.listaMestraProdutosObjetos = itemPadraoDAO.listarTodos(true); } catch (Exception e) { System.err.println("Erro em InserirEncomendaController.carregarCatalogoProdutos: " + e.getMessage()); }
     }
 
     private void configurarValidacaoFocoClientes() {
@@ -1191,6 +1194,19 @@ public class InserirEncomendaController implements Initializable {
                  verificarEProporCadastroRapidoCliente(cmbDestinatario.getEditor().getText(), "Destinatário");
             }
         });
+    }
+
+    private void atualizarLabelViagem() {
+        if (viagemAtiva != null) {
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String dataStr = viagemAtiva.getDataViagem() != null ? viagemAtiva.getDataViagem().format(dtf) : "--";
+            String chegadaStr = "--";
+            if (viagemAtiva.getDataChegada() != null) chegadaStr = viagemAtiva.getDataChegada().format(dtf);
+            txtViagemAtual.setText(viagemAtiva.getId() + " - " + dataStr + " ate " + chegadaStr);
+        } else {
+            txtViagemAtual.setText("NENHUMA VIAGEM ATIVA");
+            btnSalvar.setDisable(true);
+        }
     }
 
     private void carregarComboBoxes() {
@@ -1622,7 +1638,7 @@ public class InserirEncomendaController implements Initializable {
                     carregarComboBoxes();
                     if(tipo.equals("Remetente")) cmbRemetente.setValue(nome.toUpperCase());
                     else cmbDestinatario.setValue(nome.toUpperCase());
-                } catch (Exception e) {}
+                } catch (Exception e) { System.err.println("Erro em InserirEncomendaController.verificarEProporCadastroRapidoCliente: " + e.getMessage()); }
             }
         });
     }

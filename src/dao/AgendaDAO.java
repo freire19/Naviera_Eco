@@ -73,20 +73,45 @@ public class AgendaDAO {
         return notas;
     }
     
+    /**
+     * Busca todas as anotacoes nao concluidas de um mes inteiro em 1 query (fix DP005).
+     * Retorna Map<LocalDate, List<String>> para uso direto no calendario.
+     */
+    public java.util.Map<LocalDate, List<String>> buscarAnotacoesPorMes(int mes, int ano) {
+        java.util.Map<LocalDate, List<String>> mapa = new java.util.HashMap<>();
+        String sql = "SELECT data_evento, descricao FROM agenda_anotacoes " +
+                     "WHERE data_evento >= ? AND data_evento < ? AND concluida = false";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            LocalDate inicio = LocalDate.of(ano, mes, 1);
+            LocalDate fim = inicio.plusMonths(1);
+            stmt.setDate(1, Date.valueOf(inicio));
+            stmt.setDate(2, Date.valueOf(fim));
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                LocalDate data = rs.getDate("data_evento").toLocalDate();
+                mapa.computeIfAbsent(data, k -> new ArrayList<>()).add(rs.getString("descricao"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em AgendaDAO.buscarAnotacoesPorMes: " + e.getMessage());
+        }
+        return mapa;
+    }
+
     // --- NOVO MÉTODO: Busca Boletos Pendentes para exibir no Calendário ---
     public List<ResumoBoleto> buscarBoletosPendentesNoMes(int mes, int ano) {
         List<ResumoBoleto> boletos = new ArrayList<>();
-        // Pega tudo que é BOLETO e está PENDENTE naquele mês/ano
+        // Range query em vez de EXTRACT para permitir uso de indice (fix DP007)
         String sql = "SELECT data_vencimento, descricao, valor_total FROM financeiro_saidas " +
                      "WHERE forma_pagamento = 'BOLETO' AND status = 'PENDENTE' " +
-                     "AND EXTRACT(MONTH FROM data_vencimento) = ? " +
-                     "AND EXTRACT(YEAR FROM data_vencimento) = ?";
-                     
+                     "AND data_vencimento >= ? AND data_vencimento < ?";
+
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-             
-            stmt.setInt(1, mes);
-            stmt.setInt(2, ano);
+
+            LocalDate inicio = LocalDate.of(ano, mes, 1);
+            stmt.setDate(1, Date.valueOf(inicio));
+            stmt.setDate(2, Date.valueOf(inicio.plusMonths(1)));
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while(rs.next()) {

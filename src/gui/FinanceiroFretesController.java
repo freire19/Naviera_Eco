@@ -174,6 +174,7 @@ public class FinanceiroFretesController {
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
+            java.math.BigDecimal somaPendenteBD = java.math.BigDecimal.ZERO;
             while (rs.next()) {
                 double total = rs.getDouble("valor_nominal");
                 double pago = rs.getDouble("valor_pago");
@@ -192,10 +193,10 @@ public class FinanceiroFretesController {
                         volumes,
                         total, pago
                 ));
-                if (devendo > 0.01) somaPendente += devendo;
+                if (devendo > 0.01) somaPendenteBD = somaPendenteBD.add(java.math.BigDecimal.valueOf(devendo));
             }
             tabela.setItems(lista);
-            lblTotalPendente.setText(String.format("R$ %.2f", somaPendente));
+            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendenteBD));
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -243,21 +244,22 @@ public class FinanceiroFretesController {
     }
 
     private void salvarPagamento(long idFrete, BaixaPagamentoController dados, double jaPago) {
-        double novoPago = jaPago + dados.getValorPago();
-        // Buscar desconto já armazenado no banco e somar com o novo (DL012)
-        double descontoAnterior = 0;
+        java.math.BigDecimal bdJaPago = java.math.BigDecimal.valueOf(jaPago);
+        java.math.BigDecimal novoPago = bdJaPago.add(dados.getValorPago());
+        // Buscar desconto ja armazenado no banco e somar com o novo (DL012)
+        java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM fretes WHERE id_frete = ?")) {
             stmtQ.setLong(1, idFrete);
             try (ResultSet rs = stmtQ.executeQuery()) {
-                if (rs.next()) descontoAnterior = rs.getDouble(1);
+                if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro ao buscar desconto anterior: " + e.getMessage()); }
 
-        double descontoTotal = descontoAnterior + dados.getDesconto();
-        double totalComDesconto = dados.getValorTotalOriginal() - descontoTotal;
-        double novoDevedor = Math.max(0, totalComDesconto - novoPago);
-        String novoStatus = (novoDevedor <= 0.01) ? "PAGO" : "PENDENTE";
+        java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
+        java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
+        java.math.BigDecimal novoDevedor = totalComDesconto.subtract(novoPago).max(java.math.BigDecimal.ZERO);
+        String novoStatus = (novoDevedor.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) ? "PAGO" : "PENDENTE";
 
         // DL011: gravar tipo_pagamento e nome_caixa junto
         String sql = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, desconto = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ? WHERE id_frete = ?";
@@ -265,9 +267,9 @@ public class FinanceiroFretesController {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
 
-            stmt.setDouble(1, novoPago);
-            stmt.setDouble(2, novoDevedor);
-            stmt.setDouble(3, descontoTotal);
+            stmt.setBigDecimal(1, novoPago);
+            stmt.setBigDecimal(2, novoDevedor);
+            stmt.setBigDecimal(3, descontoTotal);
             stmt.setString(4, dados.getFormaPagamento());
             stmt.setString(5, dados.getCaixa());
             stmt.setString(6, novoStatus);
@@ -310,14 +312,16 @@ public class FinanceiroFretesController {
             stage.showAndWait();
 
             if (controller.isConfirmado()) {
-                double vEstorno = controller.getValorEstorno();
+                java.math.BigDecimal vEstorno = controller.getValorEstorno();
                 String motivo = controller.getMotivo();
                 int idAutorizador = controller.getIdAutorizador();
                 String nomeAutorizador = controller.getNomeAutorizador();
 
-                double novoPago = selecionada.getPago() - vEstorno;
-                double novoDevedor = selecionada.getTotal() - novoPago;
-                String novoStatus = (novoPago > 0.01) ? "PENDENTE" : "NAO_PAGO";
+                java.math.BigDecimal bdPago = java.math.BigDecimal.valueOf(selecionada.getPago());
+                java.math.BigDecimal bdTotal = java.math.BigDecimal.valueOf(selecionada.getTotal());
+                java.math.BigDecimal novoPago = bdPago.subtract(vEstorno);
+                java.math.BigDecimal novoDevedor = bdTotal.subtract(novoPago);
+                String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PENDENTE" : "NAO_PAGO";
 
                 Connection con = null;
                 try {
@@ -340,8 +344,8 @@ public class FinanceiroFretesController {
 
                     String sqlUp = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, status_frete = ? WHERE id_frete = ?";
                     try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
-                        stmt.setDouble(1, novoPago);
-                        stmt.setDouble(2, novoDevedor);
+                        stmt.setBigDecimal(1, novoPago);
+                        stmt.setBigDecimal(2, novoDevedor);
                         stmt.setString(3, novoStatus);
                         stmt.setLong(4, selecionada.getId());
                         stmt.executeUpdate();
@@ -351,7 +355,7 @@ public class FinanceiroFretesController {
                     String sqlLog = "INSERT INTO log_estornos_fretes (id_frete, valor_estornado, motivo, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?)";
                     try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
                         stmt.setLong(1, selecionada.getId());
-                        stmt.setDouble(2, vEstorno);
+                        stmt.setBigDecimal(2, vEstorno);
                         stmt.setString(3, motivo);
                         stmt.setInt(4, idAutorizador);
                         stmt.setString(5, nomeAutorizador);

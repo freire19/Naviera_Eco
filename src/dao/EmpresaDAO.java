@@ -5,9 +5,12 @@ import java.sql.*;
 
 public class EmpresaDAO {
 
-    // Salva ou atualiza o único registro da empresa (ID=1)
+    /** ID fixo do registro unico de configuracao da empresa */
+    public static final int ID_EMPRESA_PRINCIPAL = 1;
+
+    // Salva ou atualiza o único registro da empresa
     public boolean salvarOuAtualizar(Empresa empresa) {
-        Empresa existente = buscarPorId(1); // ID fixo para configuração
+        Empresa existente = buscarPorId(ID_EMPRESA_PRINCIPAL);
 
         String sql;
         // Usa o nome da tabela correto: "configuracao_empresa"

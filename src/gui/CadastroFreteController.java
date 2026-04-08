@@ -1619,7 +1619,7 @@ public class CadastroFreteController implements Initializable {
                                 }
                             }
                         }
-                    } catch (Exception e) {}
+                    } catch (Exception e) { System.err.println("Erro em CadastroFreteController.processarIA (item): " + e.getMessage()); }
                 }
             }
 

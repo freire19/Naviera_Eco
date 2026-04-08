@@ -47,6 +47,17 @@ public class EmbarcacaoDAO {
         return null;
     }
 
+    private Embarcacao mapResultSet(ResultSet rs) throws SQLException {
+        Embarcacao e = new Embarcacao();
+        e.setId(rs.getLong("id_embarcacao"));
+        e.setNome(rs.getString("nome"));
+        e.setRegistroCapitania(rs.getString("registro_capitania"));
+        e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
+        e.setCapacidadeCargaToneladas(rs.getBigDecimal("capacidade_carga_toneladas"));
+        e.setObservacoes(rs.getString("observacoes"));
+        return e;
+    }
+
     public Embarcacao buscarPorNome(String nome) {
         String sql = "SELECT id_embarcacao, nome, registro_capitania, capacidade_passageiros, capacidade_carga_toneladas, observacoes " +
                      "FROM embarcacoes WHERE nome = ?";
@@ -54,20 +65,10 @@ public class EmbarcacaoDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nome);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Embarcacao e = new Embarcacao();
-                    e.setId(rs.getLong("id_embarcacao"));
-                    e.setNome(rs.getString("nome"));
-                    e.setRegistroCapitania(rs.getString("registro_capitania"));
-                    e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
-                    e.setCapacidadeCargaToneladas(rs.getBigDecimal("capacidade_carga_toneladas"));
-                    e.setObservacoes(rs.getString("observacoes"));
-                    return e;
-                }
+                if (rs.next()) return mapResultSet(rs);
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar embarcação por nome: " + e.getMessage());
-            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
+            System.err.println("Erro SQL em EmbarcacaoDAO.buscarPorNome: " + e.getMessage());
         }
         return null;
     }
@@ -79,20 +80,9 @@ public class EmbarcacaoDAO {
         try (Connection conn = ConexaoBD.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                Embarcacao e = new Embarcacao();
-                // CORREÇÃO DO ERRO ClassCastException: Usar getLong diretamente.
-                e.setId(rs.getLong("id_embarcacao"));
-                e.setNome(rs.getString("nome"));
-                e.setRegistroCapitania(rs.getString("registro_capitania"));
-                e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
-                e.setCapacidadeCargaToneladas(rs.getBigDecimal("capacidade_carga_toneladas"));
-                e.setObservacoes(rs.getString("observacoes"));
-                lista.add(e);
-            }
+            while (rs.next()) lista.add(mapResultSet(rs));
         } catch (SQLException e) {
-            System.err.println("Erro ao listar todas as embarcações: " + e.getMessage());
-            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
+            System.err.println("Erro SQL em EmbarcacaoDAO.listarTodas: " + e.getMessage());
         }
         return lista;
     }

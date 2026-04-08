@@ -1,5 +1,6 @@
 package model;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class Frete {
@@ -10,11 +11,11 @@ public class Frete {
     private String nomeRemetente;
     private String nomeDestinatario;
     private String nomeRota;
-    private LocalDate dataViagem; // <--- CAMPO NOVO ADICIONADO
+    private LocalDate dataViagem;
     private LocalDate dataEmissao;
-    private double valorNominal;
-    private double valorDevedor;
-    private double valorPago;
+    private BigDecimal valorNominal = BigDecimal.ZERO;
+    private BigDecimal valorDevedor = BigDecimal.ZERO;
+    private BigDecimal valorPago = BigDecimal.ZERO;
     private String nomeConferente;
     private String status;
     private int totalVolumes;
@@ -34,33 +35,31 @@ public class Frete {
 
     public String getNomeDestinatario() { return nomeDestinatario; }
     public void setNomeDestinatario(String nomeDestinatario) { this.nomeDestinatario = nomeDestinatario; }
-    
+
     public String getNomeRota() { return nomeRota; }
     public void setNomeRota(String nomeRota) { this.nomeRota = nomeRota; }
 
-    // --- NOVOS MÉTODOS PARA DATA DA VIAGEM ---
     public LocalDate getDataViagem() { return dataViagem; }
     public void setDataViagem(LocalDate dataViagem) { this.dataViagem = dataViagem; }
-    // -----------------------------------------
 
     public LocalDate getDataEmissao() { return dataEmissao; }
     public void setDataEmissao(LocalDate dataEmissao) { this.dataEmissao = dataEmissao; }
 
-    public double getValorNominal() { return valorNominal; }
-    public void setValorNominal(double valorNominal) { this.valorNominal = valorNominal; }
+    public BigDecimal getValorNominal() { return valorNominal; }
+    public void setValorNominal(BigDecimal valorNominal) { this.valorNominal = valorNominal != null ? valorNominal : BigDecimal.ZERO; }
 
-    public double getValorDevedor() { return valorDevedor; }
-    public void setValorDevedor(double valorDevedor) { this.valorDevedor = valorDevedor; }
+    public BigDecimal getValorDevedor() { return valorDevedor; }
+    public void setValorDevedor(BigDecimal valorDevedor) { this.valorDevedor = valorDevedor != null ? valorDevedor : BigDecimal.ZERO; }
 
-    public double getValorPago() { return valorPago; }
-    public void setValorPago(double valorPago) { this.valorPago = valorPago; }
+    public BigDecimal getValorPago() { return valorPago; }
+    public void setValorPago(BigDecimal valorPago) { this.valorPago = valorPago != null ? valorPago : BigDecimal.ZERO; }
 
     public String getNomeConferente() { return nomeConferente; }
     public void setNomeConferente(String nomeConferente) { this.nomeConferente = nomeConferente; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    
+
     public int getTotalVolumes() { return totalVolumes; }
     public void setTotalVolumes(int totalVolumes) { this.totalVolumes = totalVolumes; }
 }

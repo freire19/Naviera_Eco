@@ -7,16 +7,11 @@ import java.util.List;
 
 public class RotaDAO {
 
-    // Assumindo que você tem a classe ConexaoBD e o método getConnection()
-    private Connection getConnection() throws SQLException {
-        return ConexaoBD.getConnection();
-    }
-
     public List<Rota> listarTodasAsRotasComoObjects() { // Método renomeado para corresponder ao Controller
         List<Rota> rotas = new ArrayList<>();
         String sql = "SELECT id, origem, destino FROM rotas ORDER BY origem, destino";
 
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
@@ -37,7 +32,7 @@ public class RotaDAO {
 
     public Rota buscarPorId(long idRota) { // Entrada ainda pode ser long primitivo
         String sql = "SELECT id, origem, destino FROM rotas WHERE id = ?";
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idRota);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -59,7 +54,7 @@ public class RotaDAO {
     // Se você tem uma tela de CRUD para Rotas, adicione os métodos de inserir, atualizar, excluir aqui
     public long gerarProximoIdRota() {
         String sql = "SELECT nextval('seq_rota')"; // Assumindo uma sequence 'seq_rota'
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) {
@@ -74,7 +69,7 @@ public class RotaDAO {
 
     public boolean inserir(Rota rota) {
         String sql = "INSERT INTO rotas (id, origem, destino) VALUES (?, ?, ?)";
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, rota.getId()); // ID é Long
             stmt.setString(2, rota.getOrigem());
@@ -89,7 +84,7 @@ public class RotaDAO {
 
     public boolean atualizar(Rota rota) {
         String sql = "UPDATE rotas SET origem = ?, destino = ? WHERE id = ?";
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, rota.getOrigem());
             stmt.setString(2, rota.getDestino());
@@ -104,7 +99,7 @@ public class RotaDAO {
 
     public boolean excluir(long id) { // Entrada pode ser long primitivo
         String sql = "DELETE FROM rotas WHERE id = ?";
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
             return stmt.executeUpdate() > 0;

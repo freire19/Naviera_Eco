@@ -12,11 +12,11 @@
 | Status | Quantidade |
 |--------|-----------|
 | Novos problemas | 30 |
-| Issues resolvidas (total acumulado) | 4 |
-| Issues parcialmente resolvidas | 2 |
+| Issues resolvidas (total acumulado) | 15 |
+| Issues parcialmente resolvidas | 1 |
 | Issues anteriores pendentes | 16 |
-| Issues novas pendentes | 24 |
-| **Total de issues ativas** | **42** |
+| Issues novas pendentes | 14 |
+| **Total de issues ativas** | **31** |
 
 ---
 
@@ -440,49 +440,47 @@
 
 ### Importante (MEDIO)
 
-- [ ] #DM002 — Extrair MoneyUtil — **Esforco:** 30min
-- [ ] #DM008 — Deletar 5 DAOs/metodos mortos — **Esforco:** 15min
-- [ ] #DM009 — Deletar 4 modelos/metodos mortos — **Esforco:** 15min
-- [ ] #DM012 — Constante para 0.01 — **Esforco:** 1h
-- [ ] #DM013 — Constante para empresa ID — **Esforco:** 15min
+- [x] #DM002 — Extrair MoneyUtil — **FIXADO** — gui/util/MoneyUtil.java criado
+- [x] #DM008 — Deletar DAOs/metodos mortos — **FIXADO** — ClienteDAO, RemetenteDAO, PassagemAuxDAO deletados + stubs EncomendaDAO removidos
+- [x] #DM009 — Deletar modelos mortos — **FIXADO** — LinhaDespesaBalanco.java deletado
+- [x] #DM012 — Constante para 0.01 — **FIXADO** — `StatusPagamento.TOLERANCIA_PAGAMENTO`
+- [x] #DM013 — Constante para empresa ID — **FIXADO** — `EmpresaDAO.ID_EMPRESA_PRINCIPAL` em 5 locais
 - [ ] #DM014 — Extrair sub-metodos de construirCalendario — **Esforco:** 1h
 - [ ] #DM015 — Split carregarFreteParaEdicao — **Esforco:** 1h
 - [ ] #DM017 — Padronizar BalancoViagemDAO — **Esforco:** 30min
-- [ ] #DM019 — Extrair mapResultSet em EmbarcacaoDAO — **Esforco:** 15min
+- [x] #DM019 — Extrair mapResultSet em EmbarcacaoDAO — **FIXADO** — metodo mapResultSet() extraido
 - [ ] #DM021 — Renomear inner classes FreteItem — **Esforco:** 30min
 - [ ] #DM023 — Persistir recomendacoesBilhete — **Esforco:** 30min
-- [ ] #DM027 — Campo AuxiliaresDAO em PassageiroDAO — **Esforco:** 5min
+- [x] #DM027 — Campo AuxiliaresDAO em PassageiroDAO — **FIXADO** — campo `final` em vez de new por row
 - [ ] #DM029 — Padronizar keyboard shortcuts — **Esforco:** 1h
-- **Notas:**
-> _DM008 e DM009 sao delecoes puras — 15min de trabalho._
 
 ### Menor (BAIXO)
 
-- [ ] #DM010 — Deletar metodos mortos VenderPassagem — **Esforco:** 2min
-- [ ] #DM018 — Renomear alterar→atualizar CaixaDAO — **Esforco:** 5min
-- [ ] #DM020 — Remover wrapper buscarPorId — **Esforco:** 5min
+- [x] #DM010 — Deletar metodos mortos VenderPassagem — **FIXADO**
+- [x] #DM018 — Renomear alterar→atualizar CaixaDAO — **FIXADO**
+- [ ] #DM020 — Remover wrapper buscarPorId — Mantido (10 callers)
 - [ ] #DM022 — Fix FXML PascalCase — **Esforco:** 10min
 - [ ] #DM024 — Resolver dataLancamento — **Esforco:** 15min
 - [ ] #DM025 — DateTimeFormatter static final — **Esforco:** 15min
-- [ ] #DM026 — Deletar listarContatos duplicados — **Esforco:** 2min
-- [ ] #DM028 — Remover getConnection wrapper — **Esforco:** 2min
+- [x] #DM026 — Deletar listarContatos duplicados — **FIXADO**
+- [x] #DM028 — Remover getConnection wrapper RotaDAO — **FIXADO**
 - [ ] #DM030 — Extrair finalizarEntrega — **Esforco:** 15min
-- **Notas:**
-> _Todos < 15min._
 
 ---
 
 ## NOTAS
 
-> **Progresso V2.0:** 4 issues altas corrigidas (DM001, DM003, DM011, DM016).
+> **Progresso V2.0 → V3.0:** 15 issues corrigidas no total (4 altas + 7 medias + 4 baixas).
 >
-> **Novos utilitarios criados:** `AlertHelper.java` (alerts centralizados), `OcrAudioService.java` (OCR/voz centralizados), `StatusPagamento.java` (enum de status). Eliminadas ~200 linhas de codigo duplicado e 76 magic strings de status parcialmente centralizadas.
+> **Novos utilitarios criados:** `AlertHelper.java`, `OcrAudioService.java`, `MoneyUtil.java`, `StatusPagamento.java` (com `TOLERANCIA_PAGAMENTO`). `EmpresaDAO.ID_EMPRESA_PRINCIPAL` centraliza ID hardcoded.
 >
-> **Error handling padronizado:** 69 ocorrencias de `e.printStackTrace()` substituidas por `System.err.println` com contexto em 18 DAOs.
+> **Dead code removido:** 4 arquivos deletados (ClienteDAO, RemetenteDAO, PassagemAuxDAO, LinhaDespesaBalanco) + stubs EncomendaDAO + metodos mortos VenderPassagem + listarContatos duplicados AuxiliaresDAO.
 >
-> **Issues restantes mais impactantes:** DM006 (AuxiliaresDAO 35→5 metodos), DM007 (SQL inline em controllers), DM005 (autocomplete 5x duplicado), DM004 (receipt layout 3x).
+> **Refatoracoes:** EmbarcacaoDAO com mapResultSet extraido, PassageiroDAO com campo final AuxiliaresDAO, RotaDAO sem wrapper, CaixaDAO metodo renomeado.
 >
-> **Comparacao com scan:** Scan 16 + deep 30 = 46 total. Apos fixes: **42 ativas** (reducao de 9%).
+> **Issues restantes mais impactantes:** DM006 (AuxiliaresDAO 35→5), DM007 (SQL inline), DM005 (autocomplete 5x), DM004 (receipt layout 3x).
+>
+> **Comparacao:** 46 total → **31 ativas** (reducao de 33%).
 
 ---
 *Gerado por Claude Code (Deep Audit) — Revisao humana obrigatoria*

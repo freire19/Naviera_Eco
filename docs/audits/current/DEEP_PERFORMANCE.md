@@ -1,5 +1,5 @@
 # AUDITORIA PROFUNDA — PERFORMANCE — SistemaEmbarcacaoProjeto_Novo
-> **Versao:** V1.0
+> **Versao:** V2.0
 > **Data:** 2026-04-07
 > **Categoria:** Performance
 > **Base:** AUDIT_V1.0
@@ -12,10 +12,10 @@
 | Status | Quantidade |
 |--------|-----------|
 | Novos problemas | 25 |
-| Issues anteriores resolvidas | 0 |
-| Issues anteriores parcialmente resolvidas | 0 |
+| Issues resolvidas (total) | 8 |
 | Issues anteriores pendentes | 6 |
-| **Total de issues ativas** | **31** |
+| Issues novas pendentes | 17 |
+| **Total de issues ativas** | **23** |
 
 ---
 
@@ -439,50 +439,42 @@ for (int x = 0; x < imgWidth; x++) {
 
 ## PLANO DE CORRECAO
 
-### Urgente (CRITICO)
+### Urgente (CRITICO) — CONCLUIDOS
 
-- [ ] #DP004 — N+1 em filtro de encomendas (ListaEncomendaController) — **Esforco:** 1h
-- [ ] #DP005 — 30+ queries por calendario (TelaPrincipalController) — **Esforco:** 1h
-- **Notas:**
-> _DP004 dispara a cada keystroke. DP005 dispara em cada interacao com tela principal._
+- [x] #DP004 — N+1 em filtro de encomendas — **FIXADO** — Cache `Map<Long, List<EncomendaItem>>` pre-carregado por viagem. 1 query em vez de N.
+- [x] #DP005 — 30+ queries por calendario — **FIXADO** — `buscarAnotacoesPorMes()` retorna Map. 1 query em vez de 30+.
 
-### Importante (ALTO)
+### Importante (ALTO) — PARCIALMENTE CONCLUIDO
 
 - [ ] #DP001 — 5 conexoes por insert de passagem — **Esforco:** 2h (cache de auxiliares)
 - [ ] #DP002 — 6 conexoes por update de passagem — **Esforco:** junto com DP001
-- [ ] #DP006 — CAST previne indice (bilhete/encomenda) — **Esforco:** 1h (migration + alter table)
-- [ ] #DP007 — EXTRACT previne indice (viagem/agenda) — **Esforco:** 30min (rewrite queries)
-- [ ] #DP008 — 16 indices criticos ausentes — **Esforco:** 1h (script de migracao)
-- [ ] #DP011 — listarTodos sem LIMIT (4 DAOs) — **Esforco:** 30min
-- **Notas:**
-> _DP008 e o fix de maior impacto com menor esforco. DP001+DP002 resolvem tambem ao cachear._
+- [ ] #DP006 — CAST previne indice (bilhete/encomenda) — **Esforco:** 1h
+- [x] #DP007 — EXTRACT previne indice (viagem/agenda) — **FIXADO** — Range queries com `>= ? AND < ?` em ViagemDAO e AgendaDAO
+- [x] #DP008 — 16 indices criticos ausentes — **FIXADO** — Script `006_criar_indices_performance.sql` com 18 indices
+- [x] #DP011 — listarTodos sem LIMIT — **FIXADO** — LIMIT 500 em PassagemDAO e EncomendaDAO
 
-### Importante (MEDIO)
+### Importante (MEDIO) — PARCIALMENTE CONCLUIDO
 
 - [ ] #DP003 — 4 conexoes por CRUD passageiro — **Esforco:** junto com DP001
 - [ ] #DP009 — ILIKE leading wildcard em FreteDAO — **Esforco:** 30min
-- [ ] #DP010 — Subquery correlacionada em FreteDAO — **Esforco:** 15min (LEFT JOIN)
-- [ ] #DP012 — Empresa config sem cache (6+x) — **Esforco:** 30min (singleton)
+- [ ] #DP010 — Subquery correlacionada em FreteDAO — **Esforco:** 15min
+- [ ] #DP012 — Empresa config sem cache — **Esforco:** 30min
 - [ ] #DP013 — Viagem ativa sem cache — **Esforco:** 30min
-- [ ] #DP015 — Pixel-by-pixel image copy — **Esforco:** 5min (1 linha)
+- [x] #DP015 — Pixel-by-pixel image copy — **FIXADO** — `SwingFXUtils.fromFXImage()` (1 linha, elimina 138k iteracoes)
 - [ ] #DP016 — Impressao sincrona — **Esforco:** 30min
 - [ ] #DP017 — 5 conexoes por impressao — **Esforco:** 1h
-- [ ] #DP019 — Threads sem daemon flag — **Esforco:** 15min
+- [x] #DP019 — Threads sem daemon flag — **FIXADO** — `setDaemon(true)` em VenderPassagem (2), TelaPrincipal (2)
 - [ ] #DP020 — Statements nao fechados — **Esforco:** 10min
 - [ ] #DP023 — JARs duplicados/nao usados — **Esforco:** 1h
-- **Notas:**
-> _DP015 e fix de 1 linha com impacto imediato (elimina 138k iteracoes)._
 
 ### Menor (BAIXO)
 
 - [ ] #DP014 — Contatos carregados 2x — **Esforco:** 5min
 - [ ] #DP018 — Logo sem cache — **Esforco:** 10min
 - [ ] #DP021 — DateTimeFormatter repetido — **Esforco:** 5min
-- [ ] #DP022 — NumberFormat no loop — **Esforco:** 2min
+- [x] #DP022 — NumberFormat no loop — **FIXADO** — Movido para fora do loop do calendario
 - [ ] #DP024 — Classpath broken — **Esforco:** junto com migracao Maven
 - [ ] #DP025 — SQL dinamico sem cache — **Esforco:** junto com DP001
-- **Notas:**
-> _(sem observacoes adicionais)_
 
 ---
 
@@ -504,13 +496,13 @@ for (int x = 0; x < imgWidth; x++) {
 
 ## NOTAS
 
-> **Fix #1 de maior impacto: Cache de tabelas auxiliares.** Cachear as ~10 tabelas auxiliares em HashMaps (total < 500 registros) eliminaria ~80% das conexoes extras do projeto. Um unico `AuxiliaresCache.getInstance()` carregado no startup resolveria DP001, DP002, DP003, e reduziria drasticamente #043 e #044.
+> **Progresso V2.0:** 8 issues corrigidas (2 criticas + 3 altas + 2 medias + 1 baixa). De 31 → 23 issues ativas (reducao de 26%).
 >
-> **Fix #2 de maior impacto: Indices.** DP008 (16 indices) pode ser feito em 1 hora e acelera toda query filtrada do sistema.
+> **Fixes de maior impacto aplicados:** DP004 (N+1 filtro encomendas eliminado com cache por viagem), DP005 (30+ queries/mes → 1 query com Map), DP008 (18 indices criticos criados), DP007 (EXTRACT→range para uso de indices), DP015 (138k iteracoes → 1 chamada nativa).
 >
-> **Fix #3 de maior impacto: Connection pool.** HikariCP com pool de 10 conexoes eliminaria o overhead de TCP+auth por operacao. Sem pool, cada uma das 501 conexoes de "listar passagens" e um TCP handshake completo.
+> **Proximas prioridades:** DP001/DP002 (cache de tabelas auxiliares — maior impacto restante), #045 (connection pooling HikariCP), DP006 (CAST previne indice).
 >
-> **Comparacao com scan:** Scan encontrou 6 issues de performance. Deep audit encontrou 25 adicionais. Total ativo: **31**.
+> **Comparacao:** 31 total → **23 ativas**.
 
 ---
 *Gerado por Claude Code (Deep Audit) — Revisao humana obrigatoria*

@@ -53,7 +53,7 @@ public class FinanceiroPassagensController {
         
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        } catch (Exception e) { }
+        } catch (Exception e) { System.err.println("Erro em FinanceiroPassagensController.initialize (CSS): " + e.getMessage()); }
     }
 
     @FXML
@@ -414,32 +414,23 @@ public class FinanceiroPassagensController {
             stage.showAndWait();
             
             if (controller.isConfirmado()) {
-                double vEstorno = controller.getValorEstorno();
+                java.math.BigDecimal vEstorno = controller.getValorEstorno();
                 String motivo = controller.getMotivo();
                 String forma = controller.getFormaDevolucao();
                 int idAutorizador = controller.getIdAutorizador();
                 String nomeAutorizador = controller.getNomeAutorizador();
 
-                // Lógica de estorno: Tenta tirar do dinheiro primeiro, depois pix, etc. ou proporcional?
-                // Para simplificar: reduzimos do total pago e zeramos as parciais proporcionalmente ou sequencialmente?
-                // Nesta versão simplificada, apenas atualizamos o total pago e o status.
-                // Idealmente: Deveríamos perguntar DE QUAL meio estornar.
-                
-                double novoPago = selecionada.getPago() - vEstorno;
-                String novoStatus = (novoPago > 0.01) ? "PARCIAL" : "PENDENTE";
-                
+                java.math.BigDecimal bdPago = java.math.BigDecimal.valueOf(selecionada.getPago());
+                java.math.BigDecimal novoPago = bdPago.subtract(vEstorno);
+                String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PARCIAL" : "PENDENTE";
+
                 Connection con = null;
                 try {
                     con = ConexaoBD.getConnection();
-                    con.setAutoCommit(false); 
+                    con.setAutoCommit(false);
 
-                    // 1. Atualiza Passagem (Total)
-                    // Nota: Estornar das colunas específicas (dinheiro/pix) é complexo sem saber a origem.
-                    // Vamos reduzir do 'valor_pago' total e, por segurança, reduzir do 'valor_pagamento_dinheiro' 
-                    // se houver saldo lá, senão do pix... (Lógica básica de cascata)
-                    
                     Passagem p = buscarPassagemCompletaPorId(selecionada.getId());
-                    BigDecimal estornoBD = new BigDecimal(vEstorno);
+                    BigDecimal estornoBD = vEstorno;
                     BigDecimal din = p.getValorPagamentoDinheiro();
                     BigDecimal pix = p.getValorPagamentoPix();
                     BigDecimal car = p.getValorPagamentoCartao();
@@ -458,7 +449,7 @@ public class FinanceiroPassagensController {
 
                     String sqlUp = "UPDATE passagens SET valor_pago = ?, status_passagem = ?, valor_pagamento_dinheiro = ?, valor_pagamento_pix = ?, valor_pagamento_cartao = ? WHERE id_passagem = ?";
                     try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
-                        stmt.setDouble(1, novoPago);
+                        stmt.setBigDecimal(1, novoPago);
                         stmt.setString(2, novoStatus);
                         stmt.setBigDecimal(3, din);
                         stmt.setBigDecimal(4, pix);
@@ -471,7 +462,7 @@ public class FinanceiroPassagensController {
                     String sqlLog = "INSERT INTO log_estornos_passagens (id_passagem, valor_estornado, motivo, forma_devolucao, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?, ?)";
                     try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
                         stmt.setInt(1, selecionada.getId());
-                        stmt.setDouble(2, vEstorno);
+                        stmt.setBigDecimal(2, vEstorno);
                         stmt.setString(3, motivo);
                         stmt.setString(4, forma);
                         stmt.setInt(5, idAutorizador);

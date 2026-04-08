@@ -101,18 +101,44 @@ public class TelaPrincipalController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setupDashboardCards();
-        carregarViagensNoCombo();
-        atualizarDashboard();
-        
         mesAtualCalendario = YearMonth.now();
-        construirCalendario();
-        
         atualizarEstiloMenuSuperior();
-        configurarLegendaDinamica(); 
-        
+        configurarLegendaDinamica();
+
         if (btnModoNoturno != null) {
             btnModoNoturno.setText("🌙 Modo Escuro");
         }
+
+        // Carrega dados do banco em background para nao bloquear a FX thread (DR010)
+        javafx.concurrent.Task<Void> taskInit = new javafx.concurrent.Task<Void>() {
+            private java.util.List<String> listaViagens;
+            private model.Viagem viagemAtiva;
+
+            @Override
+            protected Void call() throws Exception {
+                listaViagens = viagemDAO.listarViagensParaComboBox();
+                viagemAtiva = viagemDAO.buscarViagemAtiva();
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                // Volta para FX thread para atualizar UI
+                cmbViagemAtiva.setItems(FXCollections.observableArrayList(listaViagens));
+                if (viagemAtiva != null) cmbViagemAtiva.setValue(viagemAtiva.toString());
+                else if (!cmbViagemAtiva.getItems().isEmpty()) cmbViagemAtiva.getSelectionModel().selectFirst();
+                atualizarDashboard();
+                construirCalendario();
+            }
+
+            @Override
+            protected void failed() {
+                System.err.println("Erro ao carregar dados iniciais: " + getException().getMessage());
+            }
+        };
+        Thread t = new Thread(taskInit);
+        t.setDaemon(true);
+        t.start();
     }
 
     // ================================================================================
@@ -255,7 +281,11 @@ public class TelaPrincipalController implements Initializable {
         
         List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
         List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
-        
+        // Pre-carrega todas as notas do mes em 1 query em vez de 30+ (fix DP005)
+        java.util.Map<java.time.LocalDate, java.util.List<String>> notasDoMes = agendaDAO.buscarAnotacoesPorMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+        // NumberFormat fora do loop (fix DP022)
+        NumberFormat nfCalendario = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+
         int row = 1;
         int col = diaDaSemanaInicio;
 
@@ -311,10 +341,9 @@ public class TelaPrincipalController implements Initializable {
             }
             
             // --- BOLETOS ---
-            NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
             for (AgendaDAO.ResumoBoleto b : boletosDoMes) {
                 if (b.vencimento.equals(dataAtual)) {
-                    Label lblBoleto = new Label("📄 " + nf.format(b.valor));
+                    Label lblBoleto = new Label("📄 " + nfCalendario.format(b.valor));
                     
                     String bgBoleto = isModoEscuro ? "#b71c1c" : "#ffebee";
                     String txtBoleto = isModoEscuro ? "#ffffff" : "#c62828";
@@ -322,15 +351,15 @@ public class TelaPrincipalController implements Initializable {
                     lblBoleto.setStyle("-fx-background-color: " + bgBoleto + "; -fx-text-fill: " + txtBoleto + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
                     lblBoleto.setMaxWidth(Double.MAX_VALUE);
                     
-                    Tooltip tt = new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nf.format(b.valor));
+                    Tooltip tt = new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nfCalendario.format(b.valor));
                     Tooltip.install(lblBoleto, tt);
                     
                     cell.getChildren().add(lblBoleto);
                 }
             }
 
-            // --- NOTAS DA AGENDA ---
-            List<String> notas = agendaDAO.buscarAnotacoesPorData(dataAtual);
+            // --- NOTAS DA AGENDA (usa cache do mes - fix DP005) ---
+            List<String> notas = notasDoMes.getOrDefault(dataAtual, java.util.Collections.emptyList());
             for (String nota : notas) {
                 Label lblNota = new Label("✎ " + nota);
                 
@@ -926,8 +955,8 @@ public class TelaPrincipalController implements Initializable {
             alertProgresso.setContentText("Gerando backup do banco de dados.\nIsso pode levar alguns segundos.");
             alertProgresso.show();
             
-            // Executar pg_dump em uma nova thread para não travar a UI
-            new Thread(() -> {
+            // Executar pg_dump em daemon thread (fix DP019)
+            Thread backupThread = new Thread(() -> {
                 try {
                     // Construir comando pg_dump
                     ProcessBuilder pb = new ProcessBuilder(
@@ -1016,7 +1045,9 @@ public class TelaPrincipalController implements Initializable {
                     Thread.currentThread().interrupt();
                     LogService.registrarErro("Backup interrompido", ex);
                 }
-            }).start();
+            });
+            backupThread.setDaemon(true);
+            backupThread.start();
             
         } catch (Exception ex) {
             LogService.registrarErro("Erro ao iniciar backup", ex);
@@ -1205,8 +1236,8 @@ public class TelaPrincipalController implements Initializable {
             
             gui.util.SyncClient syncClient = gui.util.SyncClient.getInstance();
             
-            // Executar sincronização em thread separada
-            new Thread(() -> {
+            // Executar sincronizacao em daemon thread (fix DP019)
+            Thread syncThread = new Thread(() -> {
                 try {
                     syncClient.sincronizarTudo();
                     Platform.runLater(() -> {
@@ -1222,7 +1253,9 @@ public class TelaPrincipalController implements Initializable {
                     });
                     LogService.registrarErro("Erro ao sincronizar", e);
                 }
-            }).start();
+            });
+            syncThread.setDaemon(true);
+            syncThread.start();
             
         } catch (Exception e) {
             showAlert(AlertType.ERROR, "Erro", "Erro ao iniciar sincronização: " + e.getMessage());

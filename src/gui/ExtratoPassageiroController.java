@@ -104,7 +104,7 @@ public class ExtratoPassageiroController implements Initializable {
 
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.initialize (CSS): " + e.getMessage()); }
     }
 
     private void carregarDadosEmpresa() {
@@ -118,7 +118,7 @@ public class ExtratoPassageiroController implements Initializable {
                     if(rs.getString("telefone") != null) empTelefone = rs.getString("telefone");
                     if(rs.getString("path_logo") != null) empPathLogo = rs.getString("path_logo");
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.carregarDadosEmpresa: " + e.getMessage()); }
         }).start();
     }
 
@@ -352,7 +352,7 @@ public class ExtratoPassageiroController implements Initializable {
                 if (partes.length >= 3) {
                     lista.add(new ItemExtrato(partes[1], "--", partes[0], partes[2], partes[2], "R$ 0,00", "PAGO"));
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.reconstruirItensDoRecibo: " + e.getMessage()); }
         }
         return lista;
     }

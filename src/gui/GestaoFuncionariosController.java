@@ -151,7 +151,7 @@ public class GestaoFuncionariosController {
         else cbMesAno.getSelectionModel().select(0);
     }
     
-    @FXML public void sair() { try { ((Stage) listaFuncionarios.getScene().getWindow()).close(); } catch (Exception e) {} }
+    @FXML public void sair() { try { ((Stage) listaFuncionarios.getScene().getWindow()).close(); } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.sair: " + e.getMessage()); } }
     
     @FXML
     public void novoFuncionario() {
@@ -526,7 +526,7 @@ public class GestaoFuncionariosController {
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalPagamentosReais: " + e.getMessage()); }
         return 0.0;
     }
 
@@ -538,10 +538,10 @@ public class GestaoFuncionariosController {
             stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalEventosRH: " + e.getMessage()); }
         return 0.0;
     }
-    
+
     private double buscarTotalDescontosLegado(Funcionario f, LocalDate inicio) {
          try (Connection con = ConexaoBD.getConnection()) {
             String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE funcionario_id = ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
@@ -550,10 +550,10 @@ public class GestaoFuncionariosController {
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalDescontosLegado: " + e.getMessage()); }
         return 0.0;
     }
-    
+
     private boolean verificarSeExisteEventoRH(Funcionario f, LocalDate dataReferencia, String tipo) {
         try (Connection con = ConexaoBD.getConnection()) {
             String sql = "SELECT COUNT(*) FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ? AND tipo = ?";
@@ -563,10 +563,10 @@ public class GestaoFuncionariosController {
             stmt.setString(3, tipo);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getInt(1) > 0;
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteEventoRH: " + e.getMessage()); }
         return false;
     }
-    
+
     private boolean verificarSeExisteDescontoLegado(Funcionario f, LocalDate dataReferencia, String termo) {
         try (Connection con = ConexaoBD.getConnection()) {
             String sql = "SELECT COUNT(*) FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND data_pagamento >= ? AND forma_pagamento = 'DESCONTO'";
@@ -575,7 +575,7 @@ public class GestaoFuncionariosController {
             stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getInt(1) > 0;
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteDescontoLegado: " + e.getMessage()); }
         return false;
     }
 
@@ -659,7 +659,7 @@ public class GestaoFuncionariosController {
                 java.time.temporal.TemporalAccessor ta = dtfMesExtenso.parse(selecionado);
                 mes = ta.get(java.time.temporal.ChronoField.MONTH_OF_YEAR);
                 ano = ta.get(java.time.temporal.ChronoField.YEAR);
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.carregarHistoricoFinanceiro (parse mes/ano): " + e.getMessage()); }
         }
 
         String sqlFin = "SELECT data_pagamento, descricao, valor_pago, forma_pagamento FROM financeiro_saidas " +

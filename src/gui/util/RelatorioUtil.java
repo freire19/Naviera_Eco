@@ -147,7 +147,7 @@ public class RelatorioUtil {
     private void carregarDadosEmpresa() {
         try {
             EmpresaDAO empresaDAO = new EmpresaDAO();
-            empresa = empresaDAO.buscarPorId(1);
+            empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
             
             if (empresa != null) {
                 nomeEmpresa = empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "SISTEMA";
@@ -974,6 +974,10 @@ public class RelatorioUtil {
     public static String formatarMoeda(double valor) {
         return "R$ " + String.format("%,.2f", valor);
     }
+
+    public static String formatarMoeda(java.math.BigDecimal valor) {
+        return "R$ " + String.format("%,.2f", valor != null ? valor : java.math.BigDecimal.ZERO);
+    }
     
     /**
      * Formata data
@@ -995,11 +999,21 @@ public class RelatorioUtil {
     public static String getStatus(double devedor) {
         return devedor <= 0.01 ? model.StatusPagamento.QUITADO.name() : model.StatusPagamento.PENDENTE.name();
     }
-    
+
+    public static String getStatus(java.math.BigDecimal devedor) {
+        return (devedor == null || devedor.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0)
+            ? model.StatusPagamento.QUITADO.name() : model.StatusPagamento.PENDENTE.name();
+    }
+
     /**
      * Retorna a cor do status
      */
     public static Color getCorStatus(double devedor) {
         return devedor <= 0.01 ? COLOR_VERDE : COLOR_VERMELHO;
+    }
+
+    public static Color getCorStatus(java.math.BigDecimal devedor) {
+        return (devedor == null || devedor.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0)
+            ? COLOR_VERDE : COLOR_VERMELHO;
     }
 }

@@ -596,7 +596,7 @@ public class GerarReciboAvulsoController implements Initializable {
                 if(rs.getString("endereco")!=null) empresaEndereco = rs.getString("endereco");
                 if(rs.getString("telefone")!=null) empresaTelefone = rs.getString("telefone");
             }
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GerarReciboAvulsoController.carregarDadosEmpresa: " + e.getMessage()); }
     }
 
     private ImageView carregarLogo(double h) {
@@ -615,7 +615,7 @@ public class GerarReciboAvulsoController implements Initializable {
                 iv.setFitHeight(h); iv.setPreserveRatio(true);
                 return iv;
             }
-        } catch(Exception e) {}
+        } catch(Exception e) { System.err.println("Erro em GerarReciboAvulsoController.carregarLogo: " + e.getMessage()); }
         return new ImageView();
     }
 

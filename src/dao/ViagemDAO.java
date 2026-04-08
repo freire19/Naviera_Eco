@@ -26,13 +26,14 @@ public class ViagemDAO {
                      "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
                      "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
-                     "WHERE EXTRACT(MONTH FROM v.data_viagem) = ? AND EXTRACT(YEAR FROM v.data_viagem) = ?";
+                     "WHERE v.data_viagem >= ? AND v.data_viagem < ?";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setInt(1, mes);
-            stmt.setInt(2, ano);
+
+            java.time.LocalDate inicio = java.time.LocalDate.of(ano, mes, 1);
+            stmt.setDate(1, java.sql.Date.valueOf(inicio));
+            stmt.setDate(2, java.sql.Date.valueOf(inicio.plusMonths(1)));
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

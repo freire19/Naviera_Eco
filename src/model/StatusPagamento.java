@@ -1,5 +1,7 @@
 package model;
 
+import java.math.BigDecimal;
+
 /**
  * Enum centralizado para status de pagamento.
  * Substitui as magic strings "PAGO", "PENDENTE", "PARCIAL" etc espalhadas pelo projeto.
@@ -13,23 +15,43 @@ public enum StatusPagamento {
     EMITIDA,
     CANCELADA;
 
+    /** Tolerancia padrao para comparacoes de pagamento (centavo). */
+    public static final BigDecimal TOLERANCIA_PAGAMENTO = new BigDecimal("0.01");
+
     /**
-     * Determina o status baseado em valor pago e total.
-     * Usa tolerancia de 0.01 para comparacoes de double.
+     * Determina o status baseado em valor pago e total (BigDecimal).
      */
-    public static StatusPagamento calcular(double valorPago, double valorTotal) {
-        if (valorTotal - valorPago <= 0.01) return PAGO;
-        if (valorPago > 0.01) return PARCIAL;
+    public static StatusPagamento calcular(BigDecimal valorPago, BigDecimal valorTotal) {
+        if (valorPago == null) valorPago = BigDecimal.ZERO;
+        if (valorTotal == null) valorTotal = BigDecimal.ZERO;
+        if (valorTotal.subtract(valorPago).compareTo(TOLERANCIA_PAGAMENTO) <= 0) return PAGO;
+        if (valorPago.compareTo(TOLERANCIA_PAGAMENTO) > 0) return PARCIAL;
         return PENDENTE;
     }
 
     /**
-     * Determina o status baseado no saldo devedor.
+     * Determina o status baseado no saldo devedor (BigDecimal).
      */
-    public static StatusPagamento calcularPorSaldo(double saldoDevedor, double valorPago) {
-        if (saldoDevedor <= 0.01) return PAGO;
-        if (valorPago > 0.01) return PARCIAL;
+    public static StatusPagamento calcularPorSaldo(BigDecimal saldoDevedor, BigDecimal valorPago) {
+        if (saldoDevedor == null) saldoDevedor = BigDecimal.ZERO;
+        if (valorPago == null) valorPago = BigDecimal.ZERO;
+        if (saldoDevedor.compareTo(TOLERANCIA_PAGAMENTO) <= 0) return PAGO;
+        if (valorPago.compareTo(TOLERANCIA_PAGAMENTO) > 0) return PARCIAL;
         return PENDENTE;
+    }
+
+    /**
+     * Overloads com double para compatibilidade com codigo legado.
+     * @deprecated Usar versao BigDecimal.
+     */
+    @Deprecated
+    public static StatusPagamento calcular(double valorPago, double valorTotal) {
+        return calcular(BigDecimal.valueOf(valorPago), BigDecimal.valueOf(valorTotal));
+    }
+
+    @Deprecated
+    public static StatusPagamento calcularPorSaldo(double saldoDevedor, double valorPago) {
+        return calcularPorSaldo(BigDecimal.valueOf(saldoDevedor), BigDecimal.valueOf(valorPago));
     }
 
     /**

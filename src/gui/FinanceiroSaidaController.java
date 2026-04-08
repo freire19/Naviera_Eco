@@ -477,15 +477,15 @@ public class FinanceiroSaidaController {
                 String hashDoBanco = rs.getString("senha_hash");
                 String login = rs.getString("login_usuario");
                 try {
-                    if (hashDoBanco != null && hashDoBanco.startsWith("$2a$")) {
+                    if (hashDoBanco != null) {
+                        // Sempre usa BCrypt — sem fallback plaintext
                         if (org.mindrot.jbcrypt.BCrypt.checkpw(senha, hashDoBanco)) {
                             return login;
                         }
-                    } else if (hashDoBanco != null && hashDoBanco.equals(senha)) {
-                        return login;
                     }
-                } catch (Exception ex) {
-                    System.err.println("Erro ao verificar hash: " + ex.getMessage());
+                } catch (IllegalArgumentException ex) {
+                    // Hash nao e BCrypt valido — ignora este usuario
+                    System.err.println("Hash invalido para usuario " + login + ": formato nao-BCrypt");
                 }
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -506,7 +506,7 @@ public class FinanceiroSaidaController {
                 String sVolta = (dtVolta != null) ? sdf.format(dtVolta) : "?";
                 info = "REF. VIAGEM: " + sIda + " A " + sVolta;
             }
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.buscarInfoViagem: " + e.getMessage()); }
         return info;
     }
     
@@ -516,7 +516,7 @@ public class FinanceiroSaidaController {
             stmt.setInt(1, idDespesa);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getInt("id_viagem");
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.buscarIdViagemDaDespesa: " + e.getMessage()); }
         return 0;
     }
 
@@ -653,7 +653,7 @@ public class FinanceiroSaidaController {
                     imgLogo.setPreserveRatio(true);
                     cabecalho.getChildren().add(imgLogo);
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.criarCabecalhoEmpresa (logo): " + e.getMessage()); }
         }
         String nomeEmpresa = (dados.nome != null && !dados.nome.isEmpty()) ? dados.nome : "F/B DEUS DE ALIANÇA V";
         Label lblEmpresa = new Label(nomeEmpresa.toUpperCase());
@@ -807,7 +807,7 @@ public class FinanceiroSaidaController {
                 listaCategoriasOriginal.add(nome);
                 catsParaCadastro.add(nome);
             }
-        } catch(Exception e) {}
+        } catch(Exception e) { System.err.println("Erro em FinanceiroSaidaController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(catsParaCadastro);
         this.listaCategoriasOriginal = catsParaCadastro; 
         configurarAutoComplete(cmbCategoria); 
@@ -851,7 +851,7 @@ public class FinanceiroSaidaController {
             }
         });
 
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){}
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em FinanceiroSaidaController.configuringTabela (CSS): " + e.getMessage()); }
     }
     private void configurarTabela() { configuringTabela(); }
 

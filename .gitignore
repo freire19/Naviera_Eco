@@ -1,0 +1,28 @@
+# Build output
+bin/
+*.class
+
+# IDE
+.metadata/
+.project
+.classpath
+.settings/
+
+# Credenciais e configs sensiveis
+db.properties
+*.env
+.env
+*.key
+*.pem
+credentials*.json
+api_config.properties
+sync_config.properties
+
+# Logs e temporarios
+log_erros.txt
+*.log
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
