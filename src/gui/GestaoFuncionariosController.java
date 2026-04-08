@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -73,6 +74,7 @@ public class GestaoFuncionariosController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isAdmin()) { PermissaoService.exigirAdmin("Gestao de Funcionarios"); return; }
         configurarTabela();
         
         // --- REMOVIDO A LINHA QUE FORÇAVA O ESTILO DO BOTÃO SAIR ---
@@ -87,11 +89,14 @@ public class GestaoFuncionariosController {
             });
         }
 
-        carregarFuncionarios();
-        
         listaFuncionarios.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) selecionarFuncionario(newVal);
         });
+
+        // DR010: carrega funcionarios em background
+        Thread bg = new Thread(this::carregarFuncionarios);
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarTabela() {
@@ -149,7 +154,7 @@ public class GestaoFuncionariosController {
         else cbMesAno.getSelectionModel().select(0);
     }
     
-    @FXML public void sair() { try { ((Stage) listaFuncionarios.getScene().getWindow()).close(); } catch (Exception e) {} }
+    @FXML public void sair() { try { ((Stage) listaFuncionarios.getScene().getWindow()).close(); } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.sair: " + e.getMessage()); } }
     
     @FXML
     public void novoFuncionario() {
@@ -181,7 +186,7 @@ public class GestaoFuncionariosController {
                 f.cargo = rs.getString("cargo");
                 f.salario = rs.getDouble("salario");
                 if (rs.getDate("data_admissao") != null) f.dataAdmissao = rs.getDate("data_admissao").toLocalDate();
-                try { if (rs.getDate("data_inicio_calculo") != null) f.dataInicioCalculo = rs.getDate("data_inicio_calculo").toLocalDate(); } catch (Exception e) {}
+                try { if (rs.getDate("data_inicio_calculo") != null) f.dataInicioCalculo = rs.getDate("data_inicio_calculo").toLocalDate(); } catch (Exception e) { /* coluna opcional */ }
                 try { f.recebe13 = rs.getBoolean("recebe_decimo_terceiro"); } catch (Exception e) { f.recebe13 = false; }
                 
                 try { f.isClt = rs.getBoolean("is_clt"); } catch (Exception e) { f.isClt = false; }
@@ -195,8 +200,9 @@ public class GestaoFuncionariosController {
                 if (rs.getDate("data_nascimento") != null) f.dataNascimento = rs.getDate("data_nascimento").toLocalDate();
                 lista.add(f);
             }
-        } catch (SQLException e) { e.printStackTrace(); alert("Erro: " + e.getMessage()); }
-        listaFuncionarios.setItems(lista);
+        } catch (SQLException e) { e.printStackTrace(); javafx.application.Platform.runLater(() -> alert("Erro: " + e.getMessage())); }
+        ObservableList<Funcionario> finalLista = lista;
+        javafx.application.Platform.runLater(() -> listaFuncionarios.setItems(finalLista));
     }
     
     private void selecionarFuncionario(Funcionario f) {
@@ -295,19 +301,21 @@ public class GestaoFuncionariosController {
         } catch (Exception e) { e.printStackTrace(); alert("Erro ao salvar: " + e.getMessage()); }
     }
 
+    /**
+     * Calcula dias comerciais (convencao 30/360 — mes comercial = 30 dias).
+     * DL026: +1 inclui o dia de inicio (padrao trabalhista BR).
+     * Normaliza dia 31→30 e fevereiro 28/29→30.
+     */
     private double calcularDiasComerciais(LocalDate inicio, LocalDate fim) {
         if (inicio.isAfter(fim)) return 0;
-        int diaInicio = inicio.getDayOfMonth();
-        int diaFim = fim.getDayOfMonth();
-        int mesInicio = inicio.getMonthValue();
-        int mesFim = fim.getMonthValue();
-        int anoInicio = inicio.getYear();
-        int anoFim = fim.getYear();
-        if (diaInicio == 31) diaInicio = 30;
-        if (diaFim == 31) diaFim = 30;
-        if (fim.getMonthValue() == 2 && (diaFim >= 28)) diaFim = 30; 
-        double dias = (anoFim - anoInicio) * 360 + (mesFim - mesInicio) * 30 + (diaFim - diaInicio);
-        return dias + 1;
+        int diaInicio = Math.min(inicio.getDayOfMonth(), 30);
+        int diaFim = Math.min(fim.getDayOfMonth(), 30);
+        if (fim.getMonthValue() == 2 && diaFim >= 28) diaFim = 30;
+        if (inicio.getMonthValue() == 2 && diaInicio >= 28) diaInicio = 30;
+        double dias = (fim.getYear() - inicio.getYear()) * 360
+                    + (fim.getMonthValue() - inicio.getMonthValue()) * 30
+                    + (diaFim - diaInicio);
+        return dias + 1; // inclui dia de inicio
     }
 
     private void calcularFinanceiro(Funcionario f) {
@@ -518,13 +526,13 @@ public class GestaoFuncionariosController {
     
     private double buscarTotalPagamentosReais(Funcionario f, LocalDate inicio) {
          try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND is_excluido = false AND data_pagamento >= ? AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
+            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE funcionario_id = ? AND is_excluido = false AND data_pagamento >= ? AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
             PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setString(1, "%" + f.nome.toUpperCase() + "%"); 
+            stmt.setInt(1, f.id);
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalPagamentosReais: " + e.getMessage()); }
         return 0.0;
     }
 
@@ -536,22 +544,22 @@ public class GestaoFuncionariosController {
             stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalEventosRH: " + e.getMessage()); }
         return 0.0;
     }
-    
+
     private double buscarTotalDescontosLegado(Funcionario f, LocalDate inicio) {
          try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
+            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE funcionario_id = ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
             PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setString(1, "%" + f.nome.toUpperCase() + "%"); 
+            stmt.setInt(1, f.id);
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalDescontosLegado: " + e.getMessage()); }
         return 0.0;
     }
-    
+
     private boolean verificarSeExisteEventoRH(Funcionario f, LocalDate dataReferencia, String tipo) {
         try (Connection con = ConexaoBD.getConnection()) {
             String sql = "SELECT COUNT(*) FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ? AND tipo = ?";
@@ -561,10 +569,10 @@ public class GestaoFuncionariosController {
             stmt.setString(3, tipo);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getInt(1) > 0;
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteEventoRH: " + e.getMessage()); }
         return false;
     }
-    
+
     private boolean verificarSeExisteDescontoLegado(Funcionario f, LocalDate dataReferencia, String termo) {
         try (Connection con = ConexaoBD.getConnection()) {
             String sql = "SELECT COUNT(*) FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND data_pagamento >= ? AND forma_pagamento = 'DESCONTO'";
@@ -573,11 +581,12 @@ public class GestaoFuncionariosController {
             stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getInt(1) > 0;
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteDescontoLegado: " + e.getMessage()); }
         return false;
     }
 
-    @FXML public void lancarPagamento() { 
+    @FXML public void lancarPagamento() {
+         if (!PermissaoService.exigirAdmin("Lancar Pagamento de Funcionario")) return;
          if (funcionarioSelecionado == null) return;
          try {
             double valor = Double.parseDouble(txtValorPagamento.getText().replace(".", "").replace(",", "."));
@@ -611,18 +620,19 @@ public class GestaoFuncionariosController {
                 if(rs.next()) idViagem = rs.getInt(1);
             }
             
-            String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, id_viagem, is_excluido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, false)";
+            String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, false)";
             try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-                stmt.setString(1, descricao.toUpperCase()); 
+                stmt.setString(1, descricao.toUpperCase());
                 stmt.setDouble(2, valor); stmt.setDouble(3, valor);
-                stmt.setDate(4, java.sql.Date.valueOf(dataRef)); stmt.setDate(5, java.sql.Date.valueOf(dataRef)); 
+                stmt.setDate(4, java.sql.Date.valueOf(dataRef)); stmt.setDate(5, java.sql.Date.valueOf(dataRef));
                 stmt.setString(6, "PAGO");
-                stmt.setString(7, formaPagamento); 
-                
+                stmt.setString(7, formaPagamento);
+
                 int idCategoria = buscarIdCategoriaFuncionarios(con);
                 stmt.setInt(8, idCategoria);
-                
+
                 stmt.setInt(9, idViagem);
+                stmt.setInt(10, f.id);
                 stmt.executeUpdate();
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -655,15 +665,15 @@ public class GestaoFuncionariosController {
                 java.time.temporal.TemporalAccessor ta = dtfMesExtenso.parse(selecionado);
                 mes = ta.get(java.time.temporal.ChronoField.MONTH_OF_YEAR);
                 ano = ta.get(java.time.temporal.ChronoField.YEAR);
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.carregarHistoricoFinanceiro (parse mes/ano): " + e.getMessage()); }
         }
 
         String sqlFin = "SELECT data_pagamento, descricao, valor_pago, forma_pagamento FROM financeiro_saidas " +
-                      "WHERE UPPER(descricao) LIKE ? " +
+                      "WHERE funcionario_id = ? " +
                       "AND ( (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false ) " +
-                      "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ?"; 
+                      "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ?";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sqlFin)) {
-            stmt.setString(1, "%" + f.nome.toUpperCase() + "%"); 
+            stmt.setInt(1, f.id);
             stmt.setInt(2, mes);
             stmt.setInt(3, ano);
             ResultSet rs = stmt.executeQuery();
@@ -870,6 +880,7 @@ public class GestaoFuncionariosController {
     }
 
     @FXML public void abrirTelaDemissao() {
+        if (!PermissaoService.exigirAdmin("Demissao de Funcionario")) return;
         if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Demissão");

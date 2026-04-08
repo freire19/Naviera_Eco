@@ -24,16 +24,11 @@ public class UsuarioDAO {
         if (senhaTextoPlano == null || hashArmazenado == null || hashArmazenado.isEmpty()) {
             return false;
         }
-        // BCrypt hashes usually start with $2a$, $2b$, or $2y$
-        if (!hashArmazenado.startsWith("$2a$") && !hashArmazenado.startsWith("$2b$") && !hashArmazenado.startsWith("$2y$")) {
-            System.err.println("AVISO: Tentativa de verificar senha com hash em formato não-BCrypt: " + hashArmazenado);
-            // Poderia tentar tratar como senha em texto plano antiga se necessário, mas por segurança, falha.
-            return false;
-        }
+        // Sempre executa BCrypt.checkpw para equalizar timing (evita side-channel que revela formato do hash)
         try {
             return BCrypt.checkpw(senhaTextoPlano, hashArmazenado);
         } catch (IllegalArgumentException e) {
-            System.err.println("Erro ao verificar senha com BCrypt (formato de hash inválido?): " + e.getMessage());
+            // Hash nao e BCrypt valido — retorna false sem logar o hash (evita exposicao)
             return false;
         }
     }
@@ -48,7 +43,7 @@ public class UsuarioDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao gerar próximo ID para usuário: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return 0;
     }
@@ -60,7 +55,7 @@ public class UsuarioDAO {
 
             ps.setString(1, usuario.getNomeCompleto());
             ps.setString(2, usuario.getLoginUsuario());
-            ps.setString(3, hashSenha(usuario.getSenha()));
+            ps.setString(3, hashSenha(usuario.getSenhaPlana()));
             ps.setString(4, usuario.getEmail());
             ps.setString(5, usuario.getFuncao());
             ps.setString(6, usuario.getPermissoes());
@@ -78,13 +73,13 @@ public class UsuarioDAO {
             return false;
         } catch (SQLException e) {
             System.err.println("Erro ao inserir usuário: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
     }
 
     public boolean atualizar(Usuario usuario) {
-        boolean atualizarSenha = usuario.getSenha() != null && !usuario.getSenha().isEmpty();
+        boolean atualizarSenha = usuario.getSenhaPlana() != null && !usuario.getSenhaPlana().isEmpty();
         
         StringBuilder sqlBuilder = new StringBuilder("UPDATE usuarios SET nome_completo=?, login_usuario=?, email=?, funcao=?, permissoes=?, ativo=? ");
         if (atualizarSenha) {
@@ -105,7 +100,7 @@ public class UsuarioDAO {
             ps.setBoolean(paramIndex++, usuario.isAtivo());
 
             if (atualizarSenha) {
-                ps.setString(paramIndex++, hashSenha(usuario.getSenha()));
+                ps.setString(paramIndex++, hashSenha(usuario.getSenhaPlana()));
             }
             ps.setInt(paramIndex++, usuario.getId());
 
@@ -113,7 +108,7 @@ public class UsuarioDAO {
             return affectedRows > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar usuário: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
     }
@@ -127,7 +122,7 @@ public class UsuarioDAO {
             return affectedRows > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao excluir usuário: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
     }
@@ -144,7 +139,7 @@ public class UsuarioDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar usuário por ID: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
     }
@@ -161,7 +156,7 @@ public class UsuarioDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar usuário por login: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
     }
@@ -183,7 +178,7 @@ public class UsuarioDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar usuário por login e senha: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
     }
@@ -199,7 +194,7 @@ public class UsuarioDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todos os usuários: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -216,7 +211,7 @@ public class UsuarioDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar nomes de usuários para ComboBox: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return nomesUsuarios;
     }
@@ -227,9 +222,9 @@ public class UsuarioDAO {
         u.setNomeCompleto(rs.getString("nome_completo"));
         u.setLoginUsuario(rs.getString("login_usuario"));
         if (incluirSenhaHashNoObjeto) {
-            u.setSenha(rs.getString("senha_hash"));
+            u.setSenhaHash(rs.getString("senha_hash"));
         } else {
-            u.setSenha(null);
+            u.setSenhaHash(null);
         }
         u.setEmail(rs.getString("email"));
         u.setFuncao(rs.getString("funcao"));

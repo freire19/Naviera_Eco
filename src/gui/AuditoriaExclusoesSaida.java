@@ -205,9 +205,11 @@ public class AuditoriaExclusoesSaida {
                 if (detalheBruto != null && detalheBruto.contains("| REF. VIAGEM")) {
                     detalheLimpo = detalheBruto.split("\\| REF. VIAGEM")[0].trim();
                 }
+                java.sql.Timestamp ts = rs.getTimestamp("data_hora");
+                String dataFormatada = (ts != null) ? sdf.format(ts) : "—";
                 lista.add(new RegistroAuditoria(
                     rs.getInt("id"),
-                    sdf.format(rs.getTimestamp("data_hora")),
+                    dataFormatada,
                     solicitante,
                     autorizador,
                     rs.getString("motivo"),
@@ -219,42 +221,10 @@ public class AuditoriaExclusoesSaida {
     }
 
     private void apagarRegistroSelecionado() {
-        RegistroAuditoria sel = tabela.getSelectionModel().getSelectedItem();
-        if (sel == null) {
-            new Alert(Alert.AlertType.WARNING, "Selecione um registro na tabela para apagar.").show();
-            return;
-        }
-
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Segurança Máxima");
-        dialog.setHeaderText("Apagar Histórico de Auditoria");
-        dialog.setContentText("Digite a senha de ADMIN para confirmar:");
-        
-        Optional<String> result = dialog.showAndWait();
-        if (result.isPresent()) {
-            String senhaDigitada = result.get();
-            if (!validarAdmin(senhaDigitada)) {
-                new Alert(Alert.AlertType.ERROR, "Senha incorreta ou sem permissão!").show();
-                return;
-            }
-            try (Connection con = ConexaoBD.getConnection();
-                 PreparedStatement stmt = con.prepareStatement("DELETE FROM auditoria_financeiro WHERE id = ?")) {
-                stmt.setInt(1, sel.getId());
-                stmt.executeUpdate();
-                new Alert(Alert.AlertType.INFORMATION, "Registro de auditoria apagado permanentemente.").show();
-                carregarDados(); 
-            } catch (Exception e) { e.printStackTrace(); }
-        }
-    }
-    
-    private boolean validarAdmin(String senha) {
-        String sql = "SELECT count(*) FROM usuarios WHERE senha_hash = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setString(1, senha);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getInt(1) > 0;
-        } catch (Exception e) {}
-        return false;
+        new Alert(Alert.AlertType.WARNING,
+            "Registros de auditoria sao imutaveis e nao podem ser excluidos.\n" +
+            "Esta restricao existe para garantir a integridade do historico financeiro."
+        ).show();
     }
 
     private void imprimirRelatorioAuditoria() {
@@ -327,7 +297,7 @@ public class AuditoriaExclusoesSaida {
             paginas.add(paginaAtual);
             int totalPaginas = paginas.size();
             for (int i = 0; i < labelsNumeracao.size(); i++) {
-                labelsNumeracao.get(i).setText("Página " + (i + 2) + "/" + totalPaginas);
+                labelsNumeracao.get(i).setText("Página " + (i + 1) + "/" + totalPaginas);
             }
             for (VBox p : paginas) { job.printPage(pageLayout, p); }
             job.endJob();
@@ -346,7 +316,7 @@ public class AuditoriaExclusoesSaida {
                 nomeEmpresa = rs.getString("nome_embarcacao");
                 pathLogo = rs.getString("path_logo");
             }
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em AuditoriaExclusoesSaida.criarCabecalhoEmpresa (dados empresa): " + e.getMessage()); }
 
         if (pathLogo != null && !pathLogo.isEmpty()) {
             try {
@@ -357,7 +327,7 @@ public class AuditoriaExclusoesSaida {
                     imgLogo.setPreserveRatio(true);
                     cabecalho.getChildren().add(imgLogo);
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em AuditoriaExclusoesSaida.criarCabecalhoEmpresa (logo): " + e.getMessage()); }
         }
         Label lblEmpresa = new Label(nomeEmpresa != null ? nomeEmpresa.toUpperCase() : "EMPRESA");
         lblEmpresa.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1565c0;"); 

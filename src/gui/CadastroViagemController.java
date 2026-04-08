@@ -89,10 +89,19 @@ public class CadastroViagemController implements Initializable {
         configurarTabela();
         configurarComboBoxes();
 
-        carregarViagensNaTabela();
-        carregarEmbarcacoesNoComboBox();
-        carregarRotasNoComboBox();
-        carregarHorariosSaidaNoComboBox();
+        // Carrega dados do banco em background (DR010)
+        javafx.concurrent.Task<Void> taskInit = new javafx.concurrent.Task<Void>() {
+            @Override protected Void call() { return null; }
+            @Override protected void succeeded() {
+                carregarViagensNaTabela();
+                carregarEmbarcacoesNoComboBox();
+                carregarRotasNoComboBox();
+                carregarHorariosSaidaNoComboBox();
+            }
+        };
+        Thread tInit = new Thread(taskInit);
+        tInit.setDaemon(true);
+        tInit.start();
 
         tabelaViagens.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {

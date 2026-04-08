@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -46,18 +47,24 @@ public class FinanceiroEntradaController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Lancamento de Entradas"); return; }
         lblDataAtual.setText("Data de Hoje: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 
         carregarCombosEstaticos();
-        carregarUsuariosNoCombo();
-        carregarComboViagens();
-        
+
         cmbFiltroViagem.valueProperty().addListener((obs, oldVal, newVal) -> atualizarDashboard());
         cmbFiltroCategoria.valueProperty().addListener((obs, oldVal, newVal) -> atualizarDashboard());
         cmbFiltroPagamento.valueProperty().addListener((obs, oldVal, newVal) -> atualizarDashboard());
         cmbFiltroCaixa.valueProperty().addListener((obs, oldVal, newVal) -> atualizarDashboard());
-        
-        atualizarDashboard();
+
+        // DR010: carrega dados pesados em background
+        Thread bg = new Thread(() -> {
+            carregarUsuariosNoCombo();
+            carregarComboViagens();
+            javafx.application.Platform.runLater(this::atualizarDashboard);
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     @FXML
@@ -90,8 +97,10 @@ public class FinanceiroEntradaController {
             System.out.println("Erro ao carregar usuários: " + e.getMessage());
         }
         
-        cmbFiltroCaixa.setItems(usuarios);
-        cmbFiltroCaixa.getSelectionModel().selectFirst();
+        javafx.application.Platform.runLater(() -> {
+            cmbFiltroCaixa.setItems(usuarios);
+            cmbFiltroCaixa.getSelectionModel().selectFirst();
+        });
     }
 
     private void carregarComboViagens() {
@@ -131,15 +140,18 @@ public class FinanceiroEntradaController {
                 }
             }
             
-            cmbFiltroViagem.setItems(lista);
-
-            if (viagemAtiva != null) {
-                cmbFiltroViagem.setValue(viagemAtiva);
-            } else if (lista.size() > 1) {
-                cmbFiltroViagem.getSelectionModel().select(1); 
-            } else {
-                cmbFiltroViagem.getSelectionModel().selectFirst();
-            }
+            OpcaoViagem finalViagemAtiva = viagemAtiva;
+            ObservableList<OpcaoViagem> finalLista = lista;
+            javafx.application.Platform.runLater(() -> {
+                cmbFiltroViagem.setItems(finalLista);
+                if (finalViagemAtiva != null) {
+                    cmbFiltroViagem.setValue(finalViagemAtiva);
+                } else if (finalLista.size() > 1) {
+                    cmbFiltroViagem.getSelectionModel().select(1);
+                } else {
+                    cmbFiltroViagem.getSelectionModel().selectFirst();
+                }
+            });
 
         } catch (SQLException e) {
             e.printStackTrace();

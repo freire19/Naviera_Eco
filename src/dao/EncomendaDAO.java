@@ -4,48 +4,83 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import model.Encomenda;
 
 public class EncomendaDAO {
 
-    // CORREÇÃO: Adicionado 'nome_recebedor' que faltava no INSERT
+    /** Insere encomenda sem itens (legado — callers que inserem itens separadamente). */
     public Encomenda inserir(Encomenda encomenda) {
-        String sql = "INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, entregue, doc_recebedor, nome_recebedor, rota) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
-            
-            stmt.setLong(1, encomenda.getIdViagem());
-            stmt.setString(2, encomenda.getNumeroEncomenda());
-            stmt.setString(3, encomenda.getRemetente());
-            stmt.setString(4, encomenda.getDestinatario());
-            stmt.setString(5, encomenda.getObservacoes());
-            stmt.setInt(6, encomenda.getTotalVolumes());
-            stmt.setBigDecimal(7, encomenda.getTotalAPagar());
-            stmt.setBigDecimal(8, encomenda.getValorPago());
-            stmt.setBigDecimal(9, encomenda.getDesconto());
-            stmt.setString(10, encomenda.getStatusPagamento());
-            stmt.setString(11, encomenda.getFormaPagamento()); 
-            stmt.setString(12, encomenda.getLocalPagamento()); 
-            stmt.setBoolean(13, encomenda.isEntregue());
-            stmt.setString(14, encomenda.getDocRecebedor());
-            stmt.setString(15, encomenda.getNomeRecebedor()); // ADICIONADO AQUI
-            stmt.setString(16, encomenda.getNomeRota());
-            
-            int affectedRows = stmt.executeUpdate();
-            if (affectedRows > 0) {
-                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) encomenda.setId(generatedKeys.getLong(1));
+        return inserirComItens(encomenda, null);
+    }
+
+    /**
+     * #029: Insere encomenda + itens em transacao atomica.
+     * Se itens for null/vazio, insere apenas a encomenda.
+     */
+    public Encomenda inserirComItens(Encomenda encomenda, java.util.List<model.EncomendaItem> itens) {
+        String sqlEnc = "INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, entregue, doc_recebedor, nome_recebedor, rota) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlItem = "INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = ConexaoBD.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // 1. Insere encomenda
+                try (PreparedStatement stmt = conn.prepareStatement(sqlEnc, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                    stmt.setLong(1, encomenda.getIdViagem());
+                    stmt.setString(2, encomenda.getNumeroEncomenda());
+                    stmt.setString(3, encomenda.getRemetente());
+                    stmt.setString(4, encomenda.getDestinatario());
+                    stmt.setString(5, encomenda.getObservacoes());
+                    stmt.setInt(6, encomenda.getTotalVolumes());
+                    stmt.setBigDecimal(7, encomenda.getTotalAPagar());
+                    stmt.setBigDecimal(8, encomenda.getValorPago());
+                    stmt.setBigDecimal(9, encomenda.getDesconto());
+                    stmt.setString(10, encomenda.getStatusPagamento());
+                    stmt.setString(11, encomenda.getFormaPagamento());
+                    stmt.setString(12, encomenda.getLocalPagamento());
+                    stmt.setBoolean(13, encomenda.isEntregue());
+                    stmt.setString(14, encomenda.getDocRecebedor());
+                    stmt.setString(15, encomenda.getNomeRecebedor());
+                    stmt.setString(16, encomenda.getNomeRota());
+
+                    int affectedRows = stmt.executeUpdate();
+                    if (affectedRows > 0) {
+                        try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                            if (generatedKeys.next()) encomenda.setId(generatedKeys.getLong(1));
+                        }
+                    }
                 }
+
+                // 2. Insere itens na mesma transacao
+                if (itens != null && !itens.isEmpty()) {
+                    try (PreparedStatement stmtItem = conn.prepareStatement(sqlItem)) {
+                        for (model.EncomendaItem item : itens) {
+                            stmtItem.setLong(1, encomenda.getId());
+                            stmtItem.setInt(2, item.getQuantidade());
+                            stmtItem.setString(3, item.getDescricao());
+                            stmtItem.setBigDecimal(4, item.getValorUnitario());
+                            stmtItem.setBigDecimal(5, item.getValorTotal());
+                            stmtItem.setString(6, item.getLocalArmazenamento());
+                            stmtItem.addBatch();
+                        }
+                        stmtItem.executeBatch();
+                    }
+                }
+
+                conn.commit();
+                return encomenda;
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
             }
-            return encomenda;
-        } catch (SQLException e) { e.printStackTrace(); return null; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO.inserirComItens: " + e.getMessage()); return null; }
     }
 
     public List<Encomenda> listarPorViagem(Long idViagem) {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas WHERE id_viagem = ? ORDER BY CAST(numero_encomenda AS INTEGER)";
+        String sql = "SELECT * FROM encomendas WHERE id_viagem = ? ORDER BY id_encomenda";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idViagem);
@@ -53,20 +88,20 @@ public class EncomendaDAO {
             while (rs.next()) {
                 lista.add(mapearEncomenda(rs));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
     }
 
     public List<Encomenda> listarTodos() {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas ORDER BY id_encomenda DESC"; 
+        String sql = "SELECT * FROM encomendas ORDER BY id_encomenda DESC LIMIT 500"; 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 lista.add(mapearEncomenda(rs));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
     }
 
@@ -80,7 +115,7 @@ public class EncomendaDAO {
                     return mapearEncomenda(rs);
                 }
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return null;
     }
 
@@ -117,7 +152,7 @@ public class EncomendaDAO {
             stmt.setString(2, status);
             stmt.setLong(3, idEncomenda);
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public boolean excluir(Long id) {
@@ -125,20 +160,22 @@ public class EncomendaDAO {
         String sqlEnc = "DELETE FROM encomendas WHERE id_encomenda = ?";
         try (Connection conn = ConexaoBD.getConnection()) {
             conn.setAutoCommit(false);
-            try (PreparedStatement stmt1 = conn.prepareStatement(sqlItens)) {
-                stmt1.setLong(1, id);
-                stmt1.executeUpdate();
-            }
-            try (PreparedStatement stmt2 = conn.prepareStatement(sqlEnc)) {
-                stmt2.setLong(1, id);
-                int rows = stmt2.executeUpdate();
-                conn.commit();
-                return rows > 0;
+            try {
+                try (PreparedStatement stmt1 = conn.prepareStatement(sqlItens)) {
+                    stmt1.setLong(1, id);
+                    stmt1.executeUpdate();
+                }
+                try (PreparedStatement stmt2 = conn.prepareStatement(sqlEnc)) {
+                    stmt2.setLong(1, id);
+                    int rows = stmt2.executeUpdate();
+                    conn.commit();
+                    return rows > 0;
+                }
             } catch (SQLException ex) {
                 conn.rollback();
                 throw ex;
             }
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO.excluir: " + e.getMessage()); return false; }
     }
 
     public boolean registrarEntrega(Long idEncomenda, String docRecebedor, String nomeRecebedor, String statusPagto) {
@@ -156,25 +193,32 @@ public class EncomendaDAO {
             stmt.setString(3, statusPagto);
             stmt.setLong(4, idEncomenda);
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public int obterProximoNumero(Long idViagem, String nomeRota) {
-        String sql = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ?";
-        try (Connection conn = ConexaoBD.getConnection(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, idViagem);
-            stmt.setString(2, nomeRota);
-            try (ResultSet rs = stmt.executeQuery()) { 
-                if (rs.next()) return rs.getInt(1) + 1; 
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
+        // Usa sequence para evitar race condition (DL002)
+        String sql = "SELECT nextval('seq_numero_encomenda')";
+        try (Connection conn = ConexaoBD.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            // Fallback se sequence não existir ainda (rodar script 005)
+            System.err.println("Sequence seq_numero_encomenda não encontrada. Usando fallback MAX+1. Execute o script 005.");
+            String fallback = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ?";
+            try (Connection conn = ConexaoBD.getConnection();
+                 PreparedStatement stmt2 = conn.prepareStatement(fallback)) {
+                stmt2.setLong(1, idViagem);
+                stmt2.setString(2, nomeRota);
+                try (ResultSet rs = stmt2.executeQuery()) {
+                    if (rs.next()) return rs.getInt(1) + 1;
+                }
+            } catch (SQLException ex) { ex.printStackTrace(); }
+        }
         return 1;
     }
     
-    public int obterProximaEncomendaNum() { return 1; }
-    public int obterProximoNumeroPorRota(Long idRota) { return 1; }
-
     private Encomenda mapearEncomenda(ResultSet rs) throws SQLException {
         Encomenda e = new Encomenda();
         e.setId(rs.getLong("id_encomenda"));
@@ -192,15 +236,13 @@ public class EncomendaDAO {
         // CORREÇÃO: Leitura segura do booleano
         e.setEntregue(rs.getBoolean("entregue"));
         
-        try { e.setFormaPagamento(rs.getString("forma_pagamento")); } catch (Exception ex) {}
-        try { e.setLocalPagamento(rs.getString("local_pagamento")); } catch (Exception ex) {}
-        
-        // CORREÇÃO: Tenta ler o nome_recebedor, se a coluna não existir, ele ignora sem travar
-        try { e.setDocRecebedor(rs.getString("doc_recebedor")); } catch (Exception ex) {}
-        try { e.setNomeRecebedor(rs.getString("nome_recebedor")); } catch (Exception ex) {}
-        
-        try { e.setNomeRota(rs.getString("rota")); } catch (Exception ex) {}
-        try { e.setIdCaixa(rs.getInt("id_caixa")); } catch (Exception ex) {}
+        // Colunas opcionais — podem nao existir em queries com SELECT parcial
+        try { e.setFormaPagamento(rs.getString("forma_pagamento")); } catch (Exception ex) { /* coluna opcional */ }
+        try { e.setLocalPagamento(rs.getString("local_pagamento")); } catch (Exception ex) { /* coluna opcional */ }
+        try { e.setDocRecebedor(rs.getString("doc_recebedor")); } catch (Exception ex) { /* coluna opcional */ }
+        try { e.setNomeRecebedor(rs.getString("nome_recebedor")); } catch (Exception ex) { /* coluna opcional */ }
+        try { e.setNomeRota(rs.getString("rota")); } catch (Exception ex) { /* coluna opcional */ }
+        try { e.setIdCaixa(rs.getInt("id_caixa")); } catch (Exception ex) { /* coluna opcional */ }
 
         return e;
     }

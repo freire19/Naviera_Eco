@@ -69,19 +69,14 @@ public class CadastroClienteController {
     }
 
     private void salvarClienteNoBanco() {
-        // Ajuste para a senha correta do seu PostgreSQL:
-        String url = "jdbc:postgresql://localhost:5432/sistema_embarcacao";
-        String user = "postgres";
-        String pass = "5904"; // <=== AQUI ESTÁ SUA SENHA!
-
-        // Ajuste nomes de coluna conforme sua tabela 'clientes'
+        // Usa ConexaoBD centralizado (sem senha hardcoded)
         String sqlInsert = "INSERT INTO clientes (nome, cpf_cnpj, endereco, telefone) "
                          + "VALUES (?, ?, ?, ?)";
 
         String sqlUpdate = "UPDATE clientes SET nome=?, cpf_cnpj=?, endereco=?, telefone=? "
                          + "WHERE id=?";
 
-        try (Connection conn = DriverManager.getConnection(url, user, pass)) {
+        try (Connection conn = dao.ConexaoBD.getConnection()) {
 
             if (clienteId == -1) {
                 // Novo registro

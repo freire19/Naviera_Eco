@@ -9,14 +9,15 @@ import java.util.Objects;
 
 public class EmbarcacaoDAO {
 
+    /**
+     * DL004: Usa INSERT ON CONFLICT para atomicidade (sem TOCTOU race condition).
+     */
     public Embarcacao inserirOuBuscar(Embarcacao embarcacao) {
-        Embarcacao existente = buscarPorNome(embarcacao.getNome());
-        if (existente != null) {
-            return existente;
-        }
-
+        // Tenta inserir; se nome ja existe, retorna o existente (atomico)
         String sql = "INSERT INTO embarcacoes (nome, registro_capitania, capacidade_passageiros, capacidade_carga_toneladas, observacoes) " +
-                     "VALUES (?, ?, ?, ?, ?) RETURNING id_embarcacao";
+                     "VALUES (?, ?, ?, ?, ?) " +
+                     "ON CONFLICT (nome) DO NOTHING " +
+                     "RETURNING id_embarcacao";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -40,11 +41,23 @@ public class EmbarcacaoDAO {
                     return embarcacao;
                 }
             }
+            // ON CONFLICT DO NOTHING — registro ja existe, busca pelo nome
+            return buscarPorNome(embarcacao.getNome());
         } catch (SQLException e) {
             System.err.println("Erro ao inserir/buscar embarcação: " + e.getMessage());
-            e.printStackTrace();
         }
         return null;
+    }
+
+    private Embarcacao mapResultSet(ResultSet rs) throws SQLException {
+        Embarcacao e = new Embarcacao();
+        e.setId(rs.getLong("id_embarcacao"));
+        e.setNome(rs.getString("nome"));
+        e.setRegistroCapitania(rs.getString("registro_capitania"));
+        e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
+        e.setCapacidadeCargaToneladas(rs.getBigDecimal("capacidade_carga_toneladas"));
+        e.setObservacoes(rs.getString("observacoes"));
+        return e;
     }
 
     public Embarcacao buscarPorNome(String nome) {
@@ -54,20 +67,10 @@ public class EmbarcacaoDAO {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nome);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Embarcacao e = new Embarcacao();
-                    e.setId(rs.getLong("id_embarcacao"));
-                    e.setNome(rs.getString("nome"));
-                    e.setRegistroCapitania(rs.getString("registro_capitania"));
-                    e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
-                    e.setCapacidadeCargaToneladas(rs.getBigDecimal("capacidade_carga_toneladas"));
-                    e.setObservacoes(rs.getString("observacoes"));
-                    return e;
-                }
+                if (rs.next()) return mapResultSet(rs);
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar embarcação por nome: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO.buscarPorNome: " + e.getMessage());
         }
         return null;
     }
@@ -79,20 +82,9 @@ public class EmbarcacaoDAO {
         try (Connection conn = ConexaoBD.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                Embarcacao e = new Embarcacao();
-                // CORREÇÃO DO ERRO ClassCastException: Usar getLong diretamente.
-                e.setId(rs.getLong("id_embarcacao"));
-                e.setNome(rs.getString("nome"));
-                e.setRegistroCapitania(rs.getString("registro_capitania"));
-                e.setCapacidadePassageiros(rs.getObject("capacidade_passageiros", Integer.class));
-                e.setCapacidadeCargaToneladas(rs.getBigDecimal("capacidade_carga_toneladas"));
-                e.setObservacoes(rs.getString("observacoes"));
-                lista.add(e);
-            }
+            while (rs.next()) lista.add(mapResultSet(rs));
         } catch (SQLException e) {
-            System.err.println("Erro ao listar todas as embarcações: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO.listarTodas: " + e.getMessage());
         }
         return lista;
     }
@@ -119,21 +111,34 @@ public class EmbarcacaoDAO {
             return affectedRows > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar embarcação: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return false;
     }
 
+    /**
+     * DL006: Verifica integridade referencial antes de excluir.
+     * Retorna false se existem viagens usando esta embarcacao.
+     */
     public boolean excluir(Long id) {
+        String sqlCheck = "SELECT COUNT(*) FROM viagens WHERE id_embarcacao = ?";
         String sql = "DELETE FROM embarcacoes WHERE id_embarcacao = ?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, id);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
+        try (Connection conn = ConexaoBD.getConnection()) {
+            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
+                psCheck.setLong(1, id);
+                try (ResultSet rs = psCheck.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        System.err.println("Embarcacao id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
+                        return false;
+                    }
+                }
+            }
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, id);
+                return ps.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
             System.err.println("Erro ao excluir embarcação: " + e.getMessage());
-            e.printStackTrace();
         }
         return false;
     }

@@ -9,10 +9,16 @@ import model.ItemResumoBalanco;
 
 public class BalancoViagemDAO {
 
-    private Connection connection;
+    private final Connection connection;
 
+    /** Construtor com conexao externa (para compartilhar com caller). */
     public BalancoViagemDAO(Connection connection) {
         this.connection = connection;
+    }
+
+    /** DM017: Construtor sem conexao — usa ConexaoBD internamente. */
+    public BalancoViagemDAO() throws java.sql.SQLException {
+        this(ConexaoBD.getConnection());
     }
 
     public DadosBalancoViagem buscarBalancoDaViagem(int idViagem) {
@@ -45,6 +51,7 @@ public class BalancoViagemDAO {
                 }
             } catch (SQLException e) {
                 System.err.println("Erro SQL Passagens: " + e.getMessage());
+                dados.marcarIncompleto("Passagens", e.getMessage());
             }
 
             // =================================================================================
@@ -65,7 +72,8 @@ public class BalancoViagemDAO {
                     dados.somarEncomendas(valor);
                 }
             } catch (SQLException e) {
-                 System.err.println("Erro SQL Encomendas: " + e.getMessage());
+                System.err.println("Erro SQL Encomendas: " + e.getMessage());
+                dados.marcarIncompleto("Encomendas", e.getMessage());
             }
             
             // =================================================================================
@@ -87,6 +95,7 @@ public class BalancoViagemDAO {
                 }
             } catch (SQLException e) {
                 System.err.println("Erro SQL Fretes: " + e.getMessage());
+                dados.marcarIncompleto("Fretes", e.getMessage());
             }
 
             // =================================================================================
@@ -112,7 +121,7 @@ public class BalancoViagemDAO {
             dados.setTotalSaidas(somaSaidas);
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em BalancoViagemDAO: " + e.getMessage());
         }
         
         return dados;

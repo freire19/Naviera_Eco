@@ -4,7 +4,8 @@ public class Usuario {
     private int id;             // Corresponde a id_usuario
     private String nomeCompleto; // Corresponde a nome_completo
     private String email;
-    private String senha;      // Senha em texto plano (o DAO fará o hash)
+    private transient String senhaPlana; // Temporario — nunca persiste, nunca serializa
+    private String senhaHash;   // Hash BCrypt armazenado no banco
     private String funcao;
     private String permissoes; // Corresponde a permissoes
     private String loginUsuario; // Corresponde a login_usuario
@@ -19,7 +20,7 @@ public class Usuario {
         this.nomeCompleto = nomeCompleto;
         this.loginUsuario = loginUsuario;
         this.email = email;
-        this.senha = senha; // Armazena temporariamente, DAO fará hash
+        this.senhaPlana = senha; // Temporario — DAO fará hash antes de persistir
         this.funcao = funcao;
         this.permissoes = permissoes;
         this.ativo = ativo;
@@ -49,11 +50,27 @@ public class Usuario {
         this.email = email;
     }
 
-    public String getSenha() {
-        return senha;
+    /**
+     * Retorna a senha em texto plano (uso temporario pelo DAO para hash).
+     * Nunca deve ser logada, serializada ou exibida.
+     */
+    public String getSenhaPlana() {
+        return senhaPlana;
     }
-    public void setSenha(String senha) {
-        this.senha = senha;
+
+    /**
+     * Define senha em texto plano temporariamente. O DAO fara o hash antes de persistir.
+     */
+    public void setSenhaPlana(String senhaPlana) {
+        this.senhaPlana = senhaPlana;
+    }
+
+    public String getSenhaHash() {
+        return senhaHash;
+    }
+
+    public void setSenhaHash(String senhaHash) {
+        this.senhaHash = senhaHash;
     }
 
     public String getFuncao() {

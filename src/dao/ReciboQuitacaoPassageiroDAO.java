@@ -24,7 +24,7 @@ public class ReciboQuitacaoPassageiroDAO {
             
             stmt.executeUpdate();
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
         }
     }
 
@@ -50,7 +50,7 @@ public class ReciboQuitacaoPassageiroDAO {
                 lista.add(r);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
         }
         return lista;
     }

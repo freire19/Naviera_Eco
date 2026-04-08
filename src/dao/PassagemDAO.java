@@ -18,12 +18,22 @@ public class PassagemDAO {
     private final AuxiliaresDAO auxiliaresDAO = new AuxiliaresDAO();
 
     public int obterProximoBilhete() {
-        String sql = "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens";
+        // Usa sequence para evitar race condition (DL001)
+        String sql = "SELECT nextval('seq_numero_bilhete')";
         try (Connection conn = ConexaoBD.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) return rs.getInt(1);
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            // Fallback se sequence não existir ainda (rodar script 005)
+            System.err.println("Sequence seq_numero_bilhete não encontrada. Usando fallback MAX+1. Execute o script 005.");
+            String fallback = "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens";
+            try (Connection conn = ConexaoBD.getConnection();
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(fallback)) {
+                if (rs.next()) return rs.getInt(1);
+            } catch (SQLException ex) { ex.printStackTrace(); }
+        }
         return 1;
     }
 
@@ -60,7 +70,9 @@ public class PassagemDAO {
             stmt.setBigDecimal(20, passagem.getDevedor());
             
             stmt.setObject(21, auxiliaresDAO.obterIdAuxiliar("caixas", "nome_caixa", "id_caixa", passagem.getCaixa()));
-            Integer sessaoUserId = 2; try { if(SessaoUsuario.isUsuarioLogado()) sessaoUserId = SessaoUsuario.getUsuarioLogado().getId(); } catch(Exception e){}
+            Integer sessaoUserId = null;
+            try { if(SessaoUsuario.isUsuarioLogado()) sessaoUserId = SessaoUsuario.getUsuarioLogado().getId(); }
+            catch(Exception e) { System.err.println("Erro ao obter usuario da sessao: " + e.getMessage()); }
             stmt.setObject(22, sessaoUserId);
             stmt.setString(23, passagem.getStatusPassagem());
             stmt.setString(24, passagem.getObservacoes());
@@ -77,7 +89,7 @@ public class PassagemDAO {
                 }
                 return true;
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return false;
     }
 
@@ -124,7 +136,7 @@ public class PassagemDAO {
 
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return false;
     }
 
@@ -134,7 +146,7 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return false;
     }
 
@@ -158,7 +170,8 @@ public class PassagemDAO {
         p.setNumBilhete(rs.getInt("numero_bilhete"));
         p.setIdPassageiro(rs.getLong("id_passageiro"));
         p.setIdViagem(rs.getLong("id_viagem"));
-        p.setDataEmissao(rs.getDate("data_emissao").toLocalDate());
+        java.sql.Date dtEmissaoP = rs.getDate("data_emissao");
+        p.setDataEmissao(dtEmissaoP != null ? dtEmissaoP.toLocalDate() : null);
         p.setAssento(rs.getString("assento"));
         p.setIdAcomodacao(rs.getObject("id_acomodacao") != null ? rs.getInt("id_acomodacao") : null);
         p.setIdRota(rs.getLong("id_rota"));
@@ -195,10 +208,12 @@ public class PassagemDAO {
         
         try {
             if(rs.getDate("data_chegada") != null) {
-                String chegada = rs.getDate("data_chegada").toString(); 
-                p.setStrViagem(p.getStrViagem() + "||" + chegada); 
+                String chegada = rs.getDate("data_chegada").toString();
+                p.setStrViagem(p.getStrViagem() + "||" + chegada);
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            // Coluna data_chegada pode não existir em todas as queries
+        }
 
         p.setDescricaoHorarioSaida(rs.getString("descricao_horario_saida"));
         p.setOrigem(rs.getString("origem"));
@@ -214,12 +229,12 @@ public class PassagemDAO {
 
     public List<Passagem> listarTodos() {
         List<Passagem> passagens = new ArrayList<>();
-        String sql = getBaseQuery() + "ORDER BY p.data_emissao DESC, p.numero_bilhete DESC";
+        String sql = getBaseQuery() + "ORDER BY p.data_emissao DESC, p.numero_bilhete DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
     }
 
@@ -232,7 +247,7 @@ public class PassagemDAO {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
     }
 
@@ -319,14 +334,13 @@ public class PassagemDAO {
             stmt.setString(1, "%" + nomePassageiro + "%");
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) lista.add(mapResultSetToPassagem(rs));
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return lista;
     }
     
     public boolean quitarDividaTotalPassageiro(String nomePassageiro) {
-        // CORREÇÃO: Usamos TRIM para remover espaços extras e > 0 para pegar qualquer centavo.
         String sql = "UPDATE passagens p SET " +
-                     "valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + (valor_total - valor_pago), " + 
+                     "valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + (valor_total - valor_pago), " +
                      "valor_pago = valor_total, " +
                      "valor_devedor = 0, " +
                      "status_passagem = 'PAGO' " +
@@ -334,16 +348,22 @@ public class PassagemDAO {
                      "WHERE p.id_passageiro = pa.id_passageiro " +
                      "AND TRIM(pa.nome_passageiro) ILIKE TRIM(?) " +
                      "AND p.valor_devedor > 0";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, nomePassageiro); // ILIKE no SQL cuida do case insensitive, não precisa do % aqui se o nome for exato
-            int rows = stmt.executeUpdate();
-            
+        Connection conn = null;
+        try {
+            conn = ConexaoBD.getConnection();
+            conn.setAutoCommit(false);
+
+            int rows;
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, nomePassageiro);
+                rows = stmt.executeUpdate();
+            }
+
             // Se não atualizou com nome exato, tenta com LIKE para garantir
             if (rows == 0) {
-                 try(PreparedStatement stmt2 = conn.prepareStatement(
+                try (PreparedStatement stmt2 = conn.prepareStatement(
                     "UPDATE passagens p SET " +
-                    "valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + (valor_total - valor_pago), " + 
+                    "valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + (valor_total - valor_pago), " +
                     "valor_pago = valor_total, " +
                     "valor_devedor = 0, " +
                     "status_passagem = 'PAGO' " +
@@ -351,11 +371,19 @@ public class PassagemDAO {
                     "WHERE p.id_passageiro = pa.id_passageiro " +
                     "AND pa.nome_passageiro ILIKE ? " +
                     "AND p.valor_devedor > 0")) {
-                        stmt2.setString(1, "%" + nomePassageiro + "%");
-                        rows = stmt2.executeUpdate();
-                 }
+                    stmt2.setString(1, "%" + nomePassageiro + "%");
+                    rows = stmt2.executeUpdate();
+                }
             }
+
+            conn.commit();
             return rows > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em PassagemDAO.quitarDivida: " + e.getMessage());
+            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { System.err.println("Erro no rollback: " + ex.getMessage()); } }
+            return false;
+        } finally {
+            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); } }
+        }
     }
 }

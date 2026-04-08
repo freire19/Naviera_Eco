@@ -15,7 +15,7 @@ public class CadastroFreteApp extends Application {
             Parent root = loader.load(); 
             Scene scene = new Scene(root);
 
-            primaryStage.setTitle("Sistema Embarcacao - Cadastro de Frete");
+            primaryStage.setTitle("Naviera - Cadastro de Frete");
             primaryStage.setScene(scene);
             primaryStage.setWidth(1200);
             primaryStage.setHeight(700);

@@ -45,13 +45,13 @@ public class ItemEncomendaPadraoDAO {
                 lista.add(item);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
         }
         return lista;
     }
     
     public boolean inserir(ItemEncomendaPadrao item) {
-        String sql = "INSERT INTO itens_encomenda_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, permite_valor_declarado, ativo) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO itens_encomenda_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, permite_valor_declarado, ativo) VALUES (?, ?, ?, ?, ?, ?) RETURNING id_item_encomenda";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, item.getNomeItem());
@@ -60,9 +60,44 @@ public class ItemEncomendaPadraoDAO {
             stmt.setBigDecimal(4, item.getPrecoUnit());
             stmt.setBoolean(5, item.isPermiteValorDeclarado());
             stmt.setBoolean(6, item.isAtivo());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    item.setId(rs.getLong("id_item_encomenda"));
+                }
+            }
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean atualizar(ItemEncomendaPadrao item) {
+        String sql = "UPDATE itens_encomenda_padrao SET nome_item = ?, descricao = ?, unidade_medida = ?, preco_unitario_padrao = ?, permite_valor_declarado = ?, ativo = ? WHERE id_item_encomenda = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, item.getNomeItem());
+            stmt.setString(2, item.getDescricao());
+            stmt.setString(3, item.getUnidadeMedida());
+            stmt.setBigDecimal(4, item.getPrecoUnit());
+            stmt.setBoolean(5, item.isPermiteValorDeclarado());
+            stmt.setBoolean(6, item.isAtivo());
+            stmt.setLong(7, item.getId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean excluir(long id) {
+        String sql = "DELETE FROM itens_encomenda_padrao WHERE id_item_encomenda = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
             return false;
         }
     }

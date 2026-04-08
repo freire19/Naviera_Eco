@@ -7,16 +7,11 @@ import java.util.List;
 
 public class RotaDAO {
 
-    // Assumindo que você tem a classe ConexaoBD e o método getConnection()
-    private Connection getConnection() throws SQLException {
-        return ConexaoBD.getConnection();
-    }
-
     public List<Rota> listarTodasAsRotasComoObjects() { // Método renomeado para corresponder ao Controller
         List<Rota> rotas = new ArrayList<>();
         String sql = "SELECT id, origem, destino FROM rotas ORDER BY origem, destino";
 
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
@@ -30,14 +25,14 @@ public class RotaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todas as rotas como objetos: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return rotas;
     }
 
     public Rota buscarPorId(long idRota) { // Entrada ainda pode ser long primitivo
         String sql = "SELECT id, origem, destino FROM rotas WHERE id = ?";
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idRota);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -51,7 +46,7 @@ public class RotaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar rota por ID: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return null;
     }
@@ -59,7 +54,7 @@ public class RotaDAO {
     // Se você tem uma tela de CRUD para Rotas, adicione os métodos de inserir, atualizar, excluir aqui
     public long gerarProximoIdRota() {
         String sql = "SELECT nextval('seq_rota')"; // Assumindo uma sequence 'seq_rota'
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) {
@@ -67,14 +62,14 @@ public class RotaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao gerar próximo ID de rota: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return -1;
     }
 
     public boolean inserir(Rota rota) {
         String sql = "INSERT INTO rotas (id, origem, destino) VALUES (?, ?, ?)";
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, rota.getId()); // ID é Long
             stmt.setString(2, rota.getOrigem());
@@ -82,14 +77,14 @@ public class RotaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao inserir rota: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }
 
     public boolean atualizar(Rota rota) {
         String sql = "UPDATE rotas SET origem = ?, destino = ? WHERE id = ?";
-        try (Connection conn = getConnection();
+        try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, rota.getOrigem());
             stmt.setString(2, rota.getDestino());
@@ -97,20 +92,34 @@ public class RotaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar rota: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }
 
-    public boolean excluir(long id) { // Entrada pode ser long primitivo
+    /**
+     * DL006: Verifica integridade referencial antes de excluir.
+     * Retorna false se existem viagens usando esta rota.
+     */
+    public boolean excluir(long id) {
+        String sqlCheck = "SELECT COUNT(*) FROM viagens WHERE id_rota = ?";
         String sql = "DELETE FROM rotas WHERE id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, id);
-            return stmt.executeUpdate() > 0;
+        try (Connection conn = ConexaoBD.getConnection()) {
+            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
+                psCheck.setLong(1, id);
+                try (ResultSet rs = psCheck.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        System.err.println("Rota id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
+                        return false;
+                    }
+                }
+            }
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setLong(1, id);
+                return stmt.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
             System.err.println("Erro ao excluir rota: " + e.getMessage());
-            e.printStackTrace();
             return false;
         }
     }

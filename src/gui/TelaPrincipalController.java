@@ -1,6 +1,7 @@
 package gui;
 
 import gui.util.LogService;
+import gui.util.PermissaoService;
 import gui.util.RelatorioUtil;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -111,35 +112,56 @@ public class TelaPrincipalController implements Initializable {
             btnModoNoturno.setText("🌙 Modo Escuro");
         }
 
-        // Carrega dados do banco em background para não travar a UI
-        new Thread(() -> {
-            List<String> viagens = viagemDAO.listarViagensParaComboBox();
-            Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+        // Carrega dados do banco em background para nao bloquear a FX thread (DR010)
+        // Carrega viagens, dashboard e calendario em uma unica passagem (performance)
+        javafx.concurrent.Task<Void> taskInit = new javafx.concurrent.Task<Void>() {
+            private java.util.List<String> listaViagens;
+            private model.Viagem viagemAtiva;
+            private int[] counts;
+            private List<Viagem> viagensDoMes;
+            private List<AgendaDAO.ResumoBoleto> boletosDoMes;
+            private Map<LocalDate, List<String>> notasDoMes;
 
-            // Dados do dashboard
-            long idViagem = viagemAtiva != null ? viagemAtiva.getId() : -1;
-            int[] counts = carregarCountsDashboard(idViagem);
+            @Override
+            protected Void call() throws Exception {
+                listaViagens = viagemDAO.listarViagensParaComboBox();
+                viagemAtiva = viagemDAO.buscarViagemAtiva();
 
-            // Dados do calendário
-            List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
-            List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
-            Map<LocalDate, List<String>> notasDoMes = agendaDAO.buscarAnotacoesDoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+                // Dados do dashboard
+                long idViagem = viagemAtiva != null ? viagemAtiva.getId() : -1;
+                counts = carregarCountsDashboard(idViagem);
 
-            Platform.runLater(() -> {
-                // Preencher combo
-                cmbViagemAtiva.setItems(FXCollections.observableArrayList(viagens));
+                // Dados do calendario (batch)
+                viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+                boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+                notasDoMes = agendaDAO.buscarAnotacoesDoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                // Volta para FX thread para atualizar UI
+                cmbViagemAtiva.setItems(FXCollections.observableArrayList(listaViagens));
                 if (viagemAtiva != null) cmbViagemAtiva.setValue(viagemAtiva.toString());
                 else if (!cmbViagemAtiva.getItems().isEmpty()) cmbViagemAtiva.getSelectionModel().selectFirst();
 
-                // Atualizar dashboard
+                // Atualizar dashboard com dados ja carregados
                 txtTotalVolumesFrete.setText(String.valueOf(counts[0]));
                 txtQtdEncomendas.setText(String.valueOf(counts[1]));
                 txtTotalPassageiros.setText(String.valueOf(counts[2]));
 
-                // Construir calendário com dados já carregados
+                // Construir calendario com dados ja carregados
                 construirCalendarioComDados(viagensDoMes, boletosDoMes, notasDoMes);
-            });
-        }).start();
+            }
+
+            @Override
+            protected void failed() {
+                System.err.println("Erro ao carregar dados iniciais: " + getException().getMessage());
+            }
+        };
+        Thread t = new Thread(taskInit);
+        t.setDaemon(true);
+        t.start();
     }
 
     // ================================================================================
@@ -290,7 +312,10 @@ public class TelaPrincipalController implements Initializable {
         if (diaDaSemanaInicio == 7) diaDaSemanaInicio = 0;
 
         int diasNoMes = mesAtualCalendario.lengthOfMonth();
-        
+
+        // NumberFormat fora do loop (fix DP022)
+        NumberFormat nfCalendario = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+
         int row = 1;
         int col = diaDaSemanaInicio;
 
@@ -332,64 +357,11 @@ public class TelaPrincipalController implements Initializable {
                 cell.getChildren().add(lblFer);
             }
             
-            // --- VIAGENS ---
-            for (Viagem v : viagensDoMes) {
-                if (v.getDataViagem().equals(dataAtual)) {
-                    String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
-                    Label lblViagem = new Label("🚢 " + destino);
-                    String bgViagem = isModoEscuro ? "#1a3c7d" : "#ffcdd2"; 
-                    String txtViagem = isModoEscuro ? "#ffffff" : "#c62828";
-                    lblViagem.setStyle("-fx-background-color: " + bgViagem + "; -fx-text-fill: " + txtViagem + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
-                    lblViagem.setMaxWidth(Double.MAX_VALUE);
-                    cell.getChildren().add(lblViagem);
-                }
-            }
-            
-            // --- BOLETOS ---
-            NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
-            for (AgendaDAO.ResumoBoleto b : boletosDoMes) {
-                if (b.vencimento.equals(dataAtual)) {
-                    Label lblBoleto = new Label("📄 " + nf.format(b.valor));
-                    
-                    String bgBoleto = isModoEscuro ? "#b71c1c" : "#ffebee";
-                    String txtBoleto = isModoEscuro ? "#ffffff" : "#c62828";
-                    
-                    lblBoleto.setStyle("-fx-background-color: " + bgBoleto + "; -fx-text-fill: " + txtBoleto + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
-                    lblBoleto.setMaxWidth(Double.MAX_VALUE);
-                    
-                    Tooltip tt = new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nf.format(b.valor));
-                    Tooltip.install(lblBoleto, tt);
-                    
-                    cell.getChildren().add(lblBoleto);
-                }
-            }
-
-            // --- NOTAS DA AGENDA (batch do mês inteiro) ---
-            List<String> notas = notasDoMes.getOrDefault(dataAtual, Collections.emptyList());
-            for (String nota : notas) {
-                Label lblNota = new Label("✎ " + nota);
-                
-                String bgNota = isModoEscuro ? "#004d40" : "#b2dfdb"; // Padrão
-                String txtNota = isModoEscuro ? "#e0f2f1" : "#00695c";
-                
-                String notaLower = nota.toLowerCase();
-                
-                if (notaLower.contains("manaus") && notaLower.contains("juta")) {
-                    int idxManaus = notaLower.indexOf("manaus");
-                    int idxJutai = notaLower.indexOf("juta");
-                    if (idxManaus < idxJutai) { // IDA
-                        bgNota = isModoEscuro ? "#1b5e20" : "#a5d6a7"; 
-                        txtNota = isModoEscuro ? "#e8f5e9" : "#1b5e20";
-                    } else { // VOLTA
-                        bgNota = isModoEscuro ? "#bf360c" : "#ffccbc"; 
-                        txtNota = isModoEscuro ? "#fbe9e7" : "#bf360c";
-                    }
-                }
-                
-                lblNota.setStyle("-fx-background-color: " + bgNota + "; -fx-text-fill: " + txtNota + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
-                lblNota.setMaxWidth(Double.MAX_VALUE);
-                cell.getChildren().add(lblNota);
-            }
+            // DM014: secoes extraidas em metodos auxiliares
+            adicionarViagensNaCelula(cell, viagensDoMes, dataAtual);
+            adicionarBoletosNaCelula(cell, boletosDoMes, dataAtual, nfCalendario);
+            List<String> notas = notasDoMes.getOrDefault(dataAtual, java.util.Collections.emptyList());
+            adicionarNotasNaCelula(cell, notas);
             
             cell.setOnMouseClicked(e -> gerenciarAgendaDoDia(dataAtual, viagensDoMes, notas, feriado, boletosDoMes));
             calendarioGrid.add(cell, col, row);
@@ -398,6 +370,54 @@ public class TelaPrincipalController implements Initializable {
         }
     }
     
+    // DM014: metodos auxiliares extraidos de construirCalendario()
+    private void adicionarViagensNaCelula(VBox cell, List<Viagem> viagens, LocalDate data) {
+        for (Viagem v : viagens) {
+            if (v.getDataViagem().equals(data)) {
+                String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
+                Label lbl = new Label("\uD83D\uDEA2 " + destino);
+                String bg = isModoEscuro ? "#1a3c7d" : "#ffcdd2";
+                String tx = isModoEscuro ? "#ffffff" : "#c62828";
+                lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
+                lbl.setMaxWidth(Double.MAX_VALUE);
+                cell.getChildren().add(lbl);
+            }
+        }
+    }
+
+    private void adicionarBoletosNaCelula(VBox cell, List<AgendaDAO.ResumoBoleto> boletos, LocalDate data, NumberFormat nf) {
+        for (AgendaDAO.ResumoBoleto b : boletos) {
+            if (b.vencimento.equals(data)) {
+                Label lbl = new Label("\uD83D\uDCC4 " + nf.format(b.valor));
+                String bg = isModoEscuro ? "#b71c1c" : "#ffebee";
+                String tx = isModoEscuro ? "#ffffff" : "#c62828";
+                lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
+                lbl.setMaxWidth(Double.MAX_VALUE);
+                Tooltip.install(lbl, new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nf.format(b.valor)));
+                cell.getChildren().add(lbl);
+            }
+        }
+    }
+
+    private void adicionarNotasNaCelula(VBox cell, List<String> notas) {
+        for (String nota : notas) {
+            Label lbl = new Label("\u270E " + nota);
+            String bg = isModoEscuro ? "#004d40" : "#b2dfdb";
+            String tx = isModoEscuro ? "#e0f2f1" : "#00695c";
+            String notaLower = nota.toLowerCase();
+            if (notaLower.contains("manaus") && notaLower.contains("juta")) {
+                if (notaLower.indexOf("manaus") < notaLower.indexOf("juta")) {
+                    bg = isModoEscuro ? "#1b5e20" : "#a5d6a7"; tx = isModoEscuro ? "#e8f5e9" : "#1b5e20";
+                } else {
+                    bg = isModoEscuro ? "#bf360c" : "#ffccbc"; tx = isModoEscuro ? "#fbe9e7" : "#bf360c";
+                }
+            }
+            lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
+            lbl.setMaxWidth(Double.MAX_VALUE);
+            cell.getChildren().add(lbl);
+        }
+    }
+
     private String getFeriado(LocalDate date) {
         int d = date.getDayOfMonth();
         Month m = date.getMonth();
@@ -650,34 +670,10 @@ public class TelaPrincipalController implements Initializable {
         }).start();
     }
     
-    // =========================================================================
-    //  NOVO MÉTODO: FORÇA A ATUALIZAÇÃO NO BANCO DE DADOS DIRETO
-    // =========================================================================
+    // DM007: delega para ViagemDAO.definirViagemAtiva() em vez de SQL inline
     private boolean salvarViagemAtivaNoBanco(long idViagemSelecionada) {
-        String sqlReset = "UPDATE viagens SET is_atual = false";
-        String sqlSet = "UPDATE viagens SET is_atual = true WHERE id_viagem = ?";
-
-        try (Connection con = ConexaoBD.getConnection()) {
-            con.setAutoCommit(false);
-
-            try {
-                try (PreparedStatement stmt = con.prepareStatement(sqlReset)) {
-                    stmt.executeUpdate();
-                }
-
-                try (PreparedStatement stmt = con.prepareStatement(sqlSet)) {
-                    stmt.setLong(1, idViagemSelecionada);
-                    stmt.executeUpdate();
-                }
-
-                con.commit(); 
-                return true;
-
-            } catch (Exception e) {
-                con.rollback(); 
-                e.printStackTrace();
-                return false;
-            }
+        try {
+            return viagemDAO.definirViagemAtiva(idViagemSelecionada);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -925,42 +921,41 @@ public class TelaPrincipalController implements Initializable {
 
     // --- HANDLERS DO MENU (Outros) ---
 
-    // Financeiro e Movimentações
-    @FXML private void handleInserirEntrada(ActionEvent e) { abrirTelaLivre("/gui/FinanceiroEntrada.fxml", "Lançar Entrada Financeira"); }
-    @FXML private void handleInserirSaida(ActionEvent e) { abrirTelaLivre("/gui/FinanceiroSaida.fxml", "Lançamento de Despesas"); }
-    @FXML private void handleVenderPassagem(ActionEvent e) { abrirTelaComViagem("/gui/VenderPassagem.fxml", "Vender Passagem"); }
-    @FXML private void handleInserirEncomenda(ActionEvent e) { abrirTelaComViagem("/gui/InserirEncomenda.fxml", "Nova Encomenda"); }
-    @FXML private void handleCadastrarFrete(ActionEvent e) { abrirTelaLivre("/gui/CadastroFrete.fxml", "Lançar Novo Frete"); }
-    @FXML private void handleListaPassagensNovo(ActionEvent e) { abrirTelaLivre("/gui/ListarPassageirosViagem.fxml", "Passageiros"); }
-    @FXML private void handleListaFrete(ActionEvent e) { abrirTelaLivre("/gui/ListaFretes.fxml", "Fretes"); }
-    @FXML private void handleListaEncomenda(ActionEvent e) { abrirTelaLivre("/gui/ListaEncomenda.fxml", "Encomendas"); }
-    
-    // Outros Relatórios (CORRIGIDO AQUI O RELATÓRIO DE ENCOMENDAS)
-    @FXML private void handleRelatorioPassagem(ActionEvent e) { abrirTelaLivre("/gui/RelatorioPassagens.fxml", "Relatório Passagens"); }
-    @FXML private void handleRelatorioFrete(ActionEvent e) { abrirTelaLivre("/gui/RelatorioFretes.fxml", "Relatório Fretes"); }
-    
-    // AQUI ESTÁ A CORREÇÃO:
-    @FXML private void handleRelatorioEncomenda(ActionEvent e) { abrirTelaLivre("/gui/RelatorioEncomendaGeral.fxml", "Central de Relatórios de Encomendas"); }
+    // Financeiro e Movimentações (protegidos por permissao)
+    @FXML private void handleInserirEntrada(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Lançar Entrada Financeira")) abrirTelaLivre("/gui/FinanceiroEntrada.fxml", "Lançar Entrada Financeira"); }
+    @FXML private void handleInserirSaida(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Lançar Despesa")) abrirTelaLivre("/gui/FinanceiroSaida.fxml", "Lançamento de Despesas"); }
+    @FXML private void handleVenderPassagem(ActionEvent e) { if (PermissaoService.exigirOperacional("Vender Passagem")) abrirTelaComViagem("/gui/VenderPassagem.fxml", "Vender Passagem"); }
+    @FXML private void handleInserirEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Nova Encomenda")) abrirTelaComViagem("/gui/InserirEncomenda.fxml", "Nova Encomenda"); }
+    @FXML private void handleCadastrarFrete(ActionEvent e) { if (PermissaoService.exigirOperacional("Lançar Frete")) abrirTelaLivre("/gui/CadastroFrete.fxml", "Lançar Novo Frete"); }
+    @FXML private void handleListaPassagensNovo(ActionEvent e) { if (PermissaoService.exigirOperacional("Listar Passageiros")) abrirTelaLivre("/gui/ListarPassageirosViagem.fxml", "Passageiros"); }
+    @FXML private void handleListaFrete(ActionEvent e) { if (PermissaoService.exigirOperacional("Listar Fretes")) abrirTelaLivre("/gui/ListaFretes.fxml", "Fretes"); }
+    @FXML private void handleListaEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Listar Encomendas")) abrirTelaLivre("/gui/ListaEncomenda.fxml", "Encomendas"); }
 
-    // Cadastros Básicos
-    @FXML private void handleCadastrarViagem(ActionEvent e) { abrirTelaModal("/gui/CadastroViagem.fxml", "Cadastro de Viagem", true); carregarViagensNoCombo(); construirCalendario(); }
-    @FXML private void handleCadastrarEmpresa(ActionEvent e) { abrirTelaModal("/gui/CadastroEmpresa.fxml", "Configurações", false); }
-    @FXML private void handleCadastrarUsuario(ActionEvent e) { abrirTelaModal("/gui/CadastroUsuario.fxml", "Usuários", false); }
-    @FXML private void handleCadastrarRotas(ActionEvent e) { abrirTelaModal("/gui/Rotas.fxml", "Rotas", false); }
-    @FXML private void handleCadastroTarifa(ActionEvent e) { abrirTelaModal("/gui/CadastroTarifa.fxml", "Tarifas", false); }
-    @FXML private void handleCadastrarConferente(ActionEvent e) { abrirTelaModal("/gui/CadastroConferente.fxml", "Conferentes", false); }
-    @FXML private void handleCadastrarCaixa(ActionEvent e) { abrirTelaModal("/gui/CadastroCaixa.fxml", "Caixas", false); }
-    @FXML private void handleProductos(ActionEvent e) { abrirTelaModal("/gui/CadastroItem.fxml", "Itens", false); }
-    @FXML private void handleTabelasAuxiliares(ActionEvent e) { abrirTelaModal("/gui/TabelasAuxiliares.fxml", "Auxiliares", false); }
-    @FXML private void handleClientesEncomenda(ActionEvent e) { abrirTelaModal("/gui/CadastroClientesEncomenda.fxml", "Clientes", false); }
-    @FXML private void handleTabelaPrecoFrete(ActionEvent e) { abrirTelaModal("/gui/TabelaPrecoFrete.fxml", "Tabela de Preços", false); }
-    @FXML private void handlePrecoEncomenda(ActionEvent e) { abrirTelaModal("/gui/TabelaPrecosEncomenda.fxml", "Tabela de Preços", false); }
+    // Relatórios (protegidos por permissao financeira)
+    @FXML private void handleRelatorioPassagem(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Relatório Passagens")) abrirTelaLivre("/gui/RelatorioPassagens.fxml", "Relatório Passagens"); }
+    @FXML private void handleRelatorioFrete(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Relatório Fretes")) abrirTelaLivre("/gui/RelatorioFretes.fxml", "Relatório Fretes"); }
+    @FXML private void handleRelatorioEncomenda(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Relatório Encomendas")) abrirTelaLivre("/gui/RelatorioEncomendaGeral.fxml", "Central de Relatórios de Encomendas"); }
+
+    // Cadastros Administrativos (protegidos por permissao admin)
+    @FXML private void handleCadastrarViagem(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Viagem")) { abrirTelaModal("/gui/CadastroViagem.fxml", "Cadastro de Viagem", true); carregarViagensNoCombo(); construirCalendario(); } }
+    @FXML private void handleCadastrarEmpresa(ActionEvent e) { if (PermissaoService.exigirAdmin("Configurações da Empresa")) abrirTelaModal("/gui/CadastroEmpresa.fxml", "Configurações", false); }
+    @FXML private void handleCadastrarUsuario(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Usuários")) abrirTelaModal("/gui/CadastroUsuario.fxml", "Usuários", false); }
+    @FXML private void handleCadastrarRotas(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Rotas")) abrirTelaModal("/gui/Rotas.fxml", "Rotas", false); }
+    @FXML private void handleCadastroTarifa(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Tarifas")) abrirTelaModal("/gui/CadastroTarifa.fxml", "Tarifas", false); }
+    @FXML private void handleCadastrarConferente(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Conferentes")) abrirTelaModal("/gui/CadastroConferente.fxml", "Conferentes", false); }
+    @FXML private void handleCadastrarCaixa(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Caixas")) abrirTelaModal("/gui/CadastroCaixa.fxml", "Caixas", false); }
+    @FXML private void handleProductos(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Itens")) abrirTelaModal("/gui/CadastroItem.fxml", "Itens", false); }
+    @FXML private void handleTabelasAuxiliares(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabelas Auxiliares")) abrirTelaModal("/gui/TabelasAuxiliares.fxml", "Auxiliares", false); }
+    @FXML private void handleClientesEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Cadastro de Clientes")) abrirTelaModal("/gui/CadastroClientesEncomenda.fxml", "Clientes", false); }
+    @FXML private void handleTabelaPrecoFrete(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Frete")) abrirTelaModal("/gui/TabelaPrecoFrete.fxml", "Tabela de Preços", false); }
+    @FXML private void handlePrecoEncomenda(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Encomenda")) abrirTelaModal("/gui/TabelaPrecosEncomenda.fxml", "Tabela de Preços", false); }
     
     // =========================================================================
     // FUNCIONALIDADE 1: BACKUP PROFISSIONAL COM PG_DUMP
     // =========================================================================
-    @FXML 
+    @FXML
     private void handleBackup(ActionEvent e) {
+        if (!PermissaoService.exigirAdmin("Backup do Banco de Dados")) return;
         try {
             // Criar FileChooser para salvar o arquivo
             FileChooser fileChooser = new FileChooser();
@@ -1008,8 +1003,8 @@ public class TelaPrincipalController implements Initializable {
             alertProgresso.setContentText("Gerando backup do banco de dados.\nIsso pode levar alguns segundos.");
             alertProgresso.show();
             
-            // Executar pg_dump em uma nova thread para não travar a UI
-            new Thread(() -> {
+            // Executar pg_dump em daemon thread (fix DP019)
+            Thread backupThread = new Thread(() -> {
                 try {
                     // Construir comando pg_dump
                     ProcessBuilder pb = new ProcessBuilder(
@@ -1098,7 +1093,9 @@ public class TelaPrincipalController implements Initializable {
                     Thread.currentThread().interrupt();
                     LogService.registrarErro("Backup interrompido", ex);
                 }
-            }).start();
+            });
+            backupThread.setDaemon(true);
+            backupThread.start();
             
         } catch (Exception ex) {
             LogService.registrarErro("Erro ao iniciar backup", ex);
@@ -1127,8 +1124,9 @@ public class TelaPrincipalController implements Initializable {
     // =========================================================================
     // FUNCIONALIDADE 2.5: CONFIGURAR API WEB
     // =========================================================================
-    @FXML 
+    @FXML
     private void handleConfigurarApi(ActionEvent e) {
+        if (!PermissaoService.exigirAdmin("Configurar API")) return;
         ConfigurarApiController.abrir();
     }
     
@@ -1196,7 +1194,7 @@ public class TelaPrincipalController implements Initializable {
     @FXML 
     private void handleAjuda(ActionEvent e) {
         Alert sobre = new Alert(AlertType.INFORMATION);
-        sobre.setTitle("Sobre o Sistema");
+        sobre.setTitle("Sobre o Naviera");
         sobre.setHeaderText(null);
         
         // Criar conteúdo personalizado
@@ -1207,7 +1205,7 @@ public class TelaPrincipalController implements Initializable {
         
         // Logo/Ícone do sistema (se existir)
         try {
-            ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/menu_sistema.png")));
+            ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/logo_icon.png")));
             logo.setFitWidth(64);
             logo.setFitHeight(64);
             content.getChildren().add(logo);
@@ -1216,7 +1214,7 @@ public class TelaPrincipalController implements Initializable {
         }
         
         // Nome do Sistema
-        Label lblNome = new Label("Sistema de Gerenciamento de Embarcação");
+        Label lblNome = new Label("Naviera - Navegação Fluvial");
         lblNome.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0d47a1;");
         
         // Versão
@@ -1275,6 +1273,7 @@ public class TelaPrincipalController implements Initializable {
     
     @FXML
     private void handleSincronizarAgora(ActionEvent event) {
+        if (!PermissaoService.exigirAdmin("Sincronização")) return;
         try {
             Alert alert = new Alert(AlertType.INFORMATION);
             alert.setTitle("Sincronização");
@@ -1285,8 +1284,8 @@ public class TelaPrincipalController implements Initializable {
             
             gui.util.SyncClient syncClient = gui.util.SyncClient.getInstance();
             
-            // Executar sincronização em thread separada
-            new Thread(() -> {
+            // Executar sincronizacao em daemon thread (fix DP019)
+            Thread syncThread = new Thread(() -> {
                 try {
                     syncClient.sincronizarTudo();
                     Platform.runLater(() -> {
@@ -1302,7 +1301,9 @@ public class TelaPrincipalController implements Initializable {
                     });
                     LogService.registrarErro("Erro ao sincronizar", e);
                 }
-            }).start();
+            });
+            syncThread.setDaemon(true);
+            syncThread.start();
             
         } catch (Exception e) {
             showAlert(AlertType.ERROR, "Erro", "Erro ao iniciar sincronização: " + e.getMessage());

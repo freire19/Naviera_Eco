@@ -163,9 +163,15 @@ public class CadastroFreteController implements Initializable {
 
         setComponentProperties();
         configurarComboBoxItem();
-        carregarDadosIniciaisComboBoxes();
-        setComboBoxItems();
         configurarTabela();
+
+        // DR010: carrega dados do banco em background para nao bloquear UI
+        Thread bgThread = new Thread(() -> {
+            carregarDadosIniciaisComboBoxes();
+            javafx.application.Platform.runLater(this::setComboBoxItems);
+        });
+        bgThread.setDaemon(true);
+        bgThread.start();
         configurarListenersDeCamposEEventos();
 
         if (cbRota != null) {
@@ -224,12 +230,16 @@ public class CadastroFreteController implements Initializable {
     private void configurarComboboxParaAbrirAoFocar(ComboBox<?> comboBox) {
         if (comboBox == null) return;
         comboBox.focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal && !comboBox.isShowing() && comboBox.getItems() != null && !comboBox.getItems().isEmpty()) {
-                Platform.runLater(() -> {
-                    if (comboBox.isFocused() && !comboBox.isShowing()) {
-                        comboBox.show();
-                    }
+            if (newVal) {
+                PauseTransition delay = new PauseTransition(Duration.millis(100));
+                delay.setOnFinished(event -> {
+                    try {
+                        if (comboBox.isFocused() && !comboBox.isShowing() && comboBox.getItems() != null && !comboBox.getItems().isEmpty()) {
+                            comboBox.show();
+                        }
+                    } catch (Exception e) { /* UI timing — seguro ignorar */ }
                 });
+                delay.play();
             }
         });
     }
@@ -450,6 +460,14 @@ public class CadastroFreteController implements Initializable {
                 if (string == null || string.trim().isEmpty()) return null;
                 return mapItensCadastrados.get(string.trim().toLowerCase());
             }
+        });
+
+        cbitem.getEditor().textProperty().addListener((obs, oldV, newV) -> {
+            if (programmaticamenteAtualizando) return;
+            try {
+                cbitem.getSelectionModel().clearSelection();
+                cbitem.setValue(null);
+            } catch (Exception e) { /* UI cleanup — seguro ignorar */ }
         });
 
         // =====================================================================
@@ -685,76 +703,8 @@ public class CadastroFreteController implements Initializable {
                 pst.setLong(1, numeroFreteLong);
                 ResultSet rs = pst.executeQuery();
                 if (rs.next()) {
-                    programmaticamenteAtualizando = true;
-                    try {
-                        freteAtualId = rs.getLong("id_frete");
-                        String remetenteNome = rs.getString("remetente_nome_temp");
-                        String destinatarioNome = rs.getString("destinatario_nome_temp");
-                        String rotaTemp = rs.getString("rota_temp");
-                        java.sql.Date dataSaidaDb = rs.getDate("data_saida_viagem");
-                        String localTransporte = rs.getString("local_transporte");
-                        String conferenteTemp = rs.getString("conferente_temp");
-                        String cidadeCobrancaTemp = rs.getString("cidade_cobranca");
-                        String obsTexto = rs.getString("observacoes");
-                        String numNotaFiscalTemp = rs.getString("num_notafiscal");
-                        BigDecimal valorNotaDb = rs.getBigDecimal("valor_notafiscal");
-                        BigDecimal pesoNotaDb = rs.getBigDecimal("peso_notafiscal");
-                        BigDecimal valorFreteCalculado = rs.getBigDecimal("valor_frete_calculado");
-                        Long idViagem = rs.getObject("id_viagem", Long.class);
-
-                        if (txtNumFrete != null) txtNumFrete.setText(numFrete);
-                        if (cbRemetente != null) cbRemetente.setValue(remetenteNome);
-                        if (cbCliente != null) cbCliente.setValue(destinatarioNome);
-                        if (cbRota != null) cbRota.setValue(rotaTemp);
-                        if (txtSaida != null && dataSaidaDb != null) {
-                            txtSaida.setText(dataSaidaDb.toLocalDate().format(dateFormatter));
-                        } else if (txtSaida != null) {
-                            txtSaida.clear();
-                        }
-                        if (txtLocalTransporte != null) txtLocalTransporte.setText(localTransporte);
-                        if (cbConferente != null) cbConferente.setValue(conferenteTemp);
-                        if (txtCidadeCobranca != null) txtCidadeCobranca.setText(cidadeCobrancaTemp);
-                        if (txtObs != null) txtObs.setText(obsTexto);
-
-                        if (numNotaFiscalTemp != null && !numNotaFiscalTemp.isEmpty()) {
-                            if (rbSim != null) rbSim.setSelected(true);
-                            if (txtNumNota != null) txtNumNota.setText(numNotaFiscalTemp);
-                            if (txtValorNota != null && valorNotaDb != null) {
-                                txtValorNota.setText(df.format(valorNotaDb.doubleValue()));
-                            } else if (txtValorNota != null) {
-                                txtValorNota.clear();
-                            }
-                            if (txtPesoNota != null && pesoNotaDb != null) {
-                                txtPesoNota.setText(pesoNotaDb.toString());
-                            } else if (txtPesoNota != null) {
-                                txtPesoNota.clear();
-                            }
-                        } else {
-                            if (Rbnao != null) Rbnao.setSelected(true);
-                        }
-                        if (txtValorTotalNota != null && valorFreteCalculado != null) {
-                            txtValorTotalNota.setText(df.format(valorFreteCalculado.doubleValue()));
-                        } else if (txtValorTotalNota != null) {
-                            txtValorTotalNota.clear();
-                        }
-
-                        if (idViagem != null) {
-                            Viagem viagemAssociada = viagemDAO.buscarViagemPorId(idViagem);
-                            if (viagemAssociada != null) {
-                                if (txtViagemAtual != null) txtViagemAtual.setText(viagemAssociada.getDataViagem().format(dateFormatter));
-                                this.viagemAtiva = viagemAssociada;
-                            } else {
-                                if (txtViagemAtual != null) txtViagemAtual.setText("Viagem NÃ£o Encontrada");
-                                this.viagemAtiva = null;
-                            }
-                        } else {
-                            if (txtViagemAtual != null) txtViagemAtual.clear();
-                            this.viagemAtiva = null;
-                        }
-
-                    } finally {
-                        programmaticamenteAtualizando = false;
-                    }
+                    // DM015: preenchimento extraido em metodo auxiliar
+                    preencherCamposDoFrete(rs, numFrete);
                 } else {
                     showAlert(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com nÃºmero: " + numFrete);
                     return;
@@ -817,6 +767,57 @@ public class CadastroFreteController implements Initializable {
         if (txtTotalVol != null) txtTotalVol.setEditable(false);
         if (txtValorTotalNota != null) txtValorTotalNota.setEditable(false);
         if (txtViagemAtual != null) txtViagemAtual.setEditable(false);
+    }
+
+    // DM015: metodo extraido de carregarFreteParaEdicao() para separar DB mapping de UI binding
+    private void preencherCamposDoFrete(ResultSet rs, String numFrete) throws SQLException {
+        programmaticamenteAtualizando = true;
+        try {
+            freteAtualId = rs.getLong("id_frete");
+            if (txtNumFrete != null) txtNumFrete.setText(numFrete);
+            if (cbRemetente != null) cbRemetente.setValue(rs.getString("remetente_nome_temp"));
+            if (cbCliente != null) cbCliente.setValue(rs.getString("destinatario_nome_temp"));
+            if (cbRota != null) cbRota.setValue(rs.getString("rota_temp"));
+            java.sql.Date dataSaidaDb = rs.getDate("data_saida_viagem");
+            if (txtSaida != null && dataSaidaDb != null) txtSaida.setText(dataSaidaDb.toLocalDate().format(dateFormatter));
+            else if (txtSaida != null) txtSaida.clear();
+            if (txtLocalTransporte != null) txtLocalTransporte.setText(rs.getString("local_transporte"));
+            if (cbConferente != null) cbConferente.setValue(rs.getString("conferente_temp"));
+            if (txtCidadeCobranca != null) txtCidadeCobranca.setText(rs.getString("cidade_cobranca"));
+            if (txtObs != null) txtObs.setText(rs.getString("observacoes"));
+
+            String numNotaFiscalTemp = rs.getString("num_notafiscal");
+            BigDecimal valorNotaDb = rs.getBigDecimal("valor_notafiscal");
+            BigDecimal pesoNotaDb = rs.getBigDecimal("peso_notafiscal");
+            BigDecimal valorFreteCalculado = rs.getBigDecimal("valor_frete_calculado");
+
+            if (numNotaFiscalTemp != null && !numNotaFiscalTemp.isEmpty()) {
+                if (rbSim != null) rbSim.setSelected(true);
+                if (txtNumNota != null) txtNumNota.setText(numNotaFiscalTemp);
+                if (txtValorNota != null) txtValorNota.setText(valorNotaDb != null ? df.format(valorNotaDb.doubleValue()) : "");
+                if (txtPesoNota != null) txtPesoNota.setText(pesoNotaDb != null ? pesoNotaDb.toString() : "");
+            } else {
+                if (Rbnao != null) Rbnao.setSelected(true);
+            }
+            if (txtValorTotalNota != null) txtValorTotalNota.setText(valorFreteCalculado != null ? df.format(valorFreteCalculado.doubleValue()) : "");
+
+            Long idViagem = rs.getObject("id_viagem", Long.class);
+            if (idViagem != null) {
+                Viagem viagemAssociada = viagemDAO.buscarViagemPorId(idViagem);
+                if (viagemAssociada != null) {
+                    if (txtViagemAtual != null) txtViagemAtual.setText(viagemAssociada.getDataViagem().format(dateFormatter));
+                    this.viagemAtiva = viagemAssociada;
+                } else {
+                    if (txtViagemAtual != null) txtViagemAtual.setText("Viagem Não Encontrada");
+                    this.viagemAtiva = null;
+                }
+            } else {
+                if (txtViagemAtual != null) txtViagemAtual.clear();
+                this.viagemAtiva = null;
+            }
+        } finally {
+            programmaticamenteAtualizando = false;
+        }
     }
 
     private void carregarDadosIniciaisComboBoxes() {
@@ -1735,18 +1736,10 @@ public class CadastroFreteController implements Initializable {
                 }
                 if (rbSim != null) rbSim.setSelected(true);
 
-                new Thread(() -> {
-                    try {
-                        ITesseract instance = new Tesseract();
-                        instance.setDatapath("C:\\SistemaEmbarcacao\\tessdata");
-                        instance.setLanguage("por");
-
-                        String resultado = instance.doOCR(file);
-                        interpretarTextoFreteEPreencher(resultado);
-                    } catch (Exception e) {
-                        Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro OCR", "Erro ao ler imagem: " + e.getMessage()));
-                    }
-                }).start();
+                gui.util.OcrAudioService.executarOCRAsync(file,
+                    resultado -> interpretarTextoFreteEPreencher(resultado),
+                    e -> Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro OCR", "Erro ao ler imagem: " + e.getMessage()))
+                );
             }
         } catch (Exception e) {
             showAlert(AlertType.ERROR, "Erro", "Erro ao abrir seletor de foto:\n" + e.getMessage());
@@ -1756,65 +1749,28 @@ public class CadastroFreteController implements Initializable {
 
     @FXML
     public void handleAudio(ActionEvent event) {
-        try {
-            if(btnAudio.getText().contains("Ouvindo")) return;
-            if (freteAtualId == -1 || btnSalvar.isDisable()) {
-                 handleNovoFrete(null);
-            }
-
-            btnAudio.setText("Ouvindo... (Fale)");
-            btnAudio.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white;"); 
-
-            new Thread(() -> {
-                try {
-                    String modeloPath = "C:\\SistemaEmbarcacao\\modelo-voz";
-                    Model model = new Model(modeloPath);
-                    
-                    AudioFormat format = new AudioFormat(16000, 16, 1, true, false);
-                    DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-                    TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
-
-                    Recognizer recognizer = new Recognizer(model, 16000);
-                    microphone.open(format);
-                    microphone.start();
-
-                    int numBytesRead;
-                    int CHUNK_SIZE = 4096;
-                    byte[] data = new byte[CHUNK_SIZE];
-                    
-                    long start = System.currentTimeMillis();
-                    while (System.currentTimeMillis() - start < 5000) {
-                        numBytesRead = microphone.read(data, 0, CHUNK_SIZE);
-                        recognizer.acceptWaveForm(data, numBytesRead);
-                    }
-                    
-                    String jsonResult = recognizer.getFinalResult();
-                    String texto = "";
-                    if(jsonResult.contains("\"text\" : \"")) {
-                        texto = jsonResult.split("\"text\" : \"")[1].replace("\"}", "").replace("\n", "").trim();
-                    }
-
-                    microphone.stop();
-                    microphone.close();
-                    model.close();
-
-                    interpretarTextoFreteEPreencher(texto);
-
-                } catch (Exception e) {
-                    Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro Audio", "Erro no microfone ou modelo: " + e.getMessage()));
-                } finally {
-                    Platform.runLater(() -> {
-                        btnAudio.setText("Voz");
-                        btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
-                    });
-                }
-            }).start();
-        } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro", "Erro ao iniciar captura de áudio:\n" + e.getMessage());
-            e.printStackTrace();
-            btnAudio.setText("Voz");
-            btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+        if(btnAudio.getText().contains("Ouvindo")) return;
+        if (freteAtualId == -1 || btnSalvar.isDisable()) {
+             handleNovoFrete(null);
         }
+
+        btnAudio.setText("Ouvindo... (Fale)");
+        btnAudio.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white;");
+
+        gui.util.OcrAudioService.executarVozAsync(
+            texto -> {
+                interpretarTextoFreteEPreencher(texto);
+                Platform.runLater(() -> {
+                    btnAudio.setText("Voz");
+                    btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+                });
+            },
+            e -> Platform.runLater(() -> {
+                showAlert(AlertType.ERROR, "Erro Audio", "Erro no microfone ou modelo: " + e.getMessage());
+                btnAudio.setText("Voz");
+                btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+            })
+        );
     }
 
     private void interpretarTextoFreteEPreencher(String texto) {
@@ -1889,7 +1845,7 @@ public class CadastroFreteController implements Initializable {
                                 }
                             }
                         }
-                    } catch (Exception e) {}
+                    } catch (Exception e) { System.err.println("Erro em CadastroFreteController.processarIA (item): " + e.getMessage()); }
                 }
             }
 

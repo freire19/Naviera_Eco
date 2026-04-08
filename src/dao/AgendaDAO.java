@@ -54,7 +54,7 @@ public class AgendaDAO {
             stmt.setString(2, texto);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
     }
 
@@ -70,33 +70,36 @@ public class AgendaDAO {
                 notas.add(rs.getString("descricao"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return notas;
     }
     
     /**
-     * Busca TODAS as anotações não-concluídas do mês inteiro de uma vez só.
-     * Retorna um Map(data -> lista de descrições), eliminando N+1 queries.
+     * Busca TODAS as anotacoes nao concluidas do mes inteiro em 1 query (fix DP005).
+     * Usa range query em vez de EXTRACT para permitir uso de indice.
+     * Retorna Map(data -> lista de descricoes) para uso direto no calendario.
      */
     public Map<LocalDate, List<String>> buscarAnotacoesDoMes(int mes, int ano) {
         Map<LocalDate, List<String>> mapa = new HashMap<>();
         String sql = "SELECT data_evento, descricao FROM agenda_anotacoes " +
-                     "WHERE concluida = false " +
-                     "AND EXTRACT(MONTH FROM data_evento) = ? " +
-                     "AND EXTRACT(YEAR FROM data_evento) = ?";
+                     "WHERE data_evento >= ? AND data_evento < ? AND concluida = false";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, mes);
-            stmt.setInt(2, ano);
+            LocalDate inicio = LocalDate.of(ano, mes, 1);
+            LocalDate fim = inicio.plusMonths(1);
+            stmt.setDate(1, Date.valueOf(inicio));
+            stmt.setDate(2, Date.valueOf(fim));
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    LocalDate data = rs.getDate("data_evento").toLocalDate();
+                    java.sql.Date dtEvento = rs.getDate("data_evento");
+                    LocalDate data = dtEvento != null ? dtEvento.toLocalDate() : null;
+                    if (data == null) continue;
                     mapa.computeIfAbsent(data, k -> new ArrayList<>()).add(rs.getString("descricao"));
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO.buscarAnotacoesDoMes: " + e.getMessage());
         }
         return mapa;
     }
@@ -104,17 +107,17 @@ public class AgendaDAO {
     // --- NOVO MÉTODO: Busca Boletos Pendentes para exibir no Calendário ---
     public List<ResumoBoleto> buscarBoletosPendentesNoMes(int mes, int ano) {
         List<ResumoBoleto> boletos = new ArrayList<>();
-        // Pega tudo que é BOLETO e está PENDENTE naquele mês/ano
+        // Range query em vez de EXTRACT para permitir uso de indice (fix DP007)
         String sql = "SELECT data_vencimento, descricao, valor_total FROM financeiro_saidas " +
                      "WHERE forma_pagamento = 'BOLETO' AND status = 'PENDENTE' " +
-                     "AND EXTRACT(MONTH FROM data_vencimento) = ? " +
-                     "AND EXTRACT(YEAR FROM data_vencimento) = ?";
-                     
+                     "AND data_vencimento >= ? AND data_vencimento < ?";
+
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-             
-            stmt.setInt(1, mes);
-            stmt.setInt(2, ano);
+
+            LocalDate inicio = LocalDate.of(ano, mes, 1);
+            stmt.setDate(1, Date.valueOf(inicio));
+            stmt.setDate(2, Date.valueOf(inicio.plusMonths(1)));
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while(rs.next()) {
@@ -129,7 +132,7 @@ public class AgendaDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return boletos;
     }
@@ -145,13 +148,13 @@ public class AgendaDAO {
             while (rs.next()) {
                 tarefas.add(new TarefaAgenda(
                     rs.getInt("id_anotacao"),
-                    rs.getDate("data_evento").toLocalDate(),
+                    rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
                     rs.getString("descricao"),
                     rs.getBoolean("concluida")
                 ));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return tarefas;
     }
@@ -167,13 +170,13 @@ public class AgendaDAO {
             while (rs.next()) {
                 tarefas.add(new TarefaAgenda(
                     rs.getInt("id_anotacao"),
-                    rs.getDate("data_evento").toLocalDate(),
+                    rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
                     rs.getString("descricao"),
                     rs.getBoolean("concluida")
                 ));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return tarefas;
     }
@@ -186,7 +189,7 @@ public class AgendaDAO {
             stmt.setInt(2, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
     }
     
@@ -197,7 +200,7 @@ public class AgendaDAO {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
     }
 }

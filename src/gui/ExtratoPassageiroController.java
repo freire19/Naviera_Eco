@@ -104,7 +104,7 @@ public class ExtratoPassageiroController implements Initializable {
 
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        } catch (Exception e) {}
+        } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.initialize (CSS): " + e.getMessage()); }
     }
 
     private void carregarDadosEmpresa() {
@@ -118,7 +118,7 @@ public class ExtratoPassageiroController implements Initializable {
                     if(rs.getString("telefone") != null) empTelefone = rs.getString("telefone");
                     if(rs.getString("path_logo") != null) empPathLogo = rs.getString("path_logo");
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.carregarDadosEmpresa: " + e.getMessage()); }
         }).start();
     }
 
@@ -208,10 +208,7 @@ public class ExtratoPassageiroController implements Initializable {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    if (item.equalsIgnoreCase("PENDENTE") || item.equalsIgnoreCase("PARCIAL"))
-                        setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else
-                        setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
@@ -263,9 +260,9 @@ public class ExtratoPassageiroController implements Initializable {
                 double vTotal = p.getValorTotal() != null ? p.getValorTotal().doubleValue() : 0;
                 double vPago = p.getValorPago() != null ? p.getValorPago().doubleValue() : 0;
                 double vSaldo = vTotal - vPago;
-                if (vSaldo < 0.01) vSaldo = 0.0;
+                if (vSaldo < model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) vSaldo = 0.0;
 
-                String stCalculado = (vSaldo > 0.01) ? (vPago > 0 ? "PARCIAL" : "PENDENTE") : "PAGO";
+                String stCalculado = model.StatusPagamento.calcularPorSaldo(vSaldo, vPago).name();
 
                 totalGeral += vTotal;
                 totalPago += vPago;
@@ -297,7 +294,7 @@ public class ExtratoPassageiroController implements Initializable {
                 lblTotalPago.setText(nf.format(finalPago));
                 lblDivida.setText(nf.format(finalDivida));
 
-                btnQuitarTudo.setDisable(finalDivida <= 0.01);
+                btnQuitarTudo.setDisable(finalDivida <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
             });
         }).start();
     }
@@ -355,7 +352,7 @@ public class ExtratoPassageiroController implements Initializable {
                 if (partes.length >= 3) {
                     lista.add(new ItemExtrato(partes[1], "--", partes[0], partes[2], partes[2], "R$ 0,00", "PAGO"));
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.reconstruirItensDoRecibo: " + e.getMessage()); }
         }
         return lista;
     }
@@ -364,7 +361,7 @@ public class ExtratoPassageiroController implements Initializable {
     public void quitarDividaTotal(ActionEvent event) {
         String nome = cmbPassageiro.getEditor().getText();
         if (nome == null || nome.isEmpty()) return;
-        if (totalDividaCalculada <= 0.01) return;
+        if (totalDividaCalculada <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) return;
 
         try {
             List<ItemExtrato> itensSendoPagos = new ArrayList<>();
@@ -720,7 +717,7 @@ public class ExtratoPassageiroController implements Initializable {
                     g2d.drawLine(marginX, y, (int)width - marginX, y);
                     g2d.setColor(Color.BLACK);
                     g2d.setFont(new Font("Arial", Font.ITALIC, 8));
-                    g2d.drawString("Sistema de Gestão Embarcação - Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), marginX, y + 15);
+                    g2d.drawString("Naviera - Navegação Fluvial - Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), marginX, y + 15);
                     g2d.drawString("Página 1", (int)width - marginX - 30, y + 15);
 
                     return PAGE_EXISTS;

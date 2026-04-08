@@ -81,7 +81,7 @@ public class ConfigurarApiController implements Initializable {
             try (FileInputStream fis = new FileInputStream(configFile)) {
                 config.load(fis);
                 
-                txtUrlApi.setText(config.getProperty("url.api", "http://sistemabarco.navdeusdealianca.com.br/api"));
+                txtUrlApi.setText(config.getProperty("url.api", "https://sistemabarco.navdeusdealianca.com.br/api"));
                 txtToken.setText(config.getProperty("token", ""));
                 txtPastaArquivos.setText(config.getProperty("pasta.arquivos", getPastaDefault()));
                 spnTamanhoMax.getValueFactory().setValue(Integer.parseInt(config.getProperty("tamanho.max", "10")));
@@ -102,7 +102,7 @@ public class ConfigurarApiController implements Initializable {
             }
         } else {
             // Valores padrão
-            txtUrlApi.setText("http://sistemabarco.navdeusdealianca.com.br/api");
+            txtUrlApi.setText("https://sistemabarco.navdeusdealianca.com.br/api");
             txtPastaArquivos.setText(getPastaDefault());
         }
     }
@@ -172,8 +172,10 @@ public class ConfigurarApiController implements Initializable {
     @FXML
     private void toggleToken() {
         // Alternar visibilidade do token (implementar com TextField adicional se necessário)
+        // #022: nao exibe token completo — mostra apenas ultimos 4 chars
         String token = txtToken.getText();
-        mostrarAlerta(Alert.AlertType.INFORMATION, "Token", "Token atual: " + token);
+        String masked = token.length() > 4 ? "****" + token.substring(token.length() - 4) : "****";
+        mostrarAlerta(Alert.AlertType.INFORMATION, "Token", "Token configurado: " + masked);
     }
 
     @FXML
@@ -228,7 +230,7 @@ public class ConfigurarApiController implements Initializable {
         confirm.setContentText("Todas as configurações atuais serão perdidas.");
         
         if (confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            txtUrlApi.setText("http://sistemabarco.navdeusdealianca.com.br/api");
+            txtUrlApi.setText("https://sistemabarco.navdeusdealianca.com.br/api");
             txtToken.setText("");
             txtPastaArquivos.setText(getPastaDefault());
             spnTamanhoMax.getValueFactory().setValue(10);
@@ -271,7 +273,7 @@ public class ConfigurarApiController implements Initializable {
             config.setProperty("habilitar.voz", String.valueOf(chkHabilitarVoz.isSelected()));
             
             try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE)) {
-                config.store(fos, "Configurações da API - Sistema Embarcação");
+                config.store(fos, "Configurações da API - Naviera");
             }
             
             atualizarStatus();
@@ -307,7 +309,7 @@ public class ConfigurarApiController implements Initializable {
             Parent root = loader.load();
             
             Stage stage = new Stage();
-            stage.setTitle("Configuração da API - Sistema Embarcação");
+            stage.setTitle("Configuração da API - Naviera");
             stage.setScene(new Scene(root, 700, 800));
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setResizable(true);
@@ -329,9 +331,9 @@ public class ConfigurarApiController implements Initializable {
         Properties props = new Properties();
         try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
             props.load(fis);
-            return props.getProperty("url.api", "http://sistemabarco.navdeusdealianca.com.br/api");
+            return props.getProperty("url.api", "https://sistemabarco.navdeusdealianca.com.br/api");
         } catch (IOException e) {
-            return "http://sistemabarco.navdeusdealianca.com.br/api";
+            return "https://sistemabarco.navdeusdealianca.com.br/api";
         }
     }
     

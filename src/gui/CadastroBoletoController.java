@@ -1,6 +1,8 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
+import gui.util.SessaoUsuario;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -48,12 +50,18 @@ public class CadastroBoletoController {
 
     @FXML
     public void initialize() {
-        buscarViagemAtual();
-        carregarCategorias();
         configurarTabela();
         spParcelas.valueProperty().addListener((obs, oldVal, newVal) -> gerarCamposData(newVal));
         gerarCamposData(1);
-        filtrar();
+
+        // DR010: carrega dados em background
+        Thread bg = new Thread(() -> {
+            buscarViagemAtual();
+            carregarCategorias();
+            javafx.application.Platform.runLater(this::filtrar);
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     
     @FXML
@@ -74,7 +82,7 @@ public class CadastroBoletoController {
     private void buscarUltimaViagem() {
         try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT id_viagem FROM viagens ORDER BY id_viagem DESC LIMIT 1").executeQuery()){
             if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
-        } catch(Exception e){}
+        } catch(Exception e){ System.err.println("Erro em CadastroBoletoController.buscarUltimaViagem: " + e.getMessage()); }
     }
 
     private void gerarCamposData(int qtd) {
@@ -95,7 +103,7 @@ public class CadastroBoletoController {
         ObservableList<String> cats = FXCollections.observableArrayList();
         try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()){
             while(rs.next()) cats.add(rs.getString(1));
-        } catch(Exception e) {}
+        } catch(Exception e) { System.err.println("Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(cats);
         configurarAutocomplete(cmbCategoria, cats);
     }
@@ -121,9 +129,11 @@ public class CadastroBoletoController {
         }
         
         try {
-            double total = Double.parseDouble(txtValor.getText().replace(",", "."));
+            java.math.BigDecimal total = new java.math.BigDecimal(txtValor.getText().replace(",", "."));
             int parcelas = spParcelas.getValue();
-            double valorParcela = total / parcelas;
+            // DL014: distribui centavos da divisao na ultima parcela
+            java.math.BigDecimal valorParcela = total.divide(java.math.BigDecimal.valueOf(parcelas), 2, java.math.RoundingMode.DOWN);
+            java.math.BigDecimal valorUltimaParcela = total.subtract(valorParcela.multiply(java.math.BigDecimal.valueOf(parcelas - 1)));
             String cat = cmbCategoria.getValue();
             if(cat == null) cat = cmbCategoria.getEditor().getText();
             int idCat = buscarOuCriarCategoria(cat);
@@ -141,9 +151,12 @@ public class CadastroBoletoController {
                     LocalDate vencimento = pickersDatas.get(i).getValue();
                     if(vencimento == null) vencimento = LocalDate.now().plusMonths(i+1);
                     
+                    // DL014: ultima parcela absorve centavos restantes
+                    java.math.BigDecimal valorDestaParcela = (i == parcelas - 1) ? valorUltimaParcela : valorParcela;
+
                     // 1. Insere no Financeiro
                     stmtFin.setString(1, txtDescricao.getText());
-                    stmtFin.setDouble(2, valorParcela);
+                    stmtFin.setBigDecimal(2, valorDestaParcela);
                     stmtFin.setDate(3, Date.valueOf(vencimento));
                     stmtFin.setInt(4, idCat);
                     stmtFin.setInt(5, i + 1);
@@ -151,10 +164,10 @@ public class CadastroBoletoController {
                     stmtFin.setString(7, txtObs.getText());
                     stmtFin.setInt(8, idViagemAtual);
                     stmtFin.addBatch();
-                    
+
                     // 2. Insere na Agenda (Aviso de Vencimento)
                     stmtAgenda.setDate(1, Date.valueOf(vencimento));
-                    stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i+1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorParcela));
+                    stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i+1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorDestaParcela));
                     stmtAgenda.addBatch();
                 }
                 stmtFin.executeBatch();
@@ -204,28 +217,31 @@ public class CadastroBoletoController {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;");
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
         
         // Tenta carregar o CSS
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){}
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em CadastroBoletoController.configurarTabela (CSS): " + e.getMessage()); }
     }
     
     @FXML
     public void filtrar() {
         ObservableList<Boleto> lista = FXCollections.observableArrayList();
         StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE forma_pagamento = 'BOLETO' ");
-        
+
         if(dpFiltroData.getValue() != null) {
-            sql.append(" AND data_vencimento = '").append(dpFiltroData.getValue()).append("'");
+            sql.append(" AND data_vencimento = ?");
         }
         sql.append(" ORDER BY data_vencimento ASC");
-        
+
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement(sql.toString()).executeQuery()){
+        try(Connection c = ConexaoBD.getConnection(); PreparedStatement ps = c.prepareStatement(sql.toString())){
+            if(dpFiltroData.getValue() != null) {
+                ps.setDate(1, java.sql.Date.valueOf(dpFiltroData.getValue()));
+            }
+            ResultSet rs = ps.executeQuery();
             while(rs.next()){
                 lista.add(new Boleto(
                     rs.getInt("id"),
@@ -267,12 +283,26 @@ public class CadastroBoletoController {
     
     @FXML
     public void excluir() {
+        if (!PermissaoService.exigirAdmin("Excluir registro financeiro")) return;
         Boleto sel = tabela.getSelectionModel().getSelectedItem();
         if(sel == null) return;
-        if(new Alert(Alert.AlertType.CONFIRMATION, "Excluir?").showAndWait().get() == ButtonType.OK) {
-            try(Connection c = ConexaoBD.getConnection(); PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=?")) {
-                s.setInt(1, sel.getId());
-                s.executeUpdate();
+        if(new Alert(Alert.AlertType.CONFIRMATION, "Excluir boleto: " + sel.getDescricao() + "?").showAndWait().get() == ButtonType.OK) {
+            try(Connection c = ConexaoBD.getConnection()) {
+                // Registrar em auditoria antes de deletar
+                String usuario = SessaoUsuario.isUsuarioLogado() ? SessaoUsuario.getUsuarioLogado().getNomeCompleto() : "DESCONHECIDO";
+                try (PreparedStatement audit = c.prepareStatement(
+                        "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor) VALUES (?, ?, ?, NOW(), ?)")) {
+                    audit.setString(1, "EXCLUSAO_BOLETO");
+                    audit.setString(2, "Exclusao de boleto: " + sel.getDescricao());
+                    audit.setString(3, usuario);
+                    audit.setString(4, "Valor: " + sel.getValorFormatado() + " | Vencimento: " + sel.getVencimento());
+                    audit.executeUpdate();
+                }
+                // Agora deleta
+                try (PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=?")) {
+                    s.setInt(1, sel.getId());
+                    s.executeUpdate();
+                }
                 filtrar();
             } catch(Exception e) { e.printStackTrace(); }
         }

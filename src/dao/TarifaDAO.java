@@ -33,7 +33,7 @@ public class TarifaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar tarifa por rota e tipo: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return tarifa;
     }
@@ -58,7 +58,7 @@ public class TarifaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao inserir tarifa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return false;
     }
@@ -75,7 +75,7 @@ public class TarifaDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar tarifa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -88,7 +88,7 @@ public class TarifaDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao excluir tarifa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -122,7 +122,7 @@ public class TarifaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todas as tarifas: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return tarifas;
     }
@@ -131,8 +131,17 @@ public class TarifaDAO {
         return (val == null) ? BigDecimal.ZERO : val;
     }
     
+    // #019: whitelist de tabelas permitidas (previne SQL injection via nome de tabela)
+    private static final List<String> TABELAS_PERMITIDAS = List.of(
+        "aux_tipos_passagem", "aux_agentes", "aux_acomodacoes", "aux_horarios_saida",
+        "aux_formas_pagamento", "caixas", "rotas"
+    );
+
     public Integer obterIdAuxiliar(Connection conn, String tabela, String colunaNome, String colunaId, String valorNome) throws SQLException {
         if (valorNome == null || valorNome.trim().isEmpty()) return null;
+        if (!TABELAS_PERMITIDAS.contains(tabela)) {
+            throw new IllegalArgumentException("Tabela nao permitida em TarifaDAO: " + tabela);
+        }
         String sql = "SELECT " + colunaId + " FROM " + tabela + " WHERE " + colunaNome + " = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, valorNome);

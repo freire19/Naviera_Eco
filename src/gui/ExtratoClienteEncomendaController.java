@@ -51,8 +51,12 @@ public class ExtratoClienteEncomendaController {
     @FXML
     public void initialize() {
         configurarTabela();
-        carregarListaClientesBanco(); 
         configurarAutocomplete();
+
+        // DR010: carrega lista de clientes em background
+        Thread bg = new Thread(this::carregarListaClientesBanco);
+        bg.setDaemon(true);
+        bg.start();
         
         cmbStatus.setItems(FXCollections.observableArrayList("TODOS", "PENDENTES", "PAGOS"));
         cmbStatus.getSelectionModel().selectFirst();
@@ -74,9 +78,7 @@ public class ExtratoClienteEncomendaController {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;");
-                    else if (item.equals("PARCIAL")) setStyle("-fx-text-fill: #ef6c00; -fx-font-weight: bold;");
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
@@ -88,19 +90,22 @@ public class ExtratoClienteEncomendaController {
         colRota.setStyle("-fx-alignment: CENTER-LEFT; -fx-font-size: 14px;");
         colData.setStyle("-fx-alignment: CENTER; -fx-font-size: 14px;");
         
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){}
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em ExtratoClienteEncomendaController.configuringTabela (CSS): " + e.getMessage()); }
     }
     
     private void configurarTabela() { configuringTabela(); } 
 
     private void carregarListaClientesBanco() {
-        listaTodosClientes.clear();
+        ObservableList<String> nomes = FXCollections.observableArrayList();
         String sql = "SELECT DISTINCT nome FROM ( SELECT nome_cliente as nome FROM cad_clientes_encomenda UNION SELECT destinatario as nome FROM encomendas ) as todos WHERE nome IS NOT NULL ORDER BY nome";
         try (Connection con = ConexaoBD.getConnection();
              ResultSet rs = con.prepareStatement(sql).executeQuery()) {
-             while(rs.next()) listaTodosClientes.add(rs.getString("nome"));
+             while(rs.next()) nomes.add(rs.getString("nome"));
         } catch (Exception e) { e.printStackTrace(); }
-        cmbClientes.setItems(listaTodosClientes);
+        javafx.application.Platform.runLater(() -> {
+            listaTodosClientes.setAll(nomes);
+            cmbClientes.setItems(listaTodosClientes);
+        });
     }
 
     private void configurarAutocomplete() {
@@ -151,13 +156,13 @@ public class ExtratoClienteEncomendaController {
                      "FROM encomendas e " +
                      "LEFT JOIN viagens v ON e.id_viagem = v.id_viagem " +
                      "LEFT JOIN rotas r ON v.id_rota = r.id " + 
-                     "WHERE e.destinatario ILIKE ? " + 
+                     "WHERE UPPER(TRIM(e.destinatario)) = UPPER(TRIM(?)) " +
                      "ORDER BY v.data_viagem DESC";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
-            
-            stmt.setString(1, "%" + nomeClienteAtual.trim() + "%");
+
+            stmt.setString(1, nomeClienteAtual.trim());
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
@@ -165,7 +170,7 @@ public class ExtratoClienteEncomendaController {
                 double pag = rs.getDouble("valor_pago");
                 double saldo = Math.max(0, val - pag);
                 
-                String status = (saldo <= 0.01) ? "PAGO" : "PENDENTE";
+                String status = (saldo <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) ? "PAGO" : "PENDENTE";
                 
                 if (statusFiltro != null) {
                     if (statusFiltro.equals("PENDENTES") && status.equals("PAGO")) continue;
@@ -202,7 +207,7 @@ public class ExtratoClienteEncomendaController {
             lblTotalPago.setText(nf.format(totalPago));
             lblTotalDivida.setText(nf.format(dividaTotalAtual));
             
-            btnQuitarTudo.setDisable(dividaTotalAtual <= 0.01);
+            btnQuitarTudo.setDisable(dividaTotalAtual <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -243,19 +248,19 @@ public class ExtratoClienteEncomendaController {
                 if (fatorPagamento < 0) fatorPagamento = 0; 
 
                 String sqlUpdate = "UPDATE encomendas SET " +
-                                   "desconto = (total_a_pagar - valor_pago) * (1 - ?), " + 
-                                   "valor_pago = total_a_pagar - ((total_a_pagar - valor_pago) * (1 - ?)), " + 
+                                   "desconto = (total_a_pagar - valor_pago) * (1 - ?), " +
+                                   "valor_pago = total_a_pagar - ((total_a_pagar - valor_pago) * (1 - ?)), " +
                                    "status_pagamento = 'PAGO', tipo_pagamento = ?, caixa = ? " +
-                                   "WHERE destinatario ILIKE ? AND valor_pago < total_a_pagar";
-                
+                                   "WHERE UPPER(TRIM(destinatario)) = UPPER(TRIM(?)) AND valor_pago < total_a_pagar";
+
                 try (Connection con = ConexaoBD.getConnection();
                      PreparedStatement stmt = con.prepareStatement(sqlUpdate)) {
-                    
+
                     stmt.setDouble(1, fatorPagamento);
                     stmt.setDouble(2, fatorPagamento);
                     stmt.setString(3, forma);
                     stmt.setString(4, caixa);
-                    stmt.setString(5, "%" + nomeClienteAtual.trim() + "%");
+                    stmt.setString(5, nomeClienteAtual.trim());
                     
                     int qtd = stmt.executeUpdate();
                     
@@ -304,9 +309,7 @@ public class ExtratoClienteEncomendaController {
         public String getValorPago() { return nf.format(valorPago); }
         public String getSaldo() { return nf.format(saldo); }
         public String getStatus() {
-            if (saldo <= 0.01) return "PAGO";
-            if (valorPago > 0) return "PARCIAL";
-            return "PENDENTE";
+            return model.StatusPagamento.calcularPorSaldo(saldo, valorPago).name();
         }
     }
 }

@@ -42,7 +42,7 @@ public class Encomenda {
     
     public BigDecimal getSaldoDevedor() {
         BigDecimal total = getTotalAPagar().subtract(getDesconto());
-        return total.subtract(getValorPago());
+        return total.subtract(getValorPago()).max(BigDecimal.ZERO);
     }
     
     // Getters e Setters

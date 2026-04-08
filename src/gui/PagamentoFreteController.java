@@ -87,7 +87,7 @@ public class PagamentoFreteController {
 
     private double parseDoubleSafe(String t) {
         if(t==null||t.trim().isEmpty()) return 0.0;
-        t=t.replace(",",".");
+        t=t.replace(".", "").replace(",",".");
         try {
             return Double.parseDouble(t);
         }catch(Exception e) {

@@ -13,6 +13,8 @@ import dao.AuxiliaresDAO;
 
 public class PassageiroDAO {
 
+    private final AuxiliaresDAO auxDAO = new AuxiliaresDAO();
+
     public PassageiroDAO() {}
 
     /**
@@ -31,7 +33,7 @@ public class PassageiroDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todos os passageiros: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return passageiros;
     }
@@ -53,7 +55,7 @@ public class PassageiroDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
-            AuxiliaresDAO auxDAO = new AuxiliaresDAO(); // Instancia uma vez para reuso
+            // Usa campo auxDAO (instanciado uma unica vez)
 
             stmt.setString(1, passageiro.getNome());
             stmt.setString(2, passageiro.getNumeroDoc());
@@ -84,7 +86,7 @@ public class PassageiroDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            AuxiliaresDAO auxDAO = new AuxiliaresDAO(); // Instancia uma vez para reuso
+            // Usa campo auxDAO (instanciado uma unica vez)
 
             stmt.setString(1, passageiro.getNome());
             stmt.setString(2, passageiro.getNumeroDoc());
@@ -113,7 +115,7 @@ public class PassageiroDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar nomes de passageiros: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return nomes;
     }
@@ -130,7 +132,7 @@ public class PassageiroDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar passageiro por nome: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }
@@ -146,7 +148,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-                e.printStackTrace();
+                System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }
@@ -162,7 +164,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }
@@ -170,7 +172,7 @@ public class PassageiroDAO {
     // CORREÇÃO: Removido o parâmetro "conn", pois não é mais necessário
     private Passageiro mapResultSetToPassageiro(ResultSet rs) throws SQLException {
         Passageiro passageiro = new Passageiro();
-        AuxiliaresDAO auxDAO = new AuxiliaresDAO(); // Instancia para uso
+        // Usa campo auxDAO (instanciado uma unica vez)
 
         passageiro.setId(rs.getLong("id_passageiro"));
         passageiro.setNome(rs.getString("nome_passageiro"));

@@ -290,9 +290,12 @@ public class TabelaPrecosEncomendaController implements Initializable {
                 return;
             }
 
-            // Por enquanto, apenas em memória.
-            masterData.add(novo);
-            tablePrecos.sort();
+            if (itemDAO.inserir(novo)) {
+                masterData.add(novo);
+                tablePrecos.sort();
+            } else {
+                mostrarErro("Adicionar item", "Não foi possível salvar o item no banco de dados.");
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -316,6 +319,9 @@ public class TabelaPrecosEncomendaController implements Initializable {
         try {
             boolean confirmado = mostrarDialogoItem(selecionado, false);
             if (confirmado) {
+                if (selecionado.getId() != null) {
+                    itemDAO.atualizar(selecionado);
+                }
                 tablePrecos.refresh();
             }
         } catch (Exception e) {
@@ -345,7 +351,9 @@ public class TabelaPrecosEncomendaController implements Initializable {
 
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
-                // Por enquanto, apenas em memória.
+                if (selecionado.getId() != null) {
+                    itemDAO.excluir(selecionado.getId());
+                }
                 masterData.remove(selecionado);
                 tablePrecos.getSelectionModel().clearSelection();
             } catch (Exception e) {

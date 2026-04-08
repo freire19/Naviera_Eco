@@ -27,7 +27,7 @@ public class ClienteEncomendaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar clientes de encomenda: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
         }
         return clientes;
     }
@@ -50,7 +50,7 @@ public class ClienteEncomendaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao salvar cliente de encomenda: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
             return null;
         }
     }
@@ -92,7 +92,7 @@ public class ClienteEncomendaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar cliente de encomenda: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -113,7 +113,7 @@ public class ClienteEncomendaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao excluir cliente de encomenda: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
             return false;
         }
     }

@@ -81,12 +81,18 @@ public class ListaFretesController {
     @FXML
     public void initialize() {
         configurarColunasTabela();
-        configurarEstiloLinhas(); 
+        configurarEstiloLinhas();
         tabelaFretes.setItems(listaFretesVisivel);
-        configurarFiltrosIniciais();
         configurarListeners();
-        recarregarDadosDoBanco(); 
         aplicarEstiloCabecalho();
+
+        // DR010: carrega dados em background
+        Thread bg = new Thread(() -> {
+            configurarFiltrosIniciais();
+            recarregarDadosDoBanco();
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarColunasTabela() {
@@ -298,11 +304,11 @@ public class ListaFretesController {
         header.setStyle("-fx-border-color: #ccc; -fx-border-width: 0 0 1 0; -fx-padding: 0 0 10 0;");
 
         try (Connection conn = ConexaoBD.getConnection(); 
-             PreparedStatement stmt = conn.prepareStatement("SELECT caminho_foto, nome_embarcacao, cnpj, telefone FROM configuracao_empresa LIMIT 1");
+             PreparedStatement stmt = conn.prepareStatement("SELECT path_logo, nome_embarcacao, cnpj, telefone FROM configuracao_empresa LIMIT 1");
              ResultSet rs = stmt.executeQuery()) {
-            
+
             if (rs.next()) {
-                String caminhoFoto = rs.getString("caminho_foto");
+                String caminhoFoto = rs.getString("path_logo");
                 if (caminhoFoto != null && !caminhoFoto.isEmpty()) {
                     ImageView logo = new ImageView(new Image("file:" + caminhoFoto));
                     logo.setFitHeight(60); logo.setPreserveRatio(true);

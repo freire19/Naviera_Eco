@@ -233,7 +233,11 @@ public class RelatorioPassagensController implements Initializable {
         column.setCellValueFactory(cellData -> {
             try {
                 if (cellData.getValue() == null) return new SimpleObjectProperty<>(null);
-                return new SimpleObjectProperty<>((BigDecimal) cellData.getValue().getClass().getMethod("get" + propertyName).invoke(cellData.getValue()));
+                java.lang.reflect.Method m = Passagem.class.getMethod("get" + propertyName);
+                return new SimpleObjectProperty<>((BigDecimal) m.invoke(cellData.getValue()));
+            } catch (NoSuchMethodException e) {
+                System.err.println("Metodo get" + propertyName + " nao encontrado em Passagem: " + e.getMessage());
+                return new SimpleObjectProperty<>(null);
             } catch (Exception e) {
                 return new SimpleObjectProperty<>(null);
             }
@@ -320,6 +324,7 @@ public class RelatorioPassagensController implements Initializable {
         }
 
         Map<String, BigDecimal> vendasPorAgente = dados.stream()
+            .filter(p -> p.getAgenteAux() != null)
             .collect(Collectors.groupingBy(
                 p -> p.getAgenteAux() != null ? p.getAgenteAux() : "Sem Agente",
                 Collectors.mapping(p -> p.getValorTotal() != null ? p.getValorTotal() : BigDecimal.ZERO, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
@@ -349,6 +354,7 @@ public class RelatorioPassagensController implements Initializable {
         }
 
         Map<String, BigDecimal> valorPorFormaPagamento = dados.stream()
+            .filter(p -> p.getFormaPagamento() != null)
             .collect(Collectors.groupingBy(
                 p -> p.getFormaPagamento() != null ? p.getFormaPagamento() : "N/A",
                 Collectors.mapping(p -> p.getValorPago() != null ? p.getValorPago() : BigDecimal.ZERO, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))

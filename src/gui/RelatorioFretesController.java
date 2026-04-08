@@ -390,7 +390,7 @@ public class RelatorioFretesController implements Initializable {
         job.getJobSettings().setPageLayout(pageLayout);
         
         EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(1);
+        Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
         double larguraBase = 270;
         
         VBox root = new VBox(0);
@@ -411,7 +411,7 @@ public class RelatorioFretesController implements Initializable {
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
-                } catch (Exception e) { }
+                } catch (Exception e) { System.err.println("Erro ao carregar logo: " + e.getMessage()); }
             }
             Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
@@ -1087,7 +1087,7 @@ public class RelatorioFretesController implements Initializable {
         job.getJobSettings().setPageLayout(pageLayout);
         
         EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(1);
+        Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
         double larguraBase = 270;
         
         VBox root = new VBox(0);
@@ -1108,7 +1108,7 @@ public class RelatorioFretesController implements Initializable {
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
-                } catch (Exception e) { }
+                } catch (Exception e) { System.err.println("Erro ao carregar logo: " + e.getMessage()); }
             }
             Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
@@ -1471,7 +1471,7 @@ public class RelatorioFretesController implements Initializable {
         job.getJobSettings().setPageLayout(pageLayout);
         
         EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(1);
+        Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
         double larguraBase = 270;
         
         VBox root = new VBox(0);
@@ -1492,7 +1492,7 @@ public class RelatorioFretesController implements Initializable {
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
-                } catch (Exception e) { }
+                } catch (Exception e) { System.err.println("Erro ao carregar logo: " + e.getMessage()); }
             }
             Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");

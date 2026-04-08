@@ -21,14 +21,16 @@ public class FreteDAO {
         
         // Alterei o SQL para fazer JOIN com a tabela de viagens e pegar a data_viagem
         StringBuilder sql = new StringBuilder(
+            // DP010: subquery correlacionada substituida por LEFT JOIN agrupado
             "SELECT f.id_frete, f.numero_frete, f.id_viagem, f.remetente_nome_temp AS remetente_nome, " +
             "f.destinatario_nome_temp AS destinatario_nome, f.rota_temp AS rota, " +
             "f.data_emissao, f.valor_total_itens AS valor_nominal, f.valor_devedor, f.valor_pago, " +
             "f.conferente_temp AS conferente, f.status_frete, " +
-            "v.data_viagem, " + // <--- CAMPO NOVO NO SELECT
-            "(SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi WHERE fi.id_frete = f.id_frete) AS total_volumes " +
+            "v.data_viagem, " +
+            "COALESCE(fiv.total_volumes, 0) AS total_volumes " +
             "FROM fretes f " +
-            "LEFT JOIN viagens v ON f.id_viagem = v.id_viagem " // <--- JOIN NECESSÁRIO
+            "LEFT JOIN viagens v ON f.id_viagem = v.id_viagem " +
+            "LEFT JOIN (SELECT id_frete, SUM(quantidade) AS total_volumes FROM frete_itens GROUP BY id_frete) fiv ON fiv.id_frete = f.id_frete "
         );
 
         List<Object> parametros = new ArrayList<>();
@@ -88,9 +90,9 @@ public class FreteDAO {
                         frete.setDataEmissao(dataEmissaoSql.toLocalDate());
                     }
                     
-                    frete.setValorNominal(rs.getDouble("valor_nominal"));
-                    frete.setValorDevedor(rs.getDouble("valor_devedor"));
-                    frete.setValorPago(rs.getDouble("valor_pago"));
+                    frete.setValorNominal(rs.getBigDecimal("valor_nominal"));
+                    frete.setValorDevedor(rs.getBigDecimal("valor_devedor"));
+                    frete.setValorPago(rs.getBigDecimal("valor_pago"));
                     frete.setNomeConferente(rs.getString("conferente"));
                     frete.setStatus(rs.getString("status_frete"));
                     frete.setTotalVolumes(rs.getInt("total_volumes"));
@@ -100,7 +102,7 @@ public class FreteDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL ao buscar fretes com filtros: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em FreteDAO: " + e.getMessage());
         }
         return fretes;
     }

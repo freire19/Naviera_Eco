@@ -29,7 +29,7 @@ public class CaixaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar caixas: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -45,13 +45,12 @@ public class CaixaDAO {
             
         } catch (SQLException e) {
             System.err.println("Erro ao inserir caixa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }
 
-    // ALTERAR (Atualiza usando 'id_caixa')
-    public boolean alterar(Caixa caixa) {
+    public boolean atualizar(Caixa caixa) {
         String sql = "UPDATE caixas SET nome_caixa = ? WHERE id_caixa = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -62,7 +61,7 @@ public class CaixaDAO {
             
         } catch (SQLException e) {
             System.err.println("Erro ao alterar caixa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -78,7 +77,7 @@ public class CaixaDAO {
             
         } catch (SQLException e) {
             System.err.println("Erro ao excluir caixa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }

@@ -116,6 +116,7 @@ public class ListaEncomendaController implements Initializable {
     private CaixaDAO caixaDAO;
 
     private ObservableList<Encomenda> listaMestraEncomendas;
+    private java.util.Map<Long, java.util.List<model.EncomendaItem>> cacheItensViagem = new java.util.HashMap<>();
     private ObservableList<Viagem> obsListaViagens;
     private ObservableList<Rota> obsListaRotas;
     private ObservableList<Caixa> obsListaCaixas;
@@ -134,8 +135,50 @@ public class ListaEncomendaController implements Initializable {
         obsListaCaixas = FXCollections.observableArrayList();
 
         configurarTabela();
-        carregarCombos();
         agruparRadioButtons();
+
+        // Carrega combos em background para nao bloquear FX thread (DR010)
+        javafx.concurrent.Task<Void> taskCombos = new javafx.concurrent.Task<Void>() {
+            private java.util.List<Viagem> listaViagens;
+            private java.util.List<Rota> listaRotas;
+            private java.util.List<Caixa> listaCaixas;
+
+            @Override protected Void call() throws Exception {
+                listaViagens = new java.util.ArrayList<>();
+                Viagem todas = new Viagem(); todas.setId(null); todas.setDescricao("TODAS");
+                listaViagens.add(todas);
+                listaViagens.addAll(viagemDAO.listarTodasViagensResumido());
+                listaRotas = rotaDAO.listarTodasAsRotasComoObjects();
+                listaCaixas = caixaDAO.listarTodos();
+                return null;
+            }
+
+            @Override protected void succeeded() {
+                obsListaViagens.setAll(listaViagens);
+                if (cmbViagem != null) {
+                    cmbViagem.setItems(obsListaViagens);
+                    if (obsListaViagens.size() > 1) {
+                        Viagem viagemAtual = obsListaViagens.get(1);
+                        cmbViagem.setValue(viagemAtual);
+                        carregarEncomendasDaViagem(viagemAtual);
+                    } else {
+                        cmbViagem.getSelectionModel().selectFirst();
+                        carregarEncomendasDaViagem(listaViagens.get(0));
+                    }
+                }
+                obsListaRotas.setAll(listaRotas);
+                if (cmbFiltroRota != null) cmbFiltroRota.setItems(obsListaRotas);
+                obsListaCaixas.setAll(listaCaixas);
+                if (cmbFiltroCaixa != null) cmbFiltroCaixa.setItems(obsListaCaixas);
+            }
+
+            @Override protected void failed() {
+                System.err.println("Erro ao carregar combos: " + getException().getMessage());
+            }
+        };
+        Thread tCombos = new Thread(taskCombos);
+        tCombos.setDaemon(true);
+        tCombos.start();
 
         if (txtFiltroCliente != null) {
             txtFiltroCliente.textProperty().addListener((o, ov, nv) -> aplicarFiltros());
@@ -438,6 +481,12 @@ public class ListaEncomendaController implements Initializable {
                 lista = encomendaDAO.listarPorViagem(viagem.getId());
             }
             listaMestraEncomendas.setAll(lista);
+            // Pre-carrega itens de todas as encomendas da viagem em 1 query (fix DP004)
+            if (viagem != null && viagem.getId() != null) {
+                cacheItensViagem = encomendaItemDAO.listarItensPorViagem(viagem.getId());
+            } else {
+                cacheItensViagem.clear();
+            }
             aplicarFiltros();
         } catch (Exception e) {
             e.printStackTrace();
@@ -493,8 +542,9 @@ public class ListaEncomendaController implements Initializable {
 
             boolean matchItem = true;
             if (!itemBusca.isEmpty()) {
-                List<EncomendaItem> itens = encomendaItemDAO.listarPorIdEncomenda(e.getId());
-                matchItem = itens.stream().anyMatch(i -> i.getDescricao().toUpperCase().contains(itemBusca));
+                // Usa cache pre-carregado em vez de query por encomenda (fix DP004)
+                java.util.List<model.EncomendaItem> itens = cacheItensViagem.getOrDefault(e.getId(), java.util.Collections.emptyList());
+                matchItem = itens.stream().anyMatch(i -> i.getDescricao() != null && i.getDescricao().toUpperCase().contains(itemBusca));
             }
 
             return matchNome && matchNumero && matchCaixa && matchRota && matchPagamento && matchEntrega && matchItem;
