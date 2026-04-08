@@ -42,7 +42,7 @@ public class EmbarcacaoDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao inserir/buscar embarcação: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return null;
     }
@@ -67,7 +67,7 @@ public class EmbarcacaoDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar embarcação por nome: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return null;
     }
@@ -92,7 +92,7 @@ public class EmbarcacaoDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todas as embarcações: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -119,7 +119,7 @@ public class EmbarcacaoDAO {
             return affectedRows > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar embarcação: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return false;
     }
@@ -133,7 +133,7 @@ public class EmbarcacaoDAO {
             return affectedRows > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao excluir embarcação: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return false;
     }

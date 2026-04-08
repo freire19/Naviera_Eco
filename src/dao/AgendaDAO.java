@@ -52,7 +52,7 @@ public class AgendaDAO {
             stmt.setString(2, texto);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
     }
 
@@ -68,7 +68,7 @@ public class AgendaDAO {
                 notas.add(rs.getString("descricao"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return notas;
     }
@@ -101,7 +101,7 @@ public class AgendaDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return boletos;
     }
@@ -123,7 +123,7 @@ public class AgendaDAO {
                 ));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return tarefas;
     }
@@ -145,7 +145,7 @@ public class AgendaDAO {
                 ));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
         return tarefas;
     }
@@ -158,7 +158,7 @@ public class AgendaDAO {
             stmt.setInt(2, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
     }
     
@@ -169,7 +169,7 @@ public class AgendaDAO {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
     }
 }

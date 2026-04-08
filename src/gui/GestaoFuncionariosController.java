@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -73,6 +74,7 @@ public class GestaoFuncionariosController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isAdmin()) { PermissaoService.exigirAdmin("Gestao de Funcionarios"); return; }
         configurarTabela();
         
         // --- REMOVIDO A LINHA QUE FORÇAVA O ESTILO DO BOTÃO SAIR ---
@@ -518,9 +520,9 @@ public class GestaoFuncionariosController {
     
     private double buscarTotalPagamentosReais(Funcionario f, LocalDate inicio) {
          try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND is_excluido = false AND data_pagamento >= ? AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
+            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE funcionario_id = ? AND is_excluido = false AND data_pagamento >= ? AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
             PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setString(1, "%" + f.nome.toUpperCase() + "%"); 
+            stmt.setInt(1, f.id);
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
@@ -542,9 +544,9 @@ public class GestaoFuncionariosController {
     
     private double buscarTotalDescontosLegado(Funcionario f, LocalDate inicio) {
          try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
+            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE funcionario_id = ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
             PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setString(1, "%" + f.nome.toUpperCase() + "%"); 
+            stmt.setInt(1, f.id);
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getDouble("total");
@@ -577,7 +579,8 @@ public class GestaoFuncionariosController {
         return false;
     }
 
-    @FXML public void lancarPagamento() { 
+    @FXML public void lancarPagamento() {
+         if (!PermissaoService.exigirAdmin("Lancar Pagamento de Funcionario")) return;
          if (funcionarioSelecionado == null) return;
          try {
             double valor = Double.parseDouble(txtValorPagamento.getText().replace(".", "").replace(",", "."));
@@ -611,18 +614,19 @@ public class GestaoFuncionariosController {
                 if(rs.next()) idViagem = rs.getInt(1);
             }
             
-            String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, id_viagem, is_excluido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, false)";
+            String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, false)";
             try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-                stmt.setString(1, descricao.toUpperCase()); 
+                stmt.setString(1, descricao.toUpperCase());
                 stmt.setDouble(2, valor); stmt.setDouble(3, valor);
-                stmt.setDate(4, java.sql.Date.valueOf(dataRef)); stmt.setDate(5, java.sql.Date.valueOf(dataRef)); 
+                stmt.setDate(4, java.sql.Date.valueOf(dataRef)); stmt.setDate(5, java.sql.Date.valueOf(dataRef));
                 stmt.setString(6, "PAGO");
-                stmt.setString(7, formaPagamento); 
-                
+                stmt.setString(7, formaPagamento);
+
                 int idCategoria = buscarIdCategoriaFuncionarios(con);
                 stmt.setInt(8, idCategoria);
-                
+
                 stmt.setInt(9, idViagem);
+                stmt.setInt(10, f.id);
                 stmt.executeUpdate();
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -659,11 +663,11 @@ public class GestaoFuncionariosController {
         }
 
         String sqlFin = "SELECT data_pagamento, descricao, valor_pago, forma_pagamento FROM financeiro_saidas " +
-                      "WHERE UPPER(descricao) LIKE ? " +
+                      "WHERE funcionario_id = ? " +
                       "AND ( (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false ) " +
-                      "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ?"; 
+                      "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ?";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sqlFin)) {
-            stmt.setString(1, "%" + f.nome.toUpperCase() + "%"); 
+            stmt.setInt(1, f.id);
             stmt.setInt(2, mes);
             stmt.setInt(3, ano);
             ResultSet rs = stmt.executeQuery();
@@ -870,6 +874,7 @@ public class GestaoFuncionariosController {
     }
 
     @FXML public void abrirTelaDemissao() {
+        if (!PermissaoService.exigirAdmin("Demissao de Funcionario")) return;
         if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Demissão");

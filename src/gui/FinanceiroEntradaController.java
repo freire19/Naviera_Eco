@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -46,6 +47,7 @@ public class FinanceiroEntradaController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Lancamento de Entradas"); return; }
         lblDataAtual.setText("Data de Hoje: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 
         carregarCombosEstaticos();

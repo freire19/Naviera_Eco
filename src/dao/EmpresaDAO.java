@@ -54,7 +54,7 @@ public class EmpresaDAO {
 
         } catch (SQLException e) {
             System.err.println("Erro ao salvar/atualizar dados da empresa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmpresaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -90,7 +90,7 @@ public class EmpresaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar dados da empresa por ID: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em EmpresaDAO: " + e.getMessage());
         }
         return null;
     }

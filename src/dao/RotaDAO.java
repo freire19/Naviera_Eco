@@ -30,7 +30,7 @@ public class RotaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todas as rotas como objetos: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return rotas;
     }
@@ -51,7 +51,7 @@ public class RotaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar rota por ID: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return null;
     }
@@ -67,7 +67,7 @@ public class RotaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao gerar próximo ID de rota: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return -1;
     }
@@ -82,7 +82,7 @@ public class RotaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao inserir rota: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -97,7 +97,7 @@ public class RotaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar rota: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -110,7 +110,7 @@ public class RotaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao excluir rota: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }

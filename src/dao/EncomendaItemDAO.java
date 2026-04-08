@@ -23,7 +23,7 @@ public class EncomendaItemDAO {
             stmt.setString(6, item.getLocalArmazenamento());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em EncomendaItemDAO: " + e.getMessage());
             return false;
         }
     }
@@ -60,7 +60,7 @@ public class EncomendaItemDAO {
                 lista.add(item);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em EncomendaItemDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -76,7 +76,7 @@ public class EncomendaItemDAO {
             return true; 
             
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em EncomendaItemDAO: " + e.getMessage());
             return false;
         }
     }

@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -38,6 +39,7 @@ public class FinanceiroFretesController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Financeiro Fretes"); return; }
         configurarTabela();
         carregarComboViagens();
 
@@ -98,9 +100,7 @@ public class FinanceiroFretesController {
                     setStyle("");
                 } else {
                     setText(item);
-                    if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else if (item.equals("PARCIAL")) setStyle("-fx-text-fill: #ef6c00; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
@@ -244,19 +244,34 @@ public class FinanceiroFretesController {
 
     private void salvarPagamento(long idFrete, BaixaPagamentoController dados, double jaPago) {
         double novoPago = jaPago + dados.getValorPago();
-        double totalComDesconto = dados.getValorTotalOriginal() - dados.getDesconto();
+        // Buscar desconto já armazenado no banco e somar com o novo (DL012)
+        double descontoAnterior = 0;
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM fretes WHERE id_frete = ?")) {
+            stmtQ.setLong(1, idFrete);
+            try (ResultSet rs = stmtQ.executeQuery()) {
+                if (rs.next()) descontoAnterior = rs.getDouble(1);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+
+        double descontoTotal = descontoAnterior + dados.getDesconto();
+        double totalComDesconto = dados.getValorTotalOriginal() - descontoTotal;
         double novoDevedor = Math.max(0, totalComDesconto - novoPago);
         String novoStatus = (novoDevedor <= 0.01) ? "PAGO" : "PENDENTE";
 
-        String sql = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, status_frete = ? WHERE id_frete = ?";
+        // DL011: gravar tipo_pagamento e nome_caixa junto
+        String sql = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, desconto = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ? WHERE id_frete = ?";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
 
             stmt.setDouble(1, novoPago);
             stmt.setDouble(2, novoDevedor);
-            stmt.setString(3, novoStatus);
-            stmt.setLong(4, idFrete);
+            stmt.setDouble(3, descontoTotal);
+            stmt.setString(4, dados.getFormaPagamento());
+            stmt.setString(5, dados.getCaixa());
+            stmt.setString(6, novoStatus);
+            stmt.setLong(7, idFrete);
             stmt.executeUpdate();
 
             alert("Pagamento registrado com sucesso!");
@@ -302,7 +317,7 @@ public class FinanceiroFretesController {
 
                 double novoPago = selecionada.getPago() - vEstorno;
                 double novoDevedor = selecionada.getTotal() - novoPago;
-                String novoStatus = (novoPago > 0.01) ? "PENDENTE" : "PENDENTE";
+                String novoStatus = (novoPago > 0.01) ? "PENDENTE" : "NAO_PAGO";
 
                 Connection con = null;
                 try {
@@ -491,9 +506,7 @@ public class FinanceiroFretesController {
         public String getRestanteFormatado() { return String.format("R$ %.2f", getRestante()); }
 
         public String getStatus() {
-            if (getRestante() <= 0.01) return "PAGO";
-            if (getPago() > 0.01) return "PARCIAL";
-            return "PENDENTE";
+            return model.StatusPagamento.calcularPorSaldo(getRestante(), getPago()).name();
         }
     }
 }

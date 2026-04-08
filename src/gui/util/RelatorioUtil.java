@@ -993,7 +993,7 @@ public class RelatorioUtil {
      * Retorna o status baseado no valor devedor
      */
     public static String getStatus(double devedor) {
-        return devedor <= 0.01 ? "QUITADO" : "PENDENTE";
+        return devedor <= 0.01 ? model.StatusPagamento.QUITADO.name() : model.StatusPagamento.PENDENTE.name();
     }
     
     /**

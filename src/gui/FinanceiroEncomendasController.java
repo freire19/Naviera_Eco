@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -39,9 +40,10 @@ public class FinanceiroEncomendasController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Financeiro Encomendas"); return; }
         configurarTabela();
         carregarComboViagens();
-        
+
         cmbViagem.valueProperty().addListener((obs, oldVal, newVal) -> carregarDados());
         txtBusca.textProperty().addListener((obs, oldVal, newVal) -> carregarDados());
         chkApenasDevedores.selectedProperty().addListener((obs, oldVal, newVal) -> carregarDados());
@@ -102,9 +104,7 @@ public class FinanceiroEncomendasController {
                     setText(null); setStyle("");
                 } else {
                     setText(item);
-                    if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else if (item.equals("PARCIAL")) setStyle("-fx-text-fill: #ef6c00; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
@@ -237,22 +237,34 @@ public class FinanceiroEncomendasController {
     
     private void salvarPagamento(int idEncomenda, BaixaPagamentoController dados, double jaPago) {
         double novoPago = jaPago + dados.getValorPago();
-        double totalComDesconto = dados.getValorTotalOriginal() - dados.getDesconto();
+
+        // Buscar desconto já armazenado e acumular (DL010)
+        double descontoAnterior = 0;
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM encomendas WHERE id_encomenda = ?")) {
+            stmtQ.setInt(1, idEncomenda);
+            try (ResultSet rs = stmtQ.executeQuery()) {
+                if (rs.next()) descontoAnterior = rs.getDouble(1);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+
+        double descontoTotal = descontoAnterior + dados.getDesconto();
+        double totalComDesconto = dados.getValorTotalOriginal() - descontoTotal;
         String novoStatus = (novoPago >= totalComDesconto - 0.01) ? "PAGO" : "PARCIAL";
 
         String sql = "UPDATE encomendas SET valor_pago = ?, desconto = ?, tipo_pagamento = ?, caixa = ?, status_pagamento = ? WHERE id_encomenda = ?";
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
-            
+
             stmt.setDouble(1, novoPago);
-            stmt.setDouble(2, dados.getDesconto());
+            stmt.setDouble(2, descontoTotal);
             stmt.setString(3, dados.getFormaPagamento());
             stmt.setString(4, dados.getCaixa());
             stmt.setString(5, novoStatus);
             stmt.setInt(6, idEncomenda);
             stmt.executeUpdate();
-            
+
             alert("Pagamento registrado com sucesso!");
             carregarDados();
 
@@ -371,6 +383,7 @@ public class FinanceiroEncomendasController {
         }
     }
 
+    /** @deprecated Usar gui.util.AlertHelper.info() */
     private void alert(String msg) {
         new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
     }
@@ -402,10 +415,8 @@ public class FinanceiroEncomendasController {
         public String getTotalFormatado() { return String.format("R$ %.2f", total); }
         public String getPagoFormatado() { return String.format("R$ %.2f", pago); }
         public String getRestanteFormatado() { return String.format("R$ %.2f", getRestante()); }
-        public String getStatus() { 
-            if (getRestante() <= 0.01) return "PAGO";
-            if (getPago() > 0.01) return "PARCIAL";
-            return "PENDENTE";
+        public String getStatus() {
+            return model.StatusPagamento.calcularPorSaldo(getRestante(), getPago()).name();
         }
     }
 }

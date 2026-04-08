@@ -14,6 +14,7 @@ import java.util.TreeMap;
 
 import dao.BalancoViagemDAO;
 import dao.ConexaoBD;
+import javafx.scene.control.Alert;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -96,6 +97,13 @@ public class BalancoViagemController {
         try (Connection con = ConexaoBD.getConnection()) {
             BalancoViagemDAO dao = new BalancoViagemDAO(con);
             this.dadosAtuais = dao.buscarBalancoDaViagem(id);
+            if (dadosAtuais.isDadosIncompletos()) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Dados Incompletos");
+                alert.setHeaderText("O balanço pode estar incompleto");
+                alert.setContentText("Algumas seções falharam ao carregar: " + dadosAtuais.getErroDetalhes());
+                alert.showAndWait();
+            }
             preencherAbaSimplificada();
             carregarDetalhamentoTab2(con, id);
             carregarGraficos();

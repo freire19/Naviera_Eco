@@ -18,6 +18,10 @@ public class DadosBalancoViagem {
     // Mapa para o Gráfico de Despesas
     private Map<String, Double> saidasPorCategoria = new HashMap<>();
 
+    // Flag para indicar que alguma seção falhou ao carregar
+    private boolean dadosIncompletos = false;
+    private String erroDetalhes = "";
+
     // --- Métodos ---
     public void adicionarItem(ItemResumoBalanco item) {
         this.itensReceita.add(item);
@@ -52,4 +56,11 @@ public class DadosBalancoViagem {
     public void setSaidasPorCategoria(Map<String, Double> m) { this.saidasPorCategoria = m; }
     
     public List<ItemResumoBalanco> getItensReceita() { return itensReceita; }
+
+    public boolean isDadosIncompletos() { return dadosIncompletos; }
+    public void marcarIncompleto(String secao, String erro) {
+        this.dadosIncompletos = true;
+        this.erroDetalhes += secao + ": " + erro + "; ";
+    }
+    public String getErroDetalhes() { return erroDetalhes; }
 }

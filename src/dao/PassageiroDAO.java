@@ -31,7 +31,7 @@ public class PassageiroDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todos os passageiros: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return passageiros;
     }
@@ -113,7 +113,7 @@ public class PassageiroDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar nomes de passageiros: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return nomes;
     }
@@ -130,7 +130,7 @@ public class PassageiroDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar passageiro por nome: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }
@@ -146,7 +146,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-                e.printStackTrace();
+                System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }
@@ -162,7 +162,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }

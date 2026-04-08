@@ -29,7 +29,7 @@ public class CaixaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar caixas: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -45,7 +45,7 @@ public class CaixaDAO {
             
         } catch (SQLException e) {
             System.err.println("Erro ao inserir caixa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -62,7 +62,7 @@ public class CaixaDAO {
             
         } catch (SQLException e) {
             System.err.println("Erro ao alterar caixa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -78,7 +78,7 @@ public class CaixaDAO {
             
         } catch (SQLException e) {
             System.err.println("Erro ao excluir caixa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }

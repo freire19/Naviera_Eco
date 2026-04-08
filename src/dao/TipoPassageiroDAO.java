@@ -22,7 +22,7 @@ public class TipoPassageiroDAO {
             return true;
 
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
             return false;
         }
     }
@@ -48,7 +48,7 @@ public class TipoPassageiroDAO {
                 lista.add(tp);
             }
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -73,7 +73,7 @@ public class TipoPassageiroDAO {
                 return rs.getInt("id");
             }
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
         }
         return 0;
     }
@@ -89,7 +89,7 @@ public class TipoPassageiroDAO {
                 return rs.getString("nome");
             }
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
         }
         return null;
     }

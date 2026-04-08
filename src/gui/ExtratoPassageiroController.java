@@ -208,10 +208,7 @@ public class ExtratoPassageiroController implements Initializable {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    if (item.equalsIgnoreCase("PENDENTE") || item.equalsIgnoreCase("PARCIAL"))
-                        setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else
-                        setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
@@ -265,7 +262,7 @@ public class ExtratoPassageiroController implements Initializable {
                 double vSaldo = vTotal - vPago;
                 if (vSaldo < 0.01) vSaldo = 0.0;
 
-                String stCalculado = (vSaldo > 0.01) ? (vPago > 0 ? "PARCIAL" : "PENDENTE") : "PAGO";
+                String stCalculado = model.StatusPagamento.calcularPorSaldo(vSaldo, vPago).name();
 
                 totalGeral += vTotal;
                 totalPago += vPago;

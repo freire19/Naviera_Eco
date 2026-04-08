@@ -74,9 +74,7 @@ public class ExtratoClienteEncomendaController {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;");
-                    else if (item.equals("PARCIAL")) setStyle("-fx-text-fill: #ef6c00; -fx-font-weight: bold;");
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
@@ -243,19 +241,19 @@ public class ExtratoClienteEncomendaController {
                 if (fatorPagamento < 0) fatorPagamento = 0; 
 
                 String sqlUpdate = "UPDATE encomendas SET " +
-                                   "desconto = (total_a_pagar - valor_pago) * (1 - ?), " + 
-                                   "valor_pago = total_a_pagar - ((total_a_pagar - valor_pago) * (1 - ?)), " + 
+                                   "desconto = (total_a_pagar - valor_pago) * (1 - ?), " +
+                                   "valor_pago = total_a_pagar - ((total_a_pagar - valor_pago) * (1 - ?)), " +
                                    "status_pagamento = 'PAGO', tipo_pagamento = ?, caixa = ? " +
-                                   "WHERE destinatario ILIKE ? AND valor_pago < total_a_pagar";
-                
+                                   "WHERE TRIM(destinatario) ILIKE TRIM(?) AND valor_pago < total_a_pagar";
+
                 try (Connection con = ConexaoBD.getConnection();
                      PreparedStatement stmt = con.prepareStatement(sqlUpdate)) {
-                    
+
                     stmt.setDouble(1, fatorPagamento);
                     stmt.setDouble(2, fatorPagamento);
                     stmt.setString(3, forma);
                     stmt.setString(4, caixa);
-                    stmt.setString(5, "%" + nomeClienteAtual.trim() + "%");
+                    stmt.setString(5, nomeClienteAtual.trim());
                     
                     int qtd = stmt.executeUpdate();
                     
@@ -304,9 +302,7 @@ public class ExtratoClienteEncomendaController {
         public String getValorPago() { return nf.format(valorPago); }
         public String getSaldo() { return nf.format(saldo); }
         public String getStatus() {
-            if (saldo <= 0.01) return "PAGO";
-            if (valorPago > 0) return "PARCIAL";
-            return "PENDENTE";
+            return model.StatusPagamento.calcularPorSaldo(saldo, valorPago).name();
         }
     }
 }

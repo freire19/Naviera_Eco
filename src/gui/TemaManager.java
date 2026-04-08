@@ -24,11 +24,14 @@ public class TemaManager {
         String cssParaCarregar = isModoEscuro ? CSS_ESCURO : CSS_CLARO;
         
         try {
-            String url = TemaManager.class.getResource(cssParaCarregar).toExternalForm();
-            scene.getStylesheets().add(url);
+            java.net.URL cssUrl = TemaManager.class.getResource(cssParaCarregar);
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                System.err.println("CSS nao encontrado no classpath: " + cssParaCarregar);
+            }
         } catch (Exception e) {
-            System.err.println("Erro ao carregar CSS: " + cssParaCarregar);
-            e.printStackTrace();
+            System.err.println("Erro ao carregar CSS: " + cssParaCarregar + " - " + e.getMessage());
         }
     }
     

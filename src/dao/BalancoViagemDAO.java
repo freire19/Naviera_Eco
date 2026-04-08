@@ -45,6 +45,7 @@ public class BalancoViagemDAO {
                 }
             } catch (SQLException e) {
                 System.err.println("Erro SQL Passagens: " + e.getMessage());
+                dados.marcarIncompleto("Passagens", e.getMessage());
             }
 
             // =================================================================================
@@ -65,7 +66,8 @@ public class BalancoViagemDAO {
                     dados.somarEncomendas(valor);
                 }
             } catch (SQLException e) {
-                 System.err.println("Erro SQL Encomendas: " + e.getMessage());
+                System.err.println("Erro SQL Encomendas: " + e.getMessage());
+                dados.marcarIncompleto("Encomendas", e.getMessage());
             }
             
             // =================================================================================
@@ -87,6 +89,7 @@ public class BalancoViagemDAO {
                 }
             } catch (SQLException e) {
                 System.err.println("Erro SQL Fretes: " + e.getMessage());
+                dados.marcarIncompleto("Fretes", e.getMessage());
             }
 
             // =================================================================================
@@ -112,7 +115,7 @@ public class BalancoViagemDAO {
             dados.setTotalSaidas(somaSaidas);
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em BalancoViagemDAO: " + e.getMessage());
         }
         
         return dados;

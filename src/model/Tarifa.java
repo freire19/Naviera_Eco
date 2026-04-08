@@ -62,7 +62,7 @@ public class Tarifa {
     }
 
     public BigDecimal getValorTransporte() {
-        return valorTransporte;
+        return valorTransporte != null ? valorTransporte : BigDecimal.ZERO;
     }
 
     public void setValorTransporte(BigDecimal valorTransporte) {
@@ -70,7 +70,7 @@ public class Tarifa {
     }
 
     public BigDecimal getValorAlimentacao() {
-        return valorAlimentacao;
+        return valorAlimentacao != null ? valorAlimentacao : BigDecimal.ZERO;
     }
 
     public void setValorAlimentacao(BigDecimal valorAlimentacao) {
@@ -78,7 +78,7 @@ public class Tarifa {
     }
 
     public BigDecimal getValorCargas() {
-        return valorCargas;
+        return valorCargas != null ? valorCargas : BigDecimal.ZERO;
     }
 
     public void setValorCargas(BigDecimal valorCargas) {
@@ -86,7 +86,7 @@ public class Tarifa {
     }
 
     public BigDecimal getValorDesconto() {
-        return valorDesconto;
+        return valorDesconto != null ? valorDesconto : BigDecimal.ZERO;
     }
 
     public void setValorDesconto(BigDecimal valorDesconto) {

@@ -37,7 +37,7 @@ public class ReciboAvulsoDAO {
                 lista.add(montarObjeto(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -52,16 +52,21 @@ public class ReciboAvulsoDAO {
                 lista.add(montarObjeto(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
         }
         return lista;
     }
 
     private ReciboAvulso montarObjeto(ResultSet rs) throws SQLException {
         ReciboAvulso r = new ReciboAvulso();
-        // Tenta ler ID (seja 'id' ou 'id_recibo' para evitar erros de banco)
-        try { r.setId(rs.getInt("id")); } catch (Exception e) { 
-            try { r.setId(rs.getInt("id_recibo")); } catch(Exception ex) {} 
+        // Determina nome da coluna ID no ResultSet
+        java.sql.ResultSetMetaData meta = rs.getMetaData();
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            String col = meta.getColumnName(i);
+            if ("id".equals(col) || "id_recibo".equals(col)) {
+                r.setId(rs.getInt(col));
+                break;
+            }
         }
         
         r.setIdViagem(rs.getInt("id_viagem"));

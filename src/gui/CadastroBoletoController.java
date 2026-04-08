@@ -1,6 +1,8 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
+import gui.util.SessaoUsuario;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -204,8 +206,7 @@ public class CadastroBoletoController {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;");
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });
@@ -218,14 +219,18 @@ public class CadastroBoletoController {
     public void filtrar() {
         ObservableList<Boleto> lista = FXCollections.observableArrayList();
         StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE forma_pagamento = 'BOLETO' ");
-        
+
         if(dpFiltroData.getValue() != null) {
-            sql.append(" AND data_vencimento = '").append(dpFiltroData.getValue()).append("'");
+            sql.append(" AND data_vencimento = ?");
         }
         sql.append(" ORDER BY data_vencimento ASC");
-        
+
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement(sql.toString()).executeQuery()){
+        try(Connection c = ConexaoBD.getConnection(); PreparedStatement ps = c.prepareStatement(sql.toString())){
+            if(dpFiltroData.getValue() != null) {
+                ps.setDate(1, java.sql.Date.valueOf(dpFiltroData.getValue()));
+            }
+            ResultSet rs = ps.executeQuery();
             while(rs.next()){
                 lista.add(new Boleto(
                     rs.getInt("id"),
@@ -267,12 +272,26 @@ public class CadastroBoletoController {
     
     @FXML
     public void excluir() {
+        if (!PermissaoService.exigirAdmin("Excluir registro financeiro")) return;
         Boleto sel = tabela.getSelectionModel().getSelectedItem();
         if(sel == null) return;
-        if(new Alert(Alert.AlertType.CONFIRMATION, "Excluir?").showAndWait().get() == ButtonType.OK) {
-            try(Connection c = ConexaoBD.getConnection(); PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=?")) {
-                s.setInt(1, sel.getId());
-                s.executeUpdate();
+        if(new Alert(Alert.AlertType.CONFIRMATION, "Excluir boleto: " + sel.getDescricao() + "?").showAndWait().get() == ButtonType.OK) {
+            try(Connection c = ConexaoBD.getConnection()) {
+                // Registrar em auditoria antes de deletar
+                String usuario = SessaoUsuario.isUsuarioLogado() ? SessaoUsuario.getUsuarioLogado().getNomeCompleto() : "DESCONHECIDO";
+                try (PreparedStatement audit = c.prepareStatement(
+                        "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor) VALUES (?, ?, ?, NOW(), ?)")) {
+                    audit.setString(1, "EXCLUSAO_BOLETO");
+                    audit.setString(2, "Exclusao de boleto: " + sel.getDescricao());
+                    audit.setString(3, usuario);
+                    audit.setString(4, "Valor: " + sel.getValorFormatado() + " | Vencimento: " + sel.getVencimento());
+                    audit.executeUpdate();
+                }
+                // Agora deleta
+                try (PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=?")) {
+                    s.setInt(1, sel.getId());
+                    s.executeUpdate();
+                }
                 filtrar();
             } catch(Exception e) { e.printStackTrace(); }
         }

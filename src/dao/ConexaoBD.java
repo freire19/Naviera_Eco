@@ -25,10 +25,10 @@ public class ConexaoBD {
 
     static {
         try {
-            // Carrega o driver do PostgreSQL (certifique-se de que o .jar esteja no classpath):
             Class.forName("org.postgresql.Driver");
         } catch (ClassNotFoundException e) {
-            System.err.println("Driver JDBC do PostgreSQL não encontrado: " + e.getMessage());
+            System.err.println("FATAL: Driver JDBC do PostgreSQL nao encontrado. Verifique se postgresql.jar esta no classpath.");
+            throw new RuntimeException("Driver PostgreSQL nao encontrado", e);
         }
     }
 

@@ -272,17 +272,10 @@ public class InserirEncomendaController implements Initializable {
         File file = fileChooser.showOpenDialog(rootPane.getScene().getWindow());
 
         if (file != null) {
-            new Thread(() -> {
-                try {
-                    ITesseract instance = new Tesseract();
-                    instance.setDatapath("C:\\SistemaEmbarcacao\\tessdata"); 
-                    instance.setLanguage("por");
-                    String resultado = instance.doOCR(file);
-                    interpretarTextoEPreencher(resultado);
-                } catch (Exception e) {
-                    Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro OCR", "Erro: " + e.getMessage()));
-                }
-            }).start();
+            gui.util.OcrAudioService.executarOCRAsync(file,
+                resultado -> interpretarTextoEPreencher(resultado),
+                e -> Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro OCR", "Erro: " + e.getMessage()))
+            );
         }
     }
 
@@ -291,40 +284,20 @@ public class InserirEncomendaController implements Initializable {
         if(btnAudioInput.getText().contains("Ouvindo")) return;
         btnAudioInput.setText("Ouvindo... (Fale agora)");
         btnAudioInput.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white;"); 
-        new Thread(() -> {
-            try {
-                String modeloPath = "C:\\SistemaEmbarcacao\\modelo-voz"; 
-                Model model = new Model(modeloPath);
-                AudioFormat format = new AudioFormat(16000, 16, 1, true, false);
-                DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-                TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
-                Recognizer recognizer = new Recognizer(model, 16000);
-                microphone.open(format);
-                microphone.start();
-                int numBytesRead;
-                int CHUNK_SIZE = 4096;
-                byte[] data = new byte[CHUNK_SIZE];
-                long start = System.currentTimeMillis();
-                while (System.currentTimeMillis() - start < 5000) {
-                    numBytesRead = microphone.read(data, 0, CHUNK_SIZE);
-                    recognizer.acceptWaveForm(data, numBytesRead);
-                }
-                String jsonResult = recognizer.getFinalResult();
-                String texto = "";
-                if(jsonResult.contains("\"text\" : \"")) {
-                    texto = jsonResult.split("\"text\" : \"")[1].replace("\"}", "").replace("\n", "").trim();
-                }
-                microphone.stop(); microphone.close(); model.close();
+        gui.util.OcrAudioService.executarVozAsync(
+            texto -> {
                 interpretarTextoEPreencher(texto);
-            } catch (Exception e) {
-                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro Audio", "Erro: " + e.getMessage()));
-            } finally {
                 Platform.runLater(() -> {
                     btnAudioInput.setText("Microfone");
-                    btnAudioInput.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;"); 
+                    btnAudioInput.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
                 });
-            }
-        }).start();
+            },
+            e -> Platform.runLater(() -> {
+                showAlert(AlertType.ERROR, "Erro Audio", "Erro: " + e.getMessage());
+                btnAudioInput.setText("Microfone");
+                btnAudioInput.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+            })
+        );
     }
 
     private void interpretarTextoEPreencher(String texto) {

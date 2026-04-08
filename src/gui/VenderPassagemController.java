@@ -268,8 +268,10 @@ public class VenderPassagemController implements Initializable {
                     if (rotasObjects != null) {
                         for (model.Rota r : rotasObjects) rotasStrings.add(r.toString());
                     }
-                } catch (Exception e) {}
-                
+                } catch (Exception e) {
+                    System.err.println("Erro ao carregar rotas: " + e.getMessage());
+                }
+
                 List<String> tipoPassagem = auxiliaresDAO.listarPassagemAux();
                 List<String> sexos = auxiliaresDAO.listarSexo();
                 List<String> tiposDoc = auxiliaresDAO.listarTipoDoc();
@@ -300,7 +302,7 @@ public class VenderPassagemController implements Initializable {
                         String prev = (v.getDataChegada() != null) ? dateFormatter.format(v.getDataChegada()) : "??";
                         viagensFormatadas.add(v.getId() + " - " + dt + " - Prev: " + prev);
                     }
-                } catch(Exception e) {
+                } catch (Exception e) {
                     System.err.println("Erro ao carregar viagens: " + e.getMessage());
                 }
 
@@ -328,7 +330,10 @@ public class VenderPassagemController implements Initializable {
                 
             } catch (Exception e) {
                 e.printStackTrace();
-                Platform.runLater(() -> { if(rootPane!=null) rootPane.setDisable(false); });
+                Platform.runLater(() -> {
+                    if (rootPane != null) rootPane.setDisable(false);
+                    if (btnNovo != null) btnNovo.setDisable(false);
+                });
             }
         }).start();
     }
@@ -367,7 +372,9 @@ public class VenderPassagemController implements Initializable {
                         }
                         LocalDate d = LocalDate.parse(fmt, dateFormatter);
                         dpDataNascimento.setValue(d);
-                    } catch (Exception e) {}
+                    } catch (Exception e) {
+                        System.err.println("Erro ao parsear data de nascimento: " + e.getMessage());
+                    }
                 }
             }
         });
@@ -425,7 +432,9 @@ public class VenderPassagemController implements Initializable {
                                 if (v != null) { this.viagemSelecionada = v; configurarTelaComViagemAtiva(); }
                             }
                         }
-                    } catch (Exception e) {}
+                    } catch (Exception e) {
+                        System.err.println("Erro ao parsear selecao de viagem: " + e.getMessage());
+                    }
                 }
             });
         }
@@ -716,8 +725,12 @@ public class VenderPassagemController implements Initializable {
         }
         passagem.setDescricaoHorarioSaida(viagemSelecionada.getDescricaoHorarioSaida());
 
-        if (txtIdade.getText() != null && !txtIdade.getText().isEmpty()) {
-            passagem.setIdade(Integer.parseInt(txtIdade.getText()));
+        if (txtIdade.getText() != null && !txtIdade.getText().trim().isEmpty()) {
+            try {
+                passagem.setIdade(Integer.parseInt(txtIdade.getText().trim()));
+            } catch (NumberFormatException e) {
+                System.err.println("Idade invalida: " + txtIdade.getText());
+            }
         }
         passagem.setNomePassageiro(nomePassageiro);
         passagem.setTipoPassagemAux(cmbTipoPassagemAux.getValue());
@@ -1603,7 +1616,9 @@ public class VenderPassagemController implements Initializable {
                     logo.setFitWidth(70); logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
                 }
-            } catch(Exception e) {}
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar logo para impressao: " + e.getMessage());
+            }
         }
         headerBox.getChildren().add(headerContent);
         

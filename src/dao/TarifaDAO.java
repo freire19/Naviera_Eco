@@ -33,7 +33,7 @@ public class TarifaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar tarifa por rota e tipo: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return tarifa;
     }
@@ -58,7 +58,7 @@ public class TarifaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao inserir tarifa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return false;
     }
@@ -75,7 +75,7 @@ public class TarifaDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar tarifa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -88,7 +88,7 @@ public class TarifaDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao excluir tarifa: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -122,7 +122,7 @@ public class TarifaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao listar todas as tarifas: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return tarifas;
     }

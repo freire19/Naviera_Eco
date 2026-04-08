@@ -41,7 +41,7 @@ public class ViagemDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao buscar viagens do mês: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return viagens;
     }
@@ -79,7 +79,7 @@ public class ViagemDAO {
                                                  nomeEmbarcacao));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return listaFormatada;
     }
@@ -105,7 +105,7 @@ public class ViagemDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return null;
     }
@@ -129,7 +129,7 @@ public class ViagemDAO {
                 return mapResultSetToViagem(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         
         // Se não achou por is_atual, tenta buscar pela última cadastrada (fallback)
@@ -152,7 +152,7 @@ public class ViagemDAO {
                 return mapResultSetToViagem(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return null;
     }
@@ -258,7 +258,7 @@ public class ViagemDAO {
                 viagens.add(mapResultSetToViagem(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return viagens;
     }
@@ -272,7 +272,7 @@ public class ViagemDAO {
             while (rs.next()) {
                 ids.add(rs.getInt("id_horario_saida"));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); }
         return ids;
     }
 
@@ -286,7 +286,7 @@ public class ViagemDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao gerar próximo ID de viagem: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return null;
     }
@@ -305,7 +305,7 @@ public class ViagemDAO {
             stmt.setLong(8, v.getIdEmbarcacao());
             stmt.setLong(9, v.getIdRota());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
     }
 
     public boolean atualizar(Viagem v) {
@@ -322,16 +322,48 @@ public class ViagemDAO {
             stmt.setLong(8, v.getIdRota());
             stmt.setLong(9, v.getId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
     }
 
     public boolean excluir(long id) {
-        String sql = "DELETE FROM viagens WHERE id_viagem = ?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, id);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        // Exclui registros filhos antes da viagem (DL005)
+        String[] sqlFilhos = {
+            "DELETE FROM encomenda_itens WHERE id_encomenda IN (SELECT id_encomenda FROM encomendas WHERE id_viagem = ?)",
+            "DELETE FROM passagens WHERE id_viagem = ?",
+            "DELETE FROM encomendas WHERE id_viagem = ?",
+            "DELETE FROM fretes WHERE id_viagem = ?",
+            "DELETE FROM recibos_avulsos WHERE id_viagem = ?",
+            "DELETE FROM financeiro_saidas WHERE id_viagem = ?"
+        };
+        String sqlViagem = "DELETE FROM viagens WHERE id_viagem = ?";
+
+        Connection conn = null;
+        try {
+            conn = ConexaoBD.getConnection();
+            conn.setAutoCommit(false);
+
+            for (String sql : sqlFilhos) {
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setLong(1, id);
+                    stmt.executeUpdate();
+                }
+            }
+
+            boolean resultado;
+            try (PreparedStatement stmt = conn.prepareStatement(sqlViagem)) {
+                stmt.setLong(1, id);
+                resultado = stmt.executeUpdate() > 0;
+            }
+
+            conn.commit();
+            return resultado;
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
+            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } }
+            return false;
+        } finally {
+            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); } }
+        }
     }
 
     // --- CORREÇÃO PRINCIPAL: DEFINIR VIAGEM ATIVA USANDO is_atual ---
@@ -359,7 +391,7 @@ public class ViagemDAO {
             return true;
         } catch (SQLException e) {
             try { if(conn!=null) conn.rollback(); } catch(Exception ex){}
-            e.printStackTrace(); 
+            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); 
             return false;
         } finally {
             try { if(conn!=null) conn.setAutoCommit(true); conn.close(); } catch(Exception ex){}

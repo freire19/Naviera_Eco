@@ -488,7 +488,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
             try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao FROM configuracao_empresa LIMIT 1")) {
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) nomeEmp = rs.getString("nome_embarcacao");
-            } catch(Exception e) {}
+            } catch(Exception e) { System.err.println("Erro ao carregar nome empresa: " + e.getMessage()); }
             
             Label lEmp = new Label(nomeEmp.toUpperCase()); lEmp.setFont(FONT_EMPRESA); lEmp.setAlignment(Pos.CENTER); lEmp.setMaxWidth(Double.MAX_VALUE);
             Label lTit = new Label("TABELA DE PREÇOS DE ENCOMENDA"); lTit.setFont(Font.font("Arial", FontWeight.BLACK, 14)); lTit.setAlignment(Pos.CENTER); lTit.setMaxWidth(Double.MAX_VALUE);
@@ -571,7 +571,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
             try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao FROM configuracao_empresa LIMIT 1")) {
                 ResultSet rs = stmt.executeQuery();
                 if (rs.next()) nomeEmp = rs.getString("nome_embarcacao");
-            } catch(Exception e) {}
+            } catch(Exception e) { System.err.println("Erro ao carregar nome empresa: " + e.getMessage()); }
             Label lEmp = new Label(nomeEmp.toUpperCase()); lEmp.setFont(FONT_EMPRESA);
             
             Label lRota = new Label("ROTA: " + nomeRota);

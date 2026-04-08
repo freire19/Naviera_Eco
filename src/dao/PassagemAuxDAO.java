@@ -15,7 +15,7 @@ public class PassagemAuxDAO {
             ps.executeUpdate();
             return true;
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassagemAuxDAO: " + e.getMessage());
             return false;
         }
     }
@@ -32,7 +32,7 @@ public class PassagemAuxDAO {
                 lista.add(rs.getString("nome"));
             }
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassagemAuxDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -48,7 +48,7 @@ public class PassagemAuxDAO {
                 return rs.getInt("id");
             }
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassagemAuxDAO: " + e.getMessage());
         }
         return 0;
     }
@@ -64,7 +64,7 @@ public class PassagemAuxDAO {
                 return rs.getString("nome");
             }
         } catch(SQLException e){
-            e.printStackTrace();
+            System.err.println("Erro SQL em PassagemAuxDAO: " + e.getMessage());
         }
         return null;
     }

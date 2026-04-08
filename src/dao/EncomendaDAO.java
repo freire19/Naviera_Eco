@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import model.Encomenda;
@@ -40,7 +41,7 @@ public class EncomendaDAO {
                 }
             }
             return encomenda;
-        } catch (SQLException e) { e.printStackTrace(); return null; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return null; }
     }
 
     public List<Encomenda> listarPorViagem(Long idViagem) {
@@ -53,7 +54,7 @@ public class EncomendaDAO {
             while (rs.next()) {
                 lista.add(mapearEncomenda(rs));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
     }
 
@@ -66,7 +67,7 @@ public class EncomendaDAO {
             while (rs.next()) {
                 lista.add(mapearEncomenda(rs));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
     }
 
@@ -80,7 +81,7 @@ public class EncomendaDAO {
                     return mapearEncomenda(rs);
                 }
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return null;
     }
 
@@ -117,7 +118,7 @@ public class EncomendaDAO {
             stmt.setString(2, status);
             stmt.setLong(3, idEncomenda);
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public boolean excluir(Long id) {
@@ -138,7 +139,7 @@ public class EncomendaDAO {
                 conn.rollback();
                 throw ex;
             }
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public boolean registrarEntrega(Long idEncomenda, String docRecebedor, String nomeRecebedor, String statusPagto) {
@@ -156,19 +157,29 @@ public class EncomendaDAO {
             stmt.setString(3, statusPagto);
             stmt.setLong(4, idEncomenda);
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public int obterProximoNumero(Long idViagem, String nomeRota) {
-        String sql = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ?";
-        try (Connection conn = ConexaoBD.getConnection(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, idViagem);
-            stmt.setString(2, nomeRota);
-            try (ResultSet rs = stmt.executeQuery()) { 
-                if (rs.next()) return rs.getInt(1) + 1; 
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
+        // Usa sequence para evitar race condition (DL002)
+        String sql = "SELECT nextval('seq_numero_encomenda')";
+        try (Connection conn = ConexaoBD.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            // Fallback se sequence não existir ainda (rodar script 005)
+            System.err.println("Sequence seq_numero_encomenda não encontrada. Usando fallback MAX+1. Execute o script 005.");
+            String fallback = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ?";
+            try (Connection conn = ConexaoBD.getConnection();
+                 PreparedStatement stmt2 = conn.prepareStatement(fallback)) {
+                stmt2.setLong(1, idViagem);
+                stmt2.setString(2, nomeRota);
+                try (ResultSet rs = stmt2.executeQuery()) {
+                    if (rs.next()) return rs.getInt(1) + 1;
+                }
+            } catch (SQLException ex) { ex.printStackTrace(); }
+        }
         return 1;
     }
     

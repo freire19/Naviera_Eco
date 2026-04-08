@@ -46,6 +46,6 @@ public class Passageiro {
 
     @Override
     public String toString() {
-        return nome; // Para exibição em ComboBox
+        return nome != null ? nome : "";
     }
 }

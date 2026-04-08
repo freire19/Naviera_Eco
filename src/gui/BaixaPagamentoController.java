@@ -77,12 +77,21 @@ public class BaixaPagamentoController {
             lblRestante.setText(String.format("R$ %.2f", novoRestante));
             lblTroco.setText(String.format("R$ %.2f", troco));
             
-        } catch (Exception e) { }
+        } catch (Exception e) {
+            lblTroco.setText("R$ 0,00");
+        }
     }
 
     private double converterMoeda(String texto) {
-        if (texto == null || texto.isEmpty()) return 0.0;
-        return Double.parseDouble(texto.replace(",", "."));
+        if (texto == null || texto.trim().isEmpty()) return 0.0;
+        try {
+            double valor = Double.parseDouble(texto.trim().replace(",", "."));
+            if (valor < 0) throw new IllegalArgumentException("Valor nao pode ser negativo");
+            return valor;
+        } catch (NumberFormatException e) {
+            System.err.println("Valor invalido para conversao monetaria: " + texto);
+            return 0.0;
+        }
     }
     
     private void carregarFormasPagamento() {
@@ -112,10 +121,24 @@ public class BaixaPagamentoController {
                 cmbCaixa.getItems().add("PADRAO");
                 cmbCaixa.getSelectionModel().selectFirst();
             }
-        } catch (SQLException e) { }
+        } catch (SQLException e) {
+            System.err.println("Erro ao carregar caixas: " + e.getMessage());
+            cmbCaixa.getItems().add("PADRAO");
+            cmbCaixa.getSelectionModel().selectFirst();
+        }
     }
 
-    @FXML void confirmar() { confirmado = true; fechar(); }
+    @FXML void confirmar() {
+        double desc = converterMoeda(txtDesconto.getText());
+        if (desc > restanteOriginal) {
+            Alert alert = new Alert(Alert.AlertType.WARNING, "O desconto não pode ser maior que o valor restante (R$ " + String.format("%.2f", restanteOriginal) + ").");
+            alert.setHeaderText("Desconto inválido");
+            alert.showAndWait();
+            return;
+        }
+        confirmado = true;
+        fechar();
+    }
     @FXML void cancelar() { confirmado = false; fechar(); }
     private void fechar() { ((Stage) btnConfirmar.getScene().getWindow()).close(); }
 }

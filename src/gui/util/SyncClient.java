@@ -43,7 +43,11 @@ public class SyncClient {
     }
     
     private SyncClient() {
-        this.scheduler = Executors.newScheduledThreadPool(1);
+        this.scheduler = Executors.newScheduledThreadPool(1, r -> {
+            Thread t = new Thread(r, "SyncClient-Scheduler");
+            t.setDaemon(true);
+            return t;
+        });
         carregarConfiguracoes();
     }
     

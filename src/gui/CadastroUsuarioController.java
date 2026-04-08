@@ -203,7 +203,7 @@ public class CadastroUsuarioController implements Initializable {
         u.setEmail(email.isEmpty() ? null : email); 
         
         if (!senha.isEmpty()) { // Só define a senha no objeto se uma nova foi digitada
-            u.setSenha(senha); 
+            u.setSenhaPlana(senha);
         } else if (isInsert) {
             // Esta validação já foi feita acima, mas é uma dupla checagem.
             System.err.println("Tentativa de inserir novo usuário sem senha, embora já validado.");

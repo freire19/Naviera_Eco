@@ -100,7 +100,7 @@ public class FreteDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL ao buscar fretes com filtros: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Erro SQL em FreteDAO: " + e.getMessage());
         }
         return fretes;
     }

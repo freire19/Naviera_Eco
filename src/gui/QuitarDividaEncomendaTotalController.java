@@ -48,7 +48,10 @@ public class QuitarDividaEncomendaTotalController {
             double desc = converter(txtDesconto.getText());
             double finalVal = Math.max(0, totalDivida - desc);
             lblTotalFinal.setText(String.format("R$ %.2f", finalVal));
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            lblTotalFinal.setText("ERRO");
+            System.err.println("Erro ao calcular total: " + e.getMessage());
+        }
     }
 
     private double converter(String t) {
@@ -59,18 +62,27 @@ public class QuitarDividaEncomendaTotalController {
         ObservableList<String> l = FXCollections.observableArrayList();
         try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome_forma_pagamento FROM aux_formas_pagamento").executeQuery()){
             while(rs.next()) l.add(rs.getString(1));
-        } catch(Exception e) { l.addAll("DINHEIRO","PIX"); }
+        } catch(Exception e) {
+            System.err.println("Erro ao carregar formas de pagamento: " + e.getMessage());
+            l.addAll("DINHEIRO","PIX");
+        }
         cmbFormaPagamento.setItems(l);
         cmbFormaPagamento.getSelectionModel().selectFirst();
     }
 
     private void carregarCaixas() {
         ObservableList<String> l = FXCollections.observableArrayList();
-        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome_completo FROM usuarios").executeQuery()){
+        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome_caixa FROM caixas ORDER BY nome_caixa").executeQuery()){
             while(rs.next()) l.add(rs.getString(1));
-        } catch(Exception e) {}
+        } catch(Exception e) {
+            System.err.println("Erro ao carregar caixas: " + e.getMessage());
+            l.add("CAIXA PRINCIPAL");
+        }
         if(!l.isEmpty()) {
             cmbCaixa.setItems(l);
+            cmbCaixa.getSelectionModel().selectFirst();
+        } else {
+            cmbCaixa.getItems().add("CAIXA PRINCIPAL");
             cmbCaixa.getSelectionModel().selectFirst();
         }
     }

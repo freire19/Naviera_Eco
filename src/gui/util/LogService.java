@@ -26,8 +26,13 @@ import java.time.format.DateTimeFormatter;
  */
 public class LogService {
 
-    // Nome do arquivo de log
-    private static final String ARQUIVO_LOG = "log_erros.txt";
+    // Arquivo de log em diretório dedicado
+    private static final String ARQUIVO_LOG;
+    static {
+        String dir = System.getProperty("user.home") + java.io.File.separator + ".sistema_embarcacao";
+        new java.io.File(dir).mkdirs();
+        ARQUIVO_LOG = dir + java.io.File.separator + "log_erros.txt";
+    }
     
     // Formatador de data/hora
     private static final DateTimeFormatter FORMATO_DATA_HORA = 

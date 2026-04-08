@@ -1,6 +1,7 @@
 package gui;
 
 import gui.util.LogService;
+import gui.util.PermissaoService;
 import gui.util.RelatorioUtil;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -843,42 +844,41 @@ public class TelaPrincipalController implements Initializable {
 
     // --- HANDLERS DO MENU (Outros) ---
 
-    // Financeiro e Movimentações
-    @FXML private void handleInserirEntrada(ActionEvent e) { abrirTelaLivre("/gui/FinanceiroEntrada.fxml", "Lançar Entrada Financeira"); }
-    @FXML private void handleInserirSaida(ActionEvent e) { abrirTelaLivre("/gui/FinanceiroSaida.fxml", "Lançamento de Despesas"); }
-    @FXML private void handleVenderPassagem(ActionEvent e) { abrirTelaComViagem("/gui/VenderPassagem.fxml", "Vender Passagem"); }
-    @FXML private void handleInserirEncomenda(ActionEvent e) { abrirTelaComViagem("/gui/InserirEncomenda.fxml", "Nova Encomenda"); }
-    @FXML private void handleCadastrarFrete(ActionEvent e) { abrirTelaLivre("/gui/CadastroFrete.fxml", "Lançar Novo Frete"); }
-    @FXML private void handleListaPassagensNovo(ActionEvent e) { abrirTelaLivre("/gui/ListarPassageirosViagem.fxml", "Passageiros"); }
-    @FXML private void handleListaFrete(ActionEvent e) { abrirTelaLivre("/gui/ListaFretes.fxml", "Fretes"); }
-    @FXML private void handleListaEncomenda(ActionEvent e) { abrirTelaLivre("/gui/ListaEncomenda.fxml", "Encomendas"); }
-    
-    // Outros Relatórios (CORRIGIDO AQUI O RELATÓRIO DE ENCOMENDAS)
-    @FXML private void handleRelatorioPassagem(ActionEvent e) { abrirTelaLivre("/gui/RelatorioPassagens.fxml", "Relatório Passagens"); }
-    @FXML private void handleRelatorioFrete(ActionEvent e) { abrirTelaLivre("/gui/RelatorioFretes.fxml", "Relatório Fretes"); }
-    
-    // AQUI ESTÁ A CORREÇÃO:
-    @FXML private void handleRelatorioEncomenda(ActionEvent e) { abrirTelaLivre("/gui/RelatorioEncomendaGeral.fxml", "Central de Relatórios de Encomendas"); }
+    // Financeiro e Movimentações (protegidos por permissao)
+    @FXML private void handleInserirEntrada(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Lançar Entrada Financeira")) abrirTelaLivre("/gui/FinanceiroEntrada.fxml", "Lançar Entrada Financeira"); }
+    @FXML private void handleInserirSaida(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Lançar Despesa")) abrirTelaLivre("/gui/FinanceiroSaida.fxml", "Lançamento de Despesas"); }
+    @FXML private void handleVenderPassagem(ActionEvent e) { if (PermissaoService.exigirOperacional("Vender Passagem")) abrirTelaComViagem("/gui/VenderPassagem.fxml", "Vender Passagem"); }
+    @FXML private void handleInserirEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Nova Encomenda")) abrirTelaComViagem("/gui/InserirEncomenda.fxml", "Nova Encomenda"); }
+    @FXML private void handleCadastrarFrete(ActionEvent e) { if (PermissaoService.exigirOperacional("Lançar Frete")) abrirTelaLivre("/gui/CadastroFrete.fxml", "Lançar Novo Frete"); }
+    @FXML private void handleListaPassagensNovo(ActionEvent e) { if (PermissaoService.exigirOperacional("Listar Passageiros")) abrirTelaLivre("/gui/ListarPassageirosViagem.fxml", "Passageiros"); }
+    @FXML private void handleListaFrete(ActionEvent e) { if (PermissaoService.exigirOperacional("Listar Fretes")) abrirTelaLivre("/gui/ListaFretes.fxml", "Fretes"); }
+    @FXML private void handleListaEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Listar Encomendas")) abrirTelaLivre("/gui/ListaEncomenda.fxml", "Encomendas"); }
 
-    // Cadastros Básicos
-    @FXML private void handleCadastrarViagem(ActionEvent e) { abrirTelaModal("/gui/CadastroViagem.fxml", "Cadastro de Viagem", true); carregarViagensNoCombo(); construirCalendario(); }
-    @FXML private void handleCadastrarEmpresa(ActionEvent e) { abrirTelaModal("/gui/CadastroEmpresa.fxml", "Configurações", false); }
-    @FXML private void handleCadastrarUsuario(ActionEvent e) { abrirTelaModal("/gui/CadastroUsuario.fxml", "Usuários", false); }
-    @FXML private void handleCadastrarRotas(ActionEvent e) { abrirTelaModal("/gui/Rotas.fxml", "Rotas", false); }
-    @FXML private void handleCadastroTarifa(ActionEvent e) { abrirTelaModal("/gui/CadastroTarifa.fxml", "Tarifas", false); }
-    @FXML private void handleCadastrarConferente(ActionEvent e) { abrirTelaModal("/gui/CadastroConferente.fxml", "Conferentes", false); }
-    @FXML private void handleCadastrarCaixa(ActionEvent e) { abrirTelaModal("/gui/CadastroCaixa.fxml", "Caixas", false); }
-    @FXML private void handleProductos(ActionEvent e) { abrirTelaModal("/gui/CadastroItem.fxml", "Itens", false); }
-    @FXML private void handleTabelasAuxiliares(ActionEvent e) { abrirTelaModal("/gui/TabelasAuxiliares.fxml", "Auxiliares", false); }
-    @FXML private void handleClientesEncomenda(ActionEvent e) { abrirTelaModal("/gui/CadastroClientesEncomenda.fxml", "Clientes", false); }
-    @FXML private void handleTabelaPrecoFrete(ActionEvent e) { abrirTelaModal("/gui/TabelaPrecoFrete.fxml", "Tabela de Preços", false); }
-    @FXML private void handlePrecoEncomenda(ActionEvent e) { abrirTelaModal("/gui/TabelaPrecosEncomenda.fxml", "Tabela de Preços", false); }
+    // Relatórios (protegidos por permissao financeira)
+    @FXML private void handleRelatorioPassagem(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Relatório Passagens")) abrirTelaLivre("/gui/RelatorioPassagens.fxml", "Relatório Passagens"); }
+    @FXML private void handleRelatorioFrete(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Relatório Fretes")) abrirTelaLivre("/gui/RelatorioFretes.fxml", "Relatório Fretes"); }
+    @FXML private void handleRelatorioEncomenda(ActionEvent e) { if (PermissaoService.exigirFinanceiro("Relatório Encomendas")) abrirTelaLivre("/gui/RelatorioEncomendaGeral.fxml", "Central de Relatórios de Encomendas"); }
+
+    // Cadastros Administrativos (protegidos por permissao admin)
+    @FXML private void handleCadastrarViagem(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Viagem")) { abrirTelaModal("/gui/CadastroViagem.fxml", "Cadastro de Viagem", true); carregarViagensNoCombo(); construirCalendario(); } }
+    @FXML private void handleCadastrarEmpresa(ActionEvent e) { if (PermissaoService.exigirAdmin("Configurações da Empresa")) abrirTelaModal("/gui/CadastroEmpresa.fxml", "Configurações", false); }
+    @FXML private void handleCadastrarUsuario(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Usuários")) abrirTelaModal("/gui/CadastroUsuario.fxml", "Usuários", false); }
+    @FXML private void handleCadastrarRotas(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Rotas")) abrirTelaModal("/gui/Rotas.fxml", "Rotas", false); }
+    @FXML private void handleCadastroTarifa(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Tarifas")) abrirTelaModal("/gui/CadastroTarifa.fxml", "Tarifas", false); }
+    @FXML private void handleCadastrarConferente(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Conferentes")) abrirTelaModal("/gui/CadastroConferente.fxml", "Conferentes", false); }
+    @FXML private void handleCadastrarCaixa(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Caixas")) abrirTelaModal("/gui/CadastroCaixa.fxml", "Caixas", false); }
+    @FXML private void handleProductos(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Itens")) abrirTelaModal("/gui/CadastroItem.fxml", "Itens", false); }
+    @FXML private void handleTabelasAuxiliares(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabelas Auxiliares")) abrirTelaModal("/gui/TabelasAuxiliares.fxml", "Auxiliares", false); }
+    @FXML private void handleClientesEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Cadastro de Clientes")) abrirTelaModal("/gui/CadastroClientesEncomenda.fxml", "Clientes", false); }
+    @FXML private void handleTabelaPrecoFrete(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Frete")) abrirTelaModal("/gui/TabelaPrecoFrete.fxml", "Tabela de Preços", false); }
+    @FXML private void handlePrecoEncomenda(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Encomenda")) abrirTelaModal("/gui/TabelaPrecosEncomenda.fxml", "Tabela de Preços", false); }
     
     // =========================================================================
     // FUNCIONALIDADE 1: BACKUP PROFISSIONAL COM PG_DUMP
     // =========================================================================
-    @FXML 
+    @FXML
     private void handleBackup(ActionEvent e) {
+        if (!PermissaoService.exigirAdmin("Backup do Banco de Dados")) return;
         try {
             // Criar FileChooser para salvar o arquivo
             FileChooser fileChooser = new FileChooser();
@@ -1045,8 +1045,9 @@ public class TelaPrincipalController implements Initializable {
     // =========================================================================
     // FUNCIONALIDADE 2.5: CONFIGURAR API WEB
     // =========================================================================
-    @FXML 
+    @FXML
     private void handleConfigurarApi(ActionEvent e) {
+        if (!PermissaoService.exigirAdmin("Configurar API")) return;
         ConfigurarApiController.abrir();
     }
     
@@ -1193,6 +1194,7 @@ public class TelaPrincipalController implements Initializable {
     
     @FXML
     private void handleSincronizarAgora(ActionEvent event) {
+        if (!PermissaoService.exigirAdmin("Sincronização")) return;
         try {
             Alert alert = new Alert(AlertType.INFORMATION);
             alert.setTitle("Sincronização");

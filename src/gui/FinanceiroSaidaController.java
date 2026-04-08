@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import gui.util.SessaoUsuario; 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -72,8 +73,9 @@ public class FinanceiroSaidaController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Lancamento de Despesas"); return; }
         // 1. Configurações visuais iniciais
-        carregarCategorias(); 
+        carregarCategorias();
         configurarTabela();
         
         dpDataGasto.setValue(LocalDate.now());
@@ -181,24 +183,38 @@ public class FinanceiroSaidaController {
         StringBuilder sql = new StringBuilder();
         
         sql.append("SELECT s.*, c.nome as cat_nome FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE 1=1 ");
-        
+
+        java.util.List<Object> params = new java.util.ArrayList<>();
+
         if(idFiltro > 0) {
-            sql.append(" AND s.id_viagem = ").append(idFiltro);
+            sql.append(" AND s.id_viagem = ?");
+            params.add(idFiltro);
         }
-        
+
         // Exibe apenas PAGOS ou NÃO BOLETOS nesta tela
         sql.append(" AND (s.forma_pagamento != 'BOLETO' OR s.status = 'PAGO') ");
-        
-        if (dpFiltroData.getValue() != null) sql.append(" AND s.data_vencimento = '").append(dpFiltroData.getValue()).append("'");
+
+        if (dpFiltroData.getValue() != null) {
+            sql.append(" AND s.data_vencimento = ?");
+            params.add(java.sql.Date.valueOf(dpFiltroData.getValue()));
+        }
         if (cmbFiltroCategoria.getValue() != null && !cmbFiltroCategoria.getValue().equals("Todas") && !cmbFiltroCategoria.getValue().equals("Todas as Categorias")) {
-            sql.append(" AND c.nome = '").append(cmbFiltroCategoria.getValue()).append("'");
+            sql.append(" AND c.nome = ?");
+            params.add(cmbFiltroCategoria.getValue());
         }
         if (cmbFiltroPagamento.getValue() != null && !cmbFiltroPagamento.getValue().equals("Todas")) {
-            sql.append(" AND s.forma_pagamento = '").append(cmbFiltroPagamento.getValue()).append("'");
+            sql.append(" AND s.forma_pagamento = ?");
+            params.add(cmbFiltroPagamento.getValue());
         }
         sql.append(" ORDER BY s.data_vencimento DESC");
 
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
+                else if (p instanceof java.sql.Date) stmt.setDate(i + 1, (java.sql.Date) p);
+                else stmt.setString(i + 1, p.toString());
+            }
             ResultSet rs = stmt.executeQuery();
             while(rs.next()) {
                 Despesa d = new Despesa(
@@ -300,7 +316,8 @@ public class FinanceiroSaidaController {
         try {
             String valorTexto = txtValor.getText().replace(",", ".");
             double valor = Double.parseDouble(valorTexto);
-            
+            if (valor <= 0) { alert("O valor deve ser maior que zero."); return; }
+
             String forma = cmbFormaPagamento.getValue();
             String status = forma.equals("BOLETO") ? "PENDENTE" : "PAGO";
             int idCat = buscarIdCategoria(cmbCategoria.getValue());
@@ -452,12 +469,25 @@ public class FinanceiroSaidaController {
     }
     
     private String validarPermissaoGerente(String senha) {
-        String sql = "SELECT login_usuario FROM usuarios WHERE senha_hash = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
+        String sql = "SELECT login_usuario, senha_hash FROM usuarios WHERE (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setString(1, senha);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getString("login_usuario"); 
+             PreparedStatement stmt = con.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                String hashDoBanco = rs.getString("senha_hash");
+                String login = rs.getString("login_usuario");
+                try {
+                    if (hashDoBanco != null && hashDoBanco.startsWith("$2a$")) {
+                        if (org.mindrot.jbcrypt.BCrypt.checkpw(senha, hashDoBanco)) {
+                            return login;
+                        }
+                    } else if (hashDoBanco != null && hashDoBanco.equals(senha)) {
+                        return login;
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Erro ao verificar hash: " + ex.getMessage());
+                }
+            }
         } catch (Exception e) { e.printStackTrace(); }
         return null;
     }
@@ -815,8 +845,7 @@ public class FinanceiroSaidaController {
                         setStyle("-fx-text-fill: #999; -fx-strikethrough: true;");
                     } else {
                         setText(item);
-                        if (item.equals("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;");
-                        else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                        setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                     }
                 }
             }

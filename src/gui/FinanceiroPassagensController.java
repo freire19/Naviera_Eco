@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import dao.PassagemDAO;
 import dao.AuxiliaresDAO;
 import model.Passagem;
@@ -43,6 +44,7 @@ public class FinanceiroPassagensController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Financeiro Passagens"); return; }
         configurarTabela();
         carregarComboViagens();
         cmbViagem.valueProperty().addListener((obs, oldVal, newVal) -> carregarDadosEmBackground());
@@ -105,9 +107,7 @@ public class FinanceiroPassagensController {
                     setText(null); setStyle("");
                 } else {
                     setText(item);
-                    if (item.equalsIgnoreCase("PENDENTE")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else if (item.equalsIgnoreCase("PARCIAL")) setStyle("-fx-text-fill: #ef6c00; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
                 }
             }
         });

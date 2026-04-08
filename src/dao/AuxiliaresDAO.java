@@ -301,7 +301,6 @@ public class AuxiliaresDAO {
     }
 
     public List<String> listarPassagemAux() throws SQLException {
-        System.out.println("--- DAO: Entrando em listarPassagemAux ---");
         List<String> lista = new ArrayList<>();
         String sql = "SELECT nome_tipo_passagem FROM aux_tipos_passagem ORDER BY nome_tipo_passagem";
         try (Connection conn = ConexaoBD.getConnection();
@@ -311,7 +310,6 @@ public class AuxiliaresDAO {
                 lista.add(rs.getString("nome_tipo_passagem"));
             }
         }
-        System.out.println("--- DAO: Saindo de listarPassagemAux. Itens encontrados: " + lista.size() + " ---");
         return lista;
     }
 
