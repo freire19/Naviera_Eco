@@ -1846,11 +1846,23 @@ public class VenderPassagemController implements Initializable {
                 return Printable.PAGE_EXISTS;
             }, pf);
 
-            job.print();
+            // DP016: impressao em background para nao bloquear UI
+            final java.awt.print.PrinterJob finalJob = job;
+            Thread printThread = new Thread(() -> {
+                try {
+                    finalJob.print();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    javafx.application.Platform.runLater(() ->
+                        showAlert(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir."));
+                }
+            });
+            printThread.setDaemon(true);
+            printThread.start();
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir: " + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir.");
         }
     }
 

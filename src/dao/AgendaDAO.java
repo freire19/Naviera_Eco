@@ -89,7 +89,9 @@ public class AgendaDAO {
             stmt.setDate(2, Date.valueOf(fim));
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                LocalDate data = rs.getDate("data_evento").toLocalDate();
+                java.sql.Date dtEvento = rs.getDate("data_evento");
+                LocalDate data = dtEvento != null ? dtEvento.toLocalDate() : null;
+                if (data == null) continue;
                 mapa.computeIfAbsent(data, k -> new ArrayList<>()).add(rs.getString("descricao"));
             }
         } catch (SQLException e) {
@@ -142,7 +144,7 @@ public class AgendaDAO {
             while (rs.next()) {
                 tarefas.add(new TarefaAgenda(
                     rs.getInt("id_anotacao"),
-                    rs.getDate("data_evento").toLocalDate(),
+                    rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
                     rs.getString("descricao"),
                     rs.getBoolean("concluida")
                 ));
@@ -164,7 +166,7 @@ public class AgendaDAO {
             while (rs.next()) {
                 tarefas.add(new TarefaAgenda(
                     rs.getInt("id_anotacao"),
-                    rs.getDate("data_evento").toLocalDate(),
+                    rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
                     rs.getString("descricao"),
                     rs.getBoolean("concluida")
                 ));

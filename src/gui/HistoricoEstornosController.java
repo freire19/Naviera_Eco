@@ -33,7 +33,10 @@ public class HistoricoEstornosController {
         dpFim.setValue(LocalDate.now());
 
         configurarTabela();
-        filtrar();
+        // DR010: carrega dados em background
+        Thread bg = new Thread(this::filtrar);
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarTabela() {
@@ -78,7 +81,7 @@ public class HistoricoEstornosController {
                     rs.getString("nome_autorizador")
                 ));
             }
-            tabela.setItems(lista);
+            javafx.application.Platform.runLater(() -> tabela.setItems(lista));
 
         } catch (Exception e) {
             e.printStackTrace();

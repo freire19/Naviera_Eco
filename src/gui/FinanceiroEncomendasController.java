@@ -42,11 +42,17 @@ public class FinanceiroEncomendasController {
     public void initialize() {
         if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Financeiro Encomendas"); return; }
         configurarTabela();
-        carregarComboViagens();
 
         cmbViagem.valueProperty().addListener((obs, oldVal, newVal) -> carregarDados());
         txtBusca.textProperty().addListener((obs, oldVal, newVal) -> carregarDados());
         chkApenasDevedores.selectedProperty().addListener((obs, oldVal, newVal) -> carregarDados());
+
+        // DR010: carrega viagens em background
+        Thread bg = new Thread(() -> {
+            carregarComboViagens();
+        });
+        bg.setDaemon(true);
+        bg.start();
         
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
@@ -134,7 +140,8 @@ public class FinanceiroEncomendasController {
                 }
                 lista.add(new OpcaoViagem(rs.getInt("id_viagem"), label));
             }
-            cmbViagem.setItems(lista);
+            ObservableList<OpcaoViagem> finalLista = lista;
+            javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
         } catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -144,38 +151,45 @@ public class FinanceiroEncomendasController {
         int idViagem = cmbViagem.getValue().id;
         
         ObservableList<EncomendaFinanceiro> lista = FXCollections.observableArrayList();
-        double somaPendente = 0;
+        java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
 
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT e.id_encomenda, e.numero_encomenda, v.data_viagem, e.remetente, e.destinatario, e.total_a_pagar, e.valor_pago ");
         sql.append("FROM encomendas e JOIN viagens v ON e.id_viagem = v.id_viagem WHERE 1=1 ");
 
-        if (idViagem > 0) sql.append(" AND e.id_viagem = ").append(idViagem);
+        // D003: parametriza idViagem em vez de concatenar
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        if (idViagem > 0) { sql.append(" AND e.id_viagem = ?"); params.add(idViagem); }
         if (chkApenasDevedores.isSelected()) sql.append(" AND (e.valor_pago < e.total_a_pagar OR e.valor_pago IS NULL) ");
 
         String busca = txtBusca.getText().toLowerCase();
         if (!busca.isEmpty()) {
             sql.append(" AND (LOWER(e.remetente) LIKE ? OR LOWER(e.destinatario) LIKE ?) ");
+            params.add("%" + busca + "%");
+            params.add("%" + busca + "%");
         }
-        
+
         sql.append(" ORDER BY e.id_encomenda DESC");
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-            
-            if (!busca.isEmpty()) {
-                stmt.setString(1, "%" + busca + "%");
-                stmt.setString(2, "%" + busca + "%");
+
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
+                else stmt.setString(i + 1, p.toString());
             }
 
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             
             while (rs.next()) {
-                double total = rs.getDouble("total_a_pagar");
-                double pago = rs.getDouble("valor_pago");
-                double devendo = total - pago;
-                
+                java.math.BigDecimal total = rs.getBigDecimal("total_a_pagar");
+                java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
+                if (total == null) total = java.math.BigDecimal.ZERO;
+                if (pago == null) pago = java.math.BigDecimal.ZERO;
+                java.math.BigDecimal devendo = total.subtract(pago);
+
                 String dataFmt = "";
                 if(rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
 
@@ -187,10 +201,10 @@ public class FinanceiroEncomendasController {
                     rs.getString("destinatario"),
                     total, pago
                 ));
-                if(devendo > 0.01) somaPendente += devendo;
+                if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
             }
             tabela.setItems(lista);
-            lblTotalPendente.setText(String.format("R$ %.2f", somaPendente));
+            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
 
         } catch (SQLException e) { e.printStackTrace(); }
     }
@@ -202,7 +216,7 @@ public class FinanceiroEncomendasController {
             alert("Selecione uma encomenda na tabela para dar baixa.");
             return;
         }
-        if (selecionada.getRestante() <= 0.01) {
+        if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
             alert("Esta encomenda já está quitada!");
             return;
         }
@@ -235,40 +249,45 @@ public class FinanceiroEncomendasController {
         }
     }
     
-    private void salvarPagamento(int idEncomenda, BaixaPagamentoController dados, double jaPago) {
-        java.math.BigDecimal bdJaPago = java.math.BigDecimal.valueOf(jaPago);
-        java.math.BigDecimal novoPago = bdJaPago.add(dados.getValorPago());
+    // DL003: operacao de pagamento em transacao atomica (SELECT + UPDATE na mesma conexao)
+    private void salvarPagamento(int idEncomenda, BaixaPagamentoController dados, java.math.BigDecimal jaPago) {
+        java.math.BigDecimal novoPago = jaPago.add(dados.getValorPago());
 
-        // Buscar desconto ja armazenado e acumular (DL010)
-        java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM encomendas WHERE id_encomenda = ?")) {
-            stmtQ.setInt(1, idEncomenda);
-            try (ResultSet rs = stmtQ.executeQuery()) {
-                if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
+        try (Connection con = ConexaoBD.getConnection()) {
+            con.setAutoCommit(false);
+            try {
+                // Buscar desconto ja armazenado e acumular (DL010)
+                java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
+                try (PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM encomendas WHERE id_encomenda = ?")) {
+                    stmtQ.setInt(1, idEncomenda);
+                    try (ResultSet rs = stmtQ.executeQuery()) {
+                        if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
+                    }
+                }
+
+                java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
+                java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
+                String novoStatus = (novoPago.compareTo(totalComDesconto.subtract(model.StatusPagamento.TOLERANCIA_PAGAMENTO)) >= 0) ? "PAGO" : "PARCIAL";
+
+                String sql = "UPDATE encomendas SET valor_pago = ?, desconto = ?, tipo_pagamento = ?, caixa = ?, status_pagamento = ? WHERE id_encomenda = ?";
+                try (PreparedStatement stmt = con.prepareStatement(sql)) {
+                    stmt.setBigDecimal(1, novoPago);
+                    stmt.setBigDecimal(2, descontoTotal);
+                    stmt.setString(3, dados.getFormaPagamento());
+                    stmt.setString(4, dados.getCaixa());
+                    stmt.setString(5, novoStatus);
+                    stmt.setInt(6, idEncomenda);
+                    stmt.executeUpdate();
+                }
+
+                con.commit();
+                alert("Pagamento registrado com sucesso!");
+                carregarDados();
+
+            } catch (SQLException ex) {
+                con.rollback();
+                throw ex;
             }
-        } catch (SQLException e) { System.err.println("Erro ao buscar desconto anterior: " + e.getMessage()); }
-
-        java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
-        java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
-        String novoStatus = (novoPago.compareTo(totalComDesconto.subtract(model.StatusPagamento.TOLERANCIA_PAGAMENTO)) >= 0) ? "PAGO" : "PARCIAL";
-
-        String sql = "UPDATE encomendas SET valor_pago = ?, desconto = ?, tipo_pagamento = ?, caixa = ?, status_pagamento = ? WHERE id_encomenda = ?";
-
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-
-            stmt.setBigDecimal(1, novoPago);
-            stmt.setBigDecimal(2, descontoTotal);
-            stmt.setString(3, dados.getFormaPagamento());
-            stmt.setString(4, dados.getCaixa());
-            stmt.setString(5, novoStatus);
-            stmt.setInt(6, idEncomenda);
-            stmt.executeUpdate();
-
-            alert("Pagamento registrado com sucesso!");
-            carregarDados();
-
         } catch (SQLException e) {
             alert("Erro ao salvar no banco: " + e.getMessage());
         }
@@ -280,7 +299,7 @@ public class FinanceiroEncomendasController {
         EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) { alert("Selecione um item para estornar."); return; }
         
-        if (selecionada.getPago() <= 0.01) { alert("Este item não tem pagamento para estornar."); return; }
+        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { alert("Este item não tem pagamento para estornar."); return; }
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/EstornoPagamento.fxml"));
@@ -303,8 +322,7 @@ public class FinanceiroEncomendasController {
                 int idAutorizador = controller.getIdAutorizador();
                 String nomeAutorizador = controller.getNomeAutorizador();
 
-                java.math.BigDecimal bdPago = java.math.BigDecimal.valueOf(selecionada.getPago());
-                java.math.BigDecimal novoPago = bdPago.subtract(vEstorno);
+                java.math.BigDecimal novoPago = selecionada.getPago().subtract(vEstorno);
                 String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PARCIAL" : "PENDENTE";
                 
                 Connection con = null;
@@ -399,26 +417,27 @@ public class FinanceiroEncomendasController {
     public static class EncomendaFinanceiro {
         private int id;
         private String numero, dataLancamento, remetente, destinatario;
-        private Double total, pago;
+        private java.math.BigDecimal total, pago;
 
-        public EncomendaFinanceiro(int id, String num, String data, String rem, String dest, Double total, Double pago) {
-            this.id = id; this.numero = num; this.dataLancamento = data; 
+        public EncomendaFinanceiro(int id, String num, String data, String rem, String dest, java.math.BigDecimal total, java.math.BigDecimal pago) {
+            this.id = id; this.numero = num; this.dataLancamento = data;
             this.remetente = rem; this.destinatario = dest;
-            this.total = total; this.pago = pago;
+            this.total = total != null ? total : java.math.BigDecimal.ZERO;
+            this.pago = pago != null ? pago : java.math.BigDecimal.ZERO;
         }
         public int getId() { return id; }
         public String getNumero() { return numero; }
         public String getDataLancamento() { return dataLancamento; }
         public String getRemetente() { return remetente; }
         public String getDestinatario() { return destinatario; }
-        public Double getTotal() { return total; }
-        public Double getPago() { return pago; }
-        public Double getRestante() { return Math.max(0, total - pago); }
-        public String getTotalFormatado() { return String.format("R$ %.2f", total); }
-        public String getPagoFormatado() { return String.format("R$ %.2f", pago); }
-        public String getRestanteFormatado() { return String.format("R$ %.2f", getRestante()); }
+        public java.math.BigDecimal getTotal() { return total; }
+        public java.math.BigDecimal getPago() { return pago; }
+        public java.math.BigDecimal getRestante() { return total.subtract(pago).max(java.math.BigDecimal.ZERO); }
+        public String getTotalFormatado() { return String.format("R$ %,.2f", total); }
+        public String getPagoFormatado() { return String.format("R$ %,.2f", pago); }
+        public String getRestanteFormatado() { return String.format("R$ %,.2f", getRestante()); }
         public String getStatus() {
-            return model.StatusPagamento.calcularPorSaldo(getRestante(), getPago()).name();
+            return model.StatusPagamento.calcularPorSaldo(getRestante().doubleValue(), getPago().doubleValue()).name();
         }
     }
 }

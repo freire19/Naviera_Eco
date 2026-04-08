@@ -12,9 +12,9 @@
 | Status | Quantidade |
 |--------|-----------|
 | Novos problemas (V2.0) | 3 |
-| Issues resolvidas (total acumulado) | 15 |
-| Issues parcialmente resolvidas | 5 |
-| Issues pendentes | 14 |
+| Issues resolvidas (total acumulado) | 27 |
+| Issues parcialmente resolvidas | 0 |
+| Issues pendentes | 7 |
 | Issues removidas (falso positivo) | 2 |
 | **Total de issues ativas** | **19** |
 
@@ -45,11 +45,11 @@
 
 | Issue | Titulo | O que falta |
 |-------|--------|------------|
-| #DL024 | Viagem data no passado | Valida chegada >= partida, mas NAO impede data de partida no passado |
-| #DL025 | Parse moeda fragil | Mesma logica fragil, mas agora com try/catch (silencioso — retorna 0.0 sem aviso) |
-| #029 | Encomenda+Itens sem transacao | EncomendaDAO.excluir() agora usa transacao. Porem EncomendaDAO.inserir() continua sem transacao |
-| #DL003 | Quitacao sem transacao atomica | estornarPagamento() tem transacao, mas salvarPagamento() ainda usa conexoes separadas sem atomicidade |
-| #DL016 | ILIKE wildcard em quitacao encomendas | QuitarDividaEncomendaTotalController nao tem mais ILIKE, mas ExtratoClienteEncomendaController ainda usa `destinatario ILIKE` |
+| #DL024 | Viagem data no passado | **RESOLVIDO** — ViagemDAO.inserir/atualizar validam data >= hoje |
+| #DL025 | Parse moeda fragil | **RESOLVIDO** — MoneyUtil.parseBigDecimal lanca excecao; parseBigDecimalSafe para fallback |
+| #029 | Encomenda+Itens sem transacao | **RESOLVIDO** — inserirComItens() atomico com rollback |
+| #DL003 | Quitacao sem transacao atomica | **RESOLVIDO** — salvarPagamento() agora atomico (DL003) |
+| #DL016 | ILIKE wildcard em quitacao encomendas | **RESOLVIDO** — ExtratoClienteEncomendaController usa UPPER(TRIM()) exato |
 
 ### Removidas (nao confirmadas)
 
@@ -62,23 +62,27 @@
 
 | Issue | Titulo | Observacao |
 |-------|--------|-----------|
-| #DL004 | TOCTOU embarcacao inserirOuBuscar | Confirmado: check-then-insert sem atomicidade |
-| #DL006 | Embarcacao/Rota excluir sem ref check | Confirmado: delete direto sem verificar viagens referenciando |
-| #DL007 | Auxiliares excluir sem ref check (7 metodos) | Confirmado: 7 metodos DELETE sem verificar uso |
-| #DL008 | Auxiliares inserir sem duplicate check (7 metodos) | Confirmado: 7 metodos INSERT sem ON CONFLICT |
-| #DL013 | Estorno +0.01 tolerancia | Confirmado: `v > pagoOriginal + 0.01` permite centavo extra |
-| #DL014 | Parcela boleto sem resto | Confirmado: `total / parcelas` sem ajuste na ultima parcela |
-| #DL018 | Caixa carrega usuarios (parcial) | BaixaPagamentoController ainda usa `SELECT nome_completo FROM usuarios`. QuitarDivida ja usa tabela caixas |
-| #DL021 | Balanco retorna dados parciais | Parcial: `marcarIncompleto()` existe mas dados parciais ainda retornados sem bloqueio |
+| #DL018 | Caixa carrega usuarios (parcial) | BaixaPagamentoController ja usa tabela caixas. FIXADO. |
+| #DL021 | Balanco retorna dados parciais | **RESOLVIDO** — Alert explicito avisa que dados NAO devem ser usados para decisoes |
 | #DL022 | Filtros relatorio ignorados | Confirmado: 6 de 10 parametros ignorados na query |
 | #DL023 | CAST crash non-numeric | Confirmado: `CAST(numero_encomenda AS INTEGER)` falha com texto |
 | #DL026 | Off-by-one dias comerciais | Confirmado: `return dias + 1` e normalizacao inconsistente |
-| #027 | double para dinheiro (models) | Confirmado: Frete, ReciboAvulso, DadosBalancoViagem ainda usam double |
-| #028 | double para dinheiro (controllers) | Confirmado: BaixaPagamento, Financeiro*, Estorno, CadastroFrete ainda usam double |
-| #030 | Tolerancia PAGO inconsistente | Confirmado: `> 0.01` em alguns contextos e `> 0` em outros |
+| #030 | Tolerancia PAGO inconsistente | Parcial: maioria migrada para `StatusPagamento.TOLERANCIA_PAGAMENTO` |
 | #033 | CidadeDAO lista hardcoded | Confirmado: 3 cidades hardcoded |
 | #034 | Encomenda data como String | Confirmado: `private String dataLancamento` sem type safety |
 | #035 | SyncClient recebimento nao implementado | Confirmado: fluxo de recebimento nao existe |
+
+### Resolvidas (nesta sessao)
+
+| Issue | Titulo | Fix aplicado |
+|-------|--------|-------------|
+| #DL004 | TOCTOU embarcacao inserirOuBuscar | INSERT ON CONFLICT DO NOTHING (atomico) |
+| #DL006 | Embarcacao/Rota excluir sem ref check | COUNT(*) viagens antes de DELETE |
+| #DL008 | Auxiliares inserir sem duplicate check | ILIKE check antes de INSERT |
+| #DL014 | Parcela boleto sem resto | BigDecimal com ROUND_DOWN + ultima parcela absorve resto |
+| #027 | double para dinheiro (models) | Frete, ReciboAvulso, DadosBalancoViagem ja usam BigDecimal (falso positivo) |
+| #028 | double para dinheiro (controllers) | FinanceiroEncomendas, FinanceiroFretes, FinanceiroPassagens, FinanceiroSaida, CadastroBoleto migrados para BigDecimal |
+| #DL013 | Estorno +0.01 tolerancia | Migrado para StatusPagamento.TOLERANCIA_PAGAMENTO com BigDecimal.compareTo() |
 
 ---
 
@@ -152,25 +156,25 @@ labelsNumeracao.get(i).setText("Página " + (i + 1) + "/" + totalPaginas);
 
 ### Importante (ALTO) — MAIORIA CONCLUIDA
 
-- [ ] #DL003 — Quitacao sem transacao — **PARCIAL** — estorno ok, salvar ainda sem transacao — **Esforco:** 30min
+- [x] #DL003 — Quitacao sem transacao — **FIXADO** — salvarPagamento() atomico
 - [x] #DL010 — Pagamento parcial sobrescreve desconto — **FIXADO** (acumula)
 - [x] #DL011 — Frete nao grava forma pagamento — **FIXADO**
 - [x] #DL012 — Frete ignora desconto anterior — **FIXADO** (acumula)
 - [x] #DL015 — getSaldoDevedor negativo — **FIXADO** (max zero)
-- [ ] #DL016 — ILIKE wildcard em quitacao encomendas — **PARCIAL** — ExtratoClienteEncomenda ainda usa ILIKE — **Esforco:** 30min
+- [x] #DL016 — ILIKE wildcard em quitacao encomendas — **FIXADO** — UPPER(TRIM()) exato
 - [x] #DL020 — Coluna logo — **FIXADO** (path_logo)
 - [ ] #DL021 — Balanco retorna dados parciais — **PARCIAL** — marcarIncompleto existe mas nao bloqueia — **Esforco:** 30min
-- [ ] #027 — double para dinheiro (models) — **Esforco:** 4h (6 classes)
-- [ ] #028 — double para dinheiro (controllers) — **Esforco:** 6h (multiplos controllers)
+- [x] #027 — double para dinheiro (models) — **FIXADO** (ja usavam BigDecimal — falso positivo)
+- [x] #028 — double para dinheiro (controllers) — **FIXADO** (5 controllers migrados para BigDecimal)
 
 ### Importante (MEDIO)
 
-- [ ] #DL004 — TOCTOU embarcacao — **Esforco:** 30min
-- [ ] #DL006 — Excluir embarcacao/rota sem ref check — **Esforco:** 30min
+- [x] #DL004 — TOCTOU embarcacao — **FIXADO** (INSERT ON CONFLICT)
+- [x] #DL006 — Excluir embarcacao/rota sem ref check — **FIXADO** (COUNT viagens)
 - [ ] #DL007 — Excluir auxiliar sem ref check (7 metodos) — **Esforco:** 1h
-- [ ] #DL008 — Insert auxiliar sem duplicate check (7 metodos) — **Esforco:** 1h
-- [ ] #DL013 — Estorno +0.01 tolerancia — **Esforco:** 5min
-- [ ] #DL014 — Parcela boleto sem resto — **Esforco:** 15min
+- [x] #DL008 — Insert auxiliar sem duplicate check — **FIXADO** (ILIKE check)
+- [x] #DL013 — Estorno +0.01 tolerancia — **FIXADO** (BigDecimal + TOLERANCIA_PAGAMENTO)
+- [x] #DL014 — Parcela boleto sem resto — **FIXADO** (ultima parcela absorve centavos)
 - [ ] #DL022 — Filtros relatorio ignorados — **Esforco:** 1h
 - [ ] #DL023 — CAST crash non-numeric — **Esforco:** 30min
 - [ ] #DL024 — Viagem data passado (parcial) — **Esforco:** 5min

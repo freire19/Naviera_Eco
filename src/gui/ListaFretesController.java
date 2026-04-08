@@ -81,12 +81,18 @@ public class ListaFretesController {
     @FXML
     public void initialize() {
         configurarColunasTabela();
-        configurarEstiloLinhas(); 
+        configurarEstiloLinhas();
         tabelaFretes.setItems(listaFretesVisivel);
-        configurarFiltrosIniciais();
         configurarListeners();
-        recarregarDadosDoBanco(); 
         aplicarEstiloCabecalho();
+
+        // DR010: carrega dados em background
+        Thread bg = new Thread(() -> {
+            configurarFiltrosIniciais();
+            recarregarDadosDoBanco();
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarColunasTabela() {

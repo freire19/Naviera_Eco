@@ -89,11 +89,14 @@ public class GestaoFuncionariosController {
             });
         }
 
-        carregarFuncionarios();
-        
         listaFuncionarios.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) selecionarFuncionario(newVal);
         });
+
+        // DR010: carrega funcionarios em background
+        Thread bg = new Thread(this::carregarFuncionarios);
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarTabela() {
@@ -183,7 +186,7 @@ public class GestaoFuncionariosController {
                 f.cargo = rs.getString("cargo");
                 f.salario = rs.getDouble("salario");
                 if (rs.getDate("data_admissao") != null) f.dataAdmissao = rs.getDate("data_admissao").toLocalDate();
-                try { if (rs.getDate("data_inicio_calculo") != null) f.dataInicioCalculo = rs.getDate("data_inicio_calculo").toLocalDate(); } catch (Exception e) {}
+                try { if (rs.getDate("data_inicio_calculo") != null) f.dataInicioCalculo = rs.getDate("data_inicio_calculo").toLocalDate(); } catch (Exception e) { /* coluna opcional */ }
                 try { f.recebe13 = rs.getBoolean("recebe_decimo_terceiro"); } catch (Exception e) { f.recebe13 = false; }
                 
                 try { f.isClt = rs.getBoolean("is_clt"); } catch (Exception e) { f.isClt = false; }
@@ -197,8 +200,9 @@ public class GestaoFuncionariosController {
                 if (rs.getDate("data_nascimento") != null) f.dataNascimento = rs.getDate("data_nascimento").toLocalDate();
                 lista.add(f);
             }
-        } catch (SQLException e) { e.printStackTrace(); alert("Erro: " + e.getMessage()); }
-        listaFuncionarios.setItems(lista);
+        } catch (SQLException e) { e.printStackTrace(); javafx.application.Platform.runLater(() -> alert("Erro: " + e.getMessage())); }
+        ObservableList<Funcionario> finalLista = lista;
+        javafx.application.Platform.runLater(() -> listaFuncionarios.setItems(finalLista));
     }
     
     private void selecionarFuncionario(Funcionario f) {
@@ -297,19 +301,21 @@ public class GestaoFuncionariosController {
         } catch (Exception e) { e.printStackTrace(); alert("Erro ao salvar: " + e.getMessage()); }
     }
 
+    /**
+     * Calcula dias comerciais (convencao 30/360 — mes comercial = 30 dias).
+     * DL026: +1 inclui o dia de inicio (padrao trabalhista BR).
+     * Normaliza dia 31→30 e fevereiro 28/29→30.
+     */
     private double calcularDiasComerciais(LocalDate inicio, LocalDate fim) {
         if (inicio.isAfter(fim)) return 0;
-        int diaInicio = inicio.getDayOfMonth();
-        int diaFim = fim.getDayOfMonth();
-        int mesInicio = inicio.getMonthValue();
-        int mesFim = fim.getMonthValue();
-        int anoInicio = inicio.getYear();
-        int anoFim = fim.getYear();
-        if (diaInicio == 31) diaInicio = 30;
-        if (diaFim == 31) diaFim = 30;
-        if (fim.getMonthValue() == 2 && (diaFim >= 28)) diaFim = 30; 
-        double dias = (anoFim - anoInicio) * 360 + (mesFim - mesInicio) * 30 + (diaFim - diaInicio);
-        return dias + 1;
+        int diaInicio = Math.min(inicio.getDayOfMonth(), 30);
+        int diaFim = Math.min(fim.getDayOfMonth(), 30);
+        if (fim.getMonthValue() == 2 && diaFim >= 28) diaFim = 30;
+        if (inicio.getMonthValue() == 2 && diaInicio >= 28) diaInicio = 30;
+        double dias = (fim.getYear() - inicio.getYear()) * 360
+                    + (fim.getMonthValue() - inicio.getMonthValue()) * 30
+                    + (diaFim - diaInicio);
+        return dias + 1; // inclui dia de inicio
     }
 
     private void calcularFinanceiro(Funcionario f) {

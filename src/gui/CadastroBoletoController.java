@@ -50,12 +50,18 @@ public class CadastroBoletoController {
 
     @FXML
     public void initialize() {
-        buscarViagemAtual();
-        carregarCategorias();
         configurarTabela();
         spParcelas.valueProperty().addListener((obs, oldVal, newVal) -> gerarCamposData(newVal));
         gerarCamposData(1);
-        filtrar();
+
+        // DR010: carrega dados em background
+        Thread bg = new Thread(() -> {
+            buscarViagemAtual();
+            carregarCategorias();
+            javafx.application.Platform.runLater(this::filtrar);
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     
     @FXML
@@ -123,9 +129,11 @@ public class CadastroBoletoController {
         }
         
         try {
-            double total = Double.parseDouble(txtValor.getText().replace(",", "."));
+            java.math.BigDecimal total = new java.math.BigDecimal(txtValor.getText().replace(",", "."));
             int parcelas = spParcelas.getValue();
-            double valorParcela = total / parcelas;
+            // DL014: distribui centavos da divisao na ultima parcela
+            java.math.BigDecimal valorParcela = total.divide(java.math.BigDecimal.valueOf(parcelas), 2, java.math.RoundingMode.DOWN);
+            java.math.BigDecimal valorUltimaParcela = total.subtract(valorParcela.multiply(java.math.BigDecimal.valueOf(parcelas - 1)));
             String cat = cmbCategoria.getValue();
             if(cat == null) cat = cmbCategoria.getEditor().getText();
             int idCat = buscarOuCriarCategoria(cat);
@@ -143,9 +151,12 @@ public class CadastroBoletoController {
                     LocalDate vencimento = pickersDatas.get(i).getValue();
                     if(vencimento == null) vencimento = LocalDate.now().plusMonths(i+1);
                     
+                    // DL014: ultima parcela absorve centavos restantes
+                    java.math.BigDecimal valorDestaParcela = (i == parcelas - 1) ? valorUltimaParcela : valorParcela;
+
                     // 1. Insere no Financeiro
                     stmtFin.setString(1, txtDescricao.getText());
-                    stmtFin.setDouble(2, valorParcela);
+                    stmtFin.setBigDecimal(2, valorDestaParcela);
                     stmtFin.setDate(3, Date.valueOf(vencimento));
                     stmtFin.setInt(4, idCat);
                     stmtFin.setInt(5, i + 1);
@@ -153,10 +164,10 @@ public class CadastroBoletoController {
                     stmtFin.setString(7, txtObs.getText());
                     stmtFin.setInt(8, idViagemAtual);
                     stmtFin.addBatch();
-                    
+
                     // 2. Insere na Agenda (Aviso de Vencimento)
                     stmtAgenda.setDate(1, Date.valueOf(vencimento));
-                    stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i+1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorParcela));
+                    stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i+1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorDestaParcela));
                     stmtAgenda.addBatch();
                 }
                 stmtFin.executeBatch();

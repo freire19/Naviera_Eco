@@ -50,6 +50,15 @@ public class AlertHelper {
         show(AlertType.ERROR, title, message);
     }
 
+    /**
+     * D017: Exibe erro sem expor detalhes internos (SQL, stack traces) ao usuario.
+     * Loga o erro real em stderr e mostra mensagem generica ao usuario.
+     */
+    public static void errorSafe(String contexto, Exception e) {
+        System.err.println("Erro em " + contexto + ": " + e.getMessage());
+        show(AlertType.ERROR, "Erro", "Ocorreu um erro ao " + contexto.toLowerCase() + ". Tente novamente ou contate o suporte.");
+    }
+
     private static void exibir(AlertType type, String title, String message) {
         Alert alert = new Alert(type);
         alert.setTitle(title);

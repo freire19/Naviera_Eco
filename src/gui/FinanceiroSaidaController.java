@@ -94,20 +94,19 @@ public class FinanceiroSaidaController {
         dpFiltroData.setValue(null);
         cmbFiltroCategoria.getSelectionModel().selectFirst();
         
-        // 2. CARREGAMENTO E SELEÇÃO DA VIAGEM
-        // Este método carrega a lista e FORÇA a seleção da viagem ativa antes de adicionarmos os listeners.
-        carregarViagens(); 
-        
-        // 3. LISTENERS
-        // Adicionamos os observadores APÓS carregar os dados. 
-        // Como o valor já foi setado corretamente em carregarViagens(), isso previne comportamento errático.
-        cmbFiltroViagem.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
-        cmbFiltroCategoria.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
-        cmbFiltroPagamento.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
-        dpFiltroData.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
-        
-        // 4. Executa o filtro inicial com os dados corretos já carregados
-        filtrar();
+        // DR010: carrega viagens em background e configura listeners na FX thread
+        Thread bg = new Thread(() -> {
+            carregarViagens();
+            javafx.application.Platform.runLater(() -> {
+                cmbFiltroViagem.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+                cmbFiltroCategoria.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+                cmbFiltroPagamento.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+                dpFiltroData.valueProperty().addListener((obs, oldVal, newVal) -> filtrar());
+                filtrar();
+            });
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     
     // --- LÓGICA CORRIGIDA DE CARREGAMENTO DE VIAGENS ---
@@ -149,25 +148,23 @@ public class FinanceiroSaidaController {
                 }
             }
             
-            // Popula o ComboBox
-            cmbFiltroViagem.setItems(lista);
-            
-            // LÓGICA DE SELEÇÃO OBRIGATÓRIA:
-            if (opcaoAtivaEncontrada != null) {
-                // Seleciona EXATAMENTE a viagem ativa, não importa a posição na lista
-                cmbFiltroViagem.getSelectionModel().select(opcaoAtivaEncontrada);
-            } else {
-                // Se não houver nenhuma ativa, aí sim pega a primeira da lista (mais recente)
-                if (lista.size() > 1) {
-                    cmbFiltroViagem.getSelectionModel().select(1); // Pula o "TODAS" e pega a primeira real
+            // DR010: atualiza UI na FX thread
+            OpcaoViagem finalOpcaoAtiva = opcaoAtivaEncontrada;
+            ObservableList<OpcaoViagem> finalLista = lista;
+            javafx.application.Platform.runLater(() -> {
+                cmbFiltroViagem.setItems(finalLista);
+                if (finalOpcaoAtiva != null) {
+                    cmbFiltroViagem.getSelectionModel().select(finalOpcaoAtiva);
+                } else if (finalLista.size() > 1) {
+                    cmbFiltroViagem.getSelectionModel().select(1);
                 } else {
                     cmbFiltroViagem.getSelectionModel().selectFirst();
                 }
-            }
-            
-        } catch (Exception e) { 
-            e.printStackTrace(); 
-            alert("Erro ao carregar viagens: " + e.getMessage());
+            });
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            javafx.application.Platform.runLater(() -> alert("Erro ao carregar viagens: " + e.getMessage()));
         }
     }
 
@@ -178,7 +175,7 @@ public class FinanceiroSaidaController {
         
         int idFiltro = cmbFiltroViagem.getValue().id;
         ObservableList<Despesa> lista = FXCollections.observableArrayList();
-        double total = 0;
+        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         StringBuilder sql = new StringBuilder();
         
@@ -223,13 +220,13 @@ public class FinanceiroSaidaController {
                     rs.getString("descricao"), 
                     rs.getString("cat_nome"), 
                     rs.getString("forma_pagamento"), 
-                    rs.getDouble("valor_total"), 
+                    rs.getBigDecimal("valor_total"),
                     rs.getString("status"),
                     rs.getBoolean("is_excluido") 
                 );
                 lista.add(d);
-                if (!d.isExcluido()) {
-                    total += d.getValor();
+                if (!d.isExcluido() && d.getValor() != null) {
+                    total = total.add(d.getValor());
                 }
             }
             tabela.setItems(lista);
@@ -315,8 +312,8 @@ public class FinanceiroSaidaController {
 
         try {
             String valorTexto = txtValor.getText().replace(",", ".");
-            double valor = Double.parseDouble(valorTexto);
-            if (valor <= 0) { alert("O valor deve ser maior que zero."); return; }
+            java.math.BigDecimal valor = new java.math.BigDecimal(valorTexto);
+            if (valor.signum() <= 0) { alert("O valor deve ser maior que zero."); return; }
 
             String forma = cmbFormaPagamento.getValue();
             String status = forma.equals("BOLETO") ? "PENDENTE" : "PAGO";
@@ -328,8 +325,8 @@ public class FinanceiroSaidaController {
                  PreparedStatement stmt = con.prepareStatement(sql)) {
                 
                 stmt.setString(1, txtDescricao.getText().toUpperCase());
-                stmt.setDouble(2, valor);
-                stmt.setDouble(3, status.equals("PAGO") ? valor : 0.0);
+                stmt.setBigDecimal(2, valor);
+                stmt.setBigDecimal(3, status.equals("PAGO") ? valor : java.math.BigDecimal.ZERO);
                 
                 java.sql.Date dataFinanceira = java.sql.Date.valueOf(dpDataPrimeiroPagamento.getValue());
                 
@@ -555,8 +552,8 @@ public class FinanceiroSaidaController {
             alturaAtual += 30; 
 
             ObservableList<Despesa> itens = tabela.getItems();
-            Map<String, Double> totaisPorTipo = new HashMap<>();
-            double totalGeral = 0;
+            Map<String, java.math.BigDecimal> totaisPorTipo = new HashMap<>();
+            java.math.BigDecimal totalGeral = java.math.BigDecimal.ZERO;
             int rowGrid = 1; 
 
             for (Despesa d : itens) {
@@ -585,8 +582,8 @@ public class FinanceiroSaidaController {
                 adicionarLinhaGrid(gridTabela, d, rowGrid, corFundo);
                 
                 if (!d.isExcluido()) {
-                    totaisPorTipo.put(d.getForma(), totaisPorTipo.getOrDefault(d.getForma(), 0.0) + d.getValor());
-                    totalGeral += d.getValor();
+                    totaisPorTipo.merge(d.getForma(), d.getValor(), java.math.BigDecimal::add);
+                    totalGeral = totalGeral.add(d.getValor());
                 }
                 
                 alturaAtual += alturaLinha;
@@ -616,23 +613,23 @@ public class FinanceiroSaidaController {
         }
     }
     
-    private VBox criarRodape(Map<String, Double> totais, double geral) {
+    private VBox criarRodape(Map<String, java.math.BigDecimal> totais, java.math.BigDecimal geral) {
         VBox box = new VBox(5);
         box.setStyle("-fx-padding: 20 0 0 0; -fx-border-color: #333; -fx-border-width: 1 0 0 0;");
-        
+
         GridPane grid = new GridPane();
         grid.setHgap(20);
         int col = 0;
         int row = 0;
-        
-        for (Map.Entry<String, Double> entry : totais.entrySet()) {
+
+        for (Map.Entry<String, java.math.BigDecimal> entry : totais.entrySet()) {
             Label lbl = new Label(entry.getKey() + ": " + nf.format(entry.getValue()));
             lbl.setStyle("-fx-font-size: 10px;");
             grid.add(lbl, col, row);
             col++;
             if (col > 3) { col = 0; row++; }
         }
-        
+
         Label lblTotal = new Label("TOTAL GERAL: " + nf.format(geral));
         lblTotal.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1565c0;");
         
@@ -881,12 +878,12 @@ public class FinanceiroSaidaController {
     public static class Despesa {
         private int id;
         private String data, descricao, categoria, forma, status;
-        private Double valor;
-        private boolean excluido; 
-        
-        public Despesa(int id, String d, String desc, String cat, String forma, Double val, String st, boolean excluido) {
+        private java.math.BigDecimal valor;
+        private boolean excluido;
+
+        public Despesa(int id, String d, String desc, String cat, String forma, java.math.BigDecimal val, String st, boolean excluido) {
             this.id = id; this.data = d; this.descricao = desc; this.categoria = cat;
-            this.forma = forma; this.valor = val; this.status = st;
+            this.forma = forma; this.valor = val != null ? val : java.math.BigDecimal.ZERO; this.status = st;
             this.excluido = excluido;
         }
         public int getId() { return id; }
@@ -894,10 +891,10 @@ public class FinanceiroSaidaController {
         public String getDescricao() { return descricao; }
         public String getCategoria() { return categoria; }
         public String getForma() { return forma; }
-        public Double getValor() { return valor; }
+        public java.math.BigDecimal getValor() { return valor; }
         public String getStatus() { return status; }
-        public boolean isExcluido() { return excluido; } 
-        public String getValorFormatado() { return NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(valor); }
+        public boolean isExcluido() { return excluido; }
+        public String getValorFormatado() { return nf.format(valor); }
     }
     
     public static class OpcaoViagem {

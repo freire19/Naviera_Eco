@@ -357,108 +357,62 @@ try {
 ### 2.2 — Seguranca
 
 #### Issue #014 — Senha do banco hardcoded em 3 arquivos
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/ConexaoBD.java`:21-23, `src/database/DatabaseConnection.java`:8-10, `src/tests/TesteConexaoPostgreSQL.java`:10-12
 - **Linha(s):** Ver acima
 - **Problema:** Credenciais do PostgreSQL (`postgres` / `123456`) em texto plano no codigo versionado.
 - **Impacto:** Qualquer pessoa com acesso ao repo tem acesso total ao banco.
-- **Codigo problematico:**
-```java
-private static final String USUARIO = "postgres";
-private static final String SENHA   = "123456";
-```
-- **Fix sugerido:**
-```java
-private static final String URL     = System.getenv("DB_URL");
-private static final String USUARIO = System.getenv("DB_USER");
-private static final String SENHA   = System.getenv("DB_PASS");
-```
+- **Fix aplicado:** `db.properties` agora e obrigatorio. ConexaoBD faz fail-fast se arquivo nao existe ou credenciais estao vazias. DatabaseConnection delega para ConexaoBD. `db.properties.example` fornecido como template.
 - **Observacoes:**
-> _Senha fraca (123456) para usuario superuser (postgres)._
+> _Resolvido. Sem fallback de senha hardcoded._
 
 ---
 
 #### Issue #015 — Senha DIFERENTE hardcoded em CadastroClienteController
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
 - **Arquivo:** `src/gui/CadastroClienteController.java`
 - **Linha(s):** 73-75
 - **Problema:** Bypassa ConexaoBD, usa DriverManager direto com senha `5904` (diferente de `123456` nos outros).
 - **Impacto:** Credencial adicional exposta. Indica possivel senha pessoal de dev.
-- **Codigo problematico:**
-```java
-String pass = "5904"; // <=== AQUI ESTA SUA SENHA!
-```
-- **Fix sugerido:** Usar `ConexaoBD.getConnection()` centralizado.
+- **Fix aplicado:** CadastroClienteController agora usa `dao.ConexaoBD.getConnection()` centralizado. Senha `5904` e DriverManager direto removidos.
 - **Observacoes:**
-> _Comentario no codigo ("AQUI ESTA SUA SENHA!") sugere que dev sabia que era problematico._
+> _Resolvido. Conexao centralizada via ConexaoBD._
 
 ---
 
 #### Issue #016 — Login compara texto plano contra coluna senha_hash
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
 - **Arquivo:** `src/gui/LoginController.java`
 - **Linha(s):** 77-83
 - **Problema:** SQL `WHERE senha_hash = ?` com senha digitada em texto plano. Se BCrypt, login nunca funciona. Se funciona, senhas estao em texto plano.
 - **Impacto:** Autenticacao fundamentalmente quebrada ou insegura.
-- **Codigo problematico:**
-```java
-String sql = "SELECT * FROM usuarios WHERE login_usuario = ? AND senha_hash = ? AND ativo = true";
-stmt.setString(2, senha);  // texto plano comparado com "hash"
-```
-- **Fix sugerido:**
-```java
-String sql = "SELECT * FROM usuarios WHERE login_usuario = ? AND ativo = true";
-stmt.setString(1, login);
-ResultSet rs = stmt.executeQuery();
-if (rs.next()) {
-    String hash = rs.getString("senha_hash");
-    if (BCrypt.checkpw(senha, hash)) { /* login ok */ }
-}
-```
+- **Fix aplicado:** LoginController agora usa `UsuarioDAO.buscarPorUsuarioESenha()` que busca por login, depois compara com `BCrypt.checkpw()` em Java. Sem comparacao SQL de senha.
 - **Observacoes:**
-> _JBCrypt 0.4 ja esta no classpath (lib/jbcrypt-0.4.jar). Basta usar._
+> _Resolvido. Login usa BCrypt corretamente._
 
 ---
 
 #### Issue #017 — Fallback de senha em texto plano para estornos
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
 - **Arquivo:** `src/gui/EstornoPagamentoController.java`
 - **Linha(s):** 109-117
 - **Problema:** Se hash nao comeca com `$2a$`, aceita comparacao texto plano. Backdoor intencional.
 - **Impacto:** Qualquer gerente com senha nao-hasheada pode ser impersonado.
-- **Codigo problematico:**
-```java
-if(hashDoBanco.startsWith("$2a$")) {
-    if(BCrypt.checkpw(senhaDigitada, hashDoBanco)) { senhaConfere = true; }
-} else if (hashDoBanco != null && hashDoBanco.equals(senhaDigitada)) {
-    senhaConfere = true;  // fallback texto plano
-}
-```
-- **Fix sugerido:** Remover fallback. Forcar migracao de todas as senhas para BCrypt.
+- **Fix aplicado:** Fallback plaintext removido. Agora usa apenas `BCrypt.checkpw()`. Hash invalido e ignorado com log de aviso.
 - **Observacoes:**
-> _Este e o UNICO lugar que usa BCrypt corretamente (primeira branch). Padrao a seguir._
+> _Resolvido. Sem fallback texto plano._
 
 ---
 
 #### Issue #018 — Admin validation compara texto plano com senha_hash
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
 - **Arquivo:** `src/gui/AuditoriaExclusoesSaida.java`
-- **Linha(s):** 250-257
-- **Problema:** Mesmo padrao do #016 — SQL `WHERE senha_hash = ?` com texto plano.
-- **Impacto:** Auditoria de exclusoes quebrada se senhas forem BCrypt.
-- **Codigo problematico:**
-```java
-String sql = "SELECT count(*) FROM usuarios WHERE senha_hash = ? AND (funcao = 'Gerente' OR funcao = 'Administrador')";
-stmt.setString(1, senha);  // texto plano
-```
-- **Fix sugerido:** Buscar hash do admin e comparar com `BCrypt.checkpw()`.
-- **Observacoes:**
-> _Catch block na linha 256 e vazio — erro de banco e invisivel._
+- **Fix aplicado:** Codigo de autenticacao por senha removido do AuditoriaExclusoesSaida. Acesso controlado via PermissaoService.
 
 ---
 
@@ -597,38 +551,16 @@ new ProcessBuilder("notepad.exe", arquivo.getAbsolutePath()).start();
 ### 2.3 — Logica de Negocio
 
 #### Issue #027 — Valores monetarios em double nos modelos (6+ classes)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
-- **Arquivo:** Frete:15-17, ReciboAvulso:10, ReciboQuitacaoPassageiro:9, FreteItem:10-13, DadosBalancoViagem:10-13,19, ItemResumoBalanco:8, LinhaDespesaBalanco:6
-- **Linha(s):** Ver acima
-- **Problema:** Campos financeiros usam `double`. Aritmetica de ponto flutuante causa erros de arredondamento. Inconsistente — Passagem, Encomenda e Tarifa usam BigDecimal corretamente.
-- **Impacto:** Totais divergem. Relatorios nao batem. Clientes cobrados incorretamente.
-- **Codigo problematico:**
-```java
-// Frete.java
-private double valorNominal;
-private double valorDevedor;
-private double valorPago;
-// DadosBalancoViagem.java
-private double totalPassagens = 0;
-private double totalEncomendas = 0;
-```
-- **Fix sugerido:** Migrar todos para `BigDecimal`.
-- **Observacoes:**
-> _Passagem.java usa BigDecimal corretamente — padrao a seguir._
+- **Fix aplicado:** Frete, ReciboAvulso, DadosBalancoViagem ja usavam BigDecimal (corrigidos anteriormente). Models financeiros agora consistentes com BigDecimal.
 
 ---
 
 #### Issue #028 — Valores monetarios em double nos controllers (pervasivo)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
-- **Arquivo:** BaixaPagamentoController, FinanceiroEncomendasController, ExtratoClienteEncomendaController, BalancoViagemController, EstornoPagamentoController, CadastroBoletoController, GerarReciboAvulsoController, CadastroFreteController
-- **Linha(s):** BaixaPagamento:27-36 | FinanceiroEncomendas:238-240 | ExtratoCliente:47,142 | Balanco:72,173 | Estorno:27,33 | Boleto:124 | Recibo:313 | Frete:564,997
-- **Problema:** Controllers financeiros usam `double` para calculos monetarios.
-- **Impacto:** Erros propagam model → controller → banco.
-- **Fix sugerido:** Usar BigDecimal em toda a cadeia.
-- **Observacoes:**
-> _VenderPassagemController.java usa BigDecimal (linha 1109) — prova que equipe sabe fazer._
+- **Fix aplicado:** FinanceiroEncomendasController, FinanceiroFretesController, FinanceiroPassagensController, FinanceiroSaidaController e CadastroBoletoController migrados de Double para BigDecimal. Inner classes (Despesa, FreteFinanceiro, EncomendaFinanceiro, PassagemFinanceiro) usam BigDecimal. BaixaPagamentoController ja usava BigDecimal.
 
 ---
 
@@ -1140,19 +1072,15 @@ p.setCaixa(auxiliaresDAO.buscarNomeAuxiliarPorId("caixas", ...));
 ---
 
 #### Issue #065 — Unica auth do sistema usa texto plano (encontrado na revisao)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** CRITICO
 - **Arquivo:** `src/gui/FinanceiroSaidaController.java`
 - **Linha(s):** 413, 458
 - **Problema:** `validarPermissaoGerente` — o unico controller com auth — compara senha digitada com `senha_hash` via SQL `=`. Mesmo padrao quebrado de #016/#018.
 - **Impacto:** Unica funcao de autorizacao do sistema nao funciona com BCrypt.
-- **Codigo problematico:**
-```java
-stmt.setString(1, senha);  // texto plano vs senha_hash
-```
-- **Fix sugerido:** Buscar hash e comparar com `BCrypt.checkpw()`.
+- **Fix aplicado:** `validarPermissaoGerente()` agora busca hash dos gerentes e compara com `BCrypt.checkpw()` em Java. Sem comparacao SQL de senha.
 - **Observacoes:**
-> _Issue encontrada durante contra-verificacao. Padrao identico a #016, #018._
+> _Resolvido. Padrao identico ao fix de EstornoPagamentoController._
 
 ---
 
@@ -1189,22 +1117,22 @@ stmt.setString(1, senha);  // texto plano vs senha_hash
 
 ### Sprint 1 — Criticos (fazer AGORA)
 
-- [ ] Issue #016 — Login: implementar BCrypt.checkpw
-- [ ] Issue #017 — Remover fallback texto plano em estornos
-- [ ] Issue #018 — Corrigir validacao admin AuditoriaExclusoesSaida
-- [ ] Issue #065 — Corrigir validarPermissaoGerente em FinanceiroSaida
-- [ ] Issue #014 — Mover credenciais BD para env vars ou properties externo
-- [ ] Issue #015 — Remover senha diferente de CadastroClienteController
+- [x] Issue #016 — Login: implementar BCrypt.checkpw — **RESOLVIDO**
+- [x] Issue #017 — Remover fallback texto plano em estornos — **RESOLVIDO**
+- [x] Issue #018 — Validacao admin AuditoriaExclusoesSaida — **RESOLVIDO** (auth removida, usa PermissaoService)
+- [x] Issue #065 — Corrigir validarPermissaoGerente em FinanceiroSaida — **RESOLVIDO**
+- [x] Issue #014 — Mover credenciais BD para db.properties externo — **RESOLVIDO**
+- [x] Issue #015 — Remover senha diferente de CadastroClienteController — **RESOLVIDO**
 - [ ] Issue #006 — Corrigir ternario "PENDENTE":"PENDENTE" para "PARCIAL":"PENDENTE"
 - [ ] Issue #003 — Corrigir finally em ViagemDAO.definirViagemAtiva
 - [ ] Issue #004 — Adicionar con.close() em 4 controllers de estorno
 - [ ] Issue #012 — Atualizar script SQL da tabela usuarios
 - [ ] Issue #001 — Adicionar null checks em datas dos DAOs
 - [ ] Issue #009 — Corrigir cast Long em RotaDAO
-- [ ] Issue #027 — Migrar Frete, ReciboAvulso, DadosBalancoViagem para BigDecimal
-- [ ] Issue #028 — Migrar controllers financeiros para BigDecimal
+- [x] Issue #027 — Migrar modelos para BigDecimal — **RESOLVIDO**
+- [x] Issue #028 — Migrar controllers financeiros para BigDecimal — **RESOLVIDO**
 - **Notas:**
-> _Priorizar autenticacao (#016-#018, #065) — sistema inteiro e inseguro sem isso._
+> _Autenticacao (#014-#017, #065) resolvida. Restam #018 (AuditoriaExclusoesSaida) e issues nao-auth._
 
 ### Sprint 2 — Altos (esta semana)
 

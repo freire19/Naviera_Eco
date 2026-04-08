@@ -41,11 +41,17 @@ public class FinanceiroFretesController {
     public void initialize() {
         if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Financeiro Fretes"); return; }
         configurarTabela();
-        carregarComboViagens();
 
         cmbViagem.valueProperty().addListener((obs, oldVal, newVal) -> carregarDados());
         txtBusca.textProperty().addListener((obs, oldVal, newVal) -> carregarDados());
         chkApenasDevedores.selectedProperty().addListener((obs, oldVal, newVal) -> carregarDados());
+
+        // DR010: carrega viagens em background
+        Thread bg = new Thread(() -> {
+            carregarComboViagens();
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     @FXML
@@ -130,7 +136,8 @@ public class FinanceiroFretesController {
                 }
                 lista.add(new OpcaoViagem(rs.getInt("id_viagem"), label));
             }
-            cmbViagem.setItems(lista);
+            ObservableList<OpcaoViagem> finalLista = lista;
+            javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -142,7 +149,7 @@ public class FinanceiroFretesController {
         int idViagem = cmbViagem.getValue().id;
 
         ObservableList<FreteFinanceiro> lista = FXCollections.observableArrayList();
-        double somaPendente = 0;
+        java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
 
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT f.id_frete, f.numero_frete, v.data_viagem, ");
@@ -153,12 +160,16 @@ public class FinanceiroFretesController {
         sql.append("LEFT JOIN viagens v ON f.id_viagem = v.id_viagem ");
         sql.append("WHERE f.status_frete != 'CANCELADO' ");
 
-        if (idViagem > 0) sql.append(" AND f.id_viagem = ").append(idViagem);
+        // D003: parametriza idViagem
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        if (idViagem > 0) { sql.append(" AND f.id_viagem = ?"); params.add(idViagem); }
         if (chkApenasDevedores.isSelected()) sql.append(" AND (f.valor_devedor > 0.01 OR f.valor_pago IS NULL OR f.valor_pago < f.valor_total_itens) ");
 
         String busca = txtBusca.getText().toLowerCase();
         if (!busca.isEmpty()) {
             sql.append(" AND (LOWER(f.remetente_nome_temp) LIKE ? OR LOWER(f.destinatario_nome_temp) LIKE ?) ");
+            params.add("%" + busca + "%");
+            params.add("%" + busca + "%");
         }
 
         sql.append(" ORDER BY f.id_frete DESC");
@@ -166,19 +177,22 @@ public class FinanceiroFretesController {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
 
-            if (!busca.isEmpty()) {
-                stmt.setString(1, "%" + busca + "%");
-                stmt.setString(2, "%" + busca + "%");
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
+                else stmt.setString(i + 1, p.toString());
             }
 
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
-            java.math.BigDecimal somaPendenteBD = java.math.BigDecimal.ZERO;
             while (rs.next()) {
-                double total = rs.getDouble("valor_nominal");
-                double pago = rs.getDouble("valor_pago");
-                double devendo = rs.getDouble("valor_devedor");
+                java.math.BigDecimal totalBD = rs.getBigDecimal("valor_nominal");
+                java.math.BigDecimal pagoBD = rs.getBigDecimal("valor_pago");
+                java.math.BigDecimal devendoBD = rs.getBigDecimal("valor_devedor");
+                if (totalBD == null) totalBD = java.math.BigDecimal.ZERO;
+                if (pagoBD == null) pagoBD = java.math.BigDecimal.ZERO;
+                if (devendoBD == null) devendoBD = java.math.BigDecimal.ZERO;
                 int volumes = rs.getInt("total_volumes");
 
                 String dataFmt = "";
@@ -191,12 +205,12 @@ public class FinanceiroFretesController {
                         rs.getString("remetente"),
                         rs.getString("destinatario"),
                         volumes,
-                        total, pago
+                        totalBD, pagoBD
                 ));
-                if (devendo > 0.01) somaPendenteBD = somaPendenteBD.add(java.math.BigDecimal.valueOf(devendo));
+                if (devendoBD.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendoBD);
             }
             tabela.setItems(lista);
-            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendenteBD));
+            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -210,7 +224,7 @@ public class FinanceiroFretesController {
             alert("Selecione um frete na tabela para dar baixa.");
             return;
         }
-        if (selecionada.getRestante() <= 0.01) {
+        if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
             alert("Este frete já está quitado!");
             return;
         }
@@ -243,9 +257,8 @@ public class FinanceiroFretesController {
         }
     }
 
-    private void salvarPagamento(long idFrete, BaixaPagamentoController dados, double jaPago) {
-        java.math.BigDecimal bdJaPago = java.math.BigDecimal.valueOf(jaPago);
-        java.math.BigDecimal novoPago = bdJaPago.add(dados.getValorPago());
+    private void salvarPagamento(long idFrete, BaixaPagamentoController dados, java.math.BigDecimal jaPago) {
+        java.math.BigDecimal novoPago = jaPago.add(dados.getValorPago());
         // Buscar desconto ja armazenado no banco e somar com o novo (DL012)
         java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
         try (Connection con = ConexaoBD.getConnection();
@@ -292,7 +305,7 @@ public class FinanceiroFretesController {
             return;
         }
 
-        if (selecionada.getPago() <= 0.01) {
+        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
             alert("Este frete não tem pagamento para estornar.");
             return;
         }
@@ -317,10 +330,8 @@ public class FinanceiroFretesController {
                 int idAutorizador = controller.getIdAutorizador();
                 String nomeAutorizador = controller.getNomeAutorizador();
 
-                java.math.BigDecimal bdPago = java.math.BigDecimal.valueOf(selecionada.getPago());
-                java.math.BigDecimal bdTotal = java.math.BigDecimal.valueOf(selecionada.getTotal());
-                java.math.BigDecimal novoPago = bdPago.subtract(vEstorno);
-                java.math.BigDecimal novoDevedor = bdTotal.subtract(novoPago);
+                java.math.BigDecimal novoPago = selecionada.getPago().subtract(vEstorno);
+                java.math.BigDecimal novoDevedor = selecionada.getTotal().subtract(novoPago);
                 String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PENDENTE" : "NAO_PAGO";
 
                 Connection con = null;
@@ -328,20 +339,7 @@ public class FinanceiroFretesController {
                     con = ConexaoBD.getConnection();
                     con.setAutoCommit(false);
 
-                    // Criar tabela de log se não existir
-                    String sqlCriarTabela = "CREATE TABLE IF NOT EXISTS log_estornos_fretes (" +
-                            "id_log SERIAL PRIMARY KEY, " +
-                            "id_frete INTEGER NOT NULL, " +
-                            "valor_estornado DECIMAL(10,2) NOT NULL, " +
-                            "motivo TEXT, " +
-                            "forma_devolucao VARCHAR(50), " +
-                            "id_usuario_autorizou INTEGER, " +
-                            "nome_autorizador VARCHAR(100), " +
-                            "data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
-                    try (PreparedStatement stmtCriar = con.prepareStatement(sqlCriarTabela)) {
-                        stmtCriar.executeUpdate();
-                    }
-
+                    // D021: DDL movido para database_scripts/ — tabela log_estornos_fretes deve existir no banco
                     String sqlUp = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, status_frete = ? WHERE id_frete = ?";
                     try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
                         stmt.setBigDecimal(1, novoPago);
@@ -483,17 +481,17 @@ public class FinanceiroFretesController {
         private long id;
         private String numero, dataViagem, remetente, destinatario;
         private int volumes;
-        private Double total, pago;
+        private java.math.BigDecimal total, pago;
 
-        public FreteFinanceiro(long id, String num, String data, String rem, String dest, int volumes, Double total, Double pago) {
+        public FreteFinanceiro(long id, String num, String data, String rem, String dest, int volumes, java.math.BigDecimal total, java.math.BigDecimal pago) {
             this.id = id;
             this.numero = num;
             this.dataViagem = data;
             this.remetente = rem;
             this.destinatario = dest;
             this.volumes = volumes;
-            this.total = total;
-            this.pago = (pago != null) ? pago : 0.0;
+            this.total = total != null ? total : java.math.BigDecimal.ZERO;
+            this.pago = pago != null ? pago : java.math.BigDecimal.ZERO;
         }
 
         public long getId() { return id; }
@@ -502,15 +500,15 @@ public class FinanceiroFretesController {
         public String getRemetente() { return remetente; }
         public String getDestinatario() { return destinatario; }
         public int getVolumes() { return volumes; }
-        public Double getTotal() { return total; }
-        public Double getPago() { return pago; }
-        public Double getRestante() { return Math.max(0, total - pago); }
-        public String getTotalFormatado() { return String.format("R$ %.2f", total); }
-        public String getPagoFormatado() { return String.format("R$ %.2f", pago); }
-        public String getRestanteFormatado() { return String.format("R$ %.2f", getRestante()); }
+        public java.math.BigDecimal getTotal() { return total; }
+        public java.math.BigDecimal getPago() { return pago; }
+        public java.math.BigDecimal getRestante() { return total.subtract(pago).max(java.math.BigDecimal.ZERO); }
+        public String getTotalFormatado() { return String.format("R$ %,.2f", total); }
+        public String getPagoFormatado() { return String.format("R$ %,.2f", pago); }
+        public String getRestanteFormatado() { return String.format("R$ %,.2f", getRestante()); }
 
         public String getStatus() {
-            return model.StatusPagamento.calcularPorSaldo(getRestante(), getPago()).name();
+            return model.StatusPagamento.calcularPorSaldo(getRestante().doubleValue(), getPago().doubleValue()).name();
         }
     }
 }

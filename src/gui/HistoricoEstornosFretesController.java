@@ -33,7 +33,10 @@ public class HistoricoEstornosFretesController {
         dpFim.setValue(LocalDate.now());
 
         configurarTabela();
-        filtrar();
+        // DR010: carrega dados em background
+        Thread bg = new Thread(this::filtrar);
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarTabela() {
@@ -54,24 +57,7 @@ public class HistoricoEstornosFretesController {
         ObservableList<EstornoFreteLog> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 
-        // Primeiro, verificar/criar a tabela se não existir
-        String sqlCriarTabela = "CREATE TABLE IF NOT EXISTS log_estornos_fretes (" +
-                "id_log SERIAL PRIMARY KEY, " +
-                "id_frete INTEGER NOT NULL, " +
-                "valor_estornado DECIMAL(10,2) NOT NULL, " +
-                "motivo TEXT, " +
-                "forma_devolucao VARCHAR(50), " +
-                "id_usuario_autorizou INTEGER, " +
-                "nome_autorizador VARCHAR(100), " +
-                "data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
-
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmtCriar = con.prepareStatement(sqlCriarTabela)) {
-            stmtCriar.executeUpdate();
-        } catch (Exception e) {
-            // Tabela pode já existir, ignorar erro
-        }
-
+        // D021: DDL movido para database_scripts/ — tabela log_estornos_fretes deve existir no banco
         String sql = "SELECT l.data_hora, f.numero_frete, l.valor_estornado, l.motivo, l.nome_autorizador, l.forma_devolucao " +
                      "FROM log_estornos_fretes l " +
                      "JOIN fretes f ON l.id_frete = f.id_frete " +
@@ -95,7 +81,7 @@ public class HistoricoEstornosFretesController {
                     rs.getString("nome_autorizador")
                 ));
             }
-            tabela.setItems(lista);
+            javafx.application.Platform.runLater(() -> tabela.setItems(lista));
 
         } catch (Exception e) {
             e.printStackTrace();

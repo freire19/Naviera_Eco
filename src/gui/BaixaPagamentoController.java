@@ -41,11 +41,16 @@ public class BaixaPagamentoController {
 
     @FXML
     public void initialize() {
-        carregarFormasPagamento();
-        carregarUsuariosCaixa();
-
         txtDesconto.textProperty().addListener((obs, old, novo) -> calcularTotais());
         txtValorRecebido.textProperty().addListener((obs, old, novo) -> calcularTotais());
+
+        // DR010: carrega combos em background
+        Thread bg = new Thread(() -> {
+            carregarFormasPagamento();
+            carregarUsuariosCaixa();
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     public void setDadosIniciais(BigDecimal total, BigDecimal pago, BigDecimal rest) {
@@ -104,8 +109,10 @@ public class BaixaPagamentoController {
         } catch (SQLException e) {
             formas.addAll("DINHEIRO", "PIX", "CARTAO");
         }
-        cmbFormaPagamento.setItems(formas);
-        cmbFormaPagamento.getSelectionModel().selectFirst();
+        javafx.application.Platform.runLater(() -> {
+            cmbFormaPagamento.setItems(formas);
+            cmbFormaPagamento.getSelectionModel().selectFirst();
+        });
     }
 
     private void carregarUsuariosCaixa() {
@@ -113,23 +120,29 @@ public class BaixaPagamentoController {
         try (Connection con = ConexaoBD.getConnection();
              ResultSet rs = con.prepareStatement("SELECT nome_caixa FROM caixas ORDER BY nome_caixa").executeQuery()) {
             while(rs.next()) users.add(rs.getString(1));
-
-            if(!users.isEmpty()) {
-                cmbCaixa.setItems(users);
-                cmbCaixa.getSelectionModel().selectFirst();
-            } else {
-                cmbCaixa.getItems().add("PADRAO");
-                cmbCaixa.getSelectionModel().selectFirst();
-            }
         } catch (SQLException e) {
             System.err.println("Erro ao carregar caixas: " + e.getMessage());
-            cmbCaixa.getItems().add("PADRAO");
-            cmbCaixa.getSelectionModel().selectFirst();
         }
+        javafx.application.Platform.runLater(() -> {
+            if (!users.isEmpty()) {
+                cmbCaixa.setItems(users);
+            } else {
+                cmbCaixa.getItems().add("PADRAO");
+            }
+            cmbCaixa.getSelectionModel().selectFirst();
+        });
     }
 
     @FXML void confirmar() {
         BigDecimal desc = converterMoeda(txtDesconto.getText());
+        BigDecimal valorRecebido = converterMoeda(txtValorRecebido.getText());
+        // D016: impede pagamento de R$0,00
+        if (valorRecebido.signum() <= 0 && desc.signum() <= 0) {
+            Alert alert = new Alert(Alert.AlertType.WARNING, "Informe um valor de pagamento ou desconto maior que zero.");
+            alert.setHeaderText("Valor invalido");
+            alert.showAndWait();
+            return;
+        }
         if (desc.compareTo(restanteOriginal) > 0) {
             Alert alert = new Alert(Alert.AlertType.WARNING, "O desconto nao pode ser maior que o valor restante (R$ " + String.format("%,.2f", restanteOriginal) + ").");
             alert.setHeaderText("Desconto invalido");

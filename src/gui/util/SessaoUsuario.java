@@ -5,20 +5,38 @@ import model.Usuario; // Adapte para o pacote onde sua classe Usuario.java está
 
 public class SessaoUsuario {
     private static Usuario usuarioLogado;
+    private static long ultimaAtividade = 0;
+    private static final long TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas (jornada de trabalho)
 
     public static void setUsuarioLogado(Usuario usuario) {
         SessaoUsuario.usuarioLogado = usuario;
+        SessaoUsuario.ultimaAtividade = System.currentTimeMillis();
     }
 
     public static Usuario getUsuarioLogado() {
+        if (usuarioLogado != null && isSessionExpired()) {
+            System.err.println("Sessao expirada apos " + (TIMEOUT_MS / 3600000) + "h de inatividade.");
+            clearSession();
+            return null;
+        }
         return usuarioLogado;
     }
 
     public static boolean isUsuarioLogado() {
-        return usuarioLogado != null;
+        return getUsuarioLogado() != null;
+    }
+
+    /** Registra atividade do usuario (chamar em operacoes importantes). */
+    public static void touch() {
+        if (usuarioLogado != null) ultimaAtividade = System.currentTimeMillis();
+    }
+
+    public static boolean isSessionExpired() {
+        return ultimaAtividade > 0 && (System.currentTimeMillis() - ultimaAtividade) > TIMEOUT_MS;
     }
 
     public static void clearSession() {
         SessaoUsuario.usuarioLogado = null;
+        SessaoUsuario.ultimaAtividade = 0;
     }
 }

@@ -44,7 +44,10 @@ public class EstornoPagamentoController {
 
     @FXML
     public void initialize() {
-        carregarFormasPagamento();
+        // DR010: carrega formas de pagamento em background
+        Thread bg = new Thread(this::carregarFormasPagamento);
+        bg.setDaemon(true);
+        bg.start();
     }
 
     public void setDados(BigDecimal total, BigDecimal pago) {
@@ -66,8 +69,10 @@ public class EstornoPagamentoController {
              ResultSet rs = con.prepareStatement("SELECT nome_forma_pagamento FROM aux_formas_pagamento").executeQuery()) {
             while(rs.next()) formas.add(rs.getString(1));
         } catch (SQLException e) { formas.addAll("DINHEIRO", "PIX"); }
-        cmbFormaDevolucao.setItems(formas);
-        cmbFormaDevolucao.getSelectionModel().selectFirst();
+        javafx.application.Platform.runLater(() -> {
+            cmbFormaDevolucao.setItems(formas);
+            cmbFormaDevolucao.getSelectionModel().selectFirst();
+        });
     }
 
     @FXML void confirmar() {

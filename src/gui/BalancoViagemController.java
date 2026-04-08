@@ -100,8 +100,9 @@ public class BalancoViagemController {
             if (dadosAtuais.isDadosIncompletos()) {
                 Alert alert = new Alert(Alert.AlertType.WARNING);
                 alert.setTitle("Dados Incompletos");
-                alert.setHeaderText("O balanço pode estar incompleto");
-                alert.setContentText("Algumas seções falharam ao carregar: " + dadosAtuais.getErroDetalhes());
+                alert.setHeaderText("O balanço está incompleto — valores podem não refletir a realidade");
+                alert.setContentText("Seções com falha: " + dadosAtuais.getErroDetalhes()
+                    + "\n\nOs dados parciais serão exibidos, mas NÃO devem ser usados para decisões financeiras.");
                 alert.showAndWait();
             }
             preencherAbaSimplificada();
@@ -207,10 +208,11 @@ public class BalancoViagemController {
         lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido()>=0?"-fx-text-fill:#1565C0;":"-fx-text-fill:#c62828;");
         
         totalPendenteGlobal = 0.0;
-        try {
-            PreparedStatement st1 = con.prepareStatement("SELECT SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? AND status_pagamento='PENDENTE'"); st1.setInt(1,idViagem); ResultSet r1=st1.executeQuery(); if(r1.next()) totalPendenteGlobal+=r1.getDouble(1);
-            PreparedStatement st2 = con.prepareStatement("SELECT SUM(valor_total_itens) FROM fretes WHERE id_viagem=? AND status_frete='PENDENTE'"); st2.setInt(1,idViagem); ResultSet r2=st2.executeQuery(); if(r2.next()) totalPendenteGlobal+=r2.getDouble(1);
-        } catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDetalhamentoTab2 (pendentes): " + e.getMessage()); }
+        try (PreparedStatement st1 = con.prepareStatement("SELECT SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? AND status_pagamento='PENDENTE'");
+             PreparedStatement st2 = con.prepareStatement("SELECT SUM(valor_total_itens) FROM fretes WHERE id_viagem=? AND status_frete='PENDENTE'")) {
+            st1.setInt(1,idViagem); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) totalPendenteGlobal+=r1.getDouble(1); }
+            st2.setInt(1,idViagem); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) totalPendenteGlobal+=r2.getDouble(1); }
+        } catch(Exception e){ System.err.println("Erro em BalancoViagemController (pendentes): " + e.getMessage()); }
         lblCardPendente.setText(formatar(totalPendenteGlobal));
         lblCardRecebido.setText("Caixa: "+formatar(Math.max(0, dadosAtuais.getTotalEntradas()-totalPendenteGlobal)));
     }

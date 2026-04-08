@@ -131,8 +131,17 @@ public class TarifaDAO {
         return (val == null) ? BigDecimal.ZERO : val;
     }
     
+    // #019: whitelist de tabelas permitidas (previne SQL injection via nome de tabela)
+    private static final List<String> TABELAS_PERMITIDAS = List.of(
+        "aux_tipos_passagem", "aux_agentes", "aux_acomodacoes", "aux_horarios_saida",
+        "aux_formas_pagamento", "caixas", "rotas"
+    );
+
     public Integer obterIdAuxiliar(Connection conn, String tabela, String colunaNome, String colunaId, String valorNome) throws SQLException {
         if (valorNome == null || valorNome.trim().isEmpty()) return null;
+        if (!TABELAS_PERMITIDAS.contains(tabela)) {
+            throw new IllegalArgumentException("Tabela nao permitida em TarifaDAO: " + tabela);
+        }
         String sql = "SELECT " + colunaId + " FROM " + tabela + " WHERE " + colunaNome + " = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, valorNome);

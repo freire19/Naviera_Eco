@@ -19,19 +19,31 @@ public class ConexaoBD {
     private static final String USUARIO;
     private static final String SENHA;
     private static final int POOL_SIZE;
+    private static final long CONNECTION_TIMEOUT_MS = 5000; // 5s para obter conexao
+    private static final long MAX_LIFETIME_MS = 30 * 60 * 1000; // 30min — recicla conexoes velhas
     private static final LinkedBlockingDeque<Connection> pool = new LinkedBlockingDeque<>();
+    private static final java.util.Map<Connection, Long> createdAt = new java.util.concurrent.ConcurrentHashMap<>();
 
     static {
         Properties props = new Properties();
-        // Tenta carregar db.properties do diretorio de trabalho
+        // Carrega db.properties — obrigatorio (sem fallback de senha hardcoded)
         try (InputStream is = new FileInputStream("db.properties")) {
             props.load(is);
         } catch (Exception e) {
-            System.err.println("db.properties nao encontrado, usando defaults.");
+            throw new RuntimeException(
+                "FATAL: db.properties nao encontrado. Copie db.properties.example para db.properties e preencha suas credenciais.", e);
         }
-        URL = props.getProperty("db.url", "jdbc:postgresql://localhost:5432/sistema_embarcacao");
-        USUARIO = props.getProperty("db.usuario", "postgres");
-        SENHA = props.getProperty("db.senha", "123456");
+        String url = props.getProperty("db.url");
+        String usuario = props.getProperty("db.usuario");
+        String senha = props.getProperty("db.senha");
+        if (url == null || usuario == null || senha == null
+                || senha.isEmpty() || "SUA_SENHA_AQUI".equals(senha)) {
+            throw new RuntimeException(
+                "FATAL: db.properties incompleto. Preencha db.url, db.usuario e db.senha.");
+        }
+        URL = url;
+        USUARIO = usuario;
+        SENHA = senha;
         POOL_SIZE = Integer.parseInt(props.getProperty("db.pool.tamanho", "5"));
 
         try {
@@ -47,21 +59,35 @@ public class ConexaoBD {
      * A conexao retornada e um wrapper — ao chamar close(), ela volta ao pool.
      */
     public static Connection getConnection() throws SQLException {
-        Connection conn = pool.pollFirst();
-        if (conn != null) {
-            try {
-                if (!conn.isClosed() && conn.isValid(1)) {
-                    return new PooledConnection(conn);
+        long deadline = System.currentTimeMillis() + CONNECTION_TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            Connection conn = pool.pollFirst();
+            if (conn != null) {
+                // Recicla conexoes velhas (max lifetime)
+                Long created = createdAt.get(conn);
+                if (created != null && (System.currentTimeMillis() - created) > MAX_LIFETIME_MS) {
+                    createdAt.remove(conn);
+                    try { conn.close(); } catch (SQLException ignored) {}
+                    continue;
                 }
-                // Conexao invalida, descarta
-                try { conn.close(); } catch (SQLException ignored) {}
-            } catch (SQLException e) {
-                try { conn.close(); } catch (SQLException ignored) {}
+                try {
+                    if (!conn.isClosed() && conn.isValid(1)) {
+                        return new PooledConnection(conn);
+                    }
+                    createdAt.remove(conn);
+                    try { conn.close(); } catch (SQLException ignored) {}
+                } catch (SQLException e) {
+                    createdAt.remove(conn);
+                    try { conn.close(); } catch (SQLException ignored) {}
+                }
+                continue;
             }
+            // Pool vazio — cria nova conexao
+            Connection real = DriverManager.getConnection(URL, USUARIO, SENHA);
+            createdAt.put(real, System.currentTimeMillis());
+            return new PooledConnection(real);
         }
-        // Cria nova conexao real
-        Connection real = DriverManager.getConnection(URL, USUARIO, SENHA);
-        return new PooledConnection(real);
+        throw new SQLException("Timeout ao obter conexao do pool (" + CONNECTION_TIMEOUT_MS + "ms)");
     }
 
     /**

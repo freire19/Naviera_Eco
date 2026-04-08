@@ -12,11 +12,11 @@
 | Status | Quantidade |
 |--------|-----------|
 | Novos problemas | 28 |
-| Issues anteriores resolvidas | 0 |
+| Issues anteriores resolvidas | 5 (#014-#017, #065) |
 | Issues anteriores parcialmente resolvidas | 0 |
-| Issues anteriores pendentes | 13 |
-| Issues novas resolvidas (D-series) | 12 |
-| **Total de issues ativas** | **29** |
+| Issues anteriores pendentes | 8 |
+| Issues novas resolvidas (D-series) | 13 (+#021) |
+| **Total de issues ativas** | **23** |
 
 ---
 
@@ -24,26 +24,27 @@
 
 ### Resolvidas
 
-Nenhuma. Nenhum fix foi aplicado desde o AUDIT_V1.0.
+| Issue | Titulo | Fix aplicado |
+|-------|--------|-------------|
+| #014 | Senha BD hardcoded (3 arquivos) | db.properties obrigatorio, fail-fast sem fallback hardcoded |
+| #015 | Senha diferente hardcoded `5904` | CadastroClienteController usa ConexaoBD.getConnection() |
+| #016 | Login texto plano vs senha_hash | UsuarioDAO.buscarPorUsuarioESenha() com BCrypt.checkpw() |
+| #017 | Fallback texto plano em estornos | EstornoPagamentoController usa apenas BCrypt, sem fallback |
+| #021 | Hash logado em stderr | verificarSenha() sem logging de hash |
+| #065 | Auth unica usa texto plano | FinanceiroSaidaController.validarPermissaoGerente() usa BCrypt.checkpw() |
 
 ### Pendentes
 
 | Issue | Titulo | Observacao |
 |-------|--------|-----------|
-| #014 | Senha BD hardcoded (3 arquivos) | Confirmado: `123456` em ConexaoBD, DatabaseConnection, TesteConexaoPostgreSQL |
-| #015 | Senha diferente hardcoded `5904` | Confirmado: CadastroClienteController bypassa ConexaoBD |
-| #016 | Login texto plano vs senha_hash | Confirmado: `WHERE senha_hash = ?` com senha raw |
-| #017 | Fallback texto plano em estornos | Confirmado: `else if (hashDoBanco.equals(senhaDigitada))` |
-| #018 | Admin validation texto plano | Confirmado: AuditoriaExclusoesSaida `WHERE senha_hash = ?` |
-| #019 | SQL injection via tabela/coluna | Confirmado: AuxiliaresDAO, TarifaDAO (callers usam constantes) |
+| #018 | Admin validation texto plano | **RESOLVIDO** — Auth removida, usa PermissaoService |
+| #019 | SQL injection via tabela/coluna | **RESOLVIDO** — AuxiliaresDAO ja tinha whitelist, TarifaDAO agora tem whitelist tambem |
 | #020 | LIKE wildcard em quitacao financeira | Confirmado: PassagemDAO fallback com `%nome%` |
-| #021 | Hash logado em stderr | Confirmado: UsuarioDAO:29 |
-| #022 | Token em Alert | Confirmado: ConfigurarApiController:176 |
-| #023 | URL producao em HTTP | Confirmado: `http://sistemabarco.navdeusdealianca.com.br/api` |
+| #022 | Token em Alert | **RESOLVIDO** — mostra apenas ultimos 4 chars mascarados |
+| #023 | URL producao em HTTP | **RESOLVIDO** — todas as URLs default migradas para HTTPS |
 | #024 | Token em plaintext em properties | Confirmado: api_config.properties |
 | #025 | Runtime.exec com path concatenado | Confirmado: LogService:130 |
 | #026 | Sem .gitignore | Confirmado: apenas bin/.gitignore existe |
-| #065 | Auth unica usa texto plano | Confirmado: FinanceiroSaidaController:454-462 |
 
 ---
 

@@ -170,7 +170,8 @@ public class PassagemDAO {
         p.setNumBilhete(rs.getInt("numero_bilhete"));
         p.setIdPassageiro(rs.getLong("id_passageiro"));
         p.setIdViagem(rs.getLong("id_viagem"));
-        p.setDataEmissao(rs.getDate("data_emissao").toLocalDate());
+        java.sql.Date dtEmissaoP = rs.getDate("data_emissao");
+        p.setDataEmissao(dtEmissaoP != null ? dtEmissaoP.toLocalDate() : null);
         p.setAssento(rs.getString("assento"));
         p.setIdAcomodacao(rs.getObject("id_acomodacao") != null ? rs.getInt("id_acomodacao") : null);
         p.setIdRota(rs.getLong("id_rota"));

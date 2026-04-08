@@ -1,5 +1,6 @@
 # Cat 2 — Seguranca
 > Audit V1.0 | 2026-04-07
+> **NOTA:** Rascunho intermediario. Issues #014, #015, #016, #017 foram RESOLVIDAS. Ver `docs/audits/current/DEEP_SECURITY.md` para status atualizado.
 
 ---
 

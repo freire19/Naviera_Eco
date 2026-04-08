@@ -11,7 +11,8 @@ public class MoneyUtil {
     /**
      * Converte texto monetario brasileiro para BigDecimal.
      * Aceita formatos: "R$ 1.234,56", "1234,56", "1234.56", "R$1.234,56"
-     * Retorna BigDecimal.ZERO se texto for nulo, vazio ou invalido.
+     * Retorna BigDecimal.ZERO se texto for nulo ou vazio.
+     * Lanca NumberFormatException se texto nao for um valor valido (DL025).
      */
     public static BigDecimal parseBigDecimal(String text) {
         if (text == null || text.trim().isEmpty()) return BigDecimal.ZERO;
@@ -21,8 +22,16 @@ public class MoneyUtil {
                 .replace(".", "")  // remove separador de milhar
                 .replace(",", ".") // virgula decimal → ponto
                 .trim();
+        return new BigDecimal(cleaned); // propaga excecao para o caller tratar
+    }
+
+    /**
+     * Versao segura que retorna BigDecimal.ZERO em caso de erro.
+     * Usar apenas em contextos onde 0 e um fallback aceitavel (ex: filtros).
+     */
+    public static BigDecimal parseBigDecimalSafe(String text) {
         try {
-            return new BigDecimal(cleaned);
+            return parseBigDecimal(text);
         } catch (NumberFormatException e) {
             System.err.println("Valor monetario invalido: " + text);
             return BigDecimal.ZERO;

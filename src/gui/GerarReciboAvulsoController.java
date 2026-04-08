@@ -310,7 +310,7 @@ public class GerarReciboAvulsoController implements Initializable {
 
     private ReciboAvulso criarObjetoRecibo() {
         double val = 0;
-        try { val = Double.parseDouble(txtValor.getText().replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch (Exception e) {}
+        try { val = Double.parseDouble(txtValor.getText().replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch (Exception e) { System.err.println("Valor invalido no recibo: " + txtValor.getText()); }
         
         // ID VIAGEM ATIVA
         int idViagemParaSalvar = (viagemAtiva != null) ? viagemAtiva.getId().intValue() : 0;

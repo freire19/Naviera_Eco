@@ -97,15 +97,29 @@ public class RotaDAO {
         }
     }
 
-    public boolean excluir(long id) { // Entrada pode ser long primitivo
+    /**
+     * DL006: Verifica integridade referencial antes de excluir.
+     * Retorna false se existem viagens usando esta rota.
+     */
+    public boolean excluir(long id) {
+        String sqlCheck = "SELECT COUNT(*) FROM viagens WHERE id_rota = ?";
         String sql = "DELETE FROM rotas WHERE id = ?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, id);
-            return stmt.executeUpdate() > 0;
+        try (Connection conn = ConexaoBD.getConnection()) {
+            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
+                psCheck.setLong(1, id);
+                try (ResultSet rs = psCheck.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        System.err.println("Rota id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
+                        return false;
+                    }
+                }
+            }
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setLong(1, id);
+                return stmt.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
             System.err.println("Erro ao excluir rota: " + e.getMessage());
-            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }

@@ -31,10 +31,15 @@ public class QuitarDividaEncomendaTotalController {
 
     @FXML
     public void initialize() {
-        carregarFormas();
-        carregarCaixas();
-        // Atualiza o total final sempre que digitar o desconto
         txtDesconto.textProperty().addListener((o,old,nw) -> calcular());
+
+        // DR010: carrega combos em background
+        Thread bg = new Thread(() -> {
+            carregarFormas();
+            carregarCaixas();
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     public void setValorTotal(double total) {
@@ -66,8 +71,10 @@ public class QuitarDividaEncomendaTotalController {
             System.err.println("Erro ao carregar formas de pagamento: " + e.getMessage());
             l.addAll("DINHEIRO","PIX");
         }
-        cmbFormaPagamento.setItems(l);
-        cmbFormaPagamento.getSelectionModel().selectFirst();
+        javafx.application.Platform.runLater(() -> {
+            cmbFormaPagamento.setItems(l);
+            cmbFormaPagamento.getSelectionModel().selectFirst();
+        });
     }
 
     private void carregarCaixas() {
@@ -78,13 +85,14 @@ public class QuitarDividaEncomendaTotalController {
             System.err.println("Erro ao carregar caixas: " + e.getMessage());
             l.add("CAIXA PRINCIPAL");
         }
-        if(!l.isEmpty()) {
-            cmbCaixa.setItems(l);
+        javafx.application.Platform.runLater(() -> {
+            if (!l.isEmpty()) {
+                cmbCaixa.setItems(l);
+            } else {
+                cmbCaixa.getItems().add("CAIXA PRINCIPAL");
+            }
             cmbCaixa.getSelectionModel().selectFirst();
-        } else {
-            cmbCaixa.getItems().add("CAIXA PRINCIPAL");
-            cmbCaixa.getSelectionModel().selectFirst();
-        }
+        });
     }
 
     @FXML void confirmar() { confirmado = true; ((Stage)btnConfirmar.getScene().getWindow()).close(); }

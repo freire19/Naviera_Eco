@@ -111,8 +111,12 @@ public class ViagemDAO {
         return null;
     }
 
-    // --- Método Corrigido: Busca Viagem Ativa usando is_atual ---
+    // DP013: cache da viagem ativa (muda raramente, evita 3-5 queries redundantes/ciclo)
+    private static Viagem cacheViagemAtiva = null;
+    public static void invalidarCacheViagem() { cacheViagemAtiva = null; }
+
     public Viagem buscarViagemAtiva() {
+        if (cacheViagemAtiva != null) return cacheViagemAtiva;
         // CORREÇÃO: Usando is_atual em vez de ativa, conforme seu banco de dados
         String sql = "SELECT v.*, e.nome as nome_embarcacao, r.origem as nome_rota_origem, r.destino as nome_rota_destino, ahs.descricao_horario_saida " +
                      "FROM viagens v " +
@@ -127,14 +131,16 @@ public class ViagemDAO {
              ResultSet rs = stmt.executeQuery()) {
 
             if (rs.next()) {
-                return mapResultSetToViagem(rs);
+                cacheViagemAtiva = mapResultSetToViagem(rs);
+                return cacheViagemAtiva;
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
-        
+
         // Se não achou por is_atual, tenta buscar pela última cadastrada (fallback)
-        return buscarViagemMarcadaComoAtual(); 
+        cacheViagemAtiva = buscarViagemMarcadaComoAtual();
+        return cacheViagemAtiva; 
     }
     
     // --- Novo Método de Suporte ---
@@ -172,8 +178,8 @@ public class ViagemDAO {
         viagem.setDescricao(rs.getString("descricao"));
         
         // Mapeia colunas booleanas com segurança
-        try { viagem.setAtiva(rs.getBoolean("ativa")); } catch(Exception e) {}
-        try { viagem.setIsAtual(rs.getBoolean("is_atual")); } catch(Exception e) {}
+        try { viagem.setAtiva(rs.getBoolean("ativa")); } catch(Exception e) { /* coluna opcional */ }
+        try { viagem.setIsAtual(rs.getBoolean("is_atual")); } catch(Exception e) { /* coluna opcional */ }
         
         viagem.setIdEmbarcacao(rs.getLong("id_embarcacao"));
         viagem.setNomeEmbarcacao(rs.getString("nome_embarcacao"));
@@ -221,7 +227,7 @@ public class ViagemDAO {
         LocalDate dataViagem;
         try {
             dataViagem = LocalDate.parse(dataViagemStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        } catch (Exception e) { return null; }
+        } catch (Exception e) { System.err.println("ViagemDAO: formato de data invalido: " + dataViagemStr); return null; }
 
         Integer idEmbarcacaoInt = auxiliaresDAO.obterIdAuxiliar("embarcacoes", "nome", "id_embarcacao", nomeEmbarcacao);
 
@@ -293,6 +299,11 @@ public class ViagemDAO {
     }
 
     public boolean inserir(Viagem v) {
+        // DL024: impede criacao de viagem com data de partida no passado
+        if (v.getDataViagem() != null && v.getDataViagem().isBefore(LocalDate.now())) {
+            System.err.println("ViagemDAO.inserir: data da viagem no passado (" + v.getDataViagem() + ")");
+            return false;
+        }
         String sql = "INSERT INTO viagens (id_viagem, data_viagem, id_horario_saida, data_chegada, descricao, ativa, is_atual, id_embarcacao, id_rota) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -310,6 +321,11 @@ public class ViagemDAO {
     }
 
     public boolean atualizar(Viagem v) {
+        // DL024: impede atualizacao de viagem com data de partida no passado
+        if (v.getDataViagem() != null && v.getDataViagem().isBefore(LocalDate.now())) {
+            System.err.println("ViagemDAO.atualizar: data da viagem no passado (" + v.getDataViagem() + ")");
+            return false;
+        }
         String sql = "UPDATE viagens SET data_viagem = ?, id_horario_saida = ?, data_chegada = ?, descricao = ?, ativa = ?, is_atual = ?, id_embarcacao = ?, id_rota = ? WHERE id_viagem = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -369,6 +385,7 @@ public class ViagemDAO {
 
     // --- CORREÇÃO PRINCIPAL: DEFINIR VIAGEM ATIVA USANDO is_atual ---
     public boolean definirViagemAtiva(long idViagemParaAtivar) {
+        invalidarCacheViagem();
         // Zera is_atual de TODAS as viagens
         String sqlDesativar = "UPDATE viagens SET is_atual = false";
         // Define is_atual = true apenas para a escolhida

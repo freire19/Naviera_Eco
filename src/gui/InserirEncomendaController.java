@@ -844,7 +844,7 @@ public class InserirEncomendaController implements Initializable {
                     ImageView logo = new ImageView(new Image("file:" + empresa.getCaminhoFoto()));
                     logo.setFitWidth(50); logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
-                } catch (Exception e) { }
+                } catch (Exception e) { /* logo opcional */ }
             }
             Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÇÃO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");

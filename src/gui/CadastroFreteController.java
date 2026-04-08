@@ -159,9 +159,15 @@ public class CadastroFreteController implements Initializable {
 
         setComponentProperties();
         configurarComboBoxItem();
-        carregarDadosIniciaisComboBoxes();
-        setComboBoxItems();
         configurarTabela();
+
+        // DR010: carrega dados do banco em background para nao bloquear UI
+        Thread bgThread = new Thread(() -> {
+            carregarDadosIniciaisComboBoxes();
+            javafx.application.Platform.runLater(this::setComboBoxItems);
+        });
+        bgThread.setDaemon(true);
+        bgThread.start();
         configurarListenersDeCamposEEventos();
 
         if (cbRota != null) {
@@ -227,7 +233,7 @@ public class CadastroFreteController implements Initializable {
                         if (!comboBox.isShowing() && comboBox.getItems() != null && !comboBox.getItems().isEmpty()) {
                             comboBox.show();
                         }
-                    } catch (Exception e) {}
+                    } catch (Exception e) { /* UI timing — seguro ignorar */ }
                 });
                 delay.play();
             }
@@ -373,7 +379,7 @@ public class CadastroFreteController implements Initializable {
             try {
                 cbitem.getSelectionModel().clearSelection();
                 cbitem.setValue(null);
-            } catch (Exception e) {}
+            } catch (Exception e) { /* UI cleanup — seguro ignorar */ }
 
             if (newV == null || newV.isEmpty()) {
                 cbitem.setItems(FXCollections.observableArrayList(listaItensDisplayOriginal));
@@ -477,76 +483,8 @@ public class CadastroFreteController implements Initializable {
                 pst.setLong(1, numeroFreteLong);
                 ResultSet rs = pst.executeQuery();
                 if (rs.next()) {
-                    programmaticamenteAtualizando = true;
-                    try {
-                        freteAtualId = rs.getLong("id_frete");
-                        String remetenteNome = rs.getString("remetente_nome_temp");
-                        String destinatarioNome = rs.getString("destinatario_nome_temp");
-                        String rotaTemp = rs.getString("rota_temp");
-                        java.sql.Date dataSaidaDb = rs.getDate("data_saida_viagem");
-                        String localTransporte = rs.getString("local_transporte");
-                        String conferenteTemp = rs.getString("conferente_temp");
-                        String cidadeCobrancaTemp = rs.getString("cidade_cobranca");
-                        String obsTexto = rs.getString("observacoes");
-                        String numNotaFiscalTemp = rs.getString("num_notafiscal");
-                        BigDecimal valorNotaDb = rs.getBigDecimal("valor_notafiscal");
-                        BigDecimal pesoNotaDb = rs.getBigDecimal("peso_notafiscal");
-                        BigDecimal valorFreteCalculado = rs.getBigDecimal("valor_frete_calculado");
-                        Long idViagem = rs.getObject("id_viagem", Long.class);
-
-                        if (txtNumFrete != null) txtNumFrete.setText(numFrete);
-                        if (cbRemetente != null) cbRemetente.setValue(remetenteNome);
-                        if (cbCliente != null) cbCliente.setValue(destinatarioNome);
-                        if (cbRota != null) cbRota.setValue(rotaTemp);
-                        if (txtSaida != null && dataSaidaDb != null) {
-                            txtSaida.setText(dataSaidaDb.toLocalDate().format(dateFormatter));
-                        } else if (txtSaida != null) {
-                            txtSaida.clear();
-                        }
-                        if (txtLocalTransporte != null) txtLocalTransporte.setText(localTransporte);
-                        if (cbConferente != null) cbConferente.setValue(conferenteTemp);
-                        if (txtCidadeCobranca != null) txtCidadeCobranca.setText(cidadeCobrancaTemp);
-                        if (txtObs != null) txtObs.setText(obsTexto);
-
-                        if (numNotaFiscalTemp != null && !numNotaFiscalTemp.isEmpty()) {
-                            if (rbSim != null) rbSim.setSelected(true);
-                            if (txtNumNota != null) txtNumNota.setText(numNotaFiscalTemp);
-                            if (txtValorNota != null && valorNotaDb != null) {
-                                txtValorNota.setText(df.format(valorNotaDb.doubleValue()));
-                            } else if (txtValorNota != null) {
-                                txtValorNota.clear();
-                            }
-                            if (txtPesoNota != null && pesoNotaDb != null) {
-                                txtPesoNota.setText(pesoNotaDb.toString());
-                            } else if (txtPesoNota != null) {
-                                txtPesoNota.clear();
-                            }
-                        } else {
-                            if (Rbnao != null) Rbnao.setSelected(true);
-                        }
-                        if (txtValorTotalNota != null && valorFreteCalculado != null) {
-                            txtValorTotalNota.setText(df.format(valorFreteCalculado.doubleValue()));
-                        } else if (txtValorTotalNota != null) {
-                            txtValorTotalNota.clear();
-                        }
-
-                        if (idViagem != null) {
-                            Viagem viagemAssociada = viagemDAO.buscarViagemPorId(idViagem);
-                            if (viagemAssociada != null) {
-                                if (txtViagemAtual != null) txtViagemAtual.setText(viagemAssociada.getDataViagem().format(dateFormatter));
-                                this.viagemAtiva = viagemAssociada;
-                            } else {
-                                if (txtViagemAtual != null) txtViagemAtual.setText("Viagem Não Encontrada");
-                                this.viagemAtiva = null;
-                            }
-                        } else {
-                            if (txtViagemAtual != null) txtViagemAtual.clear();
-                            this.viagemAtiva = null;
-                        }
-
-                    } finally {
-                        programmaticamenteAtualizando = false;
-                    }
+                    // DM015: preenchimento extraido em metodo auxiliar
+                    preencherCamposDoFrete(rs, numFrete);
                 } else {
                     showAlert(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com número: " + numFrete);
                     return;
@@ -609,6 +547,57 @@ public class CadastroFreteController implements Initializable {
         if (txtTotalVol != null) txtTotalVol.setEditable(false);
         if (txtValorTotalNota != null) txtValorTotalNota.setEditable(false);
         if (txtViagemAtual != null) txtViagemAtual.setEditable(false);
+    }
+
+    // DM015: metodo extraido de carregarFreteParaEdicao() para separar DB mapping de UI binding
+    private void preencherCamposDoFrete(ResultSet rs, String numFrete) throws SQLException {
+        programmaticamenteAtualizando = true;
+        try {
+            freteAtualId = rs.getLong("id_frete");
+            if (txtNumFrete != null) txtNumFrete.setText(numFrete);
+            if (cbRemetente != null) cbRemetente.setValue(rs.getString("remetente_nome_temp"));
+            if (cbCliente != null) cbCliente.setValue(rs.getString("destinatario_nome_temp"));
+            if (cbRota != null) cbRota.setValue(rs.getString("rota_temp"));
+            java.sql.Date dataSaidaDb = rs.getDate("data_saida_viagem");
+            if (txtSaida != null && dataSaidaDb != null) txtSaida.setText(dataSaidaDb.toLocalDate().format(dateFormatter));
+            else if (txtSaida != null) txtSaida.clear();
+            if (txtLocalTransporte != null) txtLocalTransporte.setText(rs.getString("local_transporte"));
+            if (cbConferente != null) cbConferente.setValue(rs.getString("conferente_temp"));
+            if (txtCidadeCobranca != null) txtCidadeCobranca.setText(rs.getString("cidade_cobranca"));
+            if (txtObs != null) txtObs.setText(rs.getString("observacoes"));
+
+            String numNotaFiscalTemp = rs.getString("num_notafiscal");
+            BigDecimal valorNotaDb = rs.getBigDecimal("valor_notafiscal");
+            BigDecimal pesoNotaDb = rs.getBigDecimal("peso_notafiscal");
+            BigDecimal valorFreteCalculado = rs.getBigDecimal("valor_frete_calculado");
+
+            if (numNotaFiscalTemp != null && !numNotaFiscalTemp.isEmpty()) {
+                if (rbSim != null) rbSim.setSelected(true);
+                if (txtNumNota != null) txtNumNota.setText(numNotaFiscalTemp);
+                if (txtValorNota != null) txtValorNota.setText(valorNotaDb != null ? df.format(valorNotaDb.doubleValue()) : "");
+                if (txtPesoNota != null) txtPesoNota.setText(pesoNotaDb != null ? pesoNotaDb.toString() : "");
+            } else {
+                if (Rbnao != null) Rbnao.setSelected(true);
+            }
+            if (txtValorTotalNota != null) txtValorTotalNota.setText(valorFreteCalculado != null ? df.format(valorFreteCalculado.doubleValue()) : "");
+
+            Long idViagem = rs.getObject("id_viagem", Long.class);
+            if (idViagem != null) {
+                Viagem viagemAssociada = viagemDAO.buscarViagemPorId(idViagem);
+                if (viagemAssociada != null) {
+                    if (txtViagemAtual != null) txtViagemAtual.setText(viagemAssociada.getDataViagem().format(dateFormatter));
+                    this.viagemAtiva = viagemAssociada;
+                } else {
+                    if (txtViagemAtual != null) txtViagemAtual.setText("Viagem Não Encontrada");
+                    this.viagemAtiva = null;
+                }
+            } else {
+                if (txtViagemAtual != null) txtViagemAtual.clear();
+                this.viagemAtiva = null;
+            }
+        } finally {
+            programmaticamenteAtualizando = false;
+        }
     }
 
     private void carregarDadosIniciaisComboBoxes() {

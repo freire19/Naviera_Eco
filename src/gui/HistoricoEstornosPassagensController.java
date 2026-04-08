@@ -44,7 +44,10 @@ public class HistoricoEstornosPassagensController {
         dpInicio.setValue(LocalDate.now().minusDays(30));
         dpFim.setValue(LocalDate.now());
 
-        carregarDados();
+        // DR010: carrega dados em background
+        Thread bg = new Thread(this::carregarDados);
+        bg.setDaemon(true);
+        bg.start();
     }
 
     @FXML
@@ -83,7 +86,7 @@ public class HistoricoEstornosPassagensController {
                     rs.getString("nome_autorizador")
                 ));
             }
-            tabela.setItems(lista);
+            javafx.application.Platform.runLater(() -> tabela.setItems(lista));
 
         } catch (Exception e) {
             e.printStackTrace();

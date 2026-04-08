@@ -297,7 +297,7 @@ public class AuditoriaExclusoesSaida {
             paginas.add(paginaAtual);
             int totalPaginas = paginas.size();
             for (int i = 0; i < labelsNumeracao.size(); i++) {
-                labelsNumeracao.get(i).setText("Página " + (i + 2) + "/" + totalPaginas);
+                labelsNumeracao.get(i).setText("Página " + (i + 1) + "/" + totalPaginas);
             }
             for (VBox p : paginas) { job.printPage(pageLayout, p); }
             job.endJob();

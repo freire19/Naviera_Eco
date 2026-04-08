@@ -47,16 +47,10 @@
 ## Novos Problemas Encontrados
 
 #### Issue #065 — validarPermissaoGerente em FinanceiroSaidaController usa texto plano
+- [x] **RESOLVIDO**
 - **Severidade:** CRITICO
 - **Arquivo:** `src/gui/FinanceiroSaidaController.java`
-- **Linha(s):** 413, 458
-- **Problema:** O unico controller com verificacao de autorizacao (`validarPermissaoGerente`) compara senha digitada diretamente com `senha_hash` via SQL `=`, mesmo padrao quebrado das issues #016/#018. A unica funcao de auth no sistema inteiro esta implementada de forma insegura.
-- **Impacto:** Se senhas forem BCrypt, autorizacao de exclusao de saida NUNCA funciona. Se senhas forem texto plano, a "protecao" e ilusoria.
-- **Codigo problematico:**
-```java
-stmt.setString(1, senha);  // texto plano comparado com senha_hash via SQL =
-```
-- **Fix sugerido:** Buscar hash por funcao/login e comparar com `BCrypt.checkpw()`.
+- **Fix aplicado:** `validarPermissaoGerente()` agora busca hash dos gerentes e compara com `BCrypt.checkpw()` em Java.
 
 ---
 

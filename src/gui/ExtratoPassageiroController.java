@@ -260,7 +260,7 @@ public class ExtratoPassageiroController implements Initializable {
                 double vTotal = p.getValorTotal() != null ? p.getValorTotal().doubleValue() : 0;
                 double vPago = p.getValorPago() != null ? p.getValorPago().doubleValue() : 0;
                 double vSaldo = vTotal - vPago;
-                if (vSaldo < 0.01) vSaldo = 0.0;
+                if (vSaldo < model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) vSaldo = 0.0;
 
                 String stCalculado = model.StatusPagamento.calcularPorSaldo(vSaldo, vPago).name();
 
@@ -294,7 +294,7 @@ public class ExtratoPassageiroController implements Initializable {
                 lblTotalPago.setText(nf.format(finalPago));
                 lblDivida.setText(nf.format(finalDivida));
 
-                btnQuitarTudo.setDisable(finalDivida <= 0.01);
+                btnQuitarTudo.setDisable(finalDivida <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
             });
         }).start();
     }
@@ -361,7 +361,7 @@ public class ExtratoPassageiroController implements Initializable {
     public void quitarDividaTotal(ActionEvent event) {
         String nome = cmbPassageiro.getEditor().getText();
         if (nome == null || nome.isEmpty()) return;
-        if (totalDividaCalculada <= 0.01) return;
+        if (totalDividaCalculada <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) return;
 
         try {
             List<ItemExtrato> itensSendoPagos = new ArrayList<>();

@@ -9,10 +9,16 @@ import model.ItemResumoBalanco;
 
 public class BalancoViagemDAO {
 
-    private Connection connection;
+    private final Connection connection;
 
+    /** Construtor com conexao externa (para compartilhar com caller). */
     public BalancoViagemDAO(Connection connection) {
         this.connection = connection;
+    }
+
+    /** DM017: Construtor sem conexao — usa ConexaoBD internamente. */
+    public BalancoViagemDAO() throws java.sql.SQLException {
+        this(ConexaoBD.getConnection());
     }
 
     public DadosBalancoViagem buscarBalancoDaViagem(int idViagem) {

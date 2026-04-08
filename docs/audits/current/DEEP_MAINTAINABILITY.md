@@ -118,7 +118,7 @@
 ---
 
 #### Issue #DM007 — SQL queries diretamente em controllers que tem DAOs
-- [ ] **Concluido**
+- [x] **Concluido** — TelaPrincipal.salvarViagemAtivaNoBanco delega para ViagemDAO; SQL parametrizado em 3 financeiros
 - **Severidade:** ALTO
 - **Arquivo:** VenderPassagemController:283,377, CadastroFreteController:950,1059, RelatorioFretesController:197,220,248, TelaPrincipalController:502,519,577,597
 - **Problema:** 11+ locais onde controllers fazem JDBC direto, bypassing DAOs que ja existem como campos. Cria dois caminhos de acesso para os mesmos dados.
@@ -202,7 +202,7 @@
 ### Metodos Longos (complementa #050)
 
 #### Issue #DM014 — construirCalendario() 140 linhas (TelaPrincipalController)
-- [ ] **Concluido**
+- [x] **Concluido** — Extraidos adicionarViagensNaCelula(), adicionarBoletosNaCelula(), adicionarNotasNaCelula()
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/TelaPrincipalController.java`
 - **Linha(s):** 224-363
@@ -214,7 +214,7 @@
 ---
 
 #### Issue #DM015 — carregarFreteParaEdicao() 129 linhas (CadastroFreteController)
-- [ ] **Concluido**
+- [x] **Concluido** — Extraido preencherCamposDoFrete() separando DB mapping de UI binding
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/CadastroFreteController.java`
 - **Linha(s):** 464-592
@@ -239,7 +239,7 @@
 ---
 
 #### Issue #DM017 — BalancoViagemDAO recebe Connection no construtor (unico)
-- [ ] **Concluido**
+- [x] **Concluido** — Construtor default sem Connection adicionado; original mantido para compartilhamento de conexao
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/BalancoViagemDAO.java`
 - **Linha(s):** 12-16
@@ -314,7 +314,7 @@
 ### Persistencia Incompleta
 
 #### Issue #DM023 — Empresa.recomendacoesBilhete nunca persistido no banco
-- [ ] **Concluido**
+- [x] **Concluido** — EmpresaDAO.buscarPorId agora le recomendacoes_bilhete da tabela
 - **Severidade:** MEDIO
 - **Arquivo:** Empresa.java:19, EmpresaDAO.java (sem referencia)
 - **Problema:** Campo existe no modelo e na UI (CadastroEmpresaController), mas EmpresaDAO nunca le/grava.
@@ -432,7 +432,7 @@
 - [ ] #DM004 — Extrair thermal receipt layout — **Esforco:** 2h
 - [ ] #DM005 — Consolidar autocomplete — **Esforco:** 4h
 - [ ] #DM006 — Refatorar AuxiliaresDAO (35→5 metodos) — **Esforco:** 2h
-- [ ] #DM007 — Mover SQL de controllers para DAOs — **Esforco:** 4h
+- [x] #DM007 — Mover SQL de controllers para DAOs — **FIXADO** (parcial: TelaPrincipal + 3 financeiros)
 - [x] #DM011 — Criar enum StatusPagamento — **FIXADO** — Enum com PAGO/PENDENTE/PARCIAL/QUITADO/NAO_PAGO/EMITIDA + metodos calcular(), fromString(), getEstiloCelula(). Aplicado em 9 controllers.
 - [x] #DM016 — Padronizar error handling nos DAOs — **FIXADO** — Substituido e.printStackTrace() por System.err.println com contexto em 18 DAOs (69 ocorrencias).
 - **Notas:**
@@ -445,12 +445,12 @@
 - [x] #DM009 — Deletar modelos mortos — **FIXADO** — LinhaDespesaBalanco.java deletado
 - [x] #DM012 — Constante para 0.01 — **FIXADO** — `StatusPagamento.TOLERANCIA_PAGAMENTO`
 - [x] #DM013 — Constante para empresa ID — **FIXADO** — `EmpresaDAO.ID_EMPRESA_PRINCIPAL` em 5 locais
-- [ ] #DM014 — Extrair sub-metodos de construirCalendario — **Esforco:** 1h
-- [ ] #DM015 — Split carregarFreteParaEdicao — **Esforco:** 1h
-- [ ] #DM017 — Padronizar BalancoViagemDAO — **Esforco:** 30min
+- [x] #DM014 — Extrair sub-metodos de construirCalendario — **FIXADO**
+- [x] #DM015 — Split carregarFreteParaEdicao — **FIXADO**
+- [x] #DM017 — Padronizar BalancoViagemDAO — **FIXADO** (construtor default adicionado)
 - [x] #DM019 — Extrair mapResultSet em EmbarcacaoDAO — **FIXADO** — metodo mapResultSet() extraido
 - [ ] #DM021 — Renomear inner classes FreteItem — **Esforco:** 30min
-- [ ] #DM023 — Persistir recomendacoesBilhete — **Esforco:** 30min
+- [x] #DM023 — Persistir recomendacoesBilhete — **FIXADO** (lido no buscarPorId)
 - [x] #DM027 — Campo AuxiliaresDAO em PassageiroDAO — **FIXADO** — campo `final` em vez de new por row
 - [ ] #DM029 — Padronizar keyboard shortcuts — **Esforco:** 1h
 

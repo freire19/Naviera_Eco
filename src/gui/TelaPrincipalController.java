@@ -327,63 +327,11 @@ public class TelaPrincipalController implements Initializable {
                 cell.getChildren().add(lblFer);
             }
             
-            // --- VIAGENS ---
-            for (Viagem v : viagensDoMes) {
-                if (v.getDataViagem().equals(dataAtual)) {
-                    String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
-                    Label lblViagem = new Label("🚢 " + destino);
-                    String bgViagem = isModoEscuro ? "#1a3c7d" : "#ffcdd2"; 
-                    String txtViagem = isModoEscuro ? "#ffffff" : "#c62828";
-                    lblViagem.setStyle("-fx-background-color: " + bgViagem + "; -fx-text-fill: " + txtViagem + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
-                    lblViagem.setMaxWidth(Double.MAX_VALUE);
-                    cell.getChildren().add(lblViagem);
-                }
-            }
-            
-            // --- BOLETOS ---
-            for (AgendaDAO.ResumoBoleto b : boletosDoMes) {
-                if (b.vencimento.equals(dataAtual)) {
-                    Label lblBoleto = new Label("📄 " + nfCalendario.format(b.valor));
-                    
-                    String bgBoleto = isModoEscuro ? "#b71c1c" : "#ffebee";
-                    String txtBoleto = isModoEscuro ? "#ffffff" : "#c62828";
-                    
-                    lblBoleto.setStyle("-fx-background-color: " + bgBoleto + "; -fx-text-fill: " + txtBoleto + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
-                    lblBoleto.setMaxWidth(Double.MAX_VALUE);
-                    
-                    Tooltip tt = new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nfCalendario.format(b.valor));
-                    Tooltip.install(lblBoleto, tt);
-                    
-                    cell.getChildren().add(lblBoleto);
-                }
-            }
-
-            // --- NOTAS DA AGENDA (usa cache do mes - fix DP005) ---
+            // DM014: seções extraídas em métodos auxiliares
+            adicionarViagensNaCelula(cell, viagensDoMes, dataAtual);
+            adicionarBoletosNaCelula(cell, boletosDoMes, dataAtual, nfCalendario);
             List<String> notas = notasDoMes.getOrDefault(dataAtual, java.util.Collections.emptyList());
-            for (String nota : notas) {
-                Label lblNota = new Label("✎ " + nota);
-                
-                String bgNota = isModoEscuro ? "#004d40" : "#b2dfdb"; // Padrão
-                String txtNota = isModoEscuro ? "#e0f2f1" : "#00695c";
-                
-                String notaLower = nota.toLowerCase();
-                
-                if (notaLower.contains("manaus") && notaLower.contains("juta")) {
-                    int idxManaus = notaLower.indexOf("manaus");
-                    int idxJutai = notaLower.indexOf("juta");
-                    if (idxManaus < idxJutai) { // IDA
-                        bgNota = isModoEscuro ? "#1b5e20" : "#a5d6a7"; 
-                        txtNota = isModoEscuro ? "#e8f5e9" : "#1b5e20";
-                    } else { // VOLTA
-                        bgNota = isModoEscuro ? "#bf360c" : "#ffccbc"; 
-                        txtNota = isModoEscuro ? "#fbe9e7" : "#bf360c";
-                    }
-                }
-                
-                lblNota.setStyle("-fx-background-color: " + bgNota + "; -fx-text-fill: " + txtNota + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
-                lblNota.setMaxWidth(Double.MAX_VALUE);
-                cell.getChildren().add(lblNota);
-            }
+            adicionarNotasNaCelula(cell, notas);
             
             cell.setOnMouseClicked(e -> gerenciarAgendaDoDia(dataAtual, viagensDoMes, notas, feriado, boletosDoMes));
             calendarioGrid.add(cell, col, row);
@@ -392,6 +340,54 @@ public class TelaPrincipalController implements Initializable {
         }
     }
     
+    // DM014: metodos auxiliares extraidos de construirCalendario()
+    private void adicionarViagensNaCelula(VBox cell, List<Viagem> viagens, LocalDate data) {
+        for (Viagem v : viagens) {
+            if (v.getDataViagem().equals(data)) {
+                String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
+                Label lbl = new Label("\uD83D\uDEA2 " + destino);
+                String bg = isModoEscuro ? "#1a3c7d" : "#ffcdd2";
+                String tx = isModoEscuro ? "#ffffff" : "#c62828";
+                lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
+                lbl.setMaxWidth(Double.MAX_VALUE);
+                cell.getChildren().add(lbl);
+            }
+        }
+    }
+
+    private void adicionarBoletosNaCelula(VBox cell, List<AgendaDAO.ResumoBoleto> boletos, LocalDate data, NumberFormat nf) {
+        for (AgendaDAO.ResumoBoleto b : boletos) {
+            if (b.vencimento.equals(data)) {
+                Label lbl = new Label("\uD83D\uDCC4 " + nf.format(b.valor));
+                String bg = isModoEscuro ? "#b71c1c" : "#ffebee";
+                String tx = isModoEscuro ? "#ffffff" : "#c62828";
+                lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
+                lbl.setMaxWidth(Double.MAX_VALUE);
+                Tooltip.install(lbl, new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nf.format(b.valor)));
+                cell.getChildren().add(lbl);
+            }
+        }
+    }
+
+    private void adicionarNotasNaCelula(VBox cell, List<String> notas) {
+        for (String nota : notas) {
+            Label lbl = new Label("\u270E " + nota);
+            String bg = isModoEscuro ? "#004d40" : "#b2dfdb";
+            String tx = isModoEscuro ? "#e0f2f1" : "#00695c";
+            String notaLower = nota.toLowerCase();
+            if (notaLower.contains("manaus") && notaLower.contains("juta")) {
+                if (notaLower.indexOf("manaus") < notaLower.indexOf("juta")) {
+                    bg = isModoEscuro ? "#1b5e20" : "#a5d6a7"; tx = isModoEscuro ? "#e8f5e9" : "#1b5e20";
+                } else {
+                    bg = isModoEscuro ? "#bf360c" : "#ffccbc"; tx = isModoEscuro ? "#fbe9e7" : "#bf360c";
+                }
+            }
+            lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
+            lbl.setMaxWidth(Double.MAX_VALUE);
+            cell.getChildren().add(lbl);
+        }
+    }
+
     private String getFeriado(LocalDate date) {
         int d = date.getDayOfMonth();
         Month m = date.getMonth();
@@ -621,34 +617,10 @@ public class TelaPrincipalController implements Initializable {
         } catch (Exception e) { showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
     }
     
-    // =========================================================================
-    //  NOVO MÉTODO: FORÇA A ATUALIZAÇÃO NO BANCO DE DADOS DIRETO
-    // =========================================================================
+    // DM007: delega para ViagemDAO.definirViagemAtiva() em vez de SQL inline
     private boolean salvarViagemAtivaNoBanco(long idViagemSelecionada) {
-        String sqlReset = "UPDATE viagens SET is_atual = false";
-        String sqlSet = "UPDATE viagens SET is_atual = true WHERE id_viagem = ?";
-
-        try (Connection con = ConexaoBD.getConnection()) {
-            con.setAutoCommit(false);
-
-            try {
-                try (PreparedStatement stmt = con.prepareStatement(sqlReset)) {
-                    stmt.executeUpdate();
-                }
-
-                try (PreparedStatement stmt = con.prepareStatement(sqlSet)) {
-                    stmt.setLong(1, idViagemSelecionada);
-                    stmt.executeUpdate();
-                }
-
-                con.commit(); 
-                return true;
-
-            } catch (Exception e) {
-                con.rollback(); 
-                e.printStackTrace();
-                return false;
-            }
+        try {
+            return viagemDAO.definirViagemAtiva(idViagemSelecionada);
         } catch (Exception e) {
             e.printStackTrace();
             return false;

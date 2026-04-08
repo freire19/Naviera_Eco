@@ -8,6 +8,12 @@ public class EmpresaDAO {
     /** ID fixo do registro unico de configuracao da empresa */
     public static final int ID_EMPRESA_PRINCIPAL = 1;
 
+    // DP012: cache — configuracao_empresa raramente muda, evita 6+ queries/sessao
+    private static Empresa cacheEmpresa = null;
+
+    /** Invalida cache (chamar apos salvarOuAtualizar). */
+    public static void invalidarCache() { cacheEmpresa = null; }
+
     // Salva ou atualiza o único registro da empresa
     public boolean salvarOuAtualizar(Empresa empresa) {
         Empresa existente = buscarPorId(ID_EMPRESA_PRINCIPAL);
@@ -53,6 +59,7 @@ public class EmpresaDAO {
             }
 
             int affectedRows = ps.executeUpdate();
+            if (affectedRows > 0) invalidarCache();
             return affectedRows > 0;
 
         } catch (SQLException e) {
@@ -62,9 +69,12 @@ public class EmpresaDAO {
         }
     }
 
-    public Empresa buscarPorId(int id) { 
+    public Empresa buscarPorId(int id) {
+        // DP012: retorna cache se disponivel (empresa principal)
+        if (id == ID_EMPRESA_PRINCIPAL && cacheEmpresa != null) return cacheEmpresa;
+
         String sql = "SELECT id_config, companhia, nome_embarcacao, comandante, proprietario, origem_padrao, " +
-                     "gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, path_logo " +
+                     "gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, path_logo, recomendacoes_bilhete " +
                      "FROM configuracao_empresa WHERE id_config = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -88,6 +98,8 @@ public class EmpresaDAO {
                     e.setTelefone(rs.getString("telefone"));
                     e.setFrase(rs.getString("frase_relatorio"));
                     e.setCaminhoFoto(rs.getString("path_logo"));
+                    try { e.setRecomendacoesBilhete(rs.getString("recomendacoes_bilhete")); } catch (Exception ex) { /* coluna opcional */ }
+                    if (id == ID_EMPRESA_PRINCIPAL) cacheEmpresa = e;
                     return e;
                 }
             }

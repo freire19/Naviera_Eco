@@ -73,7 +73,8 @@ public class ReciboAvulsoDAO {
         r.setNomePagador(rs.getString("nome_pagador"));
         r.setReferenteA(rs.getString("referente_a"));
         r.setValor(rs.getDouble("valor"));
-        r.setDataEmissao(rs.getDate("data_emissao").toLocalDate());
+        java.sql.Date dtEmissao = rs.getDate("data_emissao");
+        r.setDataEmissao(dtEmissao != null ? dtEmissao.toLocalDate() : null);
         try { r.setTipoRecibo(rs.getString("tipo_recibo")); } catch (Exception e) { r.setTipoRecibo("PADRAO"); }
         return r;
     }

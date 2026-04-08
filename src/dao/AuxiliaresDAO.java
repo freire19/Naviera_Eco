@@ -143,16 +143,27 @@ public class AuxiliaresDAO {
 
     /**
      * Insere um valor em qualquer tabela auxiliar (generico).
+     * DL008: Verifica duplicata antes de inserir (case-insensitive).
      */
     public boolean inserirAuxiliar(String tabela, String colunaNome, String valor) throws SQLException {
+        if (valor == null || valor.trim().isEmpty()) return false;
         validarTabela(tabela);
-        String sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?)";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, valor);
-            boolean ok = ps.executeUpdate() > 0;
-            if (ok) invalidarCache(tabela);
-            return ok;
+        // Verifica duplicata case-insensitive antes de inserir
+        String sqlCheck = "SELECT 1 FROM " + tabela + " WHERE " + colunaNome + " ILIKE ?";
+        try (Connection conn = ConexaoBD.getConnection()) {
+            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
+                psCheck.setString(1, valor.trim());
+                try (ResultSet rs = psCheck.executeQuery()) {
+                    if (rs.next()) return false; // ja existe
+                }
+            }
+            String sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, valor.trim());
+                boolean ok = ps.executeUpdate() > 0;
+                if (ok) invalidarCache(tabela);
+                return ok;
+            }
         }
     }
 
@@ -189,6 +200,8 @@ public class AuxiliaresDAO {
 
     /**
      * Exclui um registro de qualquer tabela auxiliar.
+     * DL007: Tenta DELETE e captura FK violation em vez de check manual
+     * (cada tabela auxiliar pode ser referenciada por tabelas diferentes).
      */
     public boolean excluirAuxiliar(String tabela, String colunaId, int id) throws SQLException {
         validarTabela(tabela);
@@ -199,6 +212,13 @@ public class AuxiliaresDAO {
             boolean ok = ps.executeUpdate() > 0;
             if (ok) invalidarCache(tabela);
             return ok;
+        } catch (SQLException e) {
+            // FK violation (23503) = registro em uso por outra tabela
+            if ("23503".equals(e.getSQLState())) {
+                System.err.println("Registro id=" + id + " da tabela " + tabela + " nao pode ser excluido: em uso por outra tabela.");
+                return false;
+            }
+            throw e;
         }
     }
 
@@ -224,7 +244,8 @@ public class AuxiliaresDAO {
     }
 
     // ==================== METODOS LEGADOS (delegam para genericos) ====================
-    // Mantidos para compatibilidade com callers existentes.
+    // DM006: Mantidos temporariamente — usar os 5 genericos acima em novos codigos.
+    // Caller unico: TabelasAuxiliaresController.
 
     // --- TipoDoc ---
     public boolean inserirTipoDoc(String nome) throws SQLException { return inserirAuxiliar("aux_tipos_documento", "nome_tipo_doc", nome); }

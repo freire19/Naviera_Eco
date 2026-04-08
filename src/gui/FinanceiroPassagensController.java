@@ -46,8 +46,12 @@ public class FinanceiroPassagensController {
     public void initialize() {
         if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Financeiro Passagens"); return; }
         configurarTabela();
-        carregarComboViagens();
         cmbViagem.valueProperty().addListener((obs, oldVal, newVal) -> carregarDadosEmBackground());
+
+        // DR010: carrega viagens em background
+        Thread bg = new Thread(() -> carregarComboViagens());
+        bg.setDaemon(true);
+        bg.start();
         txtBusca.textProperty().addListener((obs, oldVal, newVal) -> carregarDadosEmBackground());
         chkApenasDevedores.selectedProperty().addListener((obs, oldVal, newVal) -> carregarDadosEmBackground());
         
@@ -138,7 +142,8 @@ public class FinanceiroPassagensController {
                 }
                 lista.add(new OpcaoViagem(rs.getInt("id_viagem"), label));
             }
-            cmbViagem.setItems(lista);
+            ObservableList<OpcaoViagem> finalLista = lista;
+            javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
         } catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -148,7 +153,7 @@ public class FinanceiroPassagensController {
         int idViagem = cmbViagem.getValue().id;
         
         ObservableList<PassagemFinanceiro> lista = FXCollections.observableArrayList();
-        double somaPendente = 0;
+        java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
 
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT p.id_passagem, p.numero_bilhete, v.data_viagem, ");
@@ -161,8 +166,10 @@ public class FinanceiroPassagensController {
         sql.append("LEFT JOIN rotas r ON p.id_rota = r.id ");
         sql.append("WHERE 1=1 ");
 
-        if (idViagem > 0) sql.append(" AND p.id_viagem = ").append(idViagem);
-        
+        // D003: parametriza idViagem
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        if (idViagem > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagem); }
+
         if (chkApenasDevedores.isSelected()) {
             sql.append(" AND (p.valor_devedor > 0 OR p.valor_pago < p.valor_total) ");
         }
@@ -170,29 +177,35 @@ public class FinanceiroPassagensController {
         String busca = txtBusca.getText().toLowerCase();
         if (!busca.isEmpty()) {
             sql.append(" AND (LOWER(pas.nome_passageiro) LIKE ? OR CAST(p.numero_bilhete AS TEXT) LIKE ?) ");
+            params.add("%" + busca + "%");
+            params.add("%" + busca + "%");
         }
-        
+
         sql.append(" ORDER BY p.id_passagem DESC");
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-            
-            if (!busca.isEmpty()) {
-                stmt.setString(1, "%" + busca + "%");
-                stmt.setString(2, "%" + busca + "%");
+
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
+                else stmt.setString(i + 1, p.toString());
+            }
             }
 
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             
             while (rs.next()) {
-                double total = rs.getDouble("valor_total");
-                double pago = rs.getDouble("valor_pago");
-                double devendo = total - pago;
-                
+                java.math.BigDecimal total = rs.getBigDecimal("valor_total");
+                java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
+                if (total == null) total = java.math.BigDecimal.ZERO;
+                if (pago == null) pago = java.math.BigDecimal.ZERO;
+                java.math.BigDecimal devendo = total.subtract(pago);
+
                 String dataFmt = "";
                 if(rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
-                
+
                 String statusBD = rs.getString("status_passagem");
                 if (statusBD == null) statusBD = "PENDENTE";
 
@@ -204,11 +217,11 @@ public class FinanceiroPassagensController {
                     rs.getString("destino_nome"),
                     total, pago, statusBD
                 ));
-                
-                if(devendo > 0.01) somaPendente += devendo;
+
+                if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
             }
             tabela.setItems(lista);
-            lblTotalPendente.setText(String.format("R$ %.2f", somaPendente));
+            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
 
         } catch (SQLException e) { 
             e.printStackTrace(); 
@@ -238,7 +251,7 @@ public class FinanceiroPassagensController {
             alert("Selecione uma passagem na tabela para dar baixa.");
             return;
         }
-        if (selecionada.getRestante() <= 0.01) {
+        if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
             alert("Esta passagem já está quitada!");
             return;
         }
@@ -397,7 +410,7 @@ public class FinanceiroPassagensController {
         PassagemFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) { alert("Selecione um item para estornar."); return; }
         
-        if (selecionada.getPago() <= 0.01) { alert("Este item não tem pagamento para estornar."); return; }
+        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { alert("Este item não tem pagamento para estornar."); return; }
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/EstornoPagamento.fxml"));
@@ -420,8 +433,7 @@ public class FinanceiroPassagensController {
                 int idAutorizador = controller.getIdAutorizador();
                 String nomeAutorizador = controller.getNomeAutorizador();
 
-                java.math.BigDecimal bdPago = java.math.BigDecimal.valueOf(selecionada.getPago());
-                java.math.BigDecimal novoPago = bdPago.subtract(vEstorno);
+                java.math.BigDecimal novoPago = selecionada.getPago().subtract(vEstorno);
                 String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PARCIAL" : "PENDENTE";
 
                 Connection con = null;
@@ -517,24 +529,26 @@ public class FinanceiroPassagensController {
     public static class PassagemFinanceiro {
         private int id;
         private String bilhete, dataViagem, passageiro, destino, status;
-        private Double total, pago;
+        private java.math.BigDecimal total, pago;
 
-        public PassagemFinanceiro(int id, String bilhete, String data, String passageiro, String destino, Double total, Double pago, String status) {
-            this.id = id; this.bilhete = bilhete; this.dataViagem = data; 
+        public PassagemFinanceiro(int id, String bilhete, String data, String passageiro, String destino, java.math.BigDecimal total, java.math.BigDecimal pago, String status) {
+            this.id = id; this.bilhete = bilhete; this.dataViagem = data;
             this.passageiro = passageiro; this.destino = destino;
-            this.total = total; this.pago = pago; this.status = status;
+            this.total = total != null ? total : java.math.BigDecimal.ZERO;
+            this.pago = pago != null ? pago : java.math.BigDecimal.ZERO;
+            this.status = status;
         }
         public int getId() { return id; }
         public String getBilhete() { return bilhete; }
         public String getDataViagem() { return dataViagem; }
         public String getPassageiro() { return passageiro; }
         public String getDestino() { return destino; }
-        public Double getTotal() { return total; }
-        public Double getPago() { return pago; }
-        public Double getRestante() { return Math.max(0, total - pago); }
-        public String getTotalFormatado() { return String.format("R$ %.2f", total); }
-        public String getPagoFormatado() { return String.format("R$ %.2f", pago); }
-        public String getRestanteFormatado() { return String.format("R$ %.2f", getRestante()); }
+        public java.math.BigDecimal getTotal() { return total; }
+        public java.math.BigDecimal getPago() { return pago; }
+        public java.math.BigDecimal getRestante() { return total.subtract(pago).max(java.math.BigDecimal.ZERO); }
+        public String getTotalFormatado() { return String.format("R$ %,.2f", total); }
+        public String getPagoFormatado() { return String.format("R$ %,.2f", pago); }
+        public String getRestanteFormatado() { return String.format("R$ %,.2f", getRestante()); }
         public String getStatus() { return status; }
     }
 }

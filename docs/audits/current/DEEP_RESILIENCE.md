@@ -55,8 +55,14 @@
 
 | Issue | Titulo | O que falta |
 |-------|--------|------------|
-| #042 | Rollback incompleto EncomendaDAO.excluir | Inner catch tem rollback, outer catch nao |
-| #DR010 | UI blocking DB em initialize() | VenderPassagem usa background thread, mas 15+ controllers ainda bloqueiam FX thread |
+| #DR010 | UI blocking DB em initialize() | **RESOLVIDO** — 17 controllers migrados para background threads com Platform.runLater |
+
+### Resolvidas (nesta sessao)
+
+| Issue | Titulo | Fix aplicado |
+|-------|--------|-------------|
+| #001 | NPE datas nullable | Null checks em ReciboAvulsoDAO, PassagemDAO, AgendaDAO |
+| #042 | Rollback incompleto EncomendaDAO.excluir | Try unico com rollback em qualquer falha |
 
 ### Pendentes
 
@@ -110,7 +116,7 @@
 - [x] #DR005 — Exception broad em recibo — **FIXADO**
 - [x] #DR006 — 4 catch vazios VenderPassagem — **FIXADO**
 - [x] #DR007 — btnNovo travado — **FIXADO**
-- [ ] #DR010 — UI blocking 16+ controllers — **PARCIAL** (VenderPassagem ok, restam 15+) — **Esforco:** 4h
+- [x] #DR010 — UI blocking — **FIXADO** (17 controllers migrados: VenderPassagem, Financeiro*, CadastroFrete, InserirEncomenda, GestaoFuncionarios, ListaFretes, ExtratoCliente, FinanceiroEntrada, CadastroBoleto, QuitarDivida, Historico*3, BaixaPagamento, EstornoPagamento)
 - [x] #DR012 — NPE groupingBy null — **FIXADO**
 - [ ] #DR028 — Zero testes automatizados — **Esforco:** 4h+
 
@@ -130,7 +136,7 @@
 - [ ] #036 — 68+ catch vazios (sistematico) — **PARCIAL** (vários corrigidos) — **Esforco:** 2h
 - [ ] #037 — DAOs engolindo exceptions — **Esforco:** 2h
 - [ ] #038 — mapResultSet catch vazios — **Esforco:** 1h
-- [ ] #042 — Rollback incompleto (parcial) — **Esforco:** 15min
+- [x] #042 — Rollback incompleto — **FIXADO** (try unico com rollback)
 
 ### Menor (BAIXO) — MAIORIA CONCLUIDA
 
