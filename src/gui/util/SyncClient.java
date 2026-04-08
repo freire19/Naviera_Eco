@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  * Cliente de sincronização para comunicação com a API do servidor.
  * Gerencia upload/download de dados entre o desktop e a nuvem.
  * 
- * @author Sistema Embarcação
+ * @author Naviera
  * @version 1.0.0
  */
 public class SyncClient {
@@ -88,7 +88,7 @@ public class SyncClient {
             if (ultimaSincronizacao != null) {
                 props.setProperty("sync.ultima", ultimaSincronizacao.toString());
             }
-            props.store(fos, "Configurações de Sincronização - Sistema Embarcação");
+            props.store(fos, "Configurações de Sincronização - Naviera");
         } catch (Exception e) {
             System.err.println("Erro ao salvar configurações de sync: " + e.getMessage());
         }

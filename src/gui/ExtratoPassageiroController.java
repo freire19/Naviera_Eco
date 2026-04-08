@@ -717,7 +717,7 @@ public class ExtratoPassageiroController implements Initializable {
                     g2d.drawLine(marginX, y, (int)width - marginX, y);
                     g2d.setColor(Color.BLACK);
                     g2d.setFont(new Font("Arial", Font.ITALIC, 8));
-                    g2d.drawString("Sistema de Gestão Embarcação - Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), marginX, y + 15);
+                    g2d.drawString("Naviera - Navegação Fluvial - Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), marginX, y + 15);
                     g2d.drawString("Página 1", (int)width - marginX - 30, y + 15);
 
                     return PAGE_EXISTS;

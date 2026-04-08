@@ -1118,7 +1118,7 @@ public class TelaPrincipalController implements Initializable {
     @FXML 
     private void handleAjuda(ActionEvent e) {
         Alert sobre = new Alert(AlertType.INFORMATION);
-        sobre.setTitle("Sobre o Sistema");
+        sobre.setTitle("Sobre o Naviera");
         sobre.setHeaderText(null);
         
         // Criar conteúdo personalizado
@@ -1129,7 +1129,7 @@ public class TelaPrincipalController implements Initializable {
         
         // Logo/Ícone do sistema (se existir)
         try {
-            ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/menu_sistema.png")));
+            ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/logo_icon.png")));
             logo.setFitWidth(64);
             logo.setFitHeight(64);
             content.getChildren().add(logo);
@@ -1138,7 +1138,7 @@ public class TelaPrincipalController implements Initializable {
         }
         
         // Nome do Sistema
-        Label lblNome = new Label("Sistema de Gerenciamento de Embarcação");
+        Label lblNome = new Label("Naviera - Navegação Fluvial");
         lblNome.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0d47a1;");
         
         // Versão

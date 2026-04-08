@@ -6,6 +6,25 @@
 
 ## Estado Geral: EM PROGRESSO
 
+---
+
+## MVP Naviera (App Mobile/Web)
+
+**Status:** PRECISA DE TRABALHO | **Plano:** [MVP_PLAN](mvp/current/MVP_PLAN.md)
+
+| Metrica | Valor |
+|---------|-------|
+| Itens PRONTO | 38 |
+| Itens INCOMPLETO | 20 |
+| Itens FALTANDO | 22 |
+| Bloqueadores | 3 (tela cadastro, npm install, .gitignore) |
+| Esforco restante | ~10h |
+
+**Projetos criados:**
+- `naviera-api/` — Spring Boot 3.3.0 (47 classes Java) — API REST conectando ao mesmo PostgreSQL
+- `naviera-app/` — React 18.3.1 (10 arquivos JS/JSX) — Frontend mobile-first integrado com API
+- `database_scripts/008_tabelas_app.sql` — 4 tabelas novas (clientes_app, dispositivos_push, feedbacks, pagamentos_app)
+
 ### Resumo
 Projeto com ~194 issues identificadas em 6 auditorias (scan geral + 5 deep audits). **140 issues corrigidas** e verificadas no codigo. **Zero issues CRITICAS pendentes**. Ultima rodada: subquery correlacionada eliminada (DP010), cache viagem ativa (DP013), impressao async (DP016), carregarFreteParaEdicao extraido (DM015), BalancoViagemDAO construtor default (DM017), Empresa.recomendacoesBilhete no DAO (DM023), TelaPrincipal delega definirViagemAtiva (DM007).
 

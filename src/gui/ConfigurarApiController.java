@@ -273,7 +273,7 @@ public class ConfigurarApiController implements Initializable {
             config.setProperty("habilitar.voz", String.valueOf(chkHabilitarVoz.isSelected()));
             
             try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE)) {
-                config.store(fos, "Configurações da API - Sistema Embarcação");
+                config.store(fos, "Configurações da API - Naviera");
             }
             
             atualizarStatus();
@@ -309,7 +309,7 @@ public class ConfigurarApiController implements Initializable {
             Parent root = loader.load();
             
             Stage stage = new Stage();
-            stage.setTitle("Configuração da API - Sistema Embarcação");
+            stage.setTitle("Configuração da API - Naviera");
             stage.setScene(new Scene(root, 700, 800));
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setResizable(true);

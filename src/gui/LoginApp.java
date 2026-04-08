@@ -15,7 +15,7 @@ public class LoginApp extends Application {
             Parent root = loader.load();
             Scene scene = new Scene(root);
             primaryStage.setScene(scene);
-            primaryStage.setTitle("Login no Sistema");
+            primaryStage.setTitle("Naviera - Login");
             primaryStage.setResizable(false);
             primaryStage.show();
         } catch (Exception e) {

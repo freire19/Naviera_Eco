@@ -74,7 +74,7 @@ public class TelaPrincipalApp extends Application {
                 System.out.println("AVISO: Arquivo CSS não encontrado em /css/main.css. Verifique se 'resources' é uma pasta de origem.");
             }
 
-            primaryStage.setTitle("Sistema de Gerenciamento de Embarcações");
+            primaryStage.setTitle("Naviera - Navegação Fluvial");
             primaryStage.setScene(scene);
             primaryStage.setResizable(true); 
             // primaryStage.setMaximized(true); // Descomente para iniciar maximizado
