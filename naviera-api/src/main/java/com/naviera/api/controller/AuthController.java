@@ -12,13 +12,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
-        try { return ResponseEntity.ok(service.login(req)); }
-        catch (RuntimeException e) { return ResponseEntity.status(401).body(java.util.Map.of("erro", e.getMessage())); }
+        return ResponseEntity.ok(service.login(req));
     }
 
     @PostMapping("/registrar")
     public ResponseEntity<?> registrar(@RequestBody RegisterRequest req) {
-        try { return ResponseEntity.ok(service.registrar(req)); }
-        catch (RuntimeException e) { return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage())); }
+        return ResponseEntity.ok(service.registrar(req));
     }
 }

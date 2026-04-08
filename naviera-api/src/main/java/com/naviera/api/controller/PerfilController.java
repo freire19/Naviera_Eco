@@ -1,9 +1,11 @@
 package com.naviera.api.controller;
 
-import com.naviera.api.model.ClienteApp;
+import com.naviera.api.dto.PerfilUpdateRequest;
 import com.naviera.api.repository.ClienteAppRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
@@ -25,14 +27,14 @@ public class PerfilController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping
-    public ResponseEntity<?> atualizar(Authentication auth, @RequestBody Map<String, String> dados) {
+    @PutMapping @Transactional
+    public ResponseEntity<?> atualizar(Authentication auth, @RequestBody @Valid PerfilUpdateRequest dados) {
         Long id = (Long) auth.getPrincipal();
         return repo.findById(id).map(c -> {
-            if (dados.containsKey("nome")) c.setNome(dados.get("nome"));
-            if (dados.containsKey("email")) c.setEmail(dados.get("email"));
-            if (dados.containsKey("telefone")) c.setTelefone(dados.get("telefone"));
-            if (dados.containsKey("cidade")) c.setCidade(dados.get("cidade"));
+            if (dados.nome() != null) c.setNome(dados.nome());
+            if (dados.email() != null) c.setEmail(dados.email());
+            if (dados.telefone() != null) c.setTelefone(dados.telefone());
+            if (dados.cidade() != null) c.setCidade(dados.cidade());
             repo.save(c);
             return ResponseEntity.ok(Map.of("mensagem", "Perfil atualizado"));
         }).orElse(ResponseEntity.notFound().build());

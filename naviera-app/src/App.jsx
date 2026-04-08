@@ -319,8 +319,133 @@ function LojaCNPJ({ t }) {
   </div>;
 }
 
+/* ═══ API ═══ */
+const API = "http://localhost:8080/api";
+
+/* ═══ CADASTRO SCREEN ═══ */
+function TelaCadastro({ t, onVoltar, onSucesso }) {
+  const [tipo, setTipo] = useState("CPF");
+  const [form, setForm] = useState({ documento: "", nome: "", email: "", telefone: "", cidade: "", senha: "", senhaConfirm: "" });
+  const [erro, setErro] = useState("");
+  const [loading, setLoading] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+  const labelStyle = { fontSize: 12, fontWeight: 600, color: t.txSoft, marginBottom: 4, display: "block" };
+
+  const submit = async () => {
+    setErro("");
+    if (!form.documento.trim() || !form.nome.trim() || !form.senha.trim()) { setErro("Documento, nome e senha sao obrigatorios."); return; }
+    if (form.senha.length < 6) { setErro("Senha deve ter no minimo 6 caracteres."); return; }
+    if (form.senha !== form.senhaConfirm) { setErro("As senhas nao conferem."); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/registrar`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documento: form.documento.trim(), tipoDocumento: tipo, nome: form.nome.trim(), email: form.email.trim() || null, telefone: form.telefone.trim() || null, cidade: form.cidade.trim() || null, senha: form.senha })
+      });
+      const data = await res.json();
+      if (!res.ok) { setErro(data.erro || "Erro ao cadastrar."); return; }
+      onSucesso(data);
+    } catch { setErro("Erro de conexao com o servidor."); } finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", maxWidth: 380 }}>
+      <button onClick={onVoltar} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 14, cursor: "pointer", padding: 0, textAlign: "left", fontFamily: "inherit" }}><span style={{ marginRight: 6 }}>←</span>Voltar</button>
+      <div style={{ textAlign: "center", marginBottom: 4 }}>
+        <Logo size={40} t={t} />
+        <h2 style={{ margin: "8px 0 2px", fontSize: 22, fontWeight: 700 }}>Criar conta</h2>
+        <p style={{ fontSize: 12, color: t.txMuted, margin: 0 }}>Preencha seus dados para comecar</p>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {["CPF", "CNPJ"].map(tp => <button key={tp} onClick={() => setTipo(tp)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${tipo === tp ? t.pri : t.border}`, background: tipo === tp ? t.accent : "transparent", color: tipo === tp ? t.pri : t.txMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{tp}</button>)}
+      </div>
+      <div><label style={labelStyle}>{tipo}</label><input value={form.documento} onChange={e => set("documento", e.target.value)} placeholder={tipo === "CPF" ? "000.000.000-00" : "00.000.000/0001-00"} style={inputStyle} /></div>
+      <div><label style={labelStyle}>Nome completo</label><input value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="Seu nome" style={inputStyle} /></div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div><label style={labelStyle}>Email</label><input value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@exemplo.com" type="email" style={inputStyle} /></div>
+        <div><label style={labelStyle}>Telefone</label><input value={form.telefone} onChange={e => set("telefone", e.target.value)} placeholder="(92) 99999-0000" style={inputStyle} /></div>
+      </div>
+      <div><label style={labelStyle}>Cidade</label><input value={form.cidade} onChange={e => set("cidade", e.target.value)} placeholder="Sua cidade" style={inputStyle} /></div>
+      <div><label style={labelStyle}>Senha</label><input value={form.senha} onChange={e => set("senha", e.target.value)} type="password" placeholder="Minimo 6 caracteres" style={inputStyle} /></div>
+      <div><label style={labelStyle}>Confirmar senha</label><input value={form.senhaConfirm} onChange={e => set("senhaConfirm", e.target.value)} type="password" placeholder="Repita a senha" style={inputStyle} /></div>
+      {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12, fontWeight: 500 }}>{erro}</div>}
+      <button onClick={submit} disabled={loading} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: loading ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14, fontWeight: 700, cursor: loading ? "default" : "pointer", fontFamily: "inherit", opacity: loading ? 0.7 : 1 }}>{loading ? "Cadastrando..." : "Criar conta"}</button>
+    </div>
+  );
+}
+
+/* ═══ PERFIL SCREEN ═══ */
+function PerfilScreen({ t, token, authHeaders, usuario }) {
+  const [perfil, setPerfil] = useState(null);
+  const [editando, setEditando] = useState(false);
+  const [form, setForm] = useState({});
+  const [erro, setErro] = useState("");
+  const [sucesso, setSucesso] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+
+  useState(() => {
+    if (!token) return;
+    fetch(`${API}/perfil`, { headers: authHeaders })
+      .then(r => r.ok ? r.json() : Promise.reject("Erro ao carregar perfil"))
+      .then(data => { setPerfil(data); setForm({ nome: data.nome || "", email: data.email || "", telefone: data.telefone || "", cidade: data.cidade || "" }); })
+      .catch(e => setErro(typeof e === "string" ? e : "Erro de conexao."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const salvar = async () => {
+    setErro(""); setSucesso(""); setSalvando(true);
+    try {
+      const res = await fetch(`${API}/perfil`, { method: "PUT", headers: authHeaders, body: JSON.stringify(form) });
+      if (!res.ok) { const d = await res.json(); setErro(d.erro || d.message || "Erro ao salvar."); return; }
+      setPerfil(p => ({ ...p, ...form }));
+      setSucesso("Perfil atualizado!");
+      setEditando(false);
+    } catch { setErro("Erro de conexao."); } finally { setSalvando(false); }
+  };
+
+  if (loading) return <div style={{ textAlign: "center", padding: 40, color: t.txMuted, fontSize: 13 }}>Carregando perfil...</div>;
+
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: t.txMuted, marginBottom: 2, display: "block", textTransform: "uppercase", letterSpacing: 0.5 };
+  const valStyle = { fontSize: 14, fontWeight: 500 };
+
+  return <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Meu perfil</h3>
+    {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{erro}</div>}
+    {sucesso && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.okBg, color: t.okTx, fontSize: 12 }}>{sucesso}</div>}
+    {perfil && <Cd t={t}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <Av letters={perfil.nome ? perfil.nome.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?"} size={48} t={t} />
+        <div><div style={{ fontSize: 16, fontWeight: 700 }}>{perfil.nome}</div><div style={{ fontSize: 12, color: t.txMuted }}>{perfil.tipo} {perfil.documento}</div></div>
+      </div>
+      {editando ? <>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div><label style={labelStyle}>Nome</label><input value={form.nome} onChange={e => set("nome", e.target.value)} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Email</label><input value={form.email} onChange={e => set("email", e.target.value)} type="email" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Telefone</label><input value={form.telefone} onChange={e => set("telefone", e.target.value)} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Cidade</label><input value={form.cidade} onChange={e => set("cidade", e.target.value)} style={inputStyle} /></div>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button onClick={() => { setEditando(false); setErro(""); setForm({ nome: perfil.nome || "", email: perfil.email || "", telefone: perfil.telefone || "", cidade: perfil.cidade || "" }); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${t.border}`, background: "transparent", color: t.txMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+          <button onClick={salvar} disabled={salvando} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", background: salvando ? t.txMuted : t.priGrad, color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando ? "default" : "pointer", fontFamily: "inherit" }}>{salvando ? "Salvando..." : "Salvar"}</button>
+        </div>
+      </> : <>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div><span style={labelStyle}>Email</span><span style={valStyle}>{perfil.email || "—"}</span></div>
+          <div><span style={labelStyle}>Telefone</span><span style={valStyle}>{perfil.telefone || "—"}</span></div>
+          <div><span style={labelStyle}>Cidade</span><span style={valStyle}>{perfil.cidade || "—"}</span></div>
+        </div>
+        <button onClick={() => { setEditando(true); setSucesso(""); }} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "none", background: t.priGrad, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginTop: 12 }}>Editar perfil</button>
+      </>}
+    </Cd>}
+  </div>;
+}
+
 /* ═══ MAIN ═══ */
-const TABS_CPF = [{ id: "home", label: "Início", icon: "🏠" }, { id: "amigos", label: "Amigos", icon: "♡" }, { id: "mapa", label: "Barcos", icon: "⛴" }, { id: "passagens", label: "Passagens", icon: "🎫" }];
+const TABS_CPF = [{ id: "home", label: "Inicio", icon: "🏠" }, { id: "amigos", label: "Amigos", icon: "♡" }, { id: "mapa", label: "Barcos", icon: "⛴" }, { id: "passagens", label: "Passagens", icon: "🎫" }];
 const TABS_CNPJ = [{ id: "home", label: "Painel", icon: "▣" }, { id: "pedidos", label: "Pedidos", icon: "🛒" }, { id: "lojas", label: "Parceiros", icon: "🤝" }, { id: "financeiro", label: "Financ.", icon: "💳" }, { id: "loja", label: "Loja", icon: "🏪" }];
 
 export default function Naviera() {
@@ -328,30 +453,70 @@ export default function Naviera() {
   const [tab, setTab] = useState("home");
   const [mode, setMode] = useState("light");
   const [aiOpen, setAiOpen] = useState(false);
+  const [tela, setTela] = useState("login");
+  const [msgSucesso, setMsgSucesso] = useState("");
+  const [token, setToken] = useState(null);
+  const [usuario, setUsuario] = useState(null);
+  const [loginDoc, setLoginDoc] = useState("");
+  const [loginSenha, setLoginSenha] = useState("");
+  const [loginErro, setLoginErro] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const t = T[mode];
+
+  const doLogin = async () => {
+    setLoginErro("");
+    if (!loginDoc.trim() || !loginSenha.trim()) { setLoginErro("Informe documento e senha."); return; }
+    setLoginLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documento: loginDoc.trim(), senha: loginSenha })
+      });
+      const data = await res.json();
+      if (!res.ok) { setLoginErro(data.erro || "Credenciais invalidas."); return; }
+      setToken(data.token);
+      setUsuario({ nome: data.nome, tipo: data.tipo, id: data.id });
+      setProfile(data.tipo === "CNPJ" ? "cnpj" : "cpf");
+      setTab("home");
+      setLoginDoc(""); setLoginSenha(""); setMsgSucesso("");
+    } catch { setLoginErro("Erro de conexao com o servidor."); } finally { setLoginLoading(false); }
+  };
+
+  const doLogout = () => { setProfile(null); setToken(null); setUsuario(null); setTab("home"); };
+
+  const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
 
   if (!profile) return (
     <div style={{ minHeight: "100vh", background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Sora', sans-serif", color: t.tx, transition: "all 0.3s" }}>
       <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+      {tela === "cadastro" ? (
+        <TelaCadastro t={t} onVoltar={() => setTela("login")} onSucesso={(data) => { setMsgSucesso(`Conta criada com sucesso! Faca login para continuar.`); setTela("login"); }} />
+      ) : (
       <div style={{ width: "100%", maxWidth: 380, textAlign: "center" }}>
         <div style={{ marginBottom: 20 }}><Logo size={60} t={t} /></div>
         <h1 style={{ fontSize: 32, fontWeight: 800, margin: "0 0 4px", letterSpacing: 4 }}>NAVIERA</h1>
-        <p style={{ fontSize: 12, color: t.txMuted, margin: "0 0 32px", letterSpacing: 6, textTransform: "uppercase", fontWeight: 300 }}>Navegação fluvial</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <button onClick={() => { setProfile("cpf"); setTab("home"); }} style={{ padding: "16px 24px", borderRadius: 14, border: `1px solid ${t.borderStrong}`, background: t.card, color: t.tx, fontSize: 15, fontWeight: 600, cursor: "pointer", textAlign: "left", fontFamily: "inherit", boxShadow: t.shadow }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 24 }}>👤</span><div><div style={{ color: t.pri, fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Sou viajante (CPF)</div><div style={{ fontSize: 12, color: t.txMuted }}>Passagens, encomendas, amigos e rastreio</div></div></div></button>
-          <button onClick={() => { setProfile("cnpj"); setTab("home"); }} style={{ padding: "16px 24px", borderRadius: 14, border: `1px solid ${t.borderStrong}`, background: t.card, color: t.tx, fontSize: 15, fontWeight: 600, cursor: "pointer", textAlign: "left", fontFamily: "inherit", boxShadow: t.shadow }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 24 }}>🏢</span><div><div style={{ color: t.pri, fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Sou comerciante (CNPJ)</div><div style={{ fontSize: 12, color: t.txMuted }}>Pedidos, fretes, lojas parceiras e financeiro</div></div></div></button>
+        <p style={{ fontSize: 12, color: t.txMuted, margin: "0 0 24px", letterSpacing: 6, textTransform: "uppercase", fontWeight: 300 }}>Navegacao fluvial</p>
+        {msgSucesso && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.okBg, color: t.okTx, fontSize: 12, fontWeight: 500, marginBottom: 16 }}>{msgSucesso}</div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
+          <div><label style={{ fontSize: 12, fontWeight: 600, color: t.txSoft, marginBottom: 4, display: "block" }}>CPF ou CNPJ</label>
+            <input value={loginDoc} onChange={e => setLoginDoc(e.target.value)} placeholder="000.000.000-00" style={inputStyle} onKeyDown={e => e.key === "Enter" && doLogin()} /></div>
+          <div><label style={{ fontSize: 12, fontWeight: 600, color: t.txSoft, marginBottom: 4, display: "block" }}>Senha</label>
+            <input value={loginSenha} onChange={e => setLoginSenha(e.target.value)} type="password" placeholder="Sua senha" style={inputStyle} onKeyDown={e => e.key === "Enter" && doLogin()} /></div>
+          {loginErro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12, fontWeight: 500 }}>{loginErro}</div>}
+          <button onClick={doLogin} disabled={loginLoading} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: loginLoading ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14, fontWeight: 700, cursor: loginLoading ? "default" : "pointer", fontFamily: "inherit", opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}>{loginLoading ? "Entrando..." : "Entrar"}</button>
         </div>
-        <button onClick={() => setMode(m => m === "light" ? "dark" : "light")} style={{ marginTop: 20, padding: "8px 20px", borderRadius: 10, background: t.soft, border: `1px solid ${t.border}`, cursor: "pointer", color: t.txMuted, fontFamily: "inherit", fontSize: 12 }}>{mode === "light" ? "🌙 Dark" : "☀️ Light"}</button>
+        <button onClick={() => { setMsgSucesso(""); setLoginErro(""); setTela("cadastro"); }} style={{ marginTop: 16, background: "none", border: "none", color: t.pri, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Nao tem conta? <span style={{ textDecoration: "underline" }}>Cadastre-se</span></button>
+        <div><button onClick={() => setMode(m => m === "light" ? "dark" : "light")} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 10, background: t.soft, border: `1px solid ${t.border}`, cursor: "pointer", color: t.txMuted, fontFamily: "inherit", fontSize: 12 }}>{mode === "light" ? "🌙 Dark" : "☀️ Light"}</button></div>
         <p style={{ fontSize: 10, color: t.txMuted, marginTop: 16, fontFamily: "'Space Mono', monospace" }}>Naviera v3.0</p>
-      </div>
+      </div>)}
     </div>
   );
 
   const isCPF = profile === "cpf";
   const tabs = isCPF ? TABS_CPF : TABS_CNPJ;
+  const authHeaders = token ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } : {};
   const screen = () => {
+    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} />;
     if (isCPF) { if (tab === "home") return <HomeCPF t={t} onNav={setTab} />; if (tab === "amigos") return <AmigosCPF t={t} />; if (tab === "mapa") return <MapaCPF t={t} />; if (tab === "passagens") return <PassagensCPF t={t} />; }
     else { if (tab === "home") return <HomeCNPJ t={t} onNav={setTab} />; if (tab === "pedidos") return <PedidosCNPJ t={t} />; if (tab === "lojas") return <LojasParceiras t={t} />; if (tab === "financeiro") return <FinanceiroCNPJ t={t} />; if (tab === "loja") return <LojaCNPJ t={t} />; }
   };
@@ -368,8 +533,9 @@ export default function Naviera() {
           <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 6, background: t.accent, color: t.pri, fontWeight: 700, marginLeft: 4, letterSpacing: 0.5 }}>{isCPF ? "CPF" : "CNPJ"}</span>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => setTab("perfil")} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${tab === "perfil" ? t.borderStrong : t.border}`, background: tab === "perfil" ? t.accent : t.soft, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", color: tab === "perfil" ? t.pri : t.txMuted }} title="Meu perfil">👤</button>
           <button onClick={() => setMode(m => m === "light" ? "dark" : "light")} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>{mode === "light" ? "🌙" : "☀️"}</button>
-          <button onClick={() => { setProfile(null); setTab("home"); }} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, color: t.txMuted, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
+          <button onClick={doLogout} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, color: t.txMuted, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Sair">↩</button>
         </div>
       </div>
 
