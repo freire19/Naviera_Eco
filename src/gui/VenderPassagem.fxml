@@ -18,12 +18,12 @@
 <BorderPane fx:id="rootPane" style="-fx-background-color: #dce6ec;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.VenderPassagemController">
    
    <top>
-      <VBox style="-fx-background-color: #2b2b2b; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;" BorderPane.alignment="CENTER">
+      <VBox style="-fx-background-color: #047857; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;" BorderPane.alignment="CENTER">
          <children>
             <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 6 10 6 10;">
                <children>
                   <Button fx:id="btnNovo" mnemonicParsing="false" onAction="#handleNovo" prefHeight="45.0" prefWidth="130.0"
-                          style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;"
+                          style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;"
                           text="NOVO (F2)" />
                   
                   <Label maxWidth="1.7976931348623157E308" text="EMISSÃO DE PASSAGENS" textFill="#cccccc" HBox.hgrow="ALWAYS">
@@ -287,7 +287,7 @@
                               <TextField fx:id="txtDesconto" alignment="CENTER_RIGHT" prefWidth="90.0" prefHeight="30.0" style="-fx-text-fill: #d32f2f; -fx-border-color: transparent transparent #ef9a9a transparent; -fx-background-color: transparent; -fx-font-size: 16px; -fx-padding: 0;" text="0,00" />
                            </VBox>
 
-                           <VBox spacing="1" alignment="CENTER_RIGHT" style="-fx-background-color: #2e7d32; -fx-padding: 2 12 2 12; -fx-border-radius: 4;">
+                           <VBox spacing="1" alignment="CENTER_RIGHT" style="-fx-background-color: #059669; -fx-padding: 2 12 2 12; -fx-border-radius: 4;">
                               <Label text="A PAGAR" textFill="#e8f5e9">
                                  <font>
                                     <Font name="System Bold" size="10.0" />
@@ -298,7 +298,7 @@
                            
                            <Button fx:id="btnSalvar" defaultButton="true" mnemonicParsing="false" onAction="#handleSalvar"
                                    prefHeight="45.0" prefWidth="130.0"
-                                   style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px; -fx-cursor: hand;"
+                                   style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px; -fx-cursor: hand;"
                                    text="FINALIZAR (F1)" />
                         </HBox>
                      </children>
@@ -318,7 +318,7 @@
                         </Label>
                         <ComboBox fx:id="cmbPesquisarModo" prefWidth="120.0" />
                         <TextField fx:id="txtPesquisar" promptText="Digite para buscar..." HBox.hgrow="ALWAYS" />
-                        <Button fx:id="btnFiltrar" mnemonicParsing="false" onAction="#handleFiltrar" prefHeight="30.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-background-radius: 3;" text="BUSCAR" />
+                        <Button fx:id="btnFiltrar" mnemonicParsing="false" onAction="#handleFiltrar" prefHeight="30.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-background-radius: 3;" text="BUSCAR" />
                      </children>
                   </HBox>
                   
@@ -364,10 +364,10 @@
                     style="-fx-background-color: #1e88e5; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
                     text="BILHETE (F6)" />
             <Button fx:id="btnImprimirLista" onAction="#handleImprimirLista" prefHeight="45.0" prefWidth="190.0"
-                    style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
+                    style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
                     text="LISTA DE PASSAGEIROS (F7)" />
             <Button fx:id="btnRelatorio" onAction="#handleRelatorio" prefHeight="45.0" prefWidth="130.0"
-                    style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
+                    style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
                     text="RELATÓRIO (F8)" />
             <Region HBox.hgrow="ALWAYS" />
             <Label text="Total:" textFill="#616161">

@@ -18,7 +18,7 @@
    <children>
       <VBox spacing="10.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
          <children>
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-background-color: #1a3c7d; -fx-text-fill: white; -fx-padding: 8; -fx-background-radius: 4;" text="REGISTRAR PAGAMENTO">
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-padding: 8; -fx-background-radius: 4;" text="REGISTRAR PAGAMENTO">
                <font>
                   <Font name="System Bold" size="16.0" />
                </font>
@@ -35,12 +35,12 @@
             
             <VBox alignment="CENTER" styleClass="painel-info-pagamento">
                <children>
-                  <Label text="TOTAL A PAGAR" textFill="#0d47a1">
+                  <Label text="TOTAL A PAGAR" textFill="#059669">
                      <font>
                         <Font size="12.0" />
                      </font>
                   </Label>
-                  <Label fx:id="lblValorTotal" text="R$ 0,00" textFill="#0d47a1">
+                  <Label fx:id="lblValorTotal" text="R$ 0,00" textFill="#059669">
                      <font>
                         <Font name="System Bold" size="28.0" />
                      </font>
@@ -117,7 +117,7 @@
             
             <VBox spacing="8.0">
                <children>
-                  <Button fx:id="btnConfirmar" defaultButton="true" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleConfirmar" prefHeight="45.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 15px; -fx-cursor: hand;" text="CONFIRMAR (F3)" />
+                  <Button fx:id="btnConfirmar" defaultButton="true" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleConfirmar" prefHeight="45.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 15px; -fx-cursor: hand;" text="CONFIRMAR (F3)" />
                   <Button fx:id="btnCancelar" cancelButton="true" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleCancelar" prefHeight="35.0" styleClass="botao-cancelar" text="Cancelar (Esc)" />
                </children>
             </VBox>

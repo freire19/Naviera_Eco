@@ -19,7 +19,7 @@
             <DropShadow color="#00000040" height="20.0" radius="9.5" width="20.0" />
          </effect>
          <children>
-            <HBox alignment="CENTER" prefHeight="70.0" prefWidth="400.0" style="-fx-background-color: #2b2b2b; -fx-background-radius: 10 10 0 0; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;">
+            <HBox alignment="CENTER" prefHeight="70.0" prefWidth="400.0" style="-fx-background-color: #047857; -fx-background-radius: 10 10 0 0; -fx-border-color: #065f46; -fx-border-width: 0 0 1 0;">
                <children>
                   <Label text="ACESSO AO SISTEMA" textFill="#cccccc">
                      <font>
@@ -63,7 +63,7 @@
                               <Cursor fx:constant="HAND" />
                            </cursor>
                         </Button>
-                        <Button fx:id="btnEntrar" defaultButton="true" mnemonicParsing="false" onAction="#handleEntrar" prefHeight="40.0" prefWidth="180.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="ENTRAR">
+                        <Button fx:id="btnEntrar" defaultButton="true" mnemonicParsing="false" onAction="#handleEntrar" prefHeight="40.0" prefWidth="180.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="ENTRAR">
                            <effect>
                               <DropShadow color="#00000033" offsetY="2.0" />
                            </effect>

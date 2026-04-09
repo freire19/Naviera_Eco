@@ -131,7 +131,7 @@
                               <Label text="TOTAL RECEBIDO (CAIXA)" textFill="#78909c">
                                  <font><Font name="System Bold" size="12.0" /></font>
                               </Label>
-                              <Label fx:id="lblRecebido" style="-fx-font-size: 48px;" text="R$ 0,00" textFill="#2e7d32">
+                              <Label fx:id="lblRecebido" style="-fx-font-size: 48px;" text="R$ 0,00" textFill="#059669">
                                  <font><Font name="System Bold" size="48.0" /></font>
                               </Label>
                               <Label text="Confirmados" textFill="#b0bec5">

@@ -16,11 +16,11 @@
     <HBox alignment="CENTER_LEFT" spacing="15" styleClass="sync-header">
         <Label text="🔌" style="-fx-font-size: 32px;"/>
         <VBox>
-            <Label text="Configuração da API" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
-            <Label text="Configure a conexão com o servidor web e recursos de automação" style="-fx-text-fill: #7f8c8d;"/>
+            <Label text="Configuração da API" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #0F2620;"/>
+            <Label text="Configure a conexão com o servidor web e recursos de automação" style="-fx-text-fill: #7BA393;"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
-        <Label fx:id="lblStatus" text="● Não Configurado" style="-fx-text-fill: #e67e22; -fx-font-weight: bold;"/>
+        <Label fx:id="lblStatus" text="● Não Configurado" style="-fx-text-fill: #F59E0B; -fx-font-weight: bold;"/>
     </HBox>
     
     <Separator/>
@@ -36,9 +36,9 @@
                         <TextField fx:id="txtUrlApi" promptText="http://sistemabarco.navdeusdealianca.com.br/api" 
                                    prefWidth="450" style="-fx-font-size: 13px;"/>
                         <Button fx:id="btnTestar" text="🔗 Testar" onAction="#testarConexao" 
-                                style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+                                style="-fx-background-color: #059669; -fx-text-fill: white;"/>
                     </HBox>
-                    <Label text="URL base do sistema web para sincronização" style="-fx-text-fill: #95a5a6; -fx-font-size: 11px;"/>
+                    <Label text="URL base do sistema web para sincronização" style="-fx-text-fill: #7BA393; -fx-font-size: 11px;"/>
                 </VBox>
             </HBox>
             
@@ -50,7 +50,7 @@
                                        prefWidth="300" style="-fx-font-size: 13px;"/>
                         <Button text="👁" onAction="#toggleToken" prefWidth="40"/>
                         <Button text="🔑 Gerar" onAction="#gerarToken" 
-                                style="-fx-background-color: #9b59b6; -fx-text-fill: white;"/>
+                                style="-fx-background-color: #047857; -fx-text-fill: white;"/>
                     </HBox>
                 </VBox>
             </HBox>
@@ -70,7 +70,7 @@
                         <TextField fx:id="txtPastaArquivos" promptText="C:\SistemaEmbarcacao\uploads" 
                                    prefWidth="400" style="-fx-font-size: 13px;"/>
                         <Button text="📂 Selecionar" onAction="#selecionarPasta" 
-                                style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
+                                style="-fx-background-color: #059669; -fx-text-fill: white;"/>
                     </HBox>
                 </VBox>
             </HBox>
@@ -93,7 +93,7 @@
             
             <CheckBox fx:id="chkUsarNuvem" text="☁️ Enviar arquivos para a nuvem automaticamente"/>
             
-            <VBox fx:id="pnlNuvem" spacing="10" visible="false" managed="false" style="-fx-padding: 10; -fx-background-color: #ecf0f1; -fx-background-radius: 5;">
+            <VBox fx:id="pnlNuvem" spacing="10" visible="false" managed="false" style="-fx-padding: 10; -fx-background-color: #EEF7F2; -fx-background-radius: 5;">
                 <HBox spacing="15">
                     <VBox spacing="5" HBox.hgrow="ALWAYS">
                         <Label text="URL do Serviço de Nuvem:"/>
@@ -116,7 +116,7 @@
                 <VBox spacing="10">
                     <CheckBox fx:id="chkHabilitarXml" text="📄 Parser de XML NFe" selected="true"/>
                     <Label text="Preencher formulários automaticamente a partir de arquivos XML de Nota Fiscal" 
-                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                           style="-fx-text-fill: #7BA393; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
                 </VBox>
             </HBox>
             
@@ -126,12 +126,12 @@
                 <VBox spacing="10">
                     <CheckBox fx:id="chkHabilitarFoto" text="📷 Captura de Fotos" selected="true"/>
                     <Label text="Anexar fotos de mercadorias e documentos" 
-                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                           style="-fx-text-fill: #7BA393; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
                 </VBox>
                 <VBox spacing="10">
                     <CheckBox fx:id="chkHabilitarOcr" text="🔍 OCR em Fotos"/>
                     <Label text="Extrair texto de imagens automaticamente" 
-                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                           style="-fx-text-fill: #7BA393; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
                 </VBox>
             </HBox>
             
@@ -141,12 +141,12 @@
                 <VBox spacing="10">
                     <CheckBox fx:id="chkHabilitarAudio" text="🎤 Gravação de Áudio" selected="true"/>
                     <Label text="Gravar áudios para anotações e observações" 
-                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                           style="-fx-text-fill: #7BA393; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
                 </VBox>
                 <VBox spacing="10">
                     <CheckBox fx:id="chkHabilitarVoz" text="🗣️ Transcrição de Voz"/>
                     <Label text="Converter áudio em texto automaticamente (requer API)" 
-                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
+                           style="-fx-text-fill: #7BA393; -fx-font-size: 11px; -fx-padding: 0 0 0 25;"/>
                 </VBox>
             </HBox>
         </VBox>
@@ -155,7 +155,7 @@
     <!-- Informações -->
     <TitledPane text="ℹ️ Informações da API" expanded="false" collapsible="true"
                 style="-fx-font-size: 14px;">
-        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f8f9fa;">
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #F7FBF9;">
             <Label text="Endpoints Disponíveis:" style="-fx-font-weight: bold;"/>
             <HBox spacing="20">
                 <VBox spacing="5">
@@ -173,7 +173,7 @@
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Label text="URL do Sistema Web:"/>
                 <TextField fx:id="txtUrlSistemaWeb" text="http://sistemabarco.navdeusdealianca.com.br" 
-                           editable="false" prefWidth="350" style="-fx-background-color: #ecf0f1;"/>
+                           editable="false" prefWidth="350" style="-fx-background-color: #EEF7F2;"/>
                 <Button text="📋 Copiar" onAction="#copiarUrl"/>
             </HBox>
         </VBox>
@@ -182,12 +182,12 @@
     <!-- Botões de Ação -->
     <HBox spacing="15" alignment="CENTER_RIGHT" style="-fx-padding: 20 0 0 0;">
         <Button text="🔄 Restaurar Padrões" onAction="#restaurarPadroes" 
-                style="-fx-background-color: #95a5a6; -fx-text-fill: white;"/>
+                style="-fx-background-color: #7BA393; -fx-text-fill: white;"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Button text="❌ Cancelar" onAction="#cancelar" 
-                style="-fx-background-color: #e74c3c; -fx-text-fill: white;" prefWidth="120"/>
+                style="-fx-background-color: #DC2626; -fx-text-fill: white;" prefWidth="120"/>
         <Button text="💾 Salvar" onAction="#salvar" 
-                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;" prefWidth="150"/>
+                style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" prefWidth="150"/>
     </HBox>
     
 </VBox>

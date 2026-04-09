@@ -202,7 +202,7 @@
                                              </children>
                                           </HBox>
                                           
-                                          <Label fx:id="lblStatusFuncionario" text="ATIVO" textFill="#2e7d32" GridPane.columnSpan="2" GridPane.rowIndex="4">
+                                          <Label fx:id="lblStatusFuncionario" text="ATIVO" textFill="#059669" GridPane.columnSpan="2" GridPane.rowIndex="4">
                                              <font><Font name="System Bold" size="18.0" /></font>
                                           </Label>
                                        </children>
@@ -254,7 +254,7 @@
                                     <VBox alignment="CENTER" prefHeight="100.0" prefWidth="240.0" spacing="5.0" styleClass="card-panel" style="-fx-border-color: #eeeeee; -fx-border-radius: 5; -fx-background-radius: 5;">
                                        <children>
                                           <Label styleClass="label-padrao" text="Saldo a Receber" textFill="#757575"><font><Font name="System Bold" size="14.0" /></font></Label>
-                                          <Label fx:id="lblSaldo" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="32.0" /></font></Label>
+                                          <Label fx:id="lblSaldo" text="R$ 0,00" textFill="#059669"><font><Font name="System Bold" size="32.0" /></font></Label>
                                        </children>
                                     </VBox>
                                  </children>

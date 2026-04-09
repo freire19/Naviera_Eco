@@ -115,7 +115,7 @@
                         onAction="#handleConfirmar"
                         prefHeight="40.0"
                         prefWidth="200.0" 
-                        style="-fx-base: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                        style="-fx-base: #059669; -fx-text-fill: white; -fx-font-weight: bold;"/>
 
                 <Button fx:id="btnCancelar"
                         text="Cancelar (Esc)"

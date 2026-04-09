@@ -19,9 +19,9 @@
          <children>
             <HBox alignment="CENTER_LEFT" spacing="15.0">
                <children>
-                  <Button fx:id="btnIniciar" mnemonicParsing="false" onAction="#handleIniciar" style="-fx-background-color: #0056b3; -fx-text-fill: white; -fx-font-weight: bold;" text="Nova (F2)" />
+                  <Button fx:id="btnIniciar" mnemonicParsing="false" onAction="#handleIniciar" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="Nova (F2)" />
                   <Button fx:id="btnAbrirLista" mnemonicParsing="false" onAction="#handleAbrirLista" style="-fx-background-color: #6c757d; -fx-text-fill: white;" text="Ver Lista" />
-                  <Label alignment="CENTER" maxWidth="1.7976931348623157E308" text="REGISTRAR NOVA ENCOMENDA" textFill="#0056b3" HBox.hgrow="ALWAYS">
+                  <Label alignment="CENTER" maxWidth="1.7976931348623157E308" text="REGISTRAR NOVA ENCOMENDA" textFill="#059669" HBox.hgrow="ALWAYS">
                      <font>
                         <Font name="System Bold" size="22.0" />
                      </font>
@@ -131,8 +131,8 @@
                   </VBox>
                   
                   <HBox spacing="10.0" alignment="CENTER">
-                      <Button fx:id="btnAudioInput" text="Áudio" prefHeight="35.0" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" onAction="#handleAudioInput" style="-fx-background-color: #0056b3; -fx-text-fill: white; -fx-font-weight: bold;"/>
-                      <Button fx:id="btnImageInput" text="Foto" prefHeight="35.0" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" onAction="#handleImageInput" style="-fx-background-color: #0056b3; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                      <Button fx:id="btnAudioInput" text="Áudio" prefHeight="35.0" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" onAction="#handleAudioInput" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                      <Button fx:id="btnImageInput" text="Foto" prefHeight="35.0" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" onAction="#handleImageInput" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;"/>
                   </HBox>
                </children>
                <padding>
@@ -224,7 +224,7 @@
                         <Font name="System Bold" size="13.0" />
                      </font>
                   </TextField>
-                  <Label text="TOTAL A PAGAR:" textFill="#0056b3">
+                  <Label text="TOTAL A PAGAR:" textFill="#059669">
                      <font>
                         <Font name="System Bold" size="16.0" />
                      </font>

@@ -15,7 +15,7 @@
 <BorderPane styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.HistoricoEstornosFretesController">
    
    <top>
-      <VBox spacing="10.0" styleClass="painel-cabecalho" style="-fx-padding: 20; -fx-background-color: #2b2b2b;" BorderPane.alignment="CENTER">
+      <VBox spacing="10.0" styleClass="painel-cabecalho" style="-fx-padding: 20; -fx-background-color: #047857;" BorderPane.alignment="CENTER">
          <children>
             <Label text="RELATÓRIO DE AUDITORIA (ESTORNOS DE FRETES)" textFill="#cccccc">
                <font><Font name="System Bold" size="24.0" /></font>
@@ -29,7 +29,7 @@
                   <Label text="até" textFill="#546e7a" />
                   <DatePicker fx:id="dpFim" prefWidth="150.0" promptText="Fim" />
                   
-                  <Button mnemonicParsing="false" onAction="#filtrar" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;" text="PESQUISAR" />
+                  <Button mnemonicParsing="false" onAction="#filtrar" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;" text="PESQUISAR" />
                </children>
             </HBox>
          </children>
@@ -56,7 +56,7 @@
    </center>
    
    <bottom>
-      <HBox alignment="CENTER_RIGHT" spacing="15.0" styleClass="painel-rodape" style="-fx-padding: 15; -fx-background-color: #2b2b2b;">
+      <HBox alignment="CENTER_RIGHT" spacing="15.0" styleClass="painel-rodape" style="-fx-padding: 15; -fx-background-color: #047857;">
          <children>
             <Button mnemonicParsing="false" onAction="#imprimir" prefHeight="45.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;" text="🖨 IMPRIMIR RELATÓRIO" />
             <Button mnemonicParsing="false" onAction="#fechar" prefHeight="45.0" style="-fx-background-color: #cfd8dc; -fx-font-size: 13px;" text="FECHAR" />

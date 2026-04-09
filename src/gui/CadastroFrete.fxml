@@ -162,7 +162,7 @@
                                 </VBox>
                                 
                                 <VBox alignment="BOTTOM_CENTER" prefWidth="110.0" style="-fx-padding: 5 5 5 0;">
-                                    <Button fx:id="btnInserir" maxWidth="Infinity" onAction="#adicionarItemTabela" style="-fx-background-color: #00796b; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="ADICIONAR" />
+                                    <Button fx:id="btnInserir" maxWidth="Infinity" onAction="#adicionarItemTabela" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="ADICIONAR" />
                                 </VBox>
                             </children>
                         </HBox>

@@ -19,7 +19,7 @@
    <top>
       <VBox alignment="CENTER" spacing="10.0" styleClass="painel-cabecalho" style="-fx-padding: 15 20 15 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 0, 4, 0, 0);" BorderPane.alignment="CENTER">
          <children>
-            <Label text="GESTÃO FINANCEIRA DE PASSAGENS" textFill="#2e7d32">
+            <Label text="GESTÃO FINANCEIRA DE PASSAGENS" textFill="#059669">
                <font><Font name="System Bold" size="24.0" /></font>
             </Label>
             <Separator prefWidth="200.0" />
@@ -28,7 +28,7 @@
                   <VBox spacing="5.0">
                      <children>
                         <Label text="Viagem Selecionada" textFill="#546e7a"><font><Font name="System Bold" size="14.0" /></font></Label>
-                        <ComboBox fx:id="cmbViagem" prefWidth="320.0" style="-fx-border-color: #2e7d32; -fx-border-radius: 4; -fx-font-size: 13px;" />
+                        <ComboBox fx:id="cmbViagem" prefWidth="320.0" style="-fx-border-color: #059669; -fx-border-radius: 4; -fx-font-size: 13px;" />
                      </children>
                   </VBox>
                   <VBox spacing="5.0" HBox.hgrow="ALWAYS">
@@ -42,7 +42,7 @@
                      <HBox.margin><Insets top="25.0" /></HBox.margin>
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </CheckBox>
-                  <Button mnemonicParsing="false" onAction="#carregarDados" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;" text="PESQUISAR">
+                  <Button mnemonicParsing="false" onAction="#carregarDados" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;" text="PESQUISAR">
                      <HBox.margin><Insets top="25.0" /></HBox.margin>
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
@@ -70,7 +70,7 @@
             </TableView>
             <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="painel-totais" style="-fx-padding: 10;">
                <children>
-                  <Label text="Total a Receber nesta lista:" textFill="#2e7d32"><font><Font name="System Bold" size="14.0" /></font></Label>
+                  <Label text="Total a Receber nesta lista:" textFill="#059669"><font><Font name="System Bold" size="14.0" /></font></Label>
                   <Label fx:id="lblTotalPendente" text="R$ 0,00" textFill="#c62828"><font><Font name="System Bold" size="20.0" /></font></Label>
                </children>
             </HBox>
@@ -82,11 +82,11 @@
          <children>
             <Label text="Ações Financeiras" textFill="#546e7a"><font><Font name="System Bold" size="14.0" /></font></Label>
             <Separator />
-            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#darBaixa" prefHeight="50.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;" text="✅ DAR BAIXA">
+            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#darBaixa" prefHeight="50.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="✅ DAR BAIXA">
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="13.0" /></font>
             </Button>
             <Separator />
-            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#gerarRelatorioCliente" prefHeight="45.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" text="📄 EXTRATO PASSAGEIRO">
+            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#gerarRelatorioCliente" prefHeight="45.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="📄 EXTRATO PASSAGEIRO">
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="12.0" /></font>
             </Button>
             <Separator />

@@ -384,7 +384,7 @@ public class TelaPrincipalController implements Initializable {
             if (v.getDataViagem().equals(data)) {
                 String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
                 Label lbl = new Label("\uD83D\uDEA2 " + destino);
-                String bg = isModoEscuro ? "#1a3c7d" : "#ffcdd2";
+                String bg = isModoEscuro ? "#047857" : "#ffcdd2";
                 String tx = isModoEscuro ? "#ffffff" : "#DC2626";
                 lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
                 lbl.setMaxWidth(Double.MAX_VALUE);

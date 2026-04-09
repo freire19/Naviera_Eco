@@ -99,7 +99,7 @@ public class GerarReciboAvulsoController implements Initializable {
     private String empresaLogoPath = ""; 
 
     // CORES
-    private final String COR_AZUL_SISTEMA = "#1a3c7d"; 
+    private final String COR_AZUL_SISTEMA = "#047857"; 
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {

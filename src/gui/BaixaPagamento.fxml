@@ -38,7 +38,7 @@
             <Label fx:id="lblValorTotal" text="R$ 0,00" GridPane.columnIndex="1"><font><Font name="System Bold" size="16.0" /></font></Label>
             
             <Label text="Já Pago:" textFill="#757575" GridPane.rowIndex="1"><font><Font size="14.0" /></font></Label>
-            <Label fx:id="lblJaPago" text="R$ 0,00" textFill="#2e7d32" GridPane.columnIndex="1" GridPane.rowIndex="1"><font><Font name="System Bold" size="16.0" /></font></Label>
+            <Label fx:id="lblJaPago" text="R$ 0,00" textFill="#059669" GridPane.columnIndex="1" GridPane.rowIndex="1"><font><Font name="System Bold" size="16.0" /></font></Label>
             
             <Label text="Restante (Dívida):" textFill="#757575" GridPane.rowIndex="2"><font><Font size="14.0" /></font></Label>
             <Label fx:id="lblRestante" text="R$ 0,00" textFill="#c62828" GridPane.columnIndex="1" GridPane.rowIndex="2"><font><Font name="System Bold" size="18.0" /></font></Label>
@@ -59,15 +59,15 @@
       
       <HBox alignment="CENTER" spacing="10.0" styleClass="painel-resumo-pagamento" style="-fx-padding: 15;">
          <children>
-            <Label text="TROCO:" textFill="#2e7d32"><font><Font name="System Bold" size="20.0" /></font></Label>
-            <Label fx:id="lblTroco" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="32.0" /></font></Label>
+            <Label text="TROCO:" textFill="#059669"><font><Font name="System Bold" size="20.0" /></font></Label>
+            <Label fx:id="lblTroco" text="R$ 0,00" textFill="#059669"><font><Font name="System Bold" size="32.0" /></font></Label>
          </children>
       </HBox>
       
       <HBox alignment="CENTER_RIGHT" spacing="15.0">
          <children>
             <Button mnemonicParsing="false" onAction="#cancelar" style="-fx-background-color: #cfd8dc; -fx-font-size: 14px;" text="Cancelar" />
-            <Button fx:id="btnConfirmar" defaultButton="true" mnemonicParsing="false" onAction="#confirmar" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="CONFIRMAR PAGAMENTO">
+            <Button fx:id="btnConfirmar" defaultButton="true" mnemonicParsing="false" onAction="#confirmar" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="CONFIRMAR PAGAMENTO">
                <padding><Insets bottom="10.0" left="20.0" right="20.0" top="10.0" /></padding>
             </Button>
          </children>

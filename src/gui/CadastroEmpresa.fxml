@@ -91,7 +91,7 @@
                 <HBox alignment="CENTER" spacing="20.0">
                     <children>
                         <Button fx:id="btnNovo" onAction="#handleNovo" prefWidth="100.0" text="Limpar" />
-                        <Button fx:id="btnSalvar" onAction="#handleSalvar" prefWidth="150.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;" text="SALVAR DADOS" />
+                        <Button fx:id="btnSalvar" onAction="#handleSalvar" prefWidth="150.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="SALVAR DADOS" />
                         <Button fx:id="btnSair" onAction="#handleSair" prefWidth="100.0" text="Sair" />
                     </children>
                 </HBox>

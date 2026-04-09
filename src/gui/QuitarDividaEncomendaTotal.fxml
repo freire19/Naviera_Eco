@@ -50,10 +50,10 @@
             </Label>
             <TextField fx:id="txtDesconto" promptText="0,00" style="-fx-border-color: #ef5350; -fx-font-weight: bold; -fx-font-size: 14px;" text="0,00" GridPane.columnIndex="1" GridPane.rowIndex="1" />
             
-            <Label text="A PAGAR:" textFill="#2e7d32" GridPane.rowIndex="2">
+            <Label text="A PAGAR:" textFill="#059669" GridPane.rowIndex="2">
                <font><Font name="System Bold" size="16.0" /></font>
             </Label>
-            <Label fx:id="lblTotalFinal" text="R$ 0,00" textFill="#2e7d32" GridPane.columnIndex="1" GridPane.rowIndex="2">
+            <Label fx:id="lblTotalFinal" text="R$ 0,00" textFill="#059669" GridPane.columnIndex="1" GridPane.rowIndex="2">
                <font><Font name="System Black" size="24.0" /></font>
             </Label>
             
@@ -74,7 +74,7 @@
       <HBox alignment="CENTER_RIGHT" spacing="15.0">
          <children>
             <Button mnemonicParsing="false" onAction="#cancelar" prefHeight="40.0" style="-fx-background-color: #cfd8dc; -fx-font-weight: bold;" text="CANCELAR" />
-            <Button fx:id="btnConfirmar" defaultButton="true" mnemonicParsing="false" onAction="#confirmar" prefHeight="40.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;" text="CONFIRMAR PAGAMENTO" />
+            <Button fx:id="btnConfirmar" defaultButton="true" mnemonicParsing="false" onAction="#confirmar" prefHeight="40.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="CONFIRMAR PAGAMENTO" />
          </children>
       </HBox>
    </children>

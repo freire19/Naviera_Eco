@@ -153,7 +153,7 @@ public class BalancoViagemController {
                 String d = txt.contains("=") ? txt.split("=")[0].trim() : txt;
                 String v = txt.contains("=") ? txt.split("=")[1].trim() : "";
                 String c = "#333333";
-                if(d.toUpperCase().contains("PASSAGE")) c="#059669"; else if(d.toUpperCase().contains("ENCOMENDA")) c="#EF6C00"; else if(d.toUpperCase().contains("FRETE")) c="#059669";
+                if(d.toUpperCase().contains("PASSAGE")) c="#059669"; else if(d.toUpperCase().contains("ENCOMENDA")) c="#F59E0B"; else if(d.toUpperCase().contains("FRETE")) c="#059669";
                 
                 Label ld = new Label(d); ld.setStyle("-fx-text-fill:"+c+"; -fx-font-weight:bold; -fx-font-size:14px;");
                 Label lv = new Label(v); lv.setStyle("-fx-text-fill:"+c+"; -fx-font-weight:bold; -fx-font-size:15px;");

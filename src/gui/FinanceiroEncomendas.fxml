@@ -43,7 +43,7 @@
                      <HBox.margin><Insets top="25.0" /></HBox.margin>
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </CheckBox>
-                  <Button mnemonicParsing="false" onAction="#carregarDados" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;" text="PESQUISAR">
+                  <Button mnemonicParsing="false" onAction="#carregarDados" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;" text="PESQUISAR">
                      <HBox.margin><Insets top="25.0" /></HBox.margin>
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
@@ -83,11 +83,11 @@
          <children>
             <Label text="Ações Financeiras" textFill="#546e7a"><font><Font name="System Bold" size="14.0" /></font></Label>
             <Separator />
-            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#darBaixa" prefHeight="50.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;" text="✅ DAR BAIXA">
+            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#darBaixa" prefHeight="50.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="✅ DAR BAIXA">
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="13.0" /></font>
             </Button>
             <Separator />
-            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#gerarRelatorioCliente" prefHeight="45.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" text="📄 EXTRATO CLIENTE">
+            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#gerarRelatorioCliente" prefHeight="45.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="📄 EXTRATO CLIENTE">
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="12.0" /></font>
             </Button>
             <Separator />

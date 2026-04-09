@@ -40,7 +40,7 @@
                   <VBox spacing="3.0">
                      <children>
                         <RadioButton fx:id="rbPagoTodas" mnemonicParsing="false" selected="true" text="Todos" />
-                        <RadioButton fx:id="rbPagoQuitados" mnemonicParsing="false" text="Quitados (Pagos)" style="-fx-text-fill: #2e7d32;" />
+                        <RadioButton fx:id="rbPagoQuitados" mnemonicParsing="false" text="Quitados (Pagos)" style="-fx-text-fill: #059669;" />
                         <RadioButton fx:id="rbPagoAbertos" mnemonicParsing="false" text="Abertos (Falta Pagar)" style="-fx-text-fill: #c62828;" />
                      </children>
                   </VBox>
@@ -49,7 +49,7 @@
                   <VBox spacing="3.0">
                      <children>
                         <RadioButton fx:id="rbEntregueTodas" mnemonicParsing="false" selected="true" text="Todos" />
-                        <RadioButton fx:id="rbEntregueSim" mnemonicParsing="false" text="Entregues" style="-fx-text-fill: #2e7d32;" />
+                        <RadioButton fx:id="rbEntregueSim" mnemonicParsing="false" text="Entregues" style="-fx-text-fill: #059669;" />
                         <RadioButton fx:id="rbEntregueNao" mnemonicParsing="false" text="Pendentes" style="-fx-text-fill: #d84315;" />
                      </children>
                   </VBox>
@@ -71,7 +71,7 @@
                      </VBox.margin>
                   </Separator>
                   
-                  <Button fx:id="btnImprimir" mnemonicParsing="false" prefHeight="45.0" maxWidth="1.7976931348623157E308" style="-fx-background-color: #0056b3; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR LISTA">
+                  <Button fx:id="btnImprimir" mnemonicParsing="false" prefHeight="45.0" maxWidth="1.7976931348623157E308" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR LISTA">
                      <font>
                         <Font name="System Bold" size="13.0" />
                      </font>
@@ -129,7 +129,7 @@
                   <VBox alignment="CENTER_LEFT" spacing="2.0">
                      <children>
                         <Label text="Total Recebido" styleClass="label-small-bold" style="-fx-font-size: 11px;"/>
-                        <Label fx:id="lblTotalRecebido" text="R$ 0,00" style="-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-font-size: 16px;" />
+                        <Label fx:id="lblTotalRecebido" text="R$ 0,00" style="-fx-text-fill: #059669; -fx-font-weight: bold; -fx-font-size: 16px;" />
                      </children>
                   </VBox>
                   <Separator orientation="VERTICAL" />

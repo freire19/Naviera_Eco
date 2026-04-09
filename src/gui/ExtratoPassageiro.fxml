@@ -14,7 +14,7 @@
 
 <BorderPane styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.ExtratoPassageiroController">
    <top>
-      <VBox style="-fx-background-color: #2b2b2b; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;" BorderPane.alignment="CENTER">
+      <VBox style="-fx-background-color: #047857; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;" BorderPane.alignment="CENTER">
          <children>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                <padding>
@@ -34,7 +34,7 @@
                   <Button mnemonicParsing="false" onAction="#imprimirExtrato" styleClass="botao-secundario" text="🖨 IMPRIMIR EXTRATO (A4)">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
-                  <Button mnemonicParsing="false" onAction="#fechar" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-color: white; -fx-border-radius: 3;" text="FECHAR">
+                  <Button mnemonicParsing="false" onAction="#fechar" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-color: white; -fx-border-radius: 3;" text="FECHAR">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
                </children>
@@ -66,7 +66,7 @@
                         <ComboBox fx:id="cmbStatus" prefHeight="35.0" prefWidth="150.0" />
                      </children>
                   </VBox>
-                  <Button mnemonicParsing="false" onAction="#buscar" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" text="BUSCAR">
+                  <Button mnemonicParsing="false" onAction="#buscar" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="BUSCAR">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
                </children>
@@ -82,7 +82,7 @@
                   <VBox alignment="CENTER" layoutX="10.0" layoutY="10.0" prefHeight="80.0" prefWidth="200.0" styleClass="card-info">
                      <children>
                         <Label text="TOTAL PAGO" textFill="#546e7a"><font><Font name="System Bold" size="11.0" /></font></Label>
-                        <Label fx:id="lblTotalPago" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="18.0" /></font></Label>
+                        <Label fx:id="lblTotalPago" text="R$ 0,00" textFill="#059669"><font><Font name="System Bold" size="18.0" /></font></Label>
                      </children>
                   </VBox>
                   <VBox alignment="CENTER" layoutX="230.0" layoutY="10.0" prefHeight="80.0" prefWidth="200.0" styleClass="painel-alerta" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 0); -fx-border-radius: 5;">

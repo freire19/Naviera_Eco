@@ -27,8 +27,8 @@
                <children>
                   <Label text="Selecionar Viagem:" textFill="#555555"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <ComboBox fx:id="cmbViagens" onAction="#handleFiltrarViagem" prefWidth="400.0" style="-fx-font-size: 13px;" />
-                  <Button mnemonicParsing="false" onAction="#handleImprimirResumido" style="-fx-background-color: #2E7D32; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR RESUMO" />
-                  <Button mnemonicParsing="false" onAction="#handleImprimirDetalhado" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR DETALHADO" />
+                  <Button mnemonicParsing="false" onAction="#handleImprimirResumido" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR RESUMO" />
+                  <Button mnemonicParsing="false" onAction="#handleImprimirDetalhado" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;" text="IMPRIMIR DETALHADO" />
                </children>
                <padding><Insets bottom="10.0" top="10.0" /></padding>
             </HBox>
@@ -53,7 +53,7 @@
                               <VBox spacing="10.0" styleClass="card-info">
                                  <padding><Insets bottom="20.0" left="30.0" right="30.0" top="20.0" /></padding>
                                  <children>
-                                    <HBox><children><Label maxWidth="Infinity" text="TOTAL ENTRADAS:" textFill="#333333" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="16.0" /></font></Label><Label fx:id="lblTotalGeralEntradas" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="18.0" /></font></Label></children></HBox>
+                                    <HBox><children><Label maxWidth="Infinity" text="TOTAL ENTRADAS:" textFill="#333333" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="16.0" /></font></Label><Label fx:id="lblTotalGeralEntradas" text="R$ 0,00" textFill="#059669"><font><Font name="System Bold" size="18.0" /></font></Label></children></HBox>
                                     <HBox><children><Label maxWidth="Infinity" text="TOTAL SAÍDAS:" textFill="#333333" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="16.0" /></font></Label><Label fx:id="lblTotalGeralSaidas" text="R$ 0,00" textFill="#c62828"><font><Font name="System Bold" size="18.0" /></font></Label></children></HBox>
                                     <Separator />
                                     <HBox><children><Label maxWidth="Infinity" text="SALDO FINAL:" textFill="#cccccc" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="20.0" /></font></Label><Label fx:id="lblSaldoFinal" text="R$ 0,00"><font><Font name="System Bold" size="24.0" /></font></Label></children></HBox>
@@ -77,7 +77,7 @@
                                  <VBox spacing="5.0" styleClass="card-info" VBox.vgrow="ALWAYS">
                                     <padding><Insets bottom="10.0" left="10.0" right="10.0" top="10.0" /></padding>
                                     <children>
-                                       <Label text="DETALHAMENTO DE RECEITAS" textFill="#2e7d32"><font><Font name="System Bold" size="14.0" /></font></Label>
+                                       <Label text="DETALHAMENTO DE RECEITAS" textFill="#059669"><font><Font name="System Bold" size="14.0" /></font></Label>
                                        <Separator />
                                        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;" VBox.vgrow="ALWAYS">
                                           <content><VBox fx:id="vboxReceitasDetalhadasTela" spacing="5.0" /></content>
@@ -112,7 +112,7 @@
                            <padding><Insets bottom="10.0" left="15.0" right="15.0" top="10.0" /></padding>
                            <children>
                               <VBox alignment="CENTER" prefWidth="280.0" spacing="5.0" styleClass="card-info">
-                                 <children><Label text="TOTAL ENTRADAS" textFill="#757575"><font><Font size="12.0" /></font></Label><Label fx:id="lblCardEntradas" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="20.0" /></font></Label></children>
+                                 <children><Label text="TOTAL ENTRADAS" textFill="#757575"><font><Font size="12.0" /></font></Label><Label fx:id="lblCardEntradas" text="R$ 0,00" textFill="#059669"><font><Font name="System Bold" size="20.0" /></font></Label></children>
                               </VBox>
                               <Label text="-" textFill="#999999"><font><Font name="System Bold" size="24.0" /></font></Label>
                               <VBox alignment="CENTER" prefWidth="280.0" spacing="5.0" styleClass="card-info">

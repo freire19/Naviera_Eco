@@ -128,7 +128,7 @@
                   <Label text="Forma de Pagamento" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <ComboBox fx:id="cmbFormaPagamento" maxWidth="1.7976931348623157E308" style="-fx-font-size: 13px;" />
                   
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#salvarLancamento" prefHeight="40.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="SALVAR DESPESA">
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#salvarLancamento" prefHeight="40.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="SALVAR DESPESA">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                      <VBox.margin><Insets top="5.0" /></VBox.margin>
                   </Button>
@@ -138,7 +138,7 @@
                   </Separator>
                   
                   <Label text="Lançamento Complexo:" textFill="#757575"><font><Font size="11.0" /></font></Label>
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirCadastroBoleto" prefHeight="35.0" style="-fx-background-color: #ef6c00; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;" text="BOLETOS / A PRAZO">
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirCadastroBoleto" prefHeight="35.0" style="-fx-background-color: #F59E0B; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;" text="BOLETOS / A PRAZO">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
 
@@ -177,7 +177,7 @@
                      <font><Font size="12.0" /></font>
                   </Button>
 
-                   <Button mnemonicParsing="false" onAction="#imprimirRelatorio" prefHeight="40.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" text="🖨 IMPRIMIR RELATÓRIO">
+                   <Button mnemonicParsing="false" onAction="#imprimirRelatorio" prefHeight="40.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="🖨 IMPRIMIR RELATÓRIO">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                      <font><Font size="12.0" /></font>
                   </Button>

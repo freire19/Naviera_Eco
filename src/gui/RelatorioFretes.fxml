@@ -15,7 +15,7 @@
 
 <BorderPane fx:id="rootPane" prefHeight="750.0" prefWidth="1200.0" styleClass="root-financeiro" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.RelatorioFretesController">
    <top>
-      <VBox alignment="CENTER" prefHeight="70.0" styleClass="header-panel" style="-fx-background-color: #2b2b2b;" BorderPane.alignment="CENTER">
+      <VBox alignment="CENTER" prefHeight="70.0" styleClass="header-panel" style="-fx-background-color: #047857;" BorderPane.alignment="CENTER">
          <children>
             <Label styleClass="title-main-screen" text="CENTRAL DE RELATÓRIOS DE FRETES" textFill="#cccccc">
                <font>
@@ -50,15 +50,15 @@
             
             <Label text="OPÇÕES DE IMPRESSÃO" textFill="#cccccc" style="-fx-font-size: 14px; -fx-font-weight: bold;" />
             
-            <Button fx:id="btnRelatorio" text="📄 Relatório" onAction="#imprimirRelatorio" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" />
+            <Button fx:id="btnRelatorio" text="📄 Relatório" onAction="#imprimirRelatorio" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" />
             
-            <Button fx:id="btnCobranca" text="💰 Cobrança" onAction="#imprimirCobranca" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" />
+            <Button fx:id="btnCobranca" text="💰 Cobrança" onAction="#imprimirCobranca" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" />
             
             <Button fx:id="btnGeral" text="📋 Geral (A4)" onAction="#imprimirGeral" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" />
             
             <Button fx:id="btnResumido" text="📝 Resumido" onAction="#imprimirResumido" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" />
             
-            <Button fx:id="btnConfereViagem" text="✅ Confere de Viagem (A4)" onAction="#imprimirConfereViagem" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;" />
+            <Button fx:id="btnConfereViagem" text="✅ Confere de Viagem (A4)" onAction="#imprimirConfereViagem" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" />
             
             <Button fx:id="btnExtrato" text="📊 Extrato" onAction="#imprimirExtrato" prefWidth="250.0" prefHeight="40.0" style="-fx-background-color: #7b1fa2; -fx-text-fill: white; -fx-font-weight: bold;" />
             

@@ -28,7 +28,7 @@
                   <DatePicker fx:id="dpInicio" prefWidth="120.0" />
                   <Label text="até" />
                   <DatePicker fx:id="dpFim" prefWidth="120.0" />
-                  <Button mnemonicParsing="false" onAction="#carregarDados" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" text="PESQUISAR" />
+                  <Button mnemonicParsing="false" onAction="#carregarDados" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="PESQUISAR" />
                </children>
             </HBox>
          </children>

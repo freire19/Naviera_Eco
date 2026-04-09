@@ -19,7 +19,7 @@
    <top>
       <VBox spacing="0.0" BorderPane.alignment="CENTER">
          <children>
-            <HBox alignment="CENTER_LEFT" spacing="20.0" style="-fx-background-color: #2b2b2b; -fx-padding: 20; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;">
+            <HBox alignment="CENTER_LEFT" spacing="20.0" style="-fx-background-color: #047857; -fx-padding: 20; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;">
                <children>
                   <VBox>
                      <children>
@@ -35,7 +35,7 @@
                   <Button mnemonicParsing="false" onAction="#imprimir" styleClass="botao-secundario" text="🖨 IMPRIMIR EXTRATO">
                      <font><Font size="13.0" /></font><cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
-                  <Button fx:id="btnFechar" mnemonicParsing="false" onAction="#fechar" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-color: white; -fx-border-radius: 3;" text="FECHAR">
+                  <Button fx:id="btnFechar" mnemonicParsing="false" onAction="#fechar" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-color: white; -fx-border-radius: 3;" text="FECHAR">
                      <font><Font size="13.0" /></font><cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
                </children>
@@ -58,7 +58,7 @@
                      </children>
                   </VBox>
 
-                  <Button mnemonicParsing="false" onAction="#pesquisarCliente" style="-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold;" text="BUSCAR">
+                  <Button mnemonicParsing="false" onAction="#pesquisarCliente" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="BUSCAR">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                      <HBox.margin><Insets top="20.0" /></HBox.margin>
                      <font><Font size="13.0" /></font>
@@ -80,7 +80,7 @@
                      <padding><Insets bottom="15.0" top="15.0" /></padding>
                      <children>
                         <Label text="TOTAL PAGO" textFill="#757575"><font><Font name="System Bold" size="12.0" /></font></Label>
-                        <Label fx:id="lblTotalPago" text="R$ 0,00" textFill="#2e7d32"><font><Font name="System Bold" size="22.0" /></font></Label>
+                        <Label fx:id="lblTotalPago" text="R$ 0,00" textFill="#059669"><font><Font name="System Bold" size="22.0" /></font></Label>
                      </children>
                   </VBox>
                   
@@ -92,7 +92,7 @@
                      </children>
                   </VBox>
                   
-                  <Button fx:id="btnQuitarTudo" disable="true" mnemonicParsing="false" onAction="#quitarDividaTotal" prefHeight="60.0" style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 5, 0, 0, 1);" text="✅ QUITAR DÍVIDA TOTAL">
+                  <Button fx:id="btnQuitarTudo" disable="true" mnemonicParsing="false" onAction="#quitarDividaTotal" prefHeight="60.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 5, 0, 0, 1);" text="✅ QUITAR DÍVIDA TOTAL">
                      <font><Font size="14.0" /></font>
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>

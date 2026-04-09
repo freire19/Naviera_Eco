@@ -145,7 +145,7 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
             lblTroco.setText("R$ " + String.format("%,.2f", diferenca));
             
             if(diferenca.compareTo(BigDecimal.ZERO) == 0) {
-                lblTroco.setStyle("-fx-text-fill: #1a3c7d; -fx-font-weight: bold; -fx-font-size: 16px;");
+                lblTroco.setStyle("-fx-text-fill: #047857; -fx-font-weight: bold; -fx-font-size: 16px;");
                 lblTituloTroco.setText("Quitado:");
             } else {
                 lblTroco.setStyle("-fx-text-fill: green; -fx-font-weight: bold; -fx-font-size: 18px;");

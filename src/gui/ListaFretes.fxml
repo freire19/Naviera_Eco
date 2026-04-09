@@ -67,7 +67,7 @@
                 
                 <HBox alignment="CENTER_LEFT" spacing="5">
                     <Label styleClass="label-bold" text="Total Recebido:" />
-                    <Label fx:id="lblTotalRecebido" style="-fx-text-fill:#2e7d32; -fx-font-weight:bold; -fx-font-size: 15px;" text="R$ 0,00" />
+                    <Label fx:id="lblTotalRecebido" style="-fx-text-fill:#059669; -fx-font-weight:bold; -fx-font-size: 15px;" text="R$ 0,00" />
                 </HBox>
                 <Label style="-fx-text-fill: #ccc;" text="|" />
                 
@@ -85,7 +85,7 @@
                 
                 <HBox alignment="CENTER_LEFT" spacing="5">
                     <Label styleClass="label-bold" text="Volumes:" />
-                    <Label fx:id="lblTotalVolumes" style="-fx-text-fill:#ef6c00; -fx-font-weight:bold; -fx-font-size: 15px;" text="0" />
+                    <Label fx:id="lblTotalVolumes" style="-fx-text-fill:#F59E0B; -fx-font-weight:bold; -fx-font-size: 15px;" text="0" />
                 </HBox>
             </FlowPane>
 
@@ -110,7 +110,7 @@
                             <VBox spacing="6" style="-fx-padding:8;">
                                 <fx:define><ToggleGroup fx:id="statusPagamentoToggleGroup" /></fx:define>
                                 <RadioButton fx:id="rbTodos" selected="true" text="Todos" toggleGroup="$statusPagamentoToggleGroup" styleClass="radio-button-custom"/>
-                                <RadioButton fx:id="rbQuitados" style="-fx-text-fill: #2e7d32; -fx-font-weight: bold;" text="Quitados (Pago)" toggleGroup="$statusPagamentoToggleGroup" />
+                                <RadioButton fx:id="rbQuitados" style="-fx-text-fill: #059669; -fx-font-weight: bold;" text="Quitados (Pago)" toggleGroup="$statusPagamentoToggleGroup" />
                                 <RadioButton fx:id="rbAReceber" style="-fx-text-fill: #c62828; -fx-font-weight: bold;" text="A Receber (Pendente)" toggleGroup="$statusPagamentoToggleGroup" />
                                 <RadioButton fx:id="rbCancelado" style="-fx-text-fill: #757575;" text="Cancelado" toggleGroup="$statusPagamentoToggleGroup" />
                             </VBox>
