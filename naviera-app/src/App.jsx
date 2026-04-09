@@ -12,7 +12,8 @@ const T = {
   light: {
     bg: "#F7FBF9", card: "#FFFFFF", soft: "#EEF7F2", accent: "#E6F5ED",
     tx: "#0F2620", txSoft: "#3D6B56", txMuted: "#7BA393",
-    pri: "#059669", priGrad: "linear-gradient(135deg, #059669, #34D399)",
+    pri: "#059669", priLight: "#D1FAE5", priBorder: "#A7F3D0",
+    priGrad: "linear-gradient(135deg, #059669, #34D399)",
     border: "rgba(5,150,105,0.12)", borderStrong: "rgba(5,150,105,0.25)",
     info: "#0369A1", infoBg: "#DBEAFE", infoTx: "#1D4ED8",
     warn: "#B45309", warnBg: "#FEF3C7", warnTx: "#B45309",
@@ -25,7 +26,8 @@ const T = {
   dark: {
     bg: "#040D0A", card: "#0F2D24", soft: "#0A1F18", accent: "#0F2D24",
     tx: "#F0FDF4", txSoft: "#6EE7B7", txMuted: "#34D399",
-    pri: "#34D399", priGrad: "linear-gradient(135deg, #059669, #34D399)",
+    pri: "#34D399", priLight: "#052E22", priBorder: "#059669",
+    priGrad: "linear-gradient(135deg, #059669, #34D399)",
     border: "rgba(52,211,153,0.08)", borderStrong: "rgba(52,211,153,0.2)",
     info: "#0EA5E9", infoBg: "#0c2d48", infoTx: "#38BDF8",
     warn: "#F59E0B", warnBg: "#3a3520", warnTx: "#FBBF24",
@@ -362,10 +364,10 @@ function MapaCPF({ t, authHeaders }) {
 
       {/* MAP — SVG river route */}
       {emViagem && <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${t.border}` }}>
-        <div style={{ position: "relative", height: 180, background: "linear-gradient(160deg, #0e3b2e 0%, #1a5c4a 30%, #0d3326 70%, #0a2a20 100%)" }}>
+        <div style={{ position: "relative", height: 180, background: "linear-gradient(160deg, #040D0A 0%, #0A1F18 30%, #0F2D24 70%, #040D0A 100%)" }}>
           <svg width="100%" height="100%" viewBox="0 0 400 180" style={{ position: "absolute", top: 0, left: 0 }}>
-            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="#1a6b5a" strokeWidth="20" opacity="0.35"/>
-            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="#2a9d7e" strokeWidth="9" opacity="0.4"/>
+            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="#059669" strokeWidth="20" opacity="0.25"/>
+            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="#34D399" strokeWidth="9" opacity="0.35"/>
             <path d="M25 82 Q65 96, 115 76 Q165 56, 215 83 Q265 106, 315 71 Q355 50, 392 86" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" strokeDasharray="5 4"/>
             <circle cx="25" cy="82" r="4.5" fill="#34D399" stroke="white" strokeWidth="1.5"/>
             <text x="25" y="100" textAnchor="middle" fill="white" fontSize="8.5" fontWeight="500">Manaus</text>
@@ -447,7 +449,7 @@ function MapaCPF({ t, authHeaders }) {
 /* ═══ BILHETE DIGITAL — NFT-style ticket (always dark) ═══ */
 function BilheteScreen({ bilhete, t: _t, onBack }) {
   // Força tema dark pro bilhete — visual premium
-  const t = { bg: "#040D0A", card: "#0F2D24", soft: "#0A1F18", accent: "#0F2D24", tx: "#F0FDF4", txSoft: "#6EE7B7", txMuted: "#34D399", pri: "#34D399", priGrad: "linear-gradient(135deg, #059669, #34D399)", border: "rgba(52,211,153,0.08)", borderStrong: "rgba(52,211,153,0.2)", info: "#0EA5E9", ok: "#4ADE80", okBg: "#0f2b1c", err: "#EF4444", errBg: "#450a0a", amber: "#FBBF24", amberBg: "#3a3520", shadow: "none" };
+  const t = { ...T.dark };
   const [now, setNow] = useState(Date.now());
   const [brightness, setBrightness] = useState(false);
   useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
