@@ -4,37 +4,128 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Desktop JavaFX application for managing river/boat transportation operations — passengers, freight, parcels (encomendas), and finances. Called "Sistema Embarcacao". Written in Portuguese (BR).
+**Naviera** — sistema completo de 3 camadas para gestao de transporte fluvial (passageiros, fretes, encomendas e financeiro). Escrito em Portugues (BR).
 
-## Build & Run
+| Camada | Tecnologia | Funcao | Porta |
+|--------|-----------|--------|-------|
+| **Desktop** | JavaFX 23 + Java 17 (Eclipse) | Console operacional (tripulacao/admin) | — |
+| **API** | Spring Boot 3.3 + PostgreSQL | Backend REST servindo desktop e app | 8080 |
+| **App** | React 19 + Vite | Frontend mobile-first (clientes) | 5173 dev / 80 prod |
 
-This is an **Eclipse IDE project** (no Maven/Gradle). JDK 17 required.
+As 3 camadas compartilham o **mesmo banco PostgreSQL** (`sistema_embarcacao`).
 
-- **JavaFX SDK**: 23.0.2 — paths in `.classpath` point to `C:/javafx-sdk-23.0.2/lib/` (adjust for your OS)
-- **Dependencies**: All JARs in `lib/` directory (PostgreSQL driver, jBCrypt, JasperReports, PDFBox, Tess4J, etc.)
-- **Entry point**: `gui.Launch` → calls `gui.LoginApp.main()` (JavaFX Application)
-- **Alternative entry**: `gui.LaunchDireto` (bypasses login, for dev testing)
-- **Database**: PostgreSQL on `localhost:5432/sistema_embarcacao` — credentials in `src/dao/ConexaoBD.java`
-- **SQL scripts**: `database_scripts/` contains schema creation and migration scripts (numbered 001-005 + standalone scripts)
-- **Tests**: JUnit 4 tests in `src/tests/` — run via Eclipse test runner
-- **Output**: Compiled to `bin/`
+---
 
-## Architecture
+## Camada 1: Desktop (JavaFX)
 
-**Pattern**: DAO + MVC (no service layer — controllers call DAOs directly)
+**Eclipse IDE project** (no Maven/Gradle). JDK 17 required.
+
+- **JavaFX SDK**: 23.0.2 — `/opt/javafx-sdk-23.0.2/lib/` (Linux) ou `C:/javafx-sdk-23.0.2/lib/` (Windows)
+- **Dependencies**: JARs em `lib/` (PostgreSQL driver, jBCrypt, JasperReports, PDFBox, Tess4J, etc.)
+- **Entry point**: `gui.Launch` → `gui.LoginApp.main()` (JavaFX Application)
+- **Dev entry**: `gui.LaunchDireto` (bypasses login)
+- **Database**: Conexao via `src/dao/ConexaoBD.java` + `db.properties`
+- **Tests**: JUnit 4 em `src/tests/`
+- **Output**: Compilado em `bin/`
+
+**Pattern**: DAO + MVC (controllers chamam DAOs diretamente, sem service layer)
 
 ```
 src/
-├── dao/          # Data Access Objects (26 classes) + ConexaoBD (JDBC connection provider)
-├── gui/          # JavaFX controllers + FXML views + Launch/LoginApp entry points
+├── dao/          # Data Access Objects (26 classes) + ConexaoBD (pool JDBC)
+├── gui/          # JavaFX controllers + FXML views + Launch/LoginApp
 │   └── util/     # UI helpers (AlertHelper, MascarasFX, PermissaoService)
-├── model/        # POJOs/entities (~25 classes: Passagem, Passageiro, Encomenda, Frete, etc.)
+├── model/        # POJOs/entities (~25 classes)
 └── tests/        # JUnit 4 tests
 ```
 
-**Key flow**: FXML view → Controller (in `gui/`) → DAO (in `dao/`) → PostgreSQL via `ConexaoBD.getConexao()`
+**Key flow**: FXML view → Controller (`gui/`) → DAO (`dao/`) → PostgreSQL via `ConexaoBD.getConexao()`
 
-**Database connection**: `ConexaoBD.java` provides static `getConexao()` returning raw JDBC `Connection`. No connection pooling. Every caller must close connections manually.
+---
+
+## Camada 2: API REST (Spring Boot)
+
+Diretorio: `naviera-api/`
+
+- **Framework**: Spring Boot 3.3.5, Java 17, Maven
+- **Auth**: JWT (io.jsonwebtoken) + Spring Security + BCrypt
+- **DB**: Spring Data JPA + HikariCP, `ddl-auto=validate`
+- **Context path**: `/api` (ex: `http://localhost:8080/api/auth/login`)
+- **Health**: Spring Actuator em `/api/actuator/health`
+- **CORS**: Permite `localhost:3000` e `localhost:5173` por padrao
+
+```
+naviera-api/src/main/java/com/naviera/api/
+├── config/         # SecurityConfig, CorsConfig, GlobalExceptionHandler
+├── controller/     # 8 REST controllers (Auth, Encomenda, Frete, Viagem, Embarcacao, Perfil, Loja, Tarifa)
+├── service/        # 8 services (logica de negocio)
+├── repository/     # JPA Repositories (Spring Data)
+├── model/          # JPA Entities (ClienteApp, Embarcacao, Viagem, Rota, LojaParceira, PedidoLoja)
+├── dto/            # DTOs (LoginRequest, EncomendaDTO, etc.)
+└── security/       # JwtUtil, JwtFilter
+```
+
+**Run**:
+```bash
+cd naviera-api
+DB_USER=postgres DB_PASSWORD=<senha> JWT_SECRET=<secret> SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5437/sistema_embarcacao mvn spring-boot:run
+```
+
+---
+
+## Camada 3: App Mobile-First (React + Vite)
+
+Diretorio: `naviera-app/`
+
+- **Framework**: React 19.2.5 + Vite 5.4.21
+- **Componente principal**: `src/App.jsx` (~53KB — app completo em um arquivo)
+- **Funcionalidades**: Viagens, Encomendas, Fretes, Lojas Parceiras, Amigos, Chat
+- **Temas**: Light/Dark mode
+- **Producao**: Docker multi-stage + Nginx (`nginx.conf`)
+
+```
+naviera-app/
+├── src/
+│   ├── main.jsx    # Entry point
+│   └── App.jsx     # Root component (toda a app)
+├── dist/           # Build de producao
+├── package.json
+├── vite.config.js
+├── Dockerfile
+└── nginx.conf
+```
+
+**Run**:
+```bash
+cd naviera-app
+npm install
+npm run dev      # Dev em http://localhost:5173
+npm run build    # Build producao → dist/
+```
+
+---
+
+## Database
+
+- **PostgreSQL**: `sistema_embarcacao` (44+ tabelas)
+- **Migrations**: `database_scripts/` (numeradas 000-009)
+- **Config desktop**: `db.properties` (criado a partir de `db.properties.example`)
+- **Config API**: env vars `DB_USER`, `DB_PASSWORD`, `SPRING_DATASOURCE_URL`
+
+Tabelas principais do app mobile (migration 008-009):
+- `clientes_app` — usuarios do app (CPF/CNPJ)
+- `lojas_parceiras` — vitrines de comerciantes CNPJ
+- `pedidos_loja` — pedidos entre clientes e lojas
+- `avaliacoes_loja` — avaliacoes de lojas
+- `amigos_app` — rede de amigos
+
+## Docker (producao)
+
+```bash
+cp .env.example .env  # preencher credenciais
+docker compose up -d --build
+# api: porta 8080 | app: porta 80 | db: externo
+```
 
 ## Domain Terminology
 

@@ -159,7 +159,7 @@ String sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?) ON CONF
 ---
 
 #### Issue #DB005 — TOCTOU race condition em RotaDAO.excluir e EmbarcacaoDAO.excluir
-- [ ] **Concluido**
+- [x] **Concluido** — DELETE direto; FK constraint do banco protege integridade referencial
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/RotaDAO.java` L104-125, `src/dao/EmbarcacaoDAO.java` L123-144
 - **Linha(s):** Ver acima
@@ -580,7 +580,7 @@ try {
 ---
 
 #### Issue #DB029 — Process leak em LogService ao abrir notepad
-- [ ] **Concluido**
+- [x] **Concluido** — p.onExit().thenRun() registrado para GC do handle
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/util/LogService.java`
 - **Linha(s):** 135

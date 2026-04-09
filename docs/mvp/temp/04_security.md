@@ -1,57 +1,39 @@
 # Dim 4 — Seguranca Minima
 
-## Resumo: 3 PRONTO | 4 INCOMPLETO | 0 FALTANDO
+## Autenticacao
+- **PRONTO** — JWT com expiracao (24h), BCrypt para senhas
+- **PRONTO** — Spring Security filtra endpoints autenticados
+- **INCOMPLETO** — Token armazenado em useState (perde no refresh), nao usa localStorage/httpOnly cookie
 
----
+## Secrets fora do codigo
+- **PRONTO** — JWT_SECRET, DB_PASSWORD via env vars
+- **PRONTO** — .env.example sem valores reais
 
-### Autenticacao & Senhas — PRONTO
-- ✓ BCrypt com salt=12 implementado em UsuarioDAO
-- ✓ BCrypt.hashpw() para hash, BCrypt.checkpw() para verificacao
-- ✓ Protecao contra timing-attack (sempre executa checkpw independente do formato)
-- ✓ PasswordField no login (mascaramento correto)
-- ✓ Validacao de usuario ativo (ativo = TRUE no SQL)
-- ✓ Sem comparacao plaintext detectada
+## Inputs validados
+- **PRONTO** — Cadastro valida campos obrigatorios e tamanho senha no frontend
+- **INCOMPLETO** — API nao valida formato CPF/CNPJ (aceita qualquer string)
+- **INCOMPLETO** — API nao valida formato email
 
-### Permissoes — PRONTO
-- ✓ PermissaoService centralizado (77 linhas)
-- ✓ 3 niveis: Admin, Financeiro, Operacional
-- ✓ Metodos isAdmin(), isFinanceiro(), isOperacional() + enforcement (exigir*)
-- ✓ Feedback ao usuario quando acesso negado
-- ✓ SessaoUsuario com timeout de 8 horas de inatividade
-- ✓ isSessionExpired() protege acesso
-- ⚠ Nem todos os controllers chamam PermissaoService (a verificar)
+## HTTPS
+- **FALTANDO** — Sem configuracao TLS/SSL (nem no nginx.conf nem no Spring)
+- Aceitavel em dev, bloqueador para producao
 
-### Credenciais do Banco — PRONTO (com ressalva)
-- ✓ Credenciais em db.properties (arquivo externo, nao hardcoded no codigo)
-- ✓ db.properties.example como template
-- ⚠ db.properties com senha plaintext commitado no git — DEVE ser gitignored antes de producao
-- ✓ Connection pool com timeout de 5s e health check
-- ✓ Fatal guard: RuntimeException se db.properties invalido
+## Rate limiting
+- **FALTANDO** — Sem rate limiting em nenhum endpoint
+- Login pode sofrer brute force
 
-### SQL Injection — INCOMPLETO
-- ✓ Padrao predominante: PreparedStatement com placeholders `?`
-- ✓ Sem SQL dinamico nos DAOs de negocio
-- ⚠ AuxiliaresDAO usa concatenacao para nomes de tabela/coluna
-- ⚠ Tabelas whitelisted (TABELAS_PERMITIDAS), mas colunas passadas sem validacao
-- Risco: BAIXO — whitelist aplicada via validarTabela()
+## Dados sensiveis
+- **PRONTO** — senha_hash no banco (BCrypt), senha nunca retornada na resposta
+- **PRONTO** — JWT nao inclui dados sensiveis (so id, documento, tipo)
 
-### Validacao de Input — INCOMPLETO
-- ✓ Validacoes em nivel de formulario: null/empty checks em LoginController, InserirEncomendaController
-- ✗ Sem camada centralizada de sanitizacao
-- ✗ Sem validacao de comprimento em campos de texto
-- ✗ Sem validacao de range em campos numericos (BigDecimal sem limites)
-- ✗ Sem validacao de formato em email/telefone
-- ✗ Input OCR/Voz bypassa validacao normal
+## CORS
+- **PRONTO** — Configurado com origens especificas (nao e wildcard)
+- **INCOMPLETO** — Porta hardcoded no config, facil de esquecer ao mudar
 
-### Dados Sensiveis em Logs — INCOMPLETO
-- ✓ AlertHelper.errorSafe() loga internamente, mostra mensagem generica ao usuario
-- ✓ Sem evidencia de senhas logadas
-- ⚠ 10+ ocorrencias de printStackTrace() expoe stack traces completos
-- ⚠ Stack traces podem revelar schema do banco, paths de arquivo, logica interna
-- ⚠ Sem rotacao de logs — podem crescer indefinidamente
-
-### Secrets Fora do Codigo — INCOMPLETO
-- ✓ db.properties externaliza credenciais (nao inline no Java)
-- ⚠ Arquivo commitado no repositorio git
-- ✗ Sem variaveis de ambiente ou vault
-- ✗ Sem .gitignore para db.properties
+## Contagem
+| Status | Qtd |
+|--------|-----|
+| PRONTO | 6 |
+| INCOMPLETO | 3 |
+| FALTANDO | 2 |
+| POS-MVP | 0 |

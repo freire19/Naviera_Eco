@@ -13,12 +13,12 @@ public class TarifaService {
     public List<Map<String, Object>> listarPorRota() {
         String sql = """
             SELECT r.origem, r.destino,
-                   tp.nome as tipo_passageiro,
+                   tp.nome_tipo_passagem as tipo_passageiro,
                    t.valor_transporte, t.valor_alimentacao, t.valor_cargas, t.valor_desconto
             FROM tarifas t
             JOIN rotas r ON t.id_rota = r.id
-            JOIN tipos_passageiro tp ON t.id_tipo_passageiro = tp.id
-            ORDER BY r.origem, r.destino, tp.nome
+            JOIN aux_tipos_passagem tp ON t.id_tipo_passagem = tp.id_tipo_passagem
+            ORDER BY r.origem, r.destino, tp.nome_tipo_passagem
             """;
         return jdbc.queryForList(sql);
     }

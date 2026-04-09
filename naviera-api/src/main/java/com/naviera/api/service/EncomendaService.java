@@ -26,16 +26,16 @@ public class EncomendaService {
             .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
 
         String sql = """
-            SELECT e.id, e.numero_encomenda, e.remetente, e.destinatario, e.rota,
+            SELECT e.id_encomenda as id, e.numero_encomenda, e.remetente, e.destinatario, e.rota,
                    COALESCE(emb.nome, '') as embarcacao,
                    e.total_a_pagar, e.valor_pago, e.desconto,
                    e.status_pagamento, e.entregue, e.total_volumes,
                    v.data_viagem, v.data_chegada
             FROM encomendas e
-            LEFT JOIN viagens v ON e.id_viagem = v.id
-            LEFT JOIN embarcacoes emb ON v.id_embarcacao = emb.id
+            LEFT JOIN viagens v ON e.id_viagem = v.id_viagem
+            LEFT JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
             WHERE UPPER(e.destinatario) LIKE UPPER(?)
-            ORDER BY e.id DESC
+            ORDER BY e.id_encomenda DESC
             """;
 
         return jdbc.query(sql, (rs, i) -> new EncomendaDTO(

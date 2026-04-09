@@ -2,6 +2,7 @@ package com.naviera.api.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity @Table(name = "clientes_app")
 public class ClienteApp {
@@ -20,10 +21,17 @@ public class ClienteApp {
     private String senhaHash;
     @Column(name = "foto_url") private String fotoUrl;
     private Boolean ativo = true;
-    @Column(name = "data_cadastro") private LocalDateTime dataCadastro;
+    @Column(name = "data_cadastro", insertable = false, updatable = false)
+    private LocalDateTime dataCadastro;
     @Column(name = "ultimo_acesso") private LocalDateTime ultimoAcesso;
     @Column(name = "cnpj_matriz") private String cnpjMatriz;
     @Column(name = "responsavel_nome") private String responsavelNome;
+    @Column(insertable = false, updatable = false)
+    private UUID uuid;
+    @Column(name = "ultima_atualizacao", insertable = false, updatable = false)
+    private LocalDateTime ultimaAtualizacao;
+    @Column(insertable = false) private Boolean sincronizado;
+    @Column(insertable = false) private Boolean excluido;
 
     // Getters e Setters
     public Long getId() { return id; } public void setId(Long id) { this.id = id; }

@@ -25,14 +25,15 @@ public class FreteService {
             .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
 
         String sql = """
-            SELECT f.id_frete, f.numero_frete, f.nome_remetente, f.nome_destinatario,
-                   f.nome_rota, COALESCE(emb.nome, '') as embarcacao,
-                   f.valor_nominal, f.valor_pago, f.valor_devedor,
-                   f.status, f.total_volumes, f.data_viagem
+            SELECT f.id_frete, f.numero_frete, f.remetente_nome_temp as nome_remetente,
+                   f.destinatario_nome_temp as nome_destinatario,
+                   f.rota_temp as nome_rota, COALESCE(emb.nome, '') as embarcacao,
+                   f.valor_frete_calculado as valor_nominal, f.valor_pago, f.valor_devedor,
+                   f.status_frete as status, f.data_saida_viagem as data_viagem
             FROM fretes f
-            LEFT JOIN viagens v ON f.id_viagem = v.id
-            LEFT JOIN embarcacoes emb ON v.id_embarcacao = emb.id
-            WHERE UPPER(f.nome_remetente) LIKE UPPER(?)
+            LEFT JOIN viagens v ON f.id_viagem = v.id_viagem
+            LEFT JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
+            WHERE UPPER(f.remetente_nome_temp) LIKE UPPER(?)
             ORDER BY f.id_frete DESC
             """;
 
@@ -47,7 +48,7 @@ public class FreteService {
             rs.getBigDecimal("valor_pago"),
             rs.getBigDecimal("valor_devedor"),
             rs.getString("status"),
-            rs.getInt("total_volumes"),
+            0,
             null,
             rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toString() : null
         ), "%" + cliente.getNome() + "%");

@@ -4,7 +4,7 @@
 
 ---
 
-## Estado Geral: APROVADO COM RESSALVAS (0 CRITICAS — Security, Logic, Bugs 100% limpos)
+## Estado Geral: APROVADO COM RESSALVAS (0 CRITICAS — 4 categorias 100% limpas, 2 quase limpas)
 
 ### Resumo
 Sistema desktop JavaFX de gestao fluvial com **0 issues CRITICAS pendentes**. Categorias Security e Logic foram 100% resolvidas (47 + 75 issues). Restam issues em Resilience (41), Maintainability (31), Performance (10) e Bugs (27 — muitos sobrepostos com categorias ja resolvidas). Total historico: **~305 issues encontradas, ~205 resolvidas (67%)**.
@@ -36,12 +36,12 @@ Sistema desktop JavaFX de gestao fluvial com **0 issues CRITICAS pendentes**. Ca
 |-----------|-------|-----------|--------|-------------|--------|
 | **Security** | **47** | **47** | **0** | **100%** | LIMPO |
 | **Logic** | **75** | **75** | **0** | **100%** | LIMPO |
-| Bugs | 36 | ~9 | ~27 | ~25% | Muitos sobrepostos com Security/Logic |
+| **Bugs** | **36** | **36** | **0** | **100%** | **LIMPO** — 35 deep + 6 AUDIT anteriores, todas verificadas |
 | **Resilience** | **67** | **65** | **2** | **97%** | **QUASE LIMPO** (restam DR025 pg_dump + DR028 testes) |
 | **Performance** | **39** | **37** | **2** | **95%** | **QUASE LIMPO** (restam #048 JSON parser + #DP023 JARs) |
 | **Maintainability** | **76** | **71** | **~5** | **93%** | **0 CRIT, 0 ALTA, 0 MEDIA, 0 BAIXA corrigivel — restam 5 estruturais** |
 
-> **Nota:** DEEP_BUGS identifica issues que coincidem com achados de Security/Logic/Resilience. Das 27 "ativas", estima-se que ~15 ja foram corrigidas. Recomenda-se rodar `audit-5-deep bugs` para reconciliar.
+> **Nota:** DEEP_BUGS reconciliado em 2026-04-09 — todas as 35 issues (6 crit + 11 alta + 8 media + 3 baixa + 7 AUDIT) verificadas como corrigidas. As ~27 "ativas" anteriores estavam sobrepostas com fixes de Security/Logic/Resilience/Maintainability.
 
 ---
 
@@ -78,7 +78,7 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 | Scan Geral | V1.1 | 2026-04-08 | 54 original | Issues tratadas nos deep audits | [AUDIT_V1.1](audits/current/AUDIT_V1.1.md) |
 | **Deep Security** | **V3.0** | **2026-04-08** | **0** | **100% LIMPO** | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
 | **Deep Logic** | **V4.1** | **2026-04-08** | **0** | **100% LIMPO** | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
-| **Deep Bugs** | **V1.0** | **2026-04-08** | **0 ativas (100% resolvido)** | **35/35 fixadas** | **[DEEP_BUGS](audits/current/DEEP_BUGS.md)** |
+| **Deep Bugs** | **V1.1** | **2026-04-09** | **0** | **100% LIMPO — 35/35 verificadas** | **[DEEP_BUGS](audits/current/DEEP_BUGS.md)** |
 | **Deep Resilience** | **V4.0** | **2026-04-08** | **2 ativas (97% limpo)** | **39 fixadas** | **[DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)** |
 | **Deep Performance** | **V3.0** | **2026-04-09** | **2 (infra only)** | **95% LIMPO — 37/39 fixadas** | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
 | **Deep Maintainability** | **V3.0** | **2026-04-09** | **~5 (estruturais)** | **46 corrigidas (90% reducao)** | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |

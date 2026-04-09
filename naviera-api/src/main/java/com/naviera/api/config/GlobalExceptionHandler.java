@@ -25,6 +25,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneric(Exception e) {
+        e.printStackTrace();
         return ResponseEntity.internalServerError().body(Map.of("erro", "Erro interno do servidor"));
     }
 }

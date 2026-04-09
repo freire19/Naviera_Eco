@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 @Entity @Table(name = "viagens")
 public class Viagem {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "id_viagem") private Long id;
     @Column(name = "data_viagem") private LocalDate dataViagem;
     @Column(name = "data_chegada") private LocalDate dataChegada;
     private String descricao;

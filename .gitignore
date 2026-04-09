@@ -30,6 +30,10 @@ package-lock.json
 # Maven
 target/
 
+# Uploads (user files)
+uploads/
+**/uploads/
+
 # OS
 .DS_Store
 Thumbs.db

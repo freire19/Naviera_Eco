@@ -1,53 +1,40 @@
 # Dim 2 — Fluxos Criticos
 
-## Resumo: 1 PRONTO | 3 INCOMPLETO
+## Onboarding / Primeiro uso
+- **PRONTO** — Tela de login clara com opcao "Cadastre-se"
+- **PRONTO** — Cadastro com CPF/CNPJ funcional via API
+- **INCOMPLETO** — Apos cadastro, redireciona para login (nao faz auto-login)
+- **INCOMPLETO** — Nome do usuario no home (HomeCPF) esta hardcoded "Renato Freire" (linha 105), nao usa usuario.nome
 
----
+## Fluxo principal CPF (ponta a ponta)
+1. Login — **PRONTO**
+2. Ver proxima viagem — **FALTANDO** (dados mock)
+3. Ver encomendas — **FALTANDO** (dados mock)
+4. Rastrear embarcacao — **FALTANDO** (dados mock)
+5. Ver amigos em viagem — **FALTANDO** (dados mock + sem API)
+6. Ver passagens/rotas — **FALTANDO** (dados mock)
 
-### A. Primeiro Uso / Onboarding — INCOMPLETO
-- ✗ Sem script SQL para criar admin inicial (insert manual na tabela usuarios)
-- ✗ Sem requisito de complexidade de senha
-- ✗ Sem guia de boas-vindas ou dicas de uso
-- ✗ Dashboard pode falhar se tabelas vazias (sem empty state gracioso)
-- ✗ Sem seeder de dados mestres (viagens, embarcacoes, rotas)
-- ✗ Usuario deve criar dados manualmente antes de vender passagens
-- **Risco:** Operador novo pode nao saber que precisa pre-criar dados mestres
+## Fluxo principal CNPJ (ponta a ponta)
+1. Login — **PRONTO**
+2. Ver painel com fretes ativos — **FALTANDO** (dados mock)
+3. Ver pedidos da loja — **FALTANDO** (dados mock)
+4. Vincular pedido ao frete — **FALTANDO** (botao existe, sem acao)
+5. Ver financeiro — **FALTANDO** (dados mock)
+6. Gerenciar loja — **FALTANDO** (dados mock)
 
-### B. Fluxo Principal E2E — PRONTO (com ressalvas)
-**Sequencia happy path funciona:**
-1. ✓ Cadastro Viagem → criar viagem (data, embarcacao, rota)
-2. ✓ Vender Passagem → vender bilhete para viagem
-3. ✓ Inserir Encomenda → registrar encomenda
-4. ✓ Cadastro Frete → registrar frete
-5. ✓ Registrar Pagamento → marcar pagamentos recebidos
-6. ✓ Balanco Viagem → ver resumo financeiro
-7. ✓ Estorno → reverter pagamento se necessario
+## Tratamento de erros do usuario
+- **PRONTO** — Login: mensagem de erro clara
+- **PRONTO** — Cadastro: validacao de campos, senhas, feedback
+- **PRONTO** — Perfil: erro de conexao, erro ao salvar
 
-**Edge cases que quebram o fluxo:**
-- ⚠ Sem viagem padrao selecionada → vende bilhete para viagem null
-- ⚠ Edicao concorrente → cache nao invalidado em update
-- ⚠ Crash do app entre salvar passagem e pagamento → race condition
-- ⚠ Sem acao "Fechar Viagem" para impedir novas vendas retroativas
+## Fluxo de saida
+- **PRONTO** — Botao de logout no header, limpa state
+- **FALTANDO** — Token nao persiste, nao tem "lembrar de mim"
 
-### C. Tratamento de Erros do Usuario — INCOMPLETO
-| Cenario | Tratamento |
-|---------|------------|
-| Campo obrigatorio vazio | ✓ Alert + foco no campo |
-| Preco negativo | ✗ Sem validacao; aceita via parse |
-| Passageiro duplicado | ✗ Permite; sem check de unicidade |
-| Overbooking de assentos | ✗ Sem deteccao de conflito |
-| Viagem errada selecionada | ✗ Bilhete aparece no historico errado |
-| Conexao DB perdida | ✗ SQLException silenciosa; UI mostra "Erro ao Carregar" |
-| Impressora offline | ✗ Falha silenciosa; bilhete salvo mas nao impresso |
-| Data invalida | ⚠ DatePicker previne; TextField (nascimento) nao |
-| Limite estorno excedido | ✓ Valida <= valor_pago + tolerancia |
-
-**Cobertura estimada: ~50% dos erros de usuario**
-
-### D. Saida / Encerramento — INCOMPLETO
-- ✗ System.exit(0) sem prompt de confirmacao
-- ✗ Alteracoes nao salvas perdidas silenciosamente
-- ✗ Sem procedimento de fechamento de viagem
-- ✗ Sem logout; apenas encerramento do app
-- ✗ Sessao nao limpa no encerramento
-- ✗ Pool de conexoes nao drenado (ConexaoBD.shutdown() existe mas nao e chamado)
+## Contagem
+| Status | Qtd |
+|--------|-----|
+| PRONTO | 5 |
+| INCOMPLETO | 2 |
+| FALTANDO | 9 |
+| POS-MVP | 0 |
