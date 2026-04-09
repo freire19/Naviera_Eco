@@ -334,6 +334,8 @@ function AmigosCPF({ t, authHeaders }) {
 function MapaCPF({ t, authHeaders }) {
   const { data: boats, loading, erro, refresh } = useApi("/embarcacoes", authHeaders);
   const [sel, setSel] = useState(null);
+  const embId = sel !== null ? boats?.[sel]?.id : null;
+  const { data: viagensEmb } = useApi(embId ? `/viagens/embarcacao/${embId}` : null, embId ? authHeaders : null);
 
   if (loading) return <Skeleton t={t} height={80} count={3} />;
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
@@ -341,19 +343,19 @@ function MapaCPF({ t, authHeaders }) {
   if (sel !== null) {
     const detalhe = boats?.[sel];
     if (!detalhe) { setSel(null); return null; }
-
-    const { data: viagensEmb } = useApi(`/viagens/embarcacao/${detalhe.id}`, authHeaders);
     const emViagem = detalhe.status === "EM_VIAGEM";
 
     return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <button onClick={() => setSel(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
+
+      {detalhe.fotoUrl && !emViagem && <img src={`${API}${detalhe.fotoUrl}`} alt={detalhe.nome} style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 200 }} />}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{detalhe.nome}</h3>
         <Badge status={detalhe.status || "NO_PORTO"} t={t} />
       </div>
 
-      {/* MAP — SVG river route */}
+      {/* MAP — SVG river route (when in voyage, replaces photo) */}
       {emViagem && <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${t.border}` }}>
         <div style={{ position: "relative", height: 180, background: "linear-gradient(160deg, #0e3b2e 0%, #1a5c4a 30%, #0d3326 70%, #0a2a20 100%)" }}>
           <svg width="100%" height="100%" viewBox="0 0 400 180" style={{ position: "absolute", top: 0, left: 0 }}>
@@ -440,26 +442,120 @@ function MapaCPF({ t, authHeaders }) {
 function PassagensCPF({ t, authHeaders }) {
   const { data: viagens, loading: lv, erro: ev, refresh: rv } = useApi("/viagens/ativas", authHeaders);
   const { data: tarifas, loading: lt } = useApi("/tarifas", authHeaders);
+  const { data: minhas, loading: lm, refresh: rm } = useApi("/passagens", authHeaders);
+  const [compra, setCompra] = useState(null); // viagem selecionada para comprar
+  const [tipoSel, setTipoSel] = useState(null);
+  const [comprando, setComprando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [erro, setErro] = useState("");
+
+  const viagensFuturas = viagens?.filter(v => !v.atual && v.dataViagem >= new Date().toISOString().split("T")[0]) || [];
+
+  const tarifasDaViagem = compra ? tarifas?.filter(x =>
+    x.origem === compra.origem && x.destino === compra.destino
+  ) || [] : [];
+
+  const confirmarCompra = async () => {
+    if (!tipoSel) { setErro("Selecione o tipo de passagem."); return; }
+    setErro(""); setComprando(true);
+    try {
+      const res = await fetch(`${API}/passagens/comprar`, {
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: "PIX" })
+      });
+      const data = await res.json();
+      if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
+      setResultado(data); rm();
+    } catch { setErro("Erro de conexao."); } finally { setComprando(false); }
+  };
 
   if (ev) return <ErrorRetry erro={ev} onRetry={rv} t={t} />;
 
+  // Tela de sucesso
+  if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", padding: "40px 0" }}>
+    <div style={{ width: 64, height: 64, borderRadius: "50%", background: t.okBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+      <IconCheck size={32} color={t.ok} />
+    </div>
+    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Passagem reservada!</h3>
+    <Cd t={t} style={{ padding: 16, width: "100%", textAlign: "center" }}>
+      <div style={{ fontSize: 12, color: t.txMuted }}>Bilhete</div>
+      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri, marginTop: 4 }}>{resultado.numeroBilhete}</div>
+      <div style={{ fontSize: 14, fontWeight: 600, marginTop: 12 }}>{money(resultado.valorTotal)}</div>
+      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Status: {resultado.status}</div>
+    </Cd>
+    <button onClick={() => { setResultado(null); setCompra(null); setTipoSel(null); }} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: t.priGrad, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Voltar</button>
+  </div>;
+
+  // Tela de compra (selecionar tipo)
+  if (compra) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <button onClick={() => { setCompra(null); setTipoSel(null); setErro(""); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>← Voltar</button>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Comprar passagem</h3>
+    <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
+      <div style={{ fontSize: 16, fontWeight: 600 }}>{compra.embarcacao}</div>
+      <div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{compra.origem} → {compra.destino}</div>
+      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 6 }}>Saida: {fmt(compra.dataViagem)} • Chegada: {fmt(compra.dataChegada)}</div>
+    </Cd>
+    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Escolha o tipo</div>
+    {tarifasDaViagem.length > 0 ? tarifasDaViagem.map((x, i) => {
+      const total = (Number(x.valor_transporte) || 0) + (Number(x.valor_alimentacao) || 0) - (Number(x.valor_desconto) || 0);
+      const selected = tipoSel === x.tipo_passageiro_id;
+      return <Cd key={i} t={t} style={{ padding: 14, cursor: "pointer", border: `2px solid ${selected ? t.pri : t.border}`, background: selected ? t.accent : t.card }} onClick={() => setTipoSel(x.tipo_passageiro_id)}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{x.tipo_passageiro}</div>
+            <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>Transporte: {money(x.valor_transporte)} + Alimentacao: {money(x.valor_alimentacao)}{Number(x.valor_desconto) > 0 ? ` - Desc: ${money(x.valor_desconto)}` : ""}</div>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: t.pri }}>{money(total)}</div>
+        </div>
+      </Cd>;
+    }) : <Cd t={t} style={{ padding: 14, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa disponivel para esta rota.</div></Cd>}
+    {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{erro}</div>}
+    {tarifasDaViagem.length > 0 && <button onClick={confirmarCompra} disabled={comprando || !tipoSel} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: comprando || !tipoSel ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14, fontWeight: 700, cursor: comprando || !tipoSel ? "default" : "pointer", fontFamily: "inherit", opacity: !tipoSel ? 0.5 : 1 }}>{comprando ? "Processando..." : "Confirmar e pagar via PIX"}</button>}
+  </div>;
+
+  // Tela principal
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Viagens ativas</h3>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Passagens</h3>
+
+    {minhas?.length > 0 && <>
+      <div style={{ fontSize: 14, fontWeight: 600, color: t.txSoft }}>Minhas passagens</div>
+      {minhas.map((p, i) => <Cd key={i} t={t} style={{ padding: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{p.numero_bilhete}</span>
+          <Badge status={p.status_passagem || "CONFIRMADA"} t={t} />
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600 }}>{p.embarcacao}</div>
+        <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{p.origem} → {p.destino} • {p.tipo || "Rede"}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted, marginTop: 6 }}>
+          <span>Saida: {fmt(p.data_viagem)}</span><span style={{ fontWeight: 600, color: t.tx }}>{money(p.valor_a_pagar)}</span>
+        </div>
+      </Cd>)}
+    </>}
+
+    <div style={{ fontSize: 14, fontWeight: 600, marginTop: minhas?.length > 0 ? 8 : 0 }}>Viagens disponiveis</div>
     {lv ? <Skeleton t={t} height={80} count={2} /> :
-    viagens?.length > 0 ? viagens.map(v => <Cd key={v.id} t={t} style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.origem} → {v.destino}</div></div><Badge status={v.atual ? "Em viagem" : "Confirmada"} t={t} /></div>
-      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 10 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconCalendar size={12} color={t.txMuted} /> {fmt(v.dataViagem)}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconClock size={12} color={t.txMuted} /> {v.horarioSaida || "—"}</span>
+    viagensFuturas.length > 0 ? viagensFuturas.map(v => <Cd key={v.id} t={t} style={{ padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.origem} → {v.destino}</div></div>
+        <Badge status="Confirmada" t={t} />
       </div>
-    </Cd>) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem ativa.</div></Cd>}
+      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 8 }}>
+        <span>Saida: {fmt(v.dataViagem)}</span><span>Chegada: {fmt(v.dataChegada)}</span>
+      </div>
+      <button onClick={() => setCompra(v)} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: t.priGrad, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginTop: 10 }}>Comprar passagem</button>
+    </Cd>) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem futura disponivel.</div></Cd>}
 
     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Tarifas por rota</div>
-    {lt ? <Skeleton t={t} height={60} count={3} /> :
-    tarifas?.length > 0 ? tarifas.map((x, i) =>
-      <Cd key={i} t={t} style={{ padding: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.origem} → {x.destino}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{x.tipoPassageiro}</div></div>
-        <div style={{ textAlign: "right" }}><div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>transporte</div><div style={{ fontSize: 16, fontWeight: 700 }}>{money(x.valorTransporte)}</div></div></div></Cd>) :
-      <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa cadastrada.</div></Cd>}
+    {lt ? <Skeleton t={t} height={60} count={2} /> :
+    tarifas?.length > 0 ? tarifas.map((x, i) => {
+      const total = (Number(x.valor_transporte) || 0) + (Number(x.valor_alimentacao) || 0) - (Number(x.valor_desconto) || 0);
+      return <Cd key={i} t={t} style={{ padding: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.origem} → {x.destino}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{x.tipo_passageiro}</div></div>
+          <div style={{ textAlign: "right" }}><div style={{ fontSize: 16, fontWeight: 700 }}>{money(total)}</div><div style={{ fontSize: 10, color: t.txMuted }}>transp + alim</div></div>
+        </div>
+      </Cd>;
+    }) : <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa cadastrada.</div></Cd>}
   </div>;
 }
 

@@ -13,6 +13,7 @@ public class TarifaService {
     public List<Map<String, Object>> listarPorRota() {
         String sql = """
             SELECT r.origem, r.destino,
+                   tp.id_tipo_passagem as tipo_passageiro_id,
                    tp.nome_tipo_passagem as tipo_passageiro,
                    t.valor_transporte, t.valor_alimentacao, t.valor_cargas, t.valor_desconto
             FROM tarifas t
