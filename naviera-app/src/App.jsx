@@ -148,7 +148,7 @@ function Toast({ message, type = "success", t, onClose }) {
 }
 
 /* ═══ HEADER ═══ */
-function Header({ t, mode, setMode, tab, navigateTab, goBack, profile, minhaFoto, doLogout }) {
+function Header({ t, mode, setMode, tab, navigateTab, goBack, profile, minhaFoto }) {
   const isCPF = profile === "cpf";
   return <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 10px", borderBottom: `1px solid ${t.border}`, background: t.card }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -163,9 +163,6 @@ function Header({ t, mode, setMode, tab, navigateTab, goBack, profile, minhaFoto
       </button>
       <button onClick={() => setMode(m => m === "light" ? "dark" : "light")} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {mode === "light" ? <IconMoon size={14} color={t.txMuted} /> : <IconSun size={14} color={t.txMuted} />}
-      </button>
-      <button onClick={doLogout} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <IconLogout size={14} color={t.txMuted} />
       </button>
     </div>
   </div>;
@@ -656,7 +653,7 @@ function TelaCadastro({ t, onVoltar, onSucesso }) {
 }
 
 /* ═══ PERFIL ═══ */
-function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange }) {
+function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange, onLogout }) {
   const [perfil, setPerfil] = useState(null);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({});
@@ -736,6 +733,9 @@ function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange }) {
         <button onClick={() => { setEditando(true); setSucesso(""); }} className="btn-primary" style={{ background: t.priGrad, color: "#fff", marginTop: 12 }}>Editar perfil</button>
       </>}
     </Cd>
+    <button onClick={() => {
+      if (window.confirm("Deseja realmente sair da sua conta?")) onLogout();
+    }} style={{ width: "100%", padding: "14px 0", borderRadius: 10, border: `1px solid ${t.err}`, background: "transparent", color: t.err, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 8 }}>Sair da conta</button>
   </div>;
 }
 
@@ -838,7 +838,7 @@ export default function Naviera() {
   const tabs = isCPF ? TABS_CPF : TABS_CNPJ;
   const authHeaders = token ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } : {};
   const screen = () => {
-    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} onFotoChange={setMinhaFoto} />;
+    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} onFotoChange={setMinhaFoto} onLogout={doLogout} />;
     if (isCPF) {
       if (tab === "home") return <HomeCPF t={t} onNav={navigateTab} authHeaders={authHeaders} usuario={usuario} />;
       if (tab === "amigos") return <AmigosCPF t={t} authHeaders={authHeaders} />;
@@ -855,7 +855,7 @@ export default function Naviera() {
 
   return (
     <div style={{ minHeight: "100vh", background: t.bg, maxWidth: 420, margin: "0 auto", position: "relative", transition: "background 0.3s", color: t.tx }}>
-      <Header t={t} mode={mode} setMode={setMode} tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} doLogout={doLogout} />
+      <Header t={t} mode={mode} setMode={setMode} tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} />
       <div style={{ padding: "16px 18px 100px" }}>{screen()}</div>
       <TabBar tabs={tabs} tab={tab} setTab={(id) => { setTab(id); setTabHistory([]); }} t={t} />
     </div>
