@@ -43,8 +43,8 @@ public class ViagemService {
             JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
-            WHERE v.id_embarcacao = ? AND v.ativa = true
-            ORDER BY v.data_viagem DESC LIMIT 5
+            WHERE v.id_embarcacao = ? AND v.ativa = true AND v.data_chegada >= CURRENT_DATE
+            ORDER BY v.data_viagem ASC LIMIT 10
             """;
         return jdbc.query(sql, (rs, i) -> new ViagemDTO(
             rs.getLong("id"), rs.getString("embarcacao"),

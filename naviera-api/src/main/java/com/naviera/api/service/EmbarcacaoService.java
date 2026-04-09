@@ -13,19 +13,32 @@ public class EmbarcacaoService {
     public List<EmbarcacaoDTO> listarComStatus() {
         String sql = """
             SELECT emb.id_embarcacao as id, emb.nome, emb.capacidade_passageiros,
-                   CASE WHEN v.id_viagem IS NOT NULL AND v.is_atual = true THEN 'EM_VIAGEM'
+                   CASE WHEN v_atual.id_viagem IS NOT NULL THEN 'EM_VIAGEM'
                         ELSE 'NO_PORTO' END as status,
-                   COALESCE(r.origem || ' → ' || r.destino, COALESCE(emb.rota_principal, '')) as rota_atual,
-                   v.data_viagem, v.data_chegada,
+                   COALESCE(r_atual.origem || ' → ' || r_atual.destino,
+                            r_prox.origem || ' → ' || r_prox.destino,
+                            COALESCE(emb.rota_principal, '')) as rota_atual,
+                   COALESCE(v_prox.data_viagem, v_atual.data_viagem) as data_viagem,
+                   COALESCE(v_prox.data_chegada, v_atual.data_chegada) as data_chegada,
                    emb.foto_url, emb.link_externo, emb.descricao,
                    emb.rota_principal, emb.horario_saida_padrao, emb.telefone
             FROM embarcacoes emb
             LEFT JOIN LATERAL (
-                SELECT vi.id_viagem, vi.is_atual, vi.data_viagem, vi.data_chegada, vi.id_rota
-                FROM viagens vi WHERE vi.id_embarcacao = emb.id_embarcacao AND vi.ativa = true
-                ORDER BY vi.data_viagem DESC LIMIT 1
-            ) v ON true
-            LEFT JOIN rotas r ON v.id_rota = r.id
+                SELECT vi.id_viagem, vi.data_viagem, vi.data_chegada, vi.id_rota
+                FROM viagens vi
+                WHERE vi.id_embarcacao = emb.id_embarcacao AND vi.ativa = true
+                  AND CURRENT_DATE >= vi.data_viagem AND CURRENT_DATE <= vi.data_chegada
+                LIMIT 1
+            ) v_atual ON true
+            LEFT JOIN rotas r_atual ON v_atual.id_rota = r_atual.id
+            LEFT JOIN LATERAL (
+                SELECT vi.id_viagem, vi.data_viagem, vi.data_chegada, vi.id_rota
+                FROM viagens vi
+                WHERE vi.id_embarcacao = emb.id_embarcacao AND vi.ativa = true
+                  AND vi.data_viagem > CURRENT_DATE
+                ORDER BY vi.data_viagem ASC LIMIT 1
+            ) v_prox ON true
+            LEFT JOIN rotas r_prox ON v_prox.id_rota = r_prox.id
             ORDER BY emb.nome
             """;
         return jdbc.query(sql, (rs, i) -> new EmbarcacaoDTO(

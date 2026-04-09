@@ -97,7 +97,7 @@ function HomeCPF({ t, onNav, authHeaders, usuario }) {
   const { data: viagens, loading: lv } = useApi("/viagens/ativas", authHeaders);
   const { data: encomendas, loading: le } = useApi("/encomendas", authHeaders);
   const { data: amigos } = useApi("/amigos", authHeaders);
-  const proxima = viagens?.find(v => v.isAtual) || viagens?.[0];
+  const proxima = viagens?.find(v => v.atual) || viagens?.[0];
   return <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
     <div><span style={{ fontSize: 13, color: t.txMuted }}>Olá,</span><h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>{usuario?.nome || "Passageiro"}</h2></div>
     {lv ? <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando viagens...</div> :
@@ -105,7 +105,7 @@ function HomeCPF({ t, onNav, authHeaders, usuario }) {
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
         <div><div style={{ fontSize: 10, color: t.pri, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>Próxima viagem</div>
           <div style={{ fontSize: 16, fontWeight: 600 }}>{proxima.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{proxima.origem} → {proxima.destino}</div></div>
-        <Badge status={proxima.isAtual ? "Em viagem" : "Confirmada"} t={t} />
+        <Badge status={proxima.atual ? "Em viagem" : "Confirmada"} t={t} />
       </div>
       <div style={{ display: "flex", gap: 20, fontSize: 12, color: t.txMuted }}>
         <span>📅 {fmt(proxima.dataViagem)}</span><span>🕐 {proxima.horarioSaida || "—"}</span></div>
@@ -242,6 +242,8 @@ function AmigosCPF({ t, authHeaders }) {
 function MapaCPF({ t, authHeaders }) {
   const { data: boats, loading } = useApi("/embarcacoes", authHeaders);
   const [sel, setSel] = useState(null);
+  const embId = sel !== null ? boats?.[sel]?.id : null;
+  const { data: viagensEmb } = useApi(embId ? `/viagens/embarcacao/${embId}` : null, embId ? authHeaders : null);
   if (loading) return <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando embarcacoes...</div>;
 
   const detalhe = sel !== null ? boats?.[sel] : null;
@@ -259,15 +261,25 @@ function MapaCPF({ t, authHeaders }) {
       <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 20, marginBottom: 4 }}>📦</div><div style={{ fontSize: 18, fontWeight: 700, color: t.info }}>{detalhe.status === "EM_VIAGEM" ? "Em viagem" : "No porto"}</div><div style={{ fontSize: 11, color: t.txMuted }}>Status</div></Cd>
     </div>
     {detalhe.horarioSaidaPadrao && <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: t.pri, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Horarios</div>
-      <div style={{ fontSize: 13, color: t.txSoft, lineHeight: 1.7 }}>{detalhe.horarioSaidaPadrao}</div>
-    </Cd>}
-    {detalhe.dataViagem && <Cd t={t} style={{ padding: 12 }}>
-      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted }}><span>Proxima saida: {fmt(detalhe.dataViagem)}</span><span>Chegada: {fmt(detalhe.dataChegada)}</span></div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: t.pri, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Horarios</div>
+      {detalhe.horarioSaidaPadrao.split("\n").map((line, i) =>
+        line.trim() === "" ? <div key={i} style={{ height: 8 }} /> :
+        line === line.toUpperCase() && line.includes("→") ? <div key={i} style={{ fontSize: 13, fontWeight: 700, color: t.tx, marginTop: i > 0 ? 4 : 0 }}>{line}</div> :
+        <div key={i} style={{ fontSize: 12, color: t.txSoft, lineHeight: 1.6, paddingLeft: line.startsWith("Sa") || line.startsWith("Ch") || line.startsWith("Pa") ? 8 : 0 }}>{line}</div>
+      )}
     </Cd>}
     {detalhe.telefone && <Cd t={t} style={{ padding: 12 }}>
       <div style={{ fontSize: 12, color: t.txMuted }}>Telefone</div><div style={{ fontSize: 14, fontWeight: 600 }}>{detalhe.telefone}</div>
     </Cd>}
+    {viagensEmb?.length > 0 && <>
+      <div style={{ fontSize: 12, fontWeight: 700, color: t.pri, textTransform: "uppercase", letterSpacing: 1 }}>Proximas viagens</div>
+      {viagensEmb.map(v => <Cd key={v.id} t={t} style={{ padding: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div><div style={{ fontSize: 13, fontWeight: 600 }}>{v.origem} → {v.destino}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>Saida: {fmt(v.dataViagem)} • Chegada: {fmt(v.previsaoChegada || v.dataChegada)}</div></div>
+          <Badge status={v.atual ? "Em viagem" : "Confirmada"} t={t} />
+        </div>
+      </Cd>)}
+    </>}
     {detalhe.linkExterno && <a href={detalhe.linkExterno} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
       <Cd t={t} style={{ padding: 14, textAlign: "center", border: `1px solid ${t.borderStrong}`, cursor: "pointer" }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: t.pri }}>Ver pagina da embarcacao →</div>
@@ -285,7 +297,7 @@ function MapaCPF({ t, authHeaders }) {
           <div><div style={{ fontSize: 15, fontWeight: 600 }}>{b.nome}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{b.rotaPrincipal || b.rotaAtual || ""}</div></div>
           <Badge status={b.status || "NO_PORTO"} t={t} />
         </div>
-        {b.horarioSaidaPadrao && <div style={{ fontSize: 11, color: t.txMuted, marginTop: 6, lineHeight: 1.5 }}>{b.horarioSaidaPadrao.split("|")[0].trim()}</div>}
+        {b.horarioSaidaPadrao && <div style={{ fontSize: 11, color: t.txMuted, marginTop: 6, lineHeight: 1.5 }}>{b.horarioSaidaPadrao.split("\n").find(l => l.includes("Saída de Manaus"))?.trim() || ""}</div>}
         <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, marginTop: 8 }}>Ver detalhes →</div>
       </div>
     </Cd>)}
@@ -299,7 +311,7 @@ function PassagensCPF({ t, authHeaders }) {
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Viagens ativas</h3>
     {lv ? <div style={{ fontSize: 13, color: t.txMuted, padding: 10, textAlign: "center" }}>Carregando...</div> :
     viagens?.length > 0 ? viagens.map(v => <Cd key={v.id} t={t} style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.origem} → {v.destino}</div></div><Badge status={v.isAtual ? "Em viagem" : "Confirmada"} t={t} /></div>
+      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.origem} → {v.destino}</div></div><Badge status={v.atual ? "Em viagem" : "Confirmada"} t={t} /></div>
       <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 10 }}><span>📅 {fmt(v.dataViagem)}</span><span>🕐 {v.horarioSaida || "—"}</span></div>
     </Cd>) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem ativa.</div></Cd>}
     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Tarifas por rota</div>
