@@ -1026,7 +1026,13 @@ public class TelaPrincipalController implements Initializable {
             } catch (Exception ex) {
                 System.err.println("Aviso: nao foi possivel ler db.properties para backup. Usando defaults.");
             }
-            
+
+            final String fHost = host;
+            final String fPorta = porta;
+            final String fUsuario = usuario;
+            final String fBanco = banco;
+            final String fSenha = senha;
+
             // Mostrar alerta de progresso
             Alert alertProgresso = new Alert(AlertType.INFORMATION);
             alertProgresso.setTitle("Backup em Andamento");
@@ -1040,10 +1046,10 @@ public class TelaPrincipalController implements Initializable {
                     // Construir comando pg_dump
                     ProcessBuilder pb = new ProcessBuilder(
                         "pg_dump",
-                        "-h", host,
-                        "-p", porta,
-                        "-U", usuario,
-                        "-d", banco,
+                        "-h", fHost,
+                        "-p", fPorta,
+                        "-U", fUsuario,
+                        "-d", fBanco,
                         "-f", arquivoDestino.getAbsolutePath(),
                         "--format=plain",
                         "--no-owner",
@@ -1051,8 +1057,8 @@ public class TelaPrincipalController implements Initializable {
                     );
                     
                     // Configurar variável de ambiente para senha (se necessário)
-                    if (senha != null && !senha.isEmpty()) {
-                        pb.environment().put("PGPASSWORD", senha);
+                    if (fSenha != null && !fSenha.isEmpty()) {
+                        pb.environment().put("PGPASSWORD", fSenha);
                     }
                     
                     pb.redirectErrorStream(true);

@@ -371,7 +371,7 @@ public class BalancoViagemController {
         HBox cards = new HBox(15); cards.setAlignment(Pos.CENTER);
         cards.getChildren().add(cardBox("ENTRADAS", dadosAtuais.getTotalEntradas(), Color.GREEN));
         cards.getChildren().add(cardBox("SAÍDAS", dadosAtuais.getTotalSaidas(), Color.BLACK));
-        cards.getChildren().add(cardBox("SALDO", dadosAtuais.getLucroLiquido(), dadosAtuais.getLucroLiquido()>=0?Color.BLUE:Color.RED));
+        cards.getChildren().add(cardBox("SALDO", dadosAtuais.getLucroLiquido(), dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO)>=0?Color.BLUE:Color.RED));
         cards.getChildren().add(cardBox("A RECEBER", totalPendenteGlobal, Color.ORANGE));
         pagAtual.getChildren().add(cards);
         
@@ -424,8 +424,8 @@ public class BalancoViagemController {
     private double addBlocoReceitas(VBox p, double y, List<VBox> pg) {
         addTitulo(p, "RECEITAS DETALHADAS"); p.getChildren().add(new Line(0,0,515,0)); y+=20;
         int i=0;
-        for(String s : dadosPassagensPrint) { p.getChildren().add(criarLinhaTabelaDetalhada(s,0,i++%2!=0,true)); y+=ROW_HEIGHT; }
-        for(String s : dadosCargasPrint) { p.getChildren().add(criarLinhaTabelaDetalhada(s,0,i++%2!=0,true)); y+=ROW_HEIGHT; }
+        for(String s : dadosPassagensPrint) { p.getChildren().add(criarLinhaTabelaDetalhada(s,BigDecimal.ZERO,i++%2!=0,true)); y+=ROW_HEIGHT; }
+        for(String s : dadosCargasPrint) { p.getChildren().add(criarLinhaTabelaDetalhada(s,BigDecimal.ZERO,i++%2!=0,true)); y+=ROW_HEIGHT; }
         HBox tot = new HBox(new Text("TOTAL RECEITAS: "+formatar(dadosAtuais.getTotalEntradas())){{setFont(Font.font("Arial",FontWeight.BOLD,12));setFill(Color.GREEN);}});
         tot.setAlignment(Pos.CENTER_RIGHT); p.getChildren().addAll(new Region(){{setPrefHeight(5);}}, tot, new Region(){{setPrefHeight(15);}});
         return y+30;
@@ -443,9 +443,9 @@ public class BalancoViagemController {
         return y+50;
     }
 
-    private VBox cardBox(String t, double v, Color c) {
+    private VBox cardBox(String t, BigDecimal v, Color c) {
         VBox b=new VBox(5); b.setPrefWidth(120); b.setPadding(new Insets(10)); b.setAlignment(Pos.CENTER);
-        b.setStyle("-fx-border-color: black; -fx-border-width:1;"); 
+        b.setStyle("-fx-border-color: black; -fx-border-width:1;");
         if(c==Color.GREEN) b.setStyle("-fx-border-color: green; -fx-border-width:2;");
         if(c==Color.RED) b.setStyle("-fx-border-color: red; -fx-border-width:2;");
         if(c==Color.BLUE) b.setStyle("-fx-border-color: blue; -fx-border-width:2;");
@@ -454,32 +454,33 @@ public class BalancoViagemController {
     }
     private VBox assLine(String t) { VBox v=new VBox(5); v.setAlignment(Pos.CENTER); v.getChildren().addAll(new Line(0,0,150,0), new Text(t){{setFont(Font.font(9));}}); return v; }
     
-    private HBox criarLinhaResumoColorida(String l, double v, boolean t) { 
-        HBox h = new HBox(); h.setAlignment(Pos.CENTER_LEFT); Region s = new Region(); HBox.setHgrow(s, Priority.ALWAYS); 
+    private HBox criarLinhaResumoColorida(String l, BigDecimal v, boolean t) {
+        HBox h = new HBox(); h.setAlignment(Pos.CENTER_LEFT); Region s = new Region(); HBox.setHgrow(s, Priority.ALWAYS);
         Color cv = l.contains("ENTRADA") || l.contains("RECEITAS") ? Color.GREEN : Color.BLACK;
-        h.getChildren().addAll(new Label(l){{setFont(Font.font("Arial",FontWeight.BOLD,t?12:11));}}, s, new Label(formatar(v)){{setFont(Font.font("Arial",FontWeight.BOLD,t?14:12));setTextFill(cv);}}); return h; 
+        h.getChildren().addAll(new Label(l){{setFont(Font.font("Arial",FontWeight.BOLD,t?12:11));}}, s, new Label(formatar(v)){{setFont(Font.font("Arial",FontWeight.BOLD,t?14:12));setTextFill(cv);}}); return h;
     }
-    private HBox criarLinhaTabelaDetalhada(String txt, double v, boolean zeb, boolean receita) { 
-        HBox h = new HBox(); h.setAlignment(Pos.CENTER_LEFT); h.setPadding(new Insets(3)); 
-        if(zeb) h.setStyle("-fx-background-color: #f5f5f5;"); 
-        
-        String d = txt; double val = v;
+    private HBox criarLinhaTabelaDetalhada(String txt, BigDecimal v, boolean zeb, boolean receita) {
+        HBox h = new HBox(); h.setAlignment(Pos.CENTER_LEFT); h.setPadding(new Insets(3));
+        if(zeb) h.setStyle("-fx-background-color: #f5f5f5;");
+
+        String d = txt; BigDecimal val = v;
         if(receita && txt.contains("=")) {
              String[] p = txt.split("="); d = p[0];
-             try { val = Double.parseDouble(p[1].replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch(Exception e){ System.err.println("BalancoViagemController: erro ao parsear valor monetario '" + p[1] + "' — " + e.getMessage()); }
+             try { val = new BigDecimal(p[1].replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch(Exception e){ System.err.println("BalancoViagemController: erro ao parsear valor monetario '" + p[1] + "' — " + e.getMessage()); }
         }
-        
+
         h.getChildren().add(new Text(d){{setFont(Font.font("Arial",11));}});
         Region s = new Region(); HBox.setHgrow(s, Priority.ALWAYS);
         Text tVal = new Text(formatar(val)); tVal.setFont(Font.font("Arial",11));
-        if(receita) tVal.setFill(Color.GREEN); 
-        
-        h.getChildren().addAll(s, tVal); return h; 
+        if(receita) tVal.setFill(Color.GREEN);
+
+        h.getChildren().addAll(s, tVal); return h;
     }
 
     // DP026: static final evita instanciar NumberFormat a cada chamada
     private static final NumberFormat FMT_MOEDA = NumberFormat.getCurrencyInstance(new Locale("pt","BR"));
     private String formatar(double v) { return FMT_MOEDA.format(v); }
+    private String formatar(BigDecimal v) { return FMT_MOEDA.format(v != null ? v : BigDecimal.ZERO); }
     // DP030: usa EmpresaDAO com cache em vez de SQL direto
     private void carregarDadosEmpresa() {
         try {

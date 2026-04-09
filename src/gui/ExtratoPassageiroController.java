@@ -334,7 +334,7 @@ public class ExtratoPassageiroController implements Initializable {
             // Passa "2ª VIA" no título para cair na lógica correta de impressão
             imprimirReciboQuitacaoTermica(
                 reciboSelecionado.getNomePassageiro(),
-                reciboSelecionado.getValorTotal(),
+                reciboSelecionado.getValorTotal().doubleValue(),
                 itensReconstruidos,
                 "2ª VIA (" + reciboSelecionado.getFormaPagamento() + ")",
                 reciboSelecionado.getDataPagamento()
@@ -428,7 +428,7 @@ public class ExtratoPassageiroController implements Initializable {
                     sucesso = passagemDAO.quitarDividaTotalPassageiro(nome);
                 }
                 if (sucesso) {
-                    ReciboQuitacaoPassageiro novoRecibo = new ReciboQuitacaoPassageiro(nome, totalDividaCalculada, formaPagamento, itensParaSalvar.toString());
+                    ReciboQuitacaoPassageiro novoRecibo = new ReciboQuitacaoPassageiro(nome, BigDecimal.valueOf(totalDividaCalculada), formaPagamento, itensParaSalvar.toString());
                     reciboDAO.salvar(novoRecibo);
 
                     new Alert(Alert.AlertType.INFORMATION, "Todas as dívidas foram quitadas e o recibo salvo!").showAndWait();

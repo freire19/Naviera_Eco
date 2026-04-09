@@ -12,6 +12,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import dao.ConexaoBD;
+import dao.EmpresaDAO;
 import dao.ReciboAvulsoDAO;
 import dao.ViagemDAO;
 import javafx.beans.property.SimpleObjectProperty;
@@ -58,6 +65,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.application.Platform;
 import javafx.scene.transform.Scale;
 import javafx.stage.Stage;
+import model.Empresa;
 import model.ReciboAvulso;
 import model.Viagem;
 
@@ -76,7 +84,7 @@ public class GerarReciboAvulsoController implements Initializable {
     @FXML private TableColumn<ReciboAvulso, LocalDate> colData;
     @FXML private TableColumn<ReciboAvulso, String> colNome;
     @FXML private TableColumn<ReciboAvulso, String> colReferente;
-    @FXML private TableColumn<ReciboAvulso, Double> colValor;
+    @FXML private TableColumn<ReciboAvulso, BigDecimal> colValor;
     @FXML private TableColumn<ReciboAvulso, ReciboAvulso> colAcoes;
 
     private ReciboAvulsoDAO dao = new ReciboAvulsoDAO();
@@ -232,7 +240,7 @@ public class GerarReciboAvulsoController implements Initializable {
         colValor.setCellValueFactory(cell -> new SimpleObjectProperty<>(cell.getValue().getValor()));
         
         colValor.setCellFactory(col -> new TableCell<>() {
-            @Override protected void updateItem(Double item, boolean empty) {
+            @Override protected void updateItem(BigDecimal item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) setText(null);
                 else setText(NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(item));
@@ -311,7 +319,7 @@ public class GerarReciboAvulsoController implements Initializable {
             idViagemParaSalvar,
             txtNome.getText(),
             txtReferente.getText(),
-            val,
+            BigDecimal.valueOf(val),
             dtData.getValue()
         );
     }
@@ -340,7 +348,7 @@ public class GerarReciboAvulsoController implements Initializable {
     }
 
     @FXML private void handleImprimirBranco(ActionEvent event) {
-        ReciboAvulso rVazio = new ReciboAvulso(0, "", "", 0.0, LocalDate.now());
+        ReciboAvulso rVazio = new ReciboAvulso(0, "", "", BigDecimal.ZERO, LocalDate.now());
         imprimirA4DuploEconomico(rVazio, false); 
     }
 
@@ -423,7 +431,7 @@ public class GerarReciboAvulsoController implements Initializable {
             body.getChildren().add(criarLinhaTermica("PAGADOR:", r.getNomePagador(), larguraConteudo - 10));
             body.getChildren().add(new Text("- - - - - - - - - - - - - - - -"));
             Text tValor = new Text("VALOR: " + NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(r.getValor())); tValor.setFont(Font.font("System", FontWeight.BOLD, 12)); body.getChildren().add(tValor);
-            Text tExtenso = new Text("(" + ValorExtensoUtil.valorPorExtenso(r.getValor()) + ")"); tExtenso.setFont(Font.font("System", 8)); tExtenso.setWrappingWidth(larguraConteudo - 10); body.getChildren().add(tExtenso);
+            Text tExtenso = new Text("(" + ValorExtensoUtil.valorPorExtenso(r.getValor().doubleValue()) + ")"); tExtenso.setFont(Font.font("System", 8)); tExtenso.setWrappingWidth(larguraConteudo - 10); body.getChildren().add(tExtenso);
             body.getChildren().add(new Text("- - - - - - - - - - - - - - - -"));
             Text tRefLabel = new Text("REFERENTE:"); tRefLabel.setFont(Font.font("System", FontWeight.BOLD, 9));
             Text tRef = new Text(r.getReferenteA()); tRef.setWrappingWidth(larguraConteudo - 10); tRef.setFont(Font.font("System", 9)); body.getChildren().addAll(tRefLabel, tRef);
@@ -539,7 +547,7 @@ public class GerarReciboAvulsoController implements Initializable {
 
         VBox body = new VBox(15); body.setPadding(new Insets(10, 0, 10, 0));
         body.getChildren().add(criarLinhaEconomica("Recebi(emos) de:", preenchido ? r.getNomePagador() : ""));
-        String extenso = preenchido ? ValorExtensoUtil.valorPorExtenso(r.getValor()) : "";
+        String extenso = preenchido ? ValorExtensoUtil.valorPorExtenso(r.getValor().doubleValue()) : "";
         body.getChildren().add(criarLinhaEconomica("A importância de:", extenso));
         body.getChildren().add(criarLinhaEconomica("Referente a:", preenchido ? r.getReferenteA() : ""));
         body.getChildren().add(criarLinhaEconomica("", ""));
@@ -579,8 +587,8 @@ public class GerarReciboAvulsoController implements Initializable {
 
     private void carregarDadosEmpresa() {
         try {
-            dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
-            model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            EmpresaDAO empresaDAO = new EmpresaDAO();
+            Empresa empresa = empresaDAO.buscarPorId(EmpresaDAO.ID_EMPRESA_PRINCIPAL);
             if (empresa != null) {
                 if (empresa.getEmbarcacao() != null) empresaNome = empresa.getEmbarcacao().toUpperCase();
                 if (empresa.getCnpj() != null) empresaCnpj = empresa.getCnpj();

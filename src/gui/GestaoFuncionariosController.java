@@ -68,6 +68,7 @@ public class GestaoFuncionariosController {
     
     private Funcionario funcionarioSelecionado;
     private final FuncionarioDAO funcionarioDAO = new FuncionarioDAO();
+    private String empresaNome = "EMPRESA";
 
     private static final Locale BRASIL = new Locale("pt", "BR");
     private static final NumberFormat nf = NumberFormat.getCurrencyInstance(BRASIL);

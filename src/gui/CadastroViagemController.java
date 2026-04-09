@@ -348,7 +348,7 @@ public class CadastroViagemController implements Initializable {
 
         Long idHorarioSaidaDB;
         try {
-            Integer idAux = auxiliaresDAO.obterIdHorarioSaidaPorNome(horarioSaidaSelecionado);
+            Integer idAux = auxiliaresDAO.obterIdAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", horarioSaidaSelecionado);
             idHorarioSaidaDB = (idAux != null) ? idAux.longValue() : null; // CORRIGIDO AQUI
             if (idHorarioSaidaDB == null || idHorarioSaidaDB == -1L) {
                 AlertHelper.show(Alert.AlertType.ERROR, "Erro de Horário", "Não foi possível encontrar o ID para o horário de saída selecionado. Verifique os cadastros auxiliares.");

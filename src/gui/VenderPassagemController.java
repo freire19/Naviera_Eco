@@ -346,7 +346,7 @@ public class VenderPassagemController implements Initializable {
                 Platform.runLater(() -> {
                     if (rootPane != null) rootPane.setDisable(false);
                     if (btnNovo != null) btnNovo.setDisable(false);
-                    gui.util.AlertHelper.errorSafe("Erro ao carregar dados iniciais. Verifique a conexao com o banco.");
+                    gui.util.AlertHelper.errorSafe("carregar dados iniciais", e);
                 });
             }
         });

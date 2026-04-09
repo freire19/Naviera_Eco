@@ -225,7 +225,7 @@ public class CadastroTarifaController implements Initializable {
         Integer tipoPassageiroId = null;
 
         try {
-            tipoPassageiroId = auxDao.buscarIdTipoPassagemPorNome(tipoPassageiroSelecionadoStr);
+            tipoPassageiroId = auxDao.obterIdAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", tipoPassageiroSelecionadoStr);
             if (tipoPassageiroId == null || tipoPassageiroId == -1) {
                 AlertHelper.show(AlertType.ERROR, "Erro de Seleção", "Tipo de Passageiro '" + tipoPassageiroSelecionadoStr + "' não encontrado ou ID não pôde ser obtido. Verifique o cadastro de Tipos de Passageiro.");
                 return;

@@ -41,7 +41,7 @@ public class ConexaoBD {
         String usuario = props.getProperty("db.usuario");
         String senha = props.getProperty("db.senha");
         if (url == null || usuario == null || senha == null
-                || senha.isEmpty() || "SUA_SENHA_AQUI".equals(senha)) {
+                || senha.isEmpty() || "123456".equals(senha)) {
             throw new RuntimeException(
                 "FATAL: db.properties incompleto. Preencha db.url, db.usuario e db.senha.");
         }

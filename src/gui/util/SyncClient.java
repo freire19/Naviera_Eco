@@ -786,7 +786,7 @@ public class SyncClient {
      */
     public CompletableFuture<SyncResult> receberDadosDoServidor() {
         return CompletableFuture.supplyAsync(() -> {
-            notificarListeners(SyncEvent.INICIO, "Recebimento de dados nao implementado.");
+            notificarListeners(SyncEvent.INFO, "Recebimento de dados nao implementado.");
             System.err.println("SyncClient.receberDadosDoServidor: fluxo de recebimento ainda nao implementado (issue #035).");
             notificarListeners(SyncEvent.ERRO, "Funcionalidade de recebimento pendente de implementacao.");
             return new SyncResult(false, "Recebimento de dados do servidor ainda nao implementado.");
