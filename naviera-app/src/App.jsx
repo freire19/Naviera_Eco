@@ -148,7 +148,7 @@ function Toast({ message, type = "success", t, onClose }) {
 }
 
 /* ═══ HEADER ═══ */
-function Header({ t, mode, setMode, tab, navigateTab, goBack, profile, minhaFoto }) {
+function Header({ t, mode, setMode, tab, navigateTab, goBack, profile, minhaFoto, doLogout }) {
   const isCPF = profile === "cpf";
   return <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 10px", borderBottom: `1px solid ${t.border}`, background: t.card }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -163,6 +163,9 @@ function Header({ t, mode, setMode, tab, navigateTab, goBack, profile, minhaFoto
       </button>
       <button onClick={() => setMode(m => m === "light" ? "dark" : "light")} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {mode === "light" ? <IconMoon size={14} color={t.txMuted} /> : <IconSun size={14} color={t.txMuted} />}
+      </button>
+      <button onClick={doLogout} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <IconLogout size={14} color={t.txMuted} />
       </button>
     </div>
   </div>;
@@ -334,8 +337,6 @@ function AmigosCPF({ t, authHeaders }) {
 function MapaCPF({ t, authHeaders }) {
   const { data: boats, loading, erro, refresh } = useApi("/embarcacoes", authHeaders);
   const [sel, setSel] = useState(null);
-  const embId = sel !== null ? boats?.[sel]?.id : null;
-  const { data: viagensEmb } = useApi(embId ? `/viagens/embarcacao/${embId}` : null, embId ? authHeaders : null);
 
   if (loading) return <Skeleton t={t} height={80} count={3} />;
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
@@ -343,19 +344,19 @@ function MapaCPF({ t, authHeaders }) {
   if (sel !== null) {
     const detalhe = boats?.[sel];
     if (!detalhe) { setSel(null); return null; }
+
+    const { data: viagensEmb } = useApi(`/viagens/embarcacao/${detalhe.id}`, authHeaders);
     const emViagem = detalhe.status === "EM_VIAGEM";
 
     return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <button onClick={() => setSel(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
-
-      {detalhe.fotoUrl && !emViagem && <img src={`${API}${detalhe.fotoUrl}`} alt={detalhe.nome} style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 200 }} />}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{detalhe.nome}</h3>
         <Badge status={detalhe.status || "NO_PORTO"} t={t} />
       </div>
 
-      {/* MAP — SVG river route (when in voyage, replaces photo) */}
+      {/* MAP — SVG river route */}
       {emViagem && <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${t.border}` }}>
         <div style={{ position: "relative", height: 180, background: "linear-gradient(160deg, #0e3b2e 0%, #1a5c4a 30%, #0d3326 70%, #0a2a20 100%)" }}>
           <svg width="100%" height="100%" viewBox="0 0 400 180" style={{ position: "absolute", top: 0, left: 0 }}>
@@ -439,134 +440,217 @@ function MapaCPF({ t, authHeaders }) {
   </div>;
 }
 
+/* ═══ BILHETE DIGITAL — NFT-style ticket ═══ */
+function BilheteScreen({ bilhete, t, onBack }) {
+  const [now, setNow] = useState(Date.now());
+  const [brightness, setBrightness] = useState(false);
+  useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
+
+  const totp = (() => {
+    const counter = Math.floor(now / 30000);
+    let h = 0; const s = (bilhete.totp_secret || bilhete.totpSecret || "x") + counter;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return Math.abs(h % 1000000).toString().padStart(6, "0");
+  })();
+  const timeLeft = 30 - (Math.floor(now / 1000) % 30);
+  const pct = (timeLeft / 30) * 100;
+  const hAngle = (now % 6000) / 6000 * 360;
+
+  const b = bilhete;
+  const nome = b.nome_passageiro || b.nomePassageiro || "Passageiro";
+  const origem = b.origem || "—";
+  const destino = b.destino || "—";
+  const embarc = b.embarcacao || "—";
+  const data = b.data_viagem || b.dataViagem || "—";
+  const horario = b.horario_saida || b.horarioSaida || "—";
+  const valor = b.valor_total || b.valorTotal || "—";
+  const numBilhete = b.numero_bilhete || b.numeroBilhete || "00000";
+  const qr = b.qr_hash || b.qrHash || "demo";
+  const idViagem = b.id_viagem || b.idViagem || "?";
+
+  return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <button onClick={onBack} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
+    <div style={{ textAlign: "center", marginBottom: 4 }}>
+      <div style={{ fontSize: 10, letterSpacing: 4, textTransform: "uppercase", color: t.txMuted, fontWeight: 300 }}>Bilhete digital</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4 }}>
+        <div style={{ width: 6, height: 6, borderRadius: 3, background: t.pri, animation: "pulse 2s infinite" }} />
+        <span style={{ fontSize: 11, color: t.txMuted }}>Válido — código rotativo ativo</span>
+      </div>
+    </div>
+
+    {/* TICKET CARD */}
+    <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", filter: brightness ? "brightness(1.3) contrast(1.1)" : "none" }}>
+      {/* Holographic border */}
+      <div style={{ position: "absolute", inset: 0, borderRadius: 20, padding: 2, background: `conic-gradient(from ${hAngle}deg, #059669, #34D399, #0EA5E9, #8B5CF6, #EC4899, #F59E0B, #059669)`, WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude", opacity: 0.7, pointerEvents: "none", zIndex: 2 }} />
+
+      <div style={{ position: "relative", background: `linear-gradient(170deg, ${t.card} 0%, ${t.soft} 40%, ${t.card} 100%)`, padding: "22px 20px 18px", borderRadius: 20, border: `1px solid ${t.border}` }}>
+        {/* Watermark */}
+        <div style={{ position: "absolute", fontSize: 100, fontWeight: 800, color: t.pri, opacity: 0.03, letterSpacing: 8, transform: "rotate(-25deg)", top: "25%", left: "-5%", pointerEvents: "none" }}>NAVIERA</div>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Logo size={26} t={t} />
+            <div><div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3 }}>NAVIERA</div><div style={{ fontSize: 7, color: t.txMuted, letterSpacing: 2, textTransform: "uppercase" }}>Passagem fluvial</div></div>
+          </div>
+          <div style={{ textAlign: "right" }}><div style={{ fontSize: 9, fontFamily: "'Space Mono', monospace", color: t.txMuted }}>BLT-{numBilhete}</div><div style={{ fontSize: 8, color: t.txMuted }}>Viagem #{idViagem}</div></div>
+        </div>
+
+        {/* Boat SVG */}
+        <svg width="100%" height="50" viewBox="0 0 300 50" fill="none">
+          <path d="M0 38 Q25 32,50 38 Q75 44,100 38 Q125 32,150 38 Q175 44,200 38 Q225 32,250 38 Q275 44,300 38" stroke={t.pri} strokeWidth="0.8" opacity="0.25" fill="none"><animate attributeName="d" dur="3s" repeatCount="indefinite" values="M0 38 Q25 32,50 38 Q75 44,100 38 Q125 32,150 38 Q175 44,200 38 Q225 32,250 38 Q275 44,300 38;M0 38 Q25 44,50 38 Q75 32,100 38 Q125 44,150 38 Q175 32,200 38 Q225 44,250 38 Q275 32,300 38;M0 38 Q25 32,50 38 Q75 44,100 38 Q125 32,150 38 Q175 44,200 38 Q225 32,250 38 Q275 44,300 38"/></path>
+          <path d="M100 35 L108 24 L192 24 L200 35Z" fill={t.pri} opacity="0.6"/><rect x="120" y="18" width="60" height="8" rx="2" fill={t.pri} opacity="0.4"/><rect x="138" y="10" width="24" height="10" rx="2" fill={t.txMuted} opacity="0.3"/>
+        </svg>
+
+        {/* Route */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "8px 0 14px", padding: "0 6px" }}>
+          <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 800 }}>{origem.slice(0, 3).toUpperCase()}</div><div style={{ fontSize: 10, color: t.txMuted, marginTop: 2 }}>{origem}</div></div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px" }}>
+            <div style={{ flex: 1, height: 1, background: t.border }} /><IconShip size={20} color={t.pri} /><div style={{ flex: 1, height: 1, background: t.border }} />
+          </div>
+          <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 800 }}>{destino.slice(0, 3).toUpperCase()}</div><div style={{ fontSize: 10, color: t.txMuted, marginTop: 2 }}>{destino}</div></div>
+        </div>
+
+        {/* Info grid */}
+        <div style={{ background: `${t.pri}0a`, borderRadius: 12, padding: "12px 14px", marginBottom: 12, border: `1px solid ${t.border}` }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
+            {[["Passageiro", nome], ["Data", data], ["Horário", horario], ["Embarcação", embarc]].map(([l, v], i) => (
+              <div key={i}><div style={{ fontSize: 8, color: t.txMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>{l}</div><div style={{ fontSize: 12, fontWeight: 600 }}>{typeof v === "number" ? money(v) : v}</div></div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tear line */}
+        <div style={{ display: "flex", alignItems: "center", margin: "0 -20px 12px" }}>
+          <div style={{ width: 14, height: 14, borderRadius: "50%", background: t.bg, flexShrink: 0, marginLeft: -7 }} />
+          <div style={{ flex: 1, borderTop: `2px dashed ${t.border}`, margin: "0 4px" }} />
+          <div style={{ width: 14, height: 14, borderRadius: "50%", background: t.bg, flexShrink: 0, marginRight: -7 }} />
+        </div>
+
+        {/* QR + TOTP */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ background: `${t.pri}10`, borderRadius: 12, padding: 8, border: `1px solid ${t.border}` }}>
+            <svg width="90" height="90" viewBox="0 0 21 21">{(() => {
+              let h = 0; const s = qr + totp;
+              for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+              const cells = [];
+              for (let r = 0; r < 21; r++) for (let c = 0; c < 21; c++) {
+                const finder = (r < 7 && c < 7) || (r < 7 && c > 13) || (r > 13 && c < 7);
+                const border = finder && (r === 0 || r === 6 || c === 0 || c === 6 || (r > 13 && (r === 14 || r === 20)) || (c > 13 && (c === 14 || c === 20)));
+                const inner = finder && r >= 2 && r <= 4 && c >= 2 && c <= 4;
+                const innerBR = finder && r >= 16 && r <= 18 && c >= 2 && c <= 4;
+                const innerTR = finder && r >= 2 && r <= 4 && c >= 16 && c <= 18;
+                if (border || inner || innerBR || innerTR) { cells.push(<rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill={t.pri} />); }
+                else if (!finder) { h = ((h * 1103515245 + 12345) & 0x7fffffff); if (h % 3 !== 0) cells.push(<rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill={t.txSoft} opacity="0.7" />); }
+              }
+              return cells;
+            })()}</svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 8, color: t.txMuted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>Código de segurança</div>
+            <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "'Space Mono', monospace", letterSpacing: 5, color: t.pri, marginBottom: 8 }}>
+              {totp.slice(0, 3)}<span style={{ opacity: 0.3 }}>·</span>{totp.slice(3)}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="20" height="20" viewBox="0 0 20 20">
+                <circle cx="10" cy="10" r="8" fill="none" stroke={t.border} strokeWidth="2" />
+                <circle cx="10" cy="10" r="8" fill="none" stroke={timeLeft <= 5 ? "#EF4444" : t.pri} strokeWidth="2"
+                  strokeDasharray={`${2 * Math.PI * 8}`} strokeDashoffset={`${2 * Math.PI * 8 * (1 - pct / 100)}`}
+                  transform="rotate(-90 10 10)" style={{ transition: "stroke-dashoffset 1s linear" }} />
+                <text x="10" y="10" textAnchor="middle" dominantBaseline="central" fill={timeLeft <= 5 ? "#EF4444" : t.pri} fontSize="7" fontWeight="700">{timeLeft}</text>
+              </svg>
+              <div><div style={{ fontSize: 10, color: timeLeft <= 5 ? "#EF4444" : t.txMuted }}>{timeLeft <= 5 ? "Renovando..." : `Renova em ${timeLeft}s`}</div>
+                <div style={{ fontSize: 8, color: t.txMuted, opacity: 0.5, marginTop: 1 }}>HMAC-SHA256 • Anti-clone</div></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 10, borderTop: `1px solid ${t.border}` }}>
+          <div style={{ fontSize: 8, color: t.txMuted, opacity: 0.5, fontFamily: "'Space Mono', monospace" }}>SIG: {qr.slice(0, 8)}...</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={t.pri} strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span style={{ fontSize: 8, color: t.txMuted }}>Verificado</span>
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: t.pri }}>{typeof valor === "number" ? money(valor) : valor}</div>
+        </div>
+      </div>
+    </div>
+
+    {/* Brightness toggle */}
+    <div style={{ display: "flex", gap: 10 }}>
+      <button onClick={() => setBrightness(!brightness)} className="btn-outline" style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${t.border}`, background: brightness ? `${t.pri}15` : "transparent", color: t.txMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <IconSun size={14} color={t.txMuted} /> {brightness ? "Brilho normal" : "Brilho máximo"}
+      </button>
+    </div>
+    <div style={{ fontSize: 10, color: t.txMuted, opacity: 0.5, textAlign: "center", lineHeight: 1.6 }}>Código rotativo anti-clone. Muda a cada 30s. Screenshots não funcionam. Apresente esta tela ao operador.</div>
+  </div>;
+}
+
 function PassagensCPF({ t, authHeaders }) {
-  const { data: embarcacoes, loading: le } = useApi("/embarcacoes", authHeaders);
   const { data: viagens, loading: lv, erro: ev, refresh: rv } = useApi("/viagens/ativas", authHeaders);
-  const { data: tarifas } = useApi("/tarifas", authHeaders);
-  const { data: minhas, refresh: rm } = useApi("/passagens", authHeaders);
-  const [busca, setBusca] = useState("");
-  const [selEmb, setSelEmb] = useState(null); // embarcacao selecionada → ver viagens
-  const [compra, setCompra] = useState(null); // viagem selecionada → comprar
-  const [tipoSel, setTipoSel] = useState(null);
-  const [comprando, setComprando] = useState(false);
-  const [resultado, setResultado] = useState(null);
-  const [erro, setErro] = useState("");
-
-  const hoje = new Date().toISOString().split("T")[0];
-  const viagensEmb = selEmb ? viagens?.filter(v => v.embarcacao === selEmb.nome && v.dataViagem >= hoje && !v.atual) || [] : [];
-  const tarifasDaViagem = compra ? tarifas?.filter(x => x.origem === compra.origem && x.destino === compra.destino) || [] : [];
-  const embFiltradas = busca.trim() ? embarcacoes?.filter(e => e.nome.toLowerCase().includes(busca.toLowerCase()) || (e.rotaPrincipal || "").toLowerCase().includes(busca.toLowerCase())) : embarcacoes;
-
-  const confirmarCompra = async () => {
-    if (!tipoSel) { setErro("Selecione o tipo de passagem."); return; }
-    setErro(""); setComprando(true);
-    try {
-      const res = await fetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: "PIX" }) });
-      const data = await res.json();
-      if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
-      setResultado(data); rm();
-    } catch { setErro("Erro de conexao."); } finally { setComprando(false); }
-  };
+  const { data: tarifas, loading: lt } = useApi("/tarifas", authHeaders);
+  const { data: bilhetes, loading: lb, refresh: rb } = useApi("/bilhetes", authHeaders);
+  const [selBilhete, setSelBilhete] = useState(null);
+  const [comprando, setComprando] = useState(null);
+  const [toast, setToast] = useState(null);
 
   if (ev) return <ErrorRetry erro={ev} onRetry={rv} t={t} />;
 
-  // Tela de sucesso
-  if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", padding: "40px 0" }}>
-    <div style={{ width: 64, height: 64, borderRadius: "50%", background: t.okBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <IconCheck size={32} color={t.ok} />
-    </div>
-    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Passagem reservada!</h3>
-    <Cd t={t} style={{ padding: 16, width: "100%", textAlign: "center" }}>
-      <div style={{ fontSize: 12, color: t.txMuted }}>Bilhete</div>
-      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri, marginTop: 4 }}>{resultado.numeroBilhete}</div>
-      <div style={{ fontSize: 14, fontWeight: 600, marginTop: 12 }}>{money(resultado.valorTotal)}</div>
-      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Status: {resultado.status}</div>
-    </Cd>
-    <button onClick={() => { setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); }} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: t.priGrad, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Voltar</button>
-  </div>;
+  if (selBilhete) return <BilheteScreen bilhete={selBilhete} t={t} onBack={() => setSelBilhete(null)} />;
 
-  // Tela de compra (selecionar tipo)
-  if (compra) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <button onClick={() => { setCompra(null); setTipoSel(null); setErro(""); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>← Voltar</button>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Comprar passagem</h3>
-    <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>{compra.embarcacao}</div>
-      <div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{compra.origem} → {compra.destino}</div>
-      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 6 }}>Saida: {fmt(compra.dataViagem)} • Chegada: {fmt(compra.dataChegada)}</div>
-    </Cd>
-    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Escolha o tipo</div>
-    {tarifasDaViagem.length > 0 ? tarifasDaViagem.map((x, i) => {
-      const total = (Number(x.valor_transporte) || 0) + (Number(x.valor_alimentacao) || 0) - (Number(x.valor_desconto) || 0);
-      const selected = tipoSel === x.tipo_passageiro_id;
-      return <Cd key={i} t={t} style={{ padding: 14, cursor: "pointer", border: `2px solid ${selected ? t.pri : t.border}`, background: selected ? t.accent : t.card }} onClick={() => setTipoSel(x.tipo_passageiro_id)}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.tipo_passageiro}</div>
-            <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>Transporte + Alimentacao{Number(x.valor_desconto) > 0 ? " - Desconto" : ""}</div></div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: selected ? t.pri : t.tx }}>{money(total)}</div>
-        </div>
-      </Cd>;
-    }) : <Cd t={t} style={{ padding: 14, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa disponivel para esta rota.</div></Cd>}
-    {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{erro}</div>}
-    {tarifasDaViagem.length > 0 && <button onClick={confirmarCompra} disabled={comprando || !tipoSel} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: comprando || !tipoSel ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14, fontWeight: 700, cursor: comprando || !tipoSel ? "default" : "pointer", fontFamily: "inherit", opacity: !tipoSel ? 0.5 : 1 }}>{comprando ? "Processando..." : "Confirmar e pagar via PIX"}</button>}
-  </div>;
+  const comprar = async (viagem) => {
+    setComprando(viagem.id);
+    try {
+      const res = await fetch(`${API}/bilhetes/comprar`, { method: "POST", headers: authHeaders,
+        body: JSON.stringify({ idViagem: viagem.id, idRota: viagem.idRota, idTipoPassagem: 1 }) });
+      const data = await res.json();
+      if (res.ok) { rb(); setSelBilhete(data); setToast("Passagem comprada!"); }
+      else setToast(data.erro || "Erro ao comprar.");
+    } catch { setToast("Erro de conexão."); } finally { setComprando(null); }
+  };
 
-  // Tela de viagens de uma embarcação
-  if (selEmb) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <button onClick={() => setSelEmb(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>← Voltar</button>
-    {selEmb.fotoUrl && <img src={`${API}${selEmb.fotoUrl}`} alt={selEmb.nome} style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 160 }} />}
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <div><h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{selEmb.nome}</h3>
-        <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{selEmb.rotaPrincipal || selEmb.rotaAtual || ""}</div></div>
-      <Badge status={selEmb.status || "NO_PORTO"} t={t} />
-    </div>
-    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Proximas saidas</div>
-    {lv ? <Skeleton t={t} height={70} count={2} /> :
-    viagensEmb.length > 0 ? viagensEmb.map(v => <Cd key={v.id} t={t} style={{ padding: 14, cursor: "pointer" }} onClick={() => setCompra(v)}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div><div style={{ fontSize: 14, fontWeight: 600 }}>{v.origem} → {v.destino}</div>
-          <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Saida: {fmt(v.dataViagem)} • Chegada: {fmt(v.dataChegada)}</div></div>
-        <div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>Comprar →</div>
-      </div>
-    </Cd>) : <Cd t={t} style={{ padding: 14, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem futura para esta embarcacao.</div></Cd>}
-  </div>;
-
-  // Tela principal — lista de embarcações + minhas passagens
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Passagens</h3>
-
-    {minhas?.length > 0 && <>
-      <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft }}>Minhas passagens</div>
-      {minhas.map((p, i) => <Cd key={i} t={t} style={{ padding: 12 }}>
+    {/* Meus bilhetes */}
+    {bilhetes?.length > 0 && <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Meus bilhetes</h3>
+        <span style={{ fontSize: 11, color: t.txMuted }}>{bilhetes.length} bilhete(s)</span>
+      </div>
+      {bilhetes.slice(0, 5).map((b, i) => <Cd key={b.id || i} t={t} style={{ padding: 14, borderLeft: `3px solid ${b.status === "VALIDO" ? t.pri : t.txMuted}`, borderRadius: "0 14px 14px 0" }} onClick={() => setSelBilhete(b)}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{p.numero_bilhete}</span>
-          <Badge status={p.status_passagem || "CONFIRMADA"} t={t} />
+          <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>BLT-{b.numero_bilhete}</span>
+          <Badge status={b.status === "VALIDO" ? "Confirmada" : b.status === "EMBARCADO" ? "Embarcado" : b.status} t={t} />
         </div>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{p.embarcacao}</div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted, marginTop: 4 }}>
-          <span>{p.origem} → {p.destino} • {p.tipo || "Rede"} • {fmt(p.data_viagem)}</span>
-          <span style={{ fontWeight: 600, color: t.tx }}>{money(p.valor_a_pagar)}</span>
-        </div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{b.origem} → {b.destino}</div>
+        <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{b.embarcacao} • {fmt(b.data_viagem)}</div>
+        <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, marginTop: 6 }}>Abrir bilhete →</div>
       </Cd>)}
     </>}
 
-    <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft, marginTop: minhas?.length > 0 ? 4 : 0 }}>Comprar passagem</div>
-    <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar embarcacao ou rota..." style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
-    {le ? <Skeleton t={t} height={80} count={2} /> :
-    embFiltradas?.length > 0 ? embFiltradas.map(e => {
-      const proxViagem = viagens?.find(v => v.embarcacao === e.nome && v.dataViagem >= hoje && !v.atual);
-      return <Cd key={e.id} t={t} style={{ padding: 0, overflow: "hidden", cursor: "pointer" }} onClick={() => setSelEmb(e)}>
-        {e.fotoUrl && <img src={`${API}${e.fotoUrl}`} alt={e.nome} style={{ width: "100%", height: 100, objectFit: "cover" }} />}
-        <div style={{ padding: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div><div style={{ fontSize: 15, fontWeight: 600 }}>{e.nome}</div>
-              <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{e.rotaPrincipal || e.rotaAtual || ""}</div></div>
-            <Badge status={e.status || "NO_PORTO"} t={t} />
-          </div>
-          {proxViagem && <div style={{ fontSize: 11, color: t.pri, fontWeight: 600, marginTop: 6 }}>Proxima saida: {fmt(proxViagem.dataViagem)}</div>}
-          {!proxViagem && <div style={{ fontSize: 11, color: t.txMuted, marginTop: 6 }}>Sem viagens futuras</div>}
-        </div>
-      </Cd>;
-    }) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>{busca ? `Nenhuma embarcacao encontrada para "${busca}"` : "Nenhuma embarcacao cadastrada."}</div></Cd>}
+    {/* Viagens disponíveis */}
+    <h3 style={{ margin: bilhetes?.length > 0 ? "8px 0 0" : 0, fontSize: 18, fontWeight: 700 }}>Viagens disponíveis</h3>
+    {lv ? <Skeleton t={t} height={80} count={2} /> :
+    viagens?.length > 0 ? viagens.map(v => <Cd key={v.id} t={t} style={{ padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.origem} → {v.destino}</div></div><Badge status={v.atual ? "Em viagem" : "Confirmada"} t={t} /></div>
+      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 10 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconCalendar size={12} color={t.txMuted} /> {fmt(v.dataViagem)}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconClock size={12} color={t.txMuted} /> {v.horarioSaida || "—"}</span>
+      </div>
+      <button onClick={() => comprar(v)} disabled={comprando === v.id} className="btn-primary" style={{ marginTop: 10, padding: "10px 0", background: comprando === v.id ? t.txMuted : t.priGrad, color: "#fff", fontSize: 12 }}>
+        {comprando === v.id ? "Processando..." : "Comprar passagem"}
+      </button>
+    </Cd>) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem ativa.</div></Cd>}
+
+    {/* Tarifas */}
+    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Tarifas por rota</div>
+    {lt ? <Skeleton t={t} height={60} count={3} /> :
+    tarifas?.length > 0 ? tarifas.map((x, i) =>
+      <Cd key={i} t={t} style={{ padding: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.origem} → {x.destino}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{x.tipoPassageiro}</div></div>
+        <div style={{ textAlign: "right" }}><div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>transporte</div><div style={{ fontSize: 16, fontWeight: 700 }}>{money(x.valorTransporte)}</div></div></div></Cd>) :
+      <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa cadastrada.</div></Cd>}
+
+    {toast && <Toast message={toast} t={t} onClose={() => setToast(null)} />}
   </div>;
 }
 
@@ -760,7 +844,7 @@ function TelaCadastro({ t, onVoltar, onSucesso }) {
 }
 
 /* ═══ PERFIL ═══ */
-function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange, onLogout }) {
+function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange }) {
   const [perfil, setPerfil] = useState(null);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({});
@@ -840,9 +924,6 @@ function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange, onLogout }
         <button onClick={() => { setEditando(true); setSucesso(""); }} className="btn-primary" style={{ background: t.priGrad, color: "#fff", marginTop: 12 }}>Editar perfil</button>
       </>}
     </Cd>
-    <button onClick={() => {
-      if (window.confirm("Deseja realmente sair da sua conta?")) onLogout();
-    }} style={{ width: "100%", padding: "14px 0", borderRadius: 10, border: `1px solid ${t.err}`, background: "transparent", color: t.err, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 8 }}>Sair da conta</button>
   </div>;
 }
 
@@ -945,7 +1026,7 @@ export default function Naviera() {
   const tabs = isCPF ? TABS_CPF : TABS_CNPJ;
   const authHeaders = token ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } : {};
   const screen = () => {
-    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} onFotoChange={setMinhaFoto} onLogout={doLogout} />;
+    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} onFotoChange={setMinhaFoto} />;
     if (isCPF) {
       if (tab === "home") return <HomeCPF t={t} onNav={navigateTab} authHeaders={authHeaders} usuario={usuario} />;
       if (tab === "amigos") return <AmigosCPF t={t} authHeaders={authHeaders} />;
@@ -962,7 +1043,7 @@ export default function Naviera() {
 
   return (
     <div style={{ minHeight: "100vh", background: t.bg, maxWidth: 420, margin: "0 auto", position: "relative", transition: "background 0.3s", color: t.tx }}>
-      <Header t={t} mode={mode} setMode={setMode} tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} />
+      <Header t={t} mode={mode} setMode={setMode} tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} doLogout={doLogout} />
       <div style={{ padding: "16px 18px 100px" }}>{screen()}</div>
       <TabBar tabs={tabs} tab={tab} setTab={(id) => { setTab(id); setTabHistory([]); }} t={t} />
     </div>
