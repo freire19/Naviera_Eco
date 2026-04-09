@@ -26,7 +26,7 @@ public class EncomendaDAO {
      * Se itens for null/vazio, insere apenas a encomenda.
      */
     public Encomenda inserirComItens(Encomenda encomenda, java.util.List<model.EncomendaItem> itens) {
-        String sqlEnc = "INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, entregue, doc_recebedor, nome_recebedor, rota) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlEnc = "INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, entregue, doc_recebedor, nome_recebedor, rota, data_lancamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         String sqlItem = "INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection()) {
             conn.setAutoCommit(false);
@@ -49,6 +49,7 @@ public class EncomendaDAO {
                     stmt.setString(14, encomenda.getDocRecebedor());
                     stmt.setString(15, encomenda.getNomeRecebedor());
                     stmt.setString(16, encomenda.getNomeRota());
+                    stmt.setDate(17, encomenda.getDataLancamentoDate() != null ? java.sql.Date.valueOf(encomenda.getDataLancamentoDate()) : null);
 
                     int affectedRows = stmt.executeUpdate();
                     if (affectedRows > 0) {
@@ -264,6 +265,9 @@ public class EncomendaDAO {
         if (cols.contains("nome_recebedor"))  e.setNomeRecebedor(rs.getString("nome_recebedor"));
         if (cols.contains("rota"))            e.setNomeRota(rs.getString("rota"));
         if (cols.contains("id_caixa"))        e.setIdCaixa(rs.getInt("id_caixa"));
+        if (cols.contains("data_lancamento") && rs.getDate("data_lancamento") != null) {
+            e.setDataLancamentoDate(rs.getDate("data_lancamento").toLocalDate());
+        }
 
         return e;
     }

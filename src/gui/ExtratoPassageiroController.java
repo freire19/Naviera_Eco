@@ -3,6 +3,7 @@ package gui;
 import dao.PassageiroDAO;
 import dao.PassagemDAO;
 import dao.ReciboQuitacaoPassageiroDAO;
+import gui.util.StatusPagamentoView;
 import model.Passageiro;
 import model.Passagem;
 import model.ReciboQuitacaoPassageiro;
@@ -203,7 +204,7 @@ public class ExtratoPassageiroController implements Initializable {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
+                    setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
             }
         });

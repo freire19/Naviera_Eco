@@ -32,7 +32,6 @@ public class BalancoViagemDAO {
         }
     }
 
-    private static BigDecimal nvl(BigDecimal v) { return v != null ? v : BigDecimal.ZERO; }
 
     public DadosBalancoViagem buscarBalancoDaViagem(int idViagem) {
         DadosBalancoViagem dados = new DadosBalancoViagem();
@@ -55,7 +54,7 @@ public class BalancoViagemDAO {
                         String origem = rs.getString("origem");
                         String destino = rs.getString("destino");
                         String rotaDesc = (origem != null ? origem : "?") + " / " + (destino != null ? destino : "?");
-                        BigDecimal valor = nvl(rs.getBigDecimal("total"));
+                        BigDecimal valor = DAOUtils.nvl(rs.getBigDecimal("total"));
                         dados.adicionarItem(new ItemResumoBalanco("Passagens", rotaDesc, rs.getInt("qtd"), valor));
                         dados.somarPassagens(valor);
                     }
@@ -75,7 +74,7 @@ public class BalancoViagemDAO {
                     while (rs.next()) {
                         String rota = rs.getString("rota");
                         if (rota == null || rota.isEmpty()) rota = "Geral";
-                        BigDecimal valor = nvl(rs.getBigDecimal("total"));
+                        BigDecimal valor = DAOUtils.nvl(rs.getBigDecimal("total"));
                         dados.adicionarItem(new ItemResumoBalanco("Encomendas", rota, rs.getInt("qtd"), valor));
                         dados.somarEncomendas(valor);
                     }
@@ -95,7 +94,7 @@ public class BalancoViagemDAO {
                     while (rs.next()) {
                         String rota = rs.getString("rota_temp");
                         if (rota == null || rota.isEmpty()) rota = "Geral";
-                        BigDecimal valor = nvl(rs.getBigDecimal("total"));
+                        BigDecimal valor = DAOUtils.nvl(rs.getBigDecimal("total"));
                         dados.adicionarItem(new ItemResumoBalanco("Fretes", rota, rs.getInt("qtd"), valor));
                         dados.somarFretes(valor);
                     }
@@ -118,7 +117,7 @@ public class BalancoViagemDAO {
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         String categoria = rs.getString("nome");
-                        BigDecimal valor = nvl(rs.getBigDecimal("total"));
+                        BigDecimal valor = DAOUtils.nvl(rs.getBigDecimal("total"));
                         dados.getSaidasPorCategoria().put(categoria, valor);
                         somaSaidas = somaSaidas.add(valor);
                     }

@@ -51,6 +51,7 @@ import javafx.scene.text.Text;
 import javafx.scene.transform.Scale;
 import model.DadosBalancoViagem;
 import model.ItemResumoBalanco;
+import model.LinhaDespesaDetalhada;
 
 public class BalancoViagemController {
 
@@ -526,6 +527,4 @@ public class BalancoViagemController {
     }
 
     @FXML private void handleFiltrarViagem(ActionEvent event) { String sel = cmbViagens.getValue(); if (sel != null) { try { int id = Integer.parseInt(sel.substring(sel.lastIndexOf("(ID: ") + 5, sel.lastIndexOf(")"))); this.idViagemAtual = id; this.textoViagemSelecionada = sel; carregarRelatorio(id); } catch (Exception e) { System.err.println("Erro em BalancoViagemController.handleFiltrarViagem: " + e.getMessage()); } } }
-    
-    public static class LinhaDespesaDetalhada { private final String data; private final String descricao; private final String categoria; private final BigDecimal valor; public LinhaDespesaDetalhada(String d, String de, String c, BigDecimal v) { this.data=d; this.descricao=de; this.categoria=c; this.valor=v!=null?v:BigDecimal.ZERO; } public String getData() { return data; } public String getDescricao() { return descricao; } public String getCategoria() { return categoria; } public BigDecimal getValor() { return valor; } }
 }

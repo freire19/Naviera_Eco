@@ -20,6 +20,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import gui.util.StatusPagamentoView;
+import model.FreteFinanceiro;
 import model.OpcaoViagem;
 
 public class FinanceiroFretesController {
@@ -115,7 +117,7 @@ public class FinanceiroFretesController {
                     setStyle("");
                 } else {
                     setText(item);
-                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
+                    setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
             }
         });
@@ -458,38 +460,4 @@ public class FinanceiroFretesController {
     }
 
 
-    public static class FreteFinanceiro {
-        private long id;
-        private String numero, dataViagem, remetente, destinatario;
-        private int volumes;
-        private java.math.BigDecimal total, pago;
-
-        public FreteFinanceiro(long id, String num, String data, String rem, String dest, int volumes, java.math.BigDecimal total, java.math.BigDecimal pago) {
-            this.id = id;
-            this.numero = num;
-            this.dataViagem = data;
-            this.remetente = rem;
-            this.destinatario = dest;
-            this.volumes = volumes;
-            this.total = total != null ? total : java.math.BigDecimal.ZERO;
-            this.pago = pago != null ? pago : java.math.BigDecimal.ZERO;
-        }
-
-        public long getId() { return id; }
-        public String getNumero() { return numero; }
-        public String getDataViagem() { return dataViagem; }
-        public String getRemetente() { return remetente; }
-        public String getDestinatario() { return destinatario; }
-        public int getVolumes() { return volumes; }
-        public java.math.BigDecimal getTotal() { return total; }
-        public java.math.BigDecimal getPago() { return pago; }
-        public java.math.BigDecimal getRestante() { return total.subtract(pago).max(java.math.BigDecimal.ZERO); }
-        public String getTotalFormatado() { return String.format("R$ %,.2f", total); }
-        public String getPagoFormatado() { return String.format("R$ %,.2f", pago); }
-        public String getRestanteFormatado() { return String.format("R$ %,.2f", getRestante()); }
-
-        public String getStatus() {
-            return model.StatusPagamento.calcularPorSaldo(getRestante().doubleValue(), getPago().doubleValue()).name();
-        }
-    }
 }

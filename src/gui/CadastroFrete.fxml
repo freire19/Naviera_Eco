@@ -103,7 +103,7 @@
                                   <children>
                                       <Label text="Nota Fiscal?" styleClass="label-highlight"><font><Font name="System Bold" size="12.0" /></font></Label>
                                       <RadioButton fx:id="rbSim" text="Sim"><toggleGroup><ToggleGroup fx:id="notaFiscalToggleGroup" /></toggleGroup></RadioButton>
-                                      <RadioButton fx:id="Rbnao" selected="true" text="Não" toggleGroup="$notaFiscalToggleGroup" />
+                                      <RadioButton fx:id="rbNao" selected="true" text="Não" toggleGroup="$notaFiscalToggleGroup" />
                                       <Separator orientation="VERTICAL" />
                                       <Button fx:id="btnFotoNota" onAction="#handleFotoNota" style="-fx-font-size: 11px; -fx-padding: 2 8 2 8;" text="📷 Foto" />
                                       <Button fx:id="btnCodXml" onAction="#handleCodXml" style="-fx-font-size: 11px; -fx-padding: 2 8 2 8;" text="📄 XML" />
@@ -205,10 +205,10 @@
                         </HBox>
                         
                         <Button fx:id="btnListaDeFrete" onAction="#abrirListaFretes" prefHeight="35.0" text="Lista de Fretes (F5)" />
-                        <Button fx:id="BtnImprimirNota" onAction="#imprimirNotaFretePersonalizada" prefHeight="35.0" text="Imprimir (F6)" />
+                        <Button fx:id="btnImprimirNota" onAction="#imprimirNotaFretePersonalizada" prefHeight="35.0" text="Imprimir (F6)" />
                         <Button fx:id="btnImprimirEtiqueta" onAction="#handleImprimirEtiqueta" prefHeight="35.0" text="Etiqueta" />
                         <Button fx:id="btnImprimirRecibo" onAction="#imprimirReciboPersonalizado" prefHeight="35.0" text="Recibo" />
-                        <Button fx:id="BtnSair" cancelButton="true" onAction="#handleSair" prefHeight="40.0" prefWidth="100.0" styleClass="button-cancel" text="SAIR (Esc)" />
+                        <Button fx:id="btnSair" cancelButton="true" onAction="#handleSair" prefHeight="40.0" prefWidth="100.0" styleClass="button-cancel" text="SAIR (Esc)" />
                     </children>
                 </HBox>
             </children>

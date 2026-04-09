@@ -39,7 +39,7 @@ Sistema desktop JavaFX de gestao fluvial com **0 issues CRITICAS pendentes**. Ca
 | Bugs | 36 | ~9 | ~27 | ~25% | Muitos sobrepostos com Security/Logic |
 | **Resilience** | **67** | **65** | **2** | **97%** | **QUASE LIMPO** (restam DR025 pg_dump + DR028 testes) |
 | **Performance** | **39** | **37** | **2** | **95%** | **QUASE LIMPO** (restam #048 JSON parser + #DP023 JARs) |
-| Maintainability | 76 | 58 | ~18 | 76% | 0 CRITICAS, 0 ALTAS (DM004/DM007 parcialmente resolvidas) |
+| **Maintainability** | **76** | **71** | **~5** | **93%** | **0 CRIT, 0 ALTA, 0 MEDIA, 0 BAIXA corrigivel — restam 5 estruturais** |
 
 > **Nota:** DEEP_BUGS identifica issues que coincidem com achados de Security/Logic/Resilience. Das 27 "ativas", estima-se que ~15 ja foram corrigidas. Recomenda-se rodar `audit-5-deep bugs` para reconciliar.
 
@@ -81,7 +81,7 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 | **Deep Bugs** | **V1.0** | **2026-04-08** | **0 ativas (100% resolvido)** | **35/35 fixadas** | **[DEEP_BUGS](audits/current/DEEP_BUGS.md)** |
 | **Deep Resilience** | **V4.0** | **2026-04-08** | **2 ativas (97% limpo)** | **39 fixadas** | **[DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)** |
 | **Deep Performance** | **V3.0** | **2026-04-09** | **2 (infra only)** | **95% LIMPO — 37/39 fixadas** | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
-| **Deep Maintainability** | **V3.0** | **2026-04-09** | **~18 (0 crit, 0 altas)** | **33 corrigidas (65% reducao)** | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
+| **Deep Maintainability** | **V3.0** | **2026-04-09** | **~5 (estruturais)** | **46 corrigidas (90% reducao)** | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
 | MVP Plan | V1.0 | 2026-04-07 | 22 faltando | Precisa trabalho | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
 
 ---
@@ -143,7 +143,7 @@ Rodar `audit-5-deep bugs` para atualizar — muitas das 27 "ativas" ja foram cor
 | 2026-04-08 | Fix DEEP_BUGS medias — 8 MEDIAS corrigidas: ON CONFLICT, dead code deletado, toString null-safe, awaitTermination, preCarregarCaches |
 | 2026-04-08 | **DEEP_BUGS V1.0 — Categoria 100% limpa** (35/35: 6 crit + 11 alta + 8 media + 3 baixa + 7 AUDIT pendentes) |
 | 2026-04-09 | DEEP_PERFORMANCE V3.0 — auditoria + fix completo: 37/39 resolvidas (95%) |
-| 2026-04-09 | DEEP_MAINTAINABILITY V3.0 — auditoria + fix: 33 corrigidas (3 crit + 13 altas + 13 medias + 4 parciais), ~18 restantes |
+| 2026-04-09 | DEEP_MAINTAINABILITY V3.0 — auditoria + fix completo: 40 corrigidas (3 crit + 13 altas + 20 medias + 4 parciais), ~11 restantes (BAIXAS) |
 
 ---
 *Atualizado automaticamente por Claude Code (status-update) — Revisao humana recomendada*

@@ -792,28 +792,12 @@ public class InserirEncomendaController implements Initializable {
             String mainNome = (txtNomeRecebedor != null) ? txtNomeRecebedor.getText().trim() : "";
             String mainDoc  = (txtNDocumentoRecebedor != null) ? txtNDocumentoRecebedor.getText().trim() : "";
             if (!mainNome.isEmpty() && !mainNome.equalsIgnoreCase("Pendente de Entrega")) {
-                BigDecimal valorPagoAtualizado = (encomendaEmEdicao.getValorPago() != null) ? encomendaEmEdicao.getValorPago() : BigDecimal.ZERO;
-                String statusFinanceiroFinal = (valorPagoAtualizado.compareTo(total) >= 0) ? "PAGO" : "PENDENTE";
-                String nomeFormatado = mainNome.toUpperCase();
-                String doc = mainDoc.toUpperCase();
-
-                boolean sucesso = encomendaDAO.registrarEntrega(idEncomenda, doc, nomeFormatado, statusFinanceiroFinal);
-                if (sucesso) {
-                    encomendaEmEdicao.setEntregue(true);
-                    encomendaEmEdicao.setNomeRecebedor(nomeFormatado);
-                    encomendaEmEdicao.setDocRecebedor(doc);
-                    setEncomendaParaEdicao(encomendaEmEdicao);
-                    imprimirCupomTermico(encomendaEmEdicao);
-                    handleSair(event);
-                } else {
-                    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");
-                }
+                finalizarEntrega(encomendaEmEdicao, mainNome, mainDoc, total, event);
                 return;
             }
 
             // Capturar referências finais para uso no lambda
             final BigDecimal totalFinal = total;
-            final Encomenda encomendaRef = encomendaEmEdicao;
 
             Dialog<Pair<String, String>> dialog = new Dialog<>();
             dialog.setTitle("Finalizar Entrega");
@@ -851,32 +835,47 @@ public class InserirEncomendaController implements Initializable {
                     AlertHelper.show(AlertType.WARNING, "Atenção", "O Nome do recebedor é obrigatório para finalizar.");
                     return;
                 }
-                // Usar encomendaRef que foi salva antes, ou recarregar do banco
+                // Usar encomendaEmEdicao se ainda disponível, ou recarregar do banco
                 Encomenda enc = (encomendaEmEdicao != null) ? encomendaEmEdicao : encomendaDAO.buscarPorId(idEncomenda);
                 if (enc == null) {
                     AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível localizar a encomenda.");
                     return;
                 }
-                BigDecimal valorPagoAtualizado = (enc.getValorPago() != null) ? enc.getValorPago() : BigDecimal.ZERO;
-                String statusFinanceiroFinal = (valorPagoAtualizado.compareTo(totalFinal) >= 0) ? "PAGO" : "PENDENTE";
-                String nomeFormatado = nome.toUpperCase();
-
-                boolean sucesso = encomendaDAO.registrarEntrega(idEncomenda, doc.toUpperCase(), nomeFormatado, statusFinanceiroFinal);
-                if (sucesso) {
-                    enc.setEntregue(true);
-                    enc.setNomeRecebedor(nome.toUpperCase());
-                    enc.setDocRecebedor(doc.toUpperCase());
-                    encomendaEmEdicao = enc;
-                    setEncomendaParaEdicao(enc);
-                    imprimirCupomTermico(enc);
-                    handleSair(event);
-                } else {
-                    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");
-                }
+                finalizarEntrega(enc, nome, doc, totalFinal, event);
             });
         } catch (Exception e) {
             e.printStackTrace();
             AlertHelper.show(AlertType.ERROR, "Erro Crítico", "Erro ao processar entrega: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Executa os passos comuns de finalização de entrega:
+     * calcula status financeiro, registra no banco, atualiza o modelo e imprime o cupom.
+     *
+     * @param enc   encomenda a ser entregue
+     * @param nome  nome do recebedor (será convertido para maiúsculas)
+     * @param doc   documento do recebedor (será convertido para maiúsculas)
+     * @param total valor total da encomenda (usado para calcular o status financeiro)
+     * @param event evento de origem (repassado para handleSair)
+     */
+    private void finalizarEntrega(Encomenda enc, String nome, String doc, BigDecimal total, ActionEvent event) {
+        BigDecimal valorPagoAtualizado = (enc.getValorPago() != null) ? enc.getValorPago() : BigDecimal.ZERO;
+        String statusFinanceiroFinal = (valorPagoAtualizado.compareTo(total) >= 0) ? "PAGO" : "PENDENTE";
+        String nomeFormatado = nome.toUpperCase();
+        String docFormatado = doc.toUpperCase();
+
+        boolean sucesso = encomendaDAO.registrarEntrega(enc.getId(), docFormatado, nomeFormatado, statusFinanceiroFinal);
+        if (sucesso) {
+            enc.setEntregue(true);
+            enc.setNomeRecebedor(nomeFormatado);
+            enc.setDocRecebedor(docFormatado);
+            encomendaEmEdicao = enc;
+            setEncomendaParaEdicao(enc);
+            imprimirCupomTermico(enc);
+            handleSair(event);
+        } else {
+            AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");
         }
     }
 

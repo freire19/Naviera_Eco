@@ -5,7 +5,9 @@ import dao.DespesaDAO;
 import dao.ViagemDAO;
 import gui.util.AlertHelper;
 import gui.util.PermissaoService;
-import gui.util.SessaoUsuario; 
+import gui.util.SessaoUsuario;
+import gui.util.StatusPagamentoView;
+import model.Despesa;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -814,7 +816,7 @@ public class FinanceiroSaidaController {
                         setStyle("-fx-text-fill: #999; -fx-strikethrough: true;");
                     } else {
                         setText(item);
-                        setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
+                        setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                     }
                 }
             }
@@ -846,26 +848,4 @@ public class FinanceiroSaidaController {
         return d;
     }
 
-    public static class Despesa {
-        private int id;
-        private String data, descricao, categoria, forma, status;
-        private java.math.BigDecimal valor;
-        private boolean excluido;
-
-        public Despesa(int id, String d, String desc, String cat, String forma, java.math.BigDecimal val, String st, boolean excluido) {
-            this.id = id; this.data = d; this.descricao = desc; this.categoria = cat;
-            this.forma = forma; this.valor = val != null ? val : java.math.BigDecimal.ZERO; this.status = st;
-            this.excluido = excluido;
-        }
-        public int getId() { return id; }
-        public String getData() { return data; }
-        public String getDescricao() { return descricao; }
-        public String getCategoria() { return categoria; }
-        public String getForma() { return forma; }
-        public java.math.BigDecimal getValor() { return valor; }
-        public String getStatus() { return status; }
-        public boolean isExcluido() { return excluido; }
-        public String getValorFormatado() { return nf.format(valor); }
-    }
-    
 }

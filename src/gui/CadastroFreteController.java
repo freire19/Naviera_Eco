@@ -68,6 +68,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import gui.util.AlertHelper;
+import gui.util.MoneyUtil;
 
 /**
  * Controller da tela CadastroFrete.fxml.
@@ -105,7 +106,7 @@ public class CadastroFreteController implements Initializable {
     @FXML private TextField txtTotalVol;
     @FXML private TextField txtValorTotalNota;
     @FXML private RadioButton rbSim;
-    @FXML private RadioButton Rbnao;
+    @FXML private RadioButton rbNao;
     @FXML private RadioButton rbComDesconto;
     @FXML private RadioButton rbNormal;
     @FXML private Button btnFotoNota;
@@ -116,8 +117,8 @@ public class CadastroFreteController implements Initializable {
     @FXML private Button btnAlterar;
     @FXML private Button btnSalvar;
     @FXML private Button btnExcluir;
-    @FXML private Button BtnSair;
-    @FXML private Button BtnImprimirNota;
+    @FXML private Button btnSair;
+    @FXML private Button btnImprimirNota;
     @FXML private Button btnImprimirEtiqueta;
     @FXML private Button btnListaDeFrete;
     @FXML private Button btnImprimirRecibo;
@@ -220,7 +221,7 @@ public class CadastroFreteController implements Initializable {
                             if (btnListaDeFrete != null && !btnListaDeFrete.isDisabled()) abrirListaFretes(null);
                             event.consume(); break;
                         case F6:
-                            if (BtnImprimirNota != null && !BtnImprimirNota.isDisabled()) imprimirNotaFretePersonalizada(null);
+                            if (btnImprimirNota != null && !btnImprimirNota.isDisabled()) imprimirNotaFretePersonalizada(null);
                             event.consume(); break;
                         case ESCAPE:
                             handleSair(null); event.consume(); break;
@@ -762,7 +763,7 @@ public class CadastroFreteController implements Initializable {
             
             // Habilita impressÃµes se tiver itens
             boolean itensPresentes = listaTabelaItensFrete != null && !listaTabelaItensFrete.isEmpty();
-            if (BtnImprimirNota != null) BtnImprimirNota.setDisable(!itensPresentes);
+            if (btnImprimirNota != null) btnImprimirNota.setDisable(!itensPresentes);
             if (btnImprimirEtiqueta != null) btnImprimirEtiqueta.setDisable(!itensPresentes);
             if (btnImprimirRecibo != null) btnImprimirRecibo.setDisable(!itensPresentes);
             // --------------------------------------------------
@@ -822,7 +823,7 @@ public class CadastroFreteController implements Initializable {
                 if (txtValorNota != null) txtValorNota.setText(valorNotaDb != null ? df.format(valorNotaDb.doubleValue()) : "");
                 if (txtPesoNota != null) txtPesoNota.setText(pesoNotaDb != null ? pesoNotaDb.toString() : "");
             } else {
-                if (Rbnao != null) Rbnao.setSelected(true);
+                if (rbNao != null) rbNao.setSelected(true);
             }
             if (txtValorTotalNota != null) txtValorTotalNota.setText(valorFreteCalculado != null ? df.format(valorFreteCalculado.doubleValue()) : "");
 
@@ -947,8 +948,8 @@ public class CadastroFreteController implements Initializable {
                 @Override
                 public Double fromString(String string) {
                     try {
-                        return parseValorMonetario(string);
-                    } catch (ParseException parseException) {
+                        return MoneyUtil.parseDouble(string);
+                    } catch (NumberFormatException parseException) {
                         return null;
                     }
                 }
@@ -984,9 +985,9 @@ public class CadastroFreteController implements Initializable {
             txtpreco.focusedProperty().addListener((o, oldV, newV) -> {
                 if (!newV && txtpreco.getText() != null && !txtpreco.getText().isEmpty()) {
                     try {
-                        double v = parseValorMonetario(txtpreco.getText());
+                        double v = MoneyUtil.parseDouble(txtpreco.getText());
                         txtpreco.setText(df.format(v));
-                    } catch (ParseException e) {
+                    } catch (NumberFormatException e) {
                         System.err.println("CadastroFreteController: erro ao formatar valor monetario '" + txtpreco.getText() + "' — " + e.getMessage());
                     }
                 }
@@ -1063,8 +1064,8 @@ public class CadastroFreteController implements Initializable {
         if (rbSim != null && txtNumNota != null && txtObs != null) {
             rbSim.setOnKeyPressed(createEnterKeyHandlerForRadioButton(txtNumNota, txtObs, true));
         }
-        if (Rbnao != null && txtNumNota != null && txtObs != null) {
-            Rbnao.setOnKeyPressed(createEnterKeyHandlerForRadioButton(txtNumNota, txtObs, false));
+        if (rbNao != null && txtNumNota != null && txtObs != null) {
+            rbNao.setOnKeyPressed(createEnterKeyHandlerForRadioButton(txtNumNota, txtObs, false));
         }
 
         if (txtNumNota != null && txtValorNota != null) setEnterNavigation(txtNumNota, txtValorNota);
@@ -1092,7 +1093,7 @@ public class CadastroFreteController implements Initializable {
                 boolean itensPresentes = !listaTabelaItensFrete.isEmpty();
                 boolean podeImprimir = freteAtualId != -1 || (btnSalvar != null && !btnSalvar.isDisabled());
 
-                if (BtnImprimirNota != null) BtnImprimirNota.setDisable(!(podeImprimir && itensPresentes));
+                if (btnImprimirNota != null) btnImprimirNota.setDisable(!(podeImprimir && itensPresentes));
                 if (btnImprimirEtiqueta != null) btnImprimirEtiqueta.setDisable(!(podeImprimir && itensPresentes));
                 if (btnImprimirRecibo != null) btnImprimirRecibo.setDisable(!(podeImprimir && itensPresentes));
             });
@@ -1105,7 +1106,7 @@ public class CadastroFreteController implements Initializable {
                 Toggle selectedToggle = notaFiscalToggleGroup.getSelectedToggle();
                 if (selectedToggle == rbSim && nextSim != null && nextSim.isFocusTraversable()) {
                     nextSim.requestFocus();
-                } else if (selectedToggle == Rbnao && nextNao != null && nextNao.isFocusTraversable()) {
+                } else if (selectedToggle == rbNao && nextNao != null && nextNao.isFocusTraversable()) {
                     nextNao.requestFocus();
                 }
                 e.consume();
@@ -1542,8 +1543,8 @@ public class CadastroFreteController implements Initializable {
 
                 boolean temNF = rbSim != null && rbSim.isSelected();
                 pstFrete.setString(paramIdx++, temNF && txtNumNota != null ? txtNumNota.getText() : null);
-                pstFrete.setBigDecimal(paramIdx++, temNF && txtValorNota != null ? parseToBigDecimal(txtValorNota.getText()) : BigDecimal.ZERO);
-                pstFrete.setBigDecimal(paramIdx++, temNF && txtPesoNota != null ? parseToBigDecimal(txtPesoNota.getText()) : BigDecimal.ZERO);
+                pstFrete.setBigDecimal(paramIdx++, temNF && txtValorNota != null ? MoneyUtil.parseBigDecimal(txtValorNota.getText()) : BigDecimal.ZERO);
+                pstFrete.setBigDecimal(paramIdx++, temNF && txtPesoNota != null ? MoneyUtil.parseBigDecimal(txtPesoNota.getText()) : BigDecimal.ZERO);
 
                 BigDecimal totalItens = listaTabelaItensFrete.stream()
                         .map(i -> i.getTotalBD())
@@ -1552,7 +1553,7 @@ public class CadastroFreteController implements Initializable {
                 pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
 
                 BigDecimal valorFreteCalculado = (txtValorTotalNota != null && !txtValorTotalNota.getText().isEmpty())
-                        ? parseToBigDecimal(txtValorTotalNota.getText())
+                        ? MoneyUtil.parseBigDecimal(txtValorTotalNota.getText())
                         : totalItens;
                 pstFrete.setBigDecimal(paramIdx++, valorFreteCalculado);
 
@@ -1720,9 +1721,9 @@ public class CadastroFreteController implements Initializable {
         }
         double precoUnitario;
         try {
-            precoUnitario = parseValorMonetario(precoStr);
-            if (precoUnitario < 0) throw new ParseException("PreÃ§o nÃ£o negativo", 0);
-        } catch (ParseException e) {
+            precoUnitario = MoneyUtil.parseDouble(precoStr);
+            if (precoUnitario < 0) throw new NumberFormatException("Preco nao negativo");
+        } catch (NumberFormatException e) {
             txtpreco.requestFocus();
             return;
         }
@@ -2061,7 +2062,7 @@ public class CadastroFreteController implements Initializable {
         if (cbConferente != null) cbConferente.setDisable(!habilitar);
         if (txtCidadeCobranca != null) txtCidadeCobranca.setDisable(!habilitar); 
         if (rbSim != null) rbSim.setDisable(!habilitar);
-        if (Rbnao != null) Rbnao.setDisable(!habilitar);
+        if (rbNao != null) rbNao.setDisable(!habilitar);
         habilitarCamposDaNotaFiscal(habilitar);
 
         if (txtObs != null) txtObs.setDisable(!habilitar);
@@ -2090,7 +2091,7 @@ public class CadastroFreteController implements Initializable {
         boolean itensPresentes = listaTabelaItensFrete != null && !listaTabelaItensFrete.isEmpty();
         boolean podeImprimir = habilitar && itensPresentes && freteAtualId != -1;
 
-        if (BtnImprimirNota != null) BtnImprimirNota.setDisable(!podeImprimir);
+        if (btnImprimirNota != null) btnImprimirNota.setDisable(!podeImprimir);
         if (btnImprimirEtiqueta != null) btnImprimirEtiqueta.setDisable(!podeImprimir);
         if (btnImprimirRecibo != null) btnImprimirRecibo.setDisable(!podeImprimir);
     }
@@ -2133,7 +2134,7 @@ public class CadastroFreteController implements Initializable {
             if (txtCidadeCobranca != null) {
                 txtCidadeCobranca.clear(); 
             }
-            if (Rbnao != null && notaFiscalToggleGroup != null) Rbnao.setSelected(true);
+            if (rbNao != null && notaFiscalToggleGroup != null) rbNao.setSelected(true);
             if (txtNumNota != null) txtNumNota.clear();
             if (txtValorNota != null) txtValorNota.clear();
             if (txtPesoNota != null) txtPesoNota.clear();
@@ -2214,7 +2215,7 @@ public class CadastroFreteController implements Initializable {
         }
         try {
             int q = Integer.parseInt(sQ.trim());
-            double p = parseValorMonetario(sP.trim());
+            double p = MoneyUtil.parseDouble(sP.trim());
             if (q > 0 && p >= 0) {
                 programmaticamenteAtualizando = true;
                 try {
@@ -2230,7 +2231,7 @@ public class CadastroFreteController implements Initializable {
                     programmaticamenteAtualizando = false;
                 }
             }
-        } catch (NumberFormatException | ParseException e) {
+        } catch (NumberFormatException e) {
             programmaticamenteAtualizando = true;
             try {
                 txttotal.clear();
@@ -2239,33 +2240,6 @@ public class CadastroFreteController implements Initializable {
             }
         }
     }
-
-    private double parseValorMonetario(String valorStr) throws ParseException {
-        if (valorStr == null || valorStr.trim().isEmpty()) {
-            return 0.0;
-        }
-        String valorLimpo = valorStr.replace("R$", "").trim().replace(".", "").replace(",", ".");
-        try {
-            return Double.parseDouble(valorLimpo);
-        } catch (NumberFormatException e) {
-            throw new ParseException("Valor monetÃ¡rio '" + valorStr + "' invÃ¡lido.", 0);
-        }
-    }
-
-    private BigDecimal parseToBigDecimal(String vS) throws IllegalArgumentException {
-        // DL059: converter direto da String para BigDecimal sem passar por double
-        if (vS == null || vS.trim().isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-        try {
-            String cleaned = vS.replace("R$", "").replace(" ", "")
-                               .replace(".", "").replace(",", ".").trim();
-            return new BigDecimal(cleaned).setScale(2, RoundingMode.HALF_UP);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Valor monetario invalido: '" + vS + "'.", e);
-        }
-    }
-
 
     private void abrirJanelaGenerica(String fxmlFileRelative, String title, boolean resizable, Modality modality) {
         try {

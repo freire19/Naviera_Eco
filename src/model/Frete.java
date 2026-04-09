@@ -59,6 +59,8 @@ public class Frete {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public StatusPagamento getStatusEnum() { return StatusPagamento.fromString(status); }
+    public void setStatusEnum(StatusPagamento s) { this.status = s.name(); }
 
     public int getTotalVolumes() { return totalVolumes; }
     public void setTotalVolumes(int totalVolumes) { this.totalVolumes = totalVolumes; }

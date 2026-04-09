@@ -55,6 +55,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.util.Callback;
+import gui.util.MoneyUtil;
 import model.Passageiro;
 import model.Passagem;
 import model.Tarifa;
@@ -612,7 +613,7 @@ public class VenderPassagemController implements Initializable {
         if (nomePassageiroDigitado.isEmpty() ||
             dpDataNascimento.getValue() == null || tipoPassagem == null ||
             acomodacao == null || selectedRotaStr == null ||
-            agente == null || (txtAPagar != null && parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) < 0)) {
+            agente == null || (txtAPagar != null && MoneyUtil.parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) < 0)) {
             // DL032: permite valor zero (passagem gratuita) — bloqueia apenas negativo
             AlertHelper.show(AlertType.WARNING, "Campos Obrigat\u00f3rios", "Por favor, preencha todos os campos obrigat\u00f3rios.");
             return;
@@ -795,13 +796,13 @@ public class VenderPassagemController implements Initializable {
         passagem.setDataViagem(viagemSelecionada.getDataViagem());
         passagem.setStrViagem(viagemSelecionada.toString());
         passagem.setRequisicao(txtRequisicao.getText());
-        passagem.setValorAlimentacao(parseBigDecimal(txtAlimentacao.getText()));
-        passagem.setValorTransporte(parseBigDecimal(txtTransporte.getText()));
-        passagem.setValorCargas(parseBigDecimal(txtCargas.getText()));
-        passagem.setValorDescontoTarifa(parseBigDecimal(txtDescontoTarifa.getText()));
-        passagem.setValorDesconto(parseBigDecimal(txtDesconto.getText()));
-        passagem.setValorTotal(parseBigDecimal(txtTotal.getText()));
-        passagem.setValorAPagar(parseBigDecimal(txtAPagar.getText()));
+        passagem.setValorAlimentacao(MoneyUtil.parseBigDecimal(txtAlimentacao.getText()));
+        passagem.setValorTransporte(MoneyUtil.parseBigDecimal(txtTransporte.getText()));
+        passagem.setValorCargas(MoneyUtil.parseBigDecimal(txtCargas.getText()));
+        passagem.setValorDescontoTarifa(MoneyUtil.parseBigDecimal(txtDescontoTarifa.getText()));
+        passagem.setValorDesconto(MoneyUtil.parseBigDecimal(txtDesconto.getText()));
+        passagem.setValorTotal(MoneyUtil.parseBigDecimal(txtTotal.getText()));
+        passagem.setValorAPagar(MoneyUtil.parseBigDecimal(txtAPagar.getText()));
         // #025: usar enum padrao em vez de string (status real definido em salvarDadosFinais baseado no pagamento)
         passagem.setStatusPassagem(model.StatusPagamento.PENDENTE.name());
     }
@@ -1264,12 +1265,6 @@ public class VenderPassagemController implements Initializable {
         }
     }
 
-    private BigDecimal parseBigDecimal(String text) {
-        if (text == null || text.trim().isEmpty()) return BigDecimal.ZERO;
-        String cleanedText = text.replace("R$", "").replace(".", "").replace(",", ".").trim();
-        try { return new BigDecimal(cleanedText); } catch (Exception e) { return BigDecimal.ZERO; }
-    }
-
     private void setupCalculoTotalPassagem() {
         List.of(txtAlimentacao, txtTransporte, txtCargas, txtDescontoTarifa, txtDesconto).forEach(field -> {
             if (field != null) field.textProperty().addListener((obs, oldVal, newVal) -> calcularValoresPassagem());
@@ -1277,11 +1272,11 @@ public class VenderPassagemController implements Initializable {
     }
 
     private void calcularValoresPassagem() {
-        BigDecimal alimentacao = parseBigDecimal(txtAlimentacao.getText());
-        BigDecimal transporte = parseBigDecimal(txtTransporte.getText());
-        BigDecimal cargas = parseBigDecimal(txtCargas.getText());
-        BigDecimal descontoTarifa = parseBigDecimal(txtDescontoTarifa.getText());
-        BigDecimal descontoGeral = parseBigDecimal(txtDesconto.getText());
+        BigDecimal alimentacao = MoneyUtil.parseBigDecimal(txtAlimentacao.getText());
+        BigDecimal transporte = MoneyUtil.parseBigDecimal(txtTransporte.getText());
+        BigDecimal cargas = MoneyUtil.parseBigDecimal(txtCargas.getText());
+        BigDecimal descontoTarifa = MoneyUtil.parseBigDecimal(txtDescontoTarifa.getText());
+        BigDecimal descontoGeral = MoneyUtil.parseBigDecimal(txtDesconto.getText());
 
         BigDecimal valorTotalCalculado = alimentacao.add(transporte).add(cargas).subtract(descontoTarifa);
         if (valorTotalCalculado.compareTo(BigDecimal.ZERO) < 0) valorTotalCalculado = BigDecimal.ZERO;

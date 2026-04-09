@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.StatusPagamentoView;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -78,7 +79,7 @@ public class ExtratoClienteEncomendaController {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
+                    setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
             }
         });

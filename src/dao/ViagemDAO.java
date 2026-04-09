@@ -120,9 +120,8 @@ public class ViagemDAO {
         return listaFormatada;
     }
 
-    // --- Método Buscar Por ID (Necessário para o Controller VenderPassagem) ---
     public Viagem buscarPorId(long id) {
-        return buscarViagemPorId(id); // Reutiliza o método existente abaixo
+        return buscarViagemPorId(id);
     }
 
     public Viagem buscarViagemPorId(Long id) {

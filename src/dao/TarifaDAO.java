@@ -6,7 +6,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,10 +42,10 @@ public class TarifaDAO {
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, tarifa.getRotaId());
             ps.setInt(2, tarifa.getTipoPassageiroId());
-            ps.setBigDecimal(3, nvl(tarifa.getValorTransporte()));
-            ps.setBigDecimal(4, nvl(tarifa.getValorAlimentacao()));
-            ps.setBigDecimal(5, nvl(tarifa.getValorCargas()));
-            ps.setBigDecimal(6, nvl(tarifa.getValorDesconto()));
+            ps.setBigDecimal(3, DAOUtils.nvl(tarifa.getValorTransporte()));
+            ps.setBigDecimal(4, DAOUtils.nvl(tarifa.getValorAlimentacao()));
+            ps.setBigDecimal(5, DAOUtils.nvl(tarifa.getValorCargas()));
+            ps.setBigDecimal(6, DAOUtils.nvl(tarifa.getValorDesconto()));
             if (ps.executeUpdate() > 0) {
                 try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
@@ -65,10 +64,10 @@ public class TarifaDAO {
         String sql = "UPDATE tarifas SET valor_transporte = ?, valor_alimentacao = ?, valor_cargas = ?, valor_desconto = ? WHERE id_tarifa = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setBigDecimal(1, nvl(tarifa.getValorTransporte()));
-            ps.setBigDecimal(2, nvl(tarifa.getValorAlimentacao()));
-            ps.setBigDecimal(3, nvl(tarifa.getValorCargas()));
-            ps.setBigDecimal(4, nvl(tarifa.getValorDesconto()));
+            ps.setBigDecimal(1, DAOUtils.nvl(tarifa.getValorTransporte()));
+            ps.setBigDecimal(2, DAOUtils.nvl(tarifa.getValorAlimentacao()));
+            ps.setBigDecimal(3, DAOUtils.nvl(tarifa.getValorCargas()));
+            ps.setBigDecimal(4, DAOUtils.nvl(tarifa.getValorDesconto()));
             ps.setInt(5, tarifa.getId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -122,10 +121,6 @@ public class TarifaDAO {
         return tarifas;
     }
 
-    private BigDecimal nvl(BigDecimal val) {
-        return (val == null) ? BigDecimal.ZERO : val;
-    }
-    
     // #019: whitelist de tabelas permitidas (previne SQL injection via nome de tabela)
     private static final List<String> TABELAS_PERMITIDAS = List.of(
         "aux_tipos_passagem", "aux_agentes", "aux_acomodacoes", "aux_horarios_saida",

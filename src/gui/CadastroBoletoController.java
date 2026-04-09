@@ -3,6 +3,7 @@ package gui;
 import dao.ConexaoBD;
 import gui.util.AlertHelper;
 import gui.util.PermissaoService;
+import gui.util.StatusPagamentoView;
 import gui.util.SessaoUsuario;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -234,7 +235,7 @@ public class CadastroBoletoController {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
+                    setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
             }
         });

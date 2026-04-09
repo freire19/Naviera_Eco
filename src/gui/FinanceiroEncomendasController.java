@@ -21,6 +21,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Optional;
+import gui.util.StatusPagamentoView;
+import model.EncomendaFinanceiro;
 import model.OpcaoViagem;
 
 public class FinanceiroEncomendasController {
@@ -118,7 +120,7 @@ public class FinanceiroEncomendasController {
                     setText(null); setStyle("");
                 } else {
                     setText(item);
-                    setStyle(model.StatusPagamento.fromString(item).getEstiloCelula());
+                    setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
             }
         });
@@ -399,30 +401,4 @@ public class FinanceiroEncomendasController {
     }
 
 
-    public static class EncomendaFinanceiro {
-        private int id;
-        private String numero, dataLancamento, remetente, destinatario;
-        private java.math.BigDecimal total, pago;
-
-        public EncomendaFinanceiro(int id, String num, String data, String rem, String dest, java.math.BigDecimal total, java.math.BigDecimal pago) {
-            this.id = id; this.numero = num; this.dataLancamento = data;
-            this.remetente = rem; this.destinatario = dest;
-            this.total = total != null ? total : java.math.BigDecimal.ZERO;
-            this.pago = pago != null ? pago : java.math.BigDecimal.ZERO;
-        }
-        public int getId() { return id; }
-        public String getNumero() { return numero; }
-        public String getDataLancamento() { return dataLancamento; }
-        public String getRemetente() { return remetente; }
-        public String getDestinatario() { return destinatario; }
-        public java.math.BigDecimal getTotal() { return total; }
-        public java.math.BigDecimal getPago() { return pago; }
-        public java.math.BigDecimal getRestante() { return total.subtract(pago).max(java.math.BigDecimal.ZERO); }
-        public String getTotalFormatado() { return String.format("R$ %,.2f", total); }
-        public String getPagoFormatado() { return String.format("R$ %,.2f", pago); }
-        public String getRestanteFormatado() { return String.format("R$ %,.2f", getRestante()); }
-        public String getStatus() {
-            return model.StatusPagamento.calcularPorSaldo(getRestante().doubleValue(), getPago().doubleValue()).name();
-        }
-    }
 }

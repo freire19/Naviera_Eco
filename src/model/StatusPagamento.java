@@ -68,26 +68,4 @@ public enum StatusPagamento {
         }
     }
 
-    // TODO: DM048 — mover para gui/util quando refatorar views
-    /**
-     * Retorna a cor CSS para uso em estilos JavaFX.
-     */
-    public String getCorCSS() {
-        switch (this) {
-            case PAGO: case QUITADO: return "#2e7d32";
-            case PARCIAL: return "#ef6c00";
-            case PENDENTE: case NAO_PAGO: return "#c62828";
-            case EMITIDA: return "#1565c0";
-            case CANCELADA: return "#757575";
-            default: return "#000000";
-        }
-    }
-
-    // TODO: DM048 — mover para gui/util quando refatorar views
-    /**
-     * Retorna o estilo CSS completo para celulas de tabela.
-     */
-    public String getEstiloCelula() {
-        return "-fx-text-fill: " + getCorCSS() + "; -fx-font-weight: bold; -fx-alignment: CENTER;";
-    }
 }
