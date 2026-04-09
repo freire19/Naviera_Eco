@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 /* ═══ BRAND V3 ═══ */
 const T = {
@@ -35,49 +35,40 @@ const Logo = ({ size = 16, t }) => (
   </svg>
 );
 
-/* ═══ DATA ═══ */
-const FRIENDS = [
-  { id: 1, name: "Maria Silva", av: "MS", status: "Em viagem", detail: "Manaus → Jutaí", boat: "Deus de Aliança", progress: 45 },
-  { id: 2, name: "João Santos", av: "JS", status: "No destino", detail: "Chegou em Tefé", boat: "José Lemos", progress: 100 },
-  { id: 3, name: "Ana Costa", av: "AC", status: "Offline", detail: "Manaus", boat: null, progress: 0 },
-  { id: 4, name: "Carlos Reis", av: "CR", status: "Em viagem", detail: "Manaus → Tabatinga", boat: "Sagrado Coração", progress: 72 },
-];
-const ENCOMENDAS = [
-  { id: "ENC-0451", desc: "Caixa de medicamentos", rota: "Manaus → Jutaí", status: "Em trânsito", boat: "Deus de Aliança", progress: 45, eta: "10/04 às 14h" },
-  { id: "ENC-0387", desc: "Peças para motor", rota: "Manaus → Jutaí", status: "Entregue", boat: "Deus de Aliança", progress: 100 },
-];
-const VIAGENS = [
-  { id: 1, boat: "Deus de Aliança", rota: "Manaus → Jutaí", data: "15/04/2026", hr: "18:00", status: "Confirmada", pol: "Rede 14" },
-  { id: 2, boat: "José Lemos V", rota: "Jutaí → Manaus", data: "28/04/2026", hr: "06:00", status: "Reservada", pol: "Rede 08" },
-];
-const BOATS = [
-  { name: "Deus de Aliança", rota: "Manaus → Jutaí", status: "EM_VIAGEM", progress: 45, saida: "08/04 18:00", chegada: "10/04 14:00" },
-  { name: "José Lemos V", rota: "Manaus → Fonte Boa", status: "NO_PORTO", progress: 0, saida: "12/04 06:00", chegada: "-" },
-  { name: "Sagrado Coração", rota: "Manaus → Tabatinga", status: "EM_VIAGEM", progress: 72, saida: "06/04 12:00", chegada: "11/04 08:00" },
-  { name: "Golfinho do Mar", rota: "Manaus → Parintins", status: "NO_PORTO", progress: 0, saida: "14/04 20:00", chegada: "-" },
-];
-const FRETES = [
-  { id: "FRT-1204", desc: "150 cxs alimentos", dest: "Jutaí", boat: "Deus de Aliança", status: "Em trânsito", peso: "2.400kg", valor: "R$ 3.600", progress: 45 },
-  { id: "FRT-1198", desc: "80 cxs bebidas", dest: "Tefé", boat: "José Lemos", status: "Entregue", peso: "1.800kg", valor: "R$ 2.900", progress: 100 },
-  { id: "FRT-1215", desc: "200 cxs mat. construção", dest: "Fonte Boa", boat: "José Lemos V", status: "Aguardando", peso: "5.200kg", valor: "R$ 7.800", progress: 0 },
-];
-const LOJAS = [
-  { id: 1, name: "Distribuidora Solimões", seg: "Alimentos e bebidas", av: "DS", rotas: ["Jutaí", "Tefé", "Fonte Boa"], rating: 4.7, fretes: 53, verified: true },
-  { id: 2, name: "Casa do Construtor AM", seg: "Material de construção", av: "CC", rotas: ["Tabatinga", "Jutaí", "Tefé"], rating: 4.5, fretes: 32, verified: true },
-  { id: 3, name: "Eletrônicos Manaus", seg: "Eletrônicos e informática", av: "EM", rotas: ["Tabatinga", "Parintins", "Fonte Boa"], rating: 4.6, fretes: 28, verified: true },
-  { id: 4, name: "Farmácia Saúde Interior", seg: "Farmácia e saúde", av: "FS", rotas: ["Jutaí", "Tefé", "Fonte Boa", "Tabatinga"], rating: 4.9, fretes: 61, verified: true },
-  { id: 5, name: "Moda Tropical", seg: "Vestuário e calçados", av: "MT", rotas: ["Parintins", "Tefé"], rating: 4.3, fretes: 15, verified: false },
-];
-const PEDIDOS = [
-  { id: "PED-0089", cliente: "Ana Costa", dest: "Jutaí", itens: "3x Cesta básica premium", valor: "R$ 890", status: "Aguardando", frete: null, data: "08/04" },
-  { id: "PED-0087", cliente: "Pedro Lima", dest: "Tefé", itens: "1x Kit limpeza + 2x Arroz", valor: "R$ 345", status: "Em trânsito", frete: "FRT-1204", boat: "Deus de Aliança", progress: 45, data: "06/04" },
-  { id: "PED-0082", cliente: "Lucia Mendes", dest: "Fonte Boa", itens: "5x Água sanitária + diversos", valor: "R$ 520", status: "Entregue", frete: "FRT-1198", data: "02/04" },
-];
-const CHAT_MSGS = [
-  { from: "Maria Silva", av: "MS", text: "Alguém vai na viagem do dia 15 pro Jutaí?", time: "14:30", mine: false },
-  { from: "Eu", av: "RF", text: "Eu vou! Rede 14.", time: "14:32", mine: true },
-  { from: "Maria Silva", av: "MS", text: "Bora levar dominó 😄", time: "14:33", mine: false },
-];
+/* ═══ HELPERS ═══ */
+const fmt = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+const money = (v) => v != null ? `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—";
+const initials = (name) => name ? name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?";
+const validarDocumento = (doc, tipo) => {
+  const nums = doc.replace(/\D/g, "");
+  if (tipo === "CPF" && nums.length !== 11) return "CPF deve ter 11 digitos.";
+  if (tipo === "CNPJ" && nums.length !== 14) return "CNPJ deve ter 14 digitos.";
+  return null;
+};
+
+/* ═══ HOOK: fetch com auth ═══ */
+function useApi(path, authHeaders, deps = []) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+  useEffect(() => {
+    if (!authHeaders?.Authorization) return;
+    setLoading(true); setErro("");
+    fetch(`${API}${path}`, { headers: authHeaders })
+      .then(r => {
+        if (r.status === 401 || r.status === 403) {
+          localStorage.removeItem("naviera_token"); localStorage.removeItem("naviera_usuario");
+          window.location.reload();
+          return Promise.reject("Sessao expirada");
+        }
+        return r.ok ? r.json() : Promise.reject("Erro ao carregar");
+      })
+      .then(d => setData(d))
+      .catch((e) => setErro(typeof e === "string" ? e : "Erro ao carregar dados."))
+      .finally(() => setLoading(false));
+  }, [path, authHeaders?.Authorization, ...deps]);
+  return { data, loading, erro };
+}
 
 /* ═══ COMPONENTS ═══ */
 function Badge({ status, t }) {
@@ -92,235 +83,367 @@ function Badge({ status, t }) {
 function Bar({ value, t, h = 4 }) {
   return <div style={{ width: "100%", height: h, borderRadius: h, background: t.border }}><div style={{ width: `${value}%`, height: "100%", borderRadius: h, background: t.pri, transition: "width 0.8s" }} /></div>;
 }
-function Av({ letters, size = 36, t }) {
+function Av({ letters, size = 36, t, fotoUrl }) {
+  const src = fotoUrl ? `${API}${fotoUrl}` : null;
+  if (src) return <img src={src} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: `1px solid ${t.border}` }} />;
   return <div style={{ width: size, height: size, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.35, fontWeight: 700, color: t.pri, flexShrink: 0 }}>{letters}</div>;
 }
 function Cd({ children, style, onClick, t }) {
   return <div onClick={onClick} style={{ background: t.card, borderRadius: 14, padding: 16, border: `1px solid ${t.border}`, cursor: onClick ? "pointer" : "default", boxShadow: t.shadow, ...style }}>{children}</div>;
 }
 
-/* ═══ CPF SCREENS (unchanged structure) ═══ */
-function HomeCPF({ t, onNav }) {
+/* ═══ CPF SCREENS ═══ */
+function HomeCPF({ t, onNav, authHeaders, usuario }) {
+  const { data: viagens, loading: lv } = useApi("/viagens/ativas", authHeaders);
+  const { data: encomendas, loading: le } = useApi("/encomendas", authHeaders);
+  const { data: amigos } = useApi("/amigos", authHeaders);
+  const proxima = viagens?.find(v => v.isAtual) || viagens?.[0];
   return <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-    <div><span style={{ fontSize: 13, color: t.txMuted }}>Olá,</span><h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>Renato Freire</h2></div>
-    {VIAGENS.filter(v => v.status === "Confirmada").map(v => (
-      <Cd key={v.id} t={t} style={{ border: `1px solid ${t.borderStrong}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-          <div><div style={{ fontSize: 10, color: t.pri, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>Próxima viagem</div>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>{v.boat}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.rota}</div></div>
-          <Badge status={v.status} t={t} />
-        </div>
-        <div style={{ display: "flex", gap: 20, fontSize: 12, color: t.txMuted }}>
-          <span>📅 {v.data}</span><span>🕐 {v.hr}</span><span>🛏️ {v.pol}</span></div>
-      </Cd>))}
+    <div><span style={{ fontSize: 13, color: t.txMuted }}>Olá,</span><h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>{usuario?.nome || "Passageiro"}</h2></div>
+    {lv ? <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando viagens...</div> :
+    proxima && <Cd t={t} style={{ border: `1px solid ${t.borderStrong}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+        <div><div style={{ fontSize: 10, color: t.pri, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>Próxima viagem</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>{proxima.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{proxima.origem} → {proxima.destino}</div></div>
+        <Badge status={proxima.isAtual ? "Em viagem" : "Confirmada"} t={t} />
+      </div>
+      <div style={{ display: "flex", gap: 20, fontSize: 12, color: t.txMuted }}>
+        <span>📅 {fmt(proxima.dataViagem)}</span><span>🕐 {proxima.horarioSaida || "—"}</span></div>
+    </Cd>}
+    {!lv && (!viagens || viagens.length === 0) && <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem ativa no momento.</div></Cd>}
     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
       <span style={{ fontSize: 14, fontWeight: 600 }}>Amigos</span>
       <button style={{ background: "none", border: "none", color: t.pri, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }} onClick={() => onNav("amigos")}>Ver todos →</button></div>
-    {FRIENDS.filter(f => f.status !== "Offline").map(f => (
+    {amigos?.length > 0 ? amigos.slice(0, 3).map(f => (
       <Cd key={f.id} t={t} style={{ padding: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Av letters={f.av} size={40} t={t} />
-          <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{f.name}</div><div style={{ fontSize: 12, color: t.txMuted }}>{f.detail}{f.boat ? ` • ${f.boat}` : ""}</div></div>
-          <Badge status={f.status} t={t} /></div>
-        {f.status === "Em viagem" && <div style={{ marginTop: 8, marginLeft: 52 }}><Bar value={f.progress} t={t} h={3} /></div>}
-      </Cd>))}
+          <Av letters={initials(f.nome)} size={40} t={t} fotoUrl={f.fotoUrl} />
+          <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{f.nome}</div><div style={{ fontSize: 12, color: t.txMuted }}>{f.cidade || "Sem cidade"}</div></div>
+        </div>
+      </Cd>)) : <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhum amigo. <span style={{ color: t.pri, cursor: "pointer" }} onClick={() => onNav("amigos")}>Adicionar →</span></div></Cd>}
     <span style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Encomendas</span>
-    {ENCOMENDAS.map(e => (
+    {le ? <div style={{ fontSize: 13, color: t.txMuted, padding: 10, textAlign: "center" }}>Carregando...</div> :
+    encomendas?.length > 0 ? encomendas.slice(0, 5).map(e => (
       <Cd key={e.id} t={t} style={{ padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>{e.id}</span><Badge status={e.status} t={t} /></div>
-        <div style={{ fontSize: 13 }}>{e.desc}</div><div style={{ fontSize: 12, color: t.txMuted }}>{e.rota} • {e.boat}</div>
-        {e.progress > 0 && e.progress < 100 && <div style={{ marginTop: 6 }}><Bar value={e.progress} t={t} h={3} /><div style={{ fontSize: 11, color: t.txMuted, marginTop: 3 }}>Chega: {e.eta}</div></div>}
-      </Cd>))}
+          <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>{e.numeroEncomenda || `ENC-${e.id}`}</span>
+          <Badge status={e.entregue ? "Entregue" : "Em trânsito"} t={t} /></div>
+        <div style={{ fontSize: 13 }}>{e.rota}</div><div style={{ fontSize: 12, color: t.txMuted }}>{e.embarcacao} • {money(e.totalAPagar)}</div>
+      </Cd>)) : <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma encomenda encontrada.</div></Cd>}
   </div>;
 }
 
-function AmigosCPF({ t }) {
-  const [chat, setChat] = useState(false);
+function AmigosCPF({ t, authHeaders }) {
+  const { data: amigos, loading } = useApi("/amigos", authHeaders);
+  const { data: pendentes } = useApi("/amigos/pendentes", authHeaders);
+  const { data: sugestoes } = useApi("/amigos/sugestoes", authHeaders);
+  const [busca, setBusca] = useState("");
+  const [resultados, setResultados] = useState(null);
+  const [buscando, setBuscando] = useState(false);
+  const [enviados, setEnviados] = useState({});
   const [msg, setMsg] = useState("");
-  if (chat) return <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}><button onClick={() => setChat(false)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 18, cursor: "pointer", padding: 0 }}>←</button><span style={{ fontSize: 15, fontWeight: 600 }}>Viagem Jutaí 15/04</span></div>
-    {CHAT_MSGS.map((m, i) => <div key={i} style={{ display: "flex", flexDirection: m.mine ? "row-reverse" : "row", gap: 8, alignItems: "flex-end" }}>
-      {!m.mine && <Av letters={m.av} size={28} t={t} />}
-      <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: m.mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: m.mine ? t.pri : t.soft, color: m.mine ? "#fff" : t.tx, fontSize: 13, lineHeight: 1.5 }}>
-        {!m.mine && <div style={{ fontSize: 11, fontWeight: 600, color: t.pri, marginBottom: 3 }}>{m.from}</div>}{m.text}
-        <div style={{ fontSize: 10, color: m.mine ? "rgba(255,255,255,0.5)" : t.txMuted, textAlign: "right", marginTop: 3 }}>{m.time}</div></div></div>)}
-    <div style={{ display: "flex", gap: 8, marginTop: 8 }}><input value={msg} onChange={e => setMsg(e.target.value)} placeholder="Mensagem..." style={{ flex: 1, padding: "10px 14px", borderRadius: 20, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit" }} />
-      <button style={{ width: 40, height: 40, borderRadius: "50%", background: t.priGrad, border: "none", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↑</button></div></div>;
+  const inputStyle = { width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+
+  const pesquisar = async (nome) => {
+    setBusca(nome);
+    if (nome.trim().length < 2) { setResultados(null); return; }
+    setBuscando(true);
+    try {
+      const res = await fetch(`${API}/amigos/buscar?nome=${encodeURIComponent(nome.trim())}`, { headers: authHeaders });
+      if (res.ok) setResultados(await res.json());
+    } catch {} finally { setBuscando(false); }
+  };
+
+  const addAmigo = async (amigoId, nome) => {
+    try {
+      const res = await fetch(`${API}/amigos/${amigoId}`, { method: "POST", headers: authHeaders });
+      const data = await res.json();
+      if (res.ok) { setEnviados(e => ({ ...e, [amigoId]: true })); setMsg(`Convite enviado para ${nome}!`); setTimeout(() => setMsg(""), 3000); }
+      else setMsg(data.erro || "Erro ao enviar.");
+    } catch { setMsg("Erro de conexao."); }
+  };
+
+  const aceitarAmigo = async (amizadeId) => {
+    await fetch(`${API}/amigos/${amizadeId}/aceitar`, { method: "PUT", headers: authHeaders });
+    window.location.reload();
+  };
+
+  const removerAmigo = async (amizadeId) => {
+    await fetch(`${API}/amigos/${amizadeId}`, { method: "DELETE", headers: authHeaders });
+    window.location.reload();
+  };
+
+  const PessoaCard = ({ p, acao }) => (
+    <Cd t={t} style={{ padding: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Av letters={initials(p.nome)} size={42} t={t} fotoUrl={p.fotoUrl} />
+        <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{p.nome}</div><div style={{ fontSize: 12, color: t.txMuted }}>{p.cidade || ""}</div></div>
+        {acao}
+      </div>
+    </Cd>
+  );
+
+  if (loading) return <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando...</div>;
 
   return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <div style={{ display: "flex", justifyContent: "space-between" }}><h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Amigos</h3>
-      <button style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${t.borderStrong}`, background: "transparent", color: t.pri, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>+ Adicionar</button></div>
-    <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}`, cursor: "pointer" }} onClick={() => setChat(true)}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 40, height: 40, borderRadius: 10, background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>💬</div>
-        <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>Viagem Jutaí 15/04</div><div style={{ fontSize: 12, color: t.txMuted }}>Maria: Bora levar dominó 😄</div></div></div></Cd>
-    {FRIENDS.map(f => <Cd key={f.id} t={t} style={{ padding: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}><Av letters={f.av} size={42} t={t} /><div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{f.name}</div><div style={{ fontSize: 12, color: t.txMuted }}>{f.detail}</div></div><Badge status={f.status} t={t} /></div>
-      {f.status === "Em viagem" && <div style={{ marginTop: 8 }}><Bar value={f.progress} t={t} h={3} /></div>}</Cd>)}
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Amigos</h3>
+
+    <input value={busca} onChange={e => pesquisar(e.target.value)} placeholder="Buscar pessoas por nome..." style={inputStyle} />
+
+    {msg && <div style={{ padding: "8px 12px", borderRadius: 8, background: msg.includes("Erro") ? t.errBg : t.okBg, color: msg.includes("Erro") ? t.errTx : t.okTx, fontSize: 12 }}>{msg}</div>}
+
+    {busca.trim().length >= 2 && <>
+      <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft }}>Resultados</div>
+      {buscando ? <div style={{ fontSize: 12, color: t.txMuted, padding: 8, textAlign: "center" }}>Buscando...</div> :
+      resultados?.length > 0 ? resultados.map(p =>
+        <PessoaCard key={p.idAmigo} p={p} acao={enviados[p.idAmigo]
+          ? <span style={{ fontSize: 11, color: t.ok, fontWeight: 600 }}>Enviado</span>
+          : <button onClick={() => addAmigo(p.idAmigo, p.nome)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", background: t.priGrad, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Adicionar</button>
+        } />) :
+      <div style={{ fontSize: 12, color: t.txMuted, padding: 8, textAlign: "center" }}>Nenhum resultado para "{busca}"</div>}
+    </>}
+
+    {!busca.trim() && <>
+      {pendentes?.length > 0 && <>
+        <div style={{ fontSize: 13, fontWeight: 600, color: t.amber }}>Convites pendentes ({pendentes.length})</div>
+        {pendentes.map(p => <Cd key={p.id} t={t} style={{ padding: 12, border: `1px solid ${t.warnBg}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Av letters={initials(p.nome)} size={42} t={t} fotoUrl={p.fotoUrl} />
+            <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{p.nome}</div><div style={{ fontSize: 12, color: t.txMuted }}>{p.cidade || ""}</div></div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button onClick={() => aceitarAmigo(p.id)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: "none", background: t.priGrad, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Aceitar</button>
+            <button onClick={() => removerAmigo(p.id)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1px solid ${t.border}`, background: "transparent", color: t.txMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Recusar</button>
+          </div>
+        </Cd>)}
+      </>}
+
+      {amigos?.length > 0 && <>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Seus amigos ({amigos.length})</div>
+        {amigos.map(f => <PessoaCard key={f.id} p={f} acao={
+          <button onClick={() => removerAmigo(f.id)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 14, cursor: "pointer", padding: 4 }} title="Remover">✕</button>
+        } />)}
+      </>}
+
+      {sugestoes?.length > 0 && <>
+        <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft, marginTop: 4 }}>Talvez voce conheca</div>
+        {sugestoes.map(p => <PessoaCard key={p.idAmigo} p={p} acao={enviados[p.idAmigo]
+          ? <span style={{ fontSize: 11, color: t.ok, fontWeight: 600 }}>Enviado</span>
+          : <button onClick={() => addAmigo(p.idAmigo, p.nome)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", background: t.priGrad, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Adicionar</button>
+        } />)}
+      </>}
+
+      {(!amigos || amigos.length === 0) && (!sugestoes || sugestoes.length === 0) &&
+        <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Busque pessoas pelo nome para adicionar.</div></Cd>}
+    </>}
   </div>;
 }
 
-function MapaCPF({ t }) {
+function MapaCPF({ t, authHeaders }) {
+  const { data: boats, loading } = useApi("/embarcacoes", authHeaders);
   const [sel, setSel] = useState(null);
+  if (loading) return <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando embarcacoes...</div>;
+
+  const detalhe = sel !== null ? boats?.[sel] : null;
+  if (detalhe) return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <button onClick={() => setSel(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", fontFamily: "inherit", textAlign: "left", padding: 0 }}>← Voltar</button>
+    {detalhe.fotoUrl && <img src={`${API}${detalhe.fotoUrl}`} alt={detalhe.nome} style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 200 }} />}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div><h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>{detalhe.nome}</h3>
+        <div style={{ fontSize: 13, color: t.txMuted, marginTop: 4 }}>{detalhe.rotaPrincipal || detalhe.rotaAtual || ""}</div></div>
+      <Badge status={detalhe.status || "NO_PORTO"} t={t} />
+    </div>
+    {detalhe.descricao && <Cd t={t} style={{ padding: 14 }}><div style={{ fontSize: 13, color: t.txSoft, lineHeight: 1.7 }}>{detalhe.descricao}</div></Cd>}
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 20, marginBottom: 4 }}>👥</div><div style={{ fontSize: 18, fontWeight: 700, color: t.pri }}>{detalhe.capacidadePassageiros || "—"}</div><div style={{ fontSize: 11, color: t.txMuted }}>Passageiros</div></Cd>
+      <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 20, marginBottom: 4 }}>📦</div><div style={{ fontSize: 18, fontWeight: 700, color: t.info }}>{detalhe.status === "EM_VIAGEM" ? "Em viagem" : "No porto"}</div><div style={{ fontSize: 11, color: t.txMuted }}>Status</div></Cd>
+    </div>
+    {detalhe.horarioSaidaPadrao && <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: t.pri, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Horarios</div>
+      <div style={{ fontSize: 13, color: t.txSoft, lineHeight: 1.7 }}>{detalhe.horarioSaidaPadrao}</div>
+    </Cd>}
+    {detalhe.dataViagem && <Cd t={t} style={{ padding: 12 }}>
+      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted }}><span>Proxima saida: {fmt(detalhe.dataViagem)}</span><span>Chegada: {fmt(detalhe.dataChegada)}</span></div>
+    </Cd>}
+    {detalhe.telefone && <Cd t={t} style={{ padding: 12 }}>
+      <div style={{ fontSize: 12, color: t.txMuted }}>Telefone</div><div style={{ fontSize: 14, fontWeight: 600 }}>{detalhe.telefone}</div>
+    </Cd>}
+    {detalhe.linkExterno && <a href={detalhe.linkExterno} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+      <Cd t={t} style={{ padding: 14, textAlign: "center", border: `1px solid ${t.borderStrong}`, cursor: "pointer" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: t.pri }}>Ver pagina da embarcacao →</div>
+      </Cd>
+    </a>}
+  </div>;
+
   return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Embarcações</h3>
-    {BOATS.map((b, i) => <Cd key={b.name} t={t} style={{ padding: 12, border: sel === i ? `1px solid ${t.borderStrong}` : `1px solid ${t.border}` }} onClick={() => setSel(sel === i ? null : i)}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 15, fontWeight: 600 }}>{b.name}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{b.rota}</div></div><Badge status={b.status} t={t} /></div>
-      {sel === i && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${t.border}` }}>
-        {b.status === "EM_VIAGEM" && <div style={{ marginBottom: 8 }}><Bar value={b.progress} t={t} h={4} /><div style={{ fontSize: 11, color: t.txMuted, marginTop: 4 }}>{b.progress}% do trajeto</div></div>}
-        <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted }}><span>Saída: {b.saida}</span><span>Chegada: {b.chegada}</span></div>
-        {b.status === "NO_PORTO" && <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 8, background: t.warnBg, fontSize: 12, color: t.warnTx }}>⚓ No porto — recebendo mercadorias</div>}</div>}
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Embarcacoes</h3>
+    {(!boats || boats.length === 0) && <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma embarcacao encontrada.</div></Cd>}
+    {boats?.map((b, i) => <Cd key={b.id || i} t={t} style={{ padding: 0, overflow: "hidden", cursor: "pointer" }} onClick={() => setSel(i)}>
+      {b.fotoUrl && <img src={`${API}${b.fotoUrl}`} alt={b.nome} style={{ width: "100%", height: 120, objectFit: "cover" }} />}
+      <div style={{ padding: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div><div style={{ fontSize: 15, fontWeight: 600 }}>{b.nome}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{b.rotaPrincipal || b.rotaAtual || ""}</div></div>
+          <Badge status={b.status || "NO_PORTO"} t={t} />
+        </div>
+        {b.horarioSaidaPadrao && <div style={{ fontSize: 11, color: t.txMuted, marginTop: 6, lineHeight: 1.5 }}>{b.horarioSaidaPadrao.split("|")[0].trim()}</div>}
+        <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, marginTop: 8 }}>Ver detalhes →</div>
+      </div>
     </Cd>)}
   </div>;
 }
 
-function PassagensCPF({ t }) {
+function PassagensCPF({ t, authHeaders }) {
+  const { data: viagens, loading: lv } = useApi("/viagens/ativas", authHeaders);
+  const { data: tarifas, loading: lt } = useApi("/tarifas", authHeaders);
   return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minhas passagens</h3>
-    {VIAGENS.map(v => <Cd key={v.id} t={t} style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.boat}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.rota}</div></div><Badge status={v.status} t={t} /></div>
-      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 10 }}><span>📅 {v.data}</span><span>🕐 {v.hr}</span><span>🛏️ {v.pol}</span></div>
-    </Cd>)}
-    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Rotas disponíveis</div>
-    {[{ r: "Manaus → Tabatinga", b: "Sagrado Coração", p: "R$ 350" }, { r: "Manaus → Jutaí", b: "Deus de Aliança, José Lemos", p: "R$ 220" }, { r: "Manaus → Fonte Boa", b: "José Lemos V", p: "R$ 280" }, { r: "Manaus → Parintins", b: "Golfinho do Mar", p: "R$ 120" }].map((x, i) =>
-      <Cd key={i} t={t} style={{ padding: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.r}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{x.b}</div></div>
-        <div style={{ textAlign: "right" }}><div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>a partir de</div><div style={{ fontSize: 16, fontWeight: 700 }}>{x.p}</div></div></div></Cd>)}
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Viagens ativas</h3>
+    {lv ? <div style={{ fontSize: 13, color: t.txMuted, padding: 10, textAlign: "center" }}>Carregando...</div> :
+    viagens?.length > 0 ? viagens.map(v => <Cd key={v.id} t={t} style={{ padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.origem} → {v.destino}</div></div><Badge status={v.isAtual ? "Em viagem" : "Confirmada"} t={t} /></div>
+      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 10 }}><span>📅 {fmt(v.dataViagem)}</span><span>🕐 {v.horarioSaida || "—"}</span></div>
+    </Cd>) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem ativa.</div></Cd>}
+    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Tarifas por rota</div>
+    {lt ? <div style={{ fontSize: 13, color: t.txMuted, padding: 10, textAlign: "center" }}>Carregando...</div> :
+    tarifas?.length > 0 ? tarifas.map((x, i) =>
+      <Cd key={i} t={t} style={{ padding: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.origem} → {x.destino}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{x.tipoPassageiro}</div></div>
+        <div style={{ textAlign: "right" }}><div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>transporte</div><div style={{ fontSize: 16, fontWeight: 700 }}>{money(x.valorTransporte)}</div></div></div></Cd>) :
+      <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa cadastrada.</div></Cd>}
   </div>;
 }
 
 /* ═══ CNPJ SCREENS ═══ */
-function HomeCNPJ({ t, onNav }) {
+function HomeCNPJ({ t, onNav, authHeaders, usuario }) {
+  const { data: fretes, loading: lf } = useApi("/fretes", authHeaders);
+  const { data: pedidos, loading: lp } = useApi("/lojas/pedidos", authHeaders);
+  const { data: lojas, loading: ll } = useApi("/lojas", authHeaders);
+  const fretesAtivos = fretes?.filter(f => f.status !== "ENTREGUE" && f.status !== "CANCELADO") || [];
+  const totalDevedor = fretes?.reduce((s, f) => s + (f.valorDevedor || 0), 0) || 0;
   return <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-    <div><span style={{ fontSize: 13, color: t.txMuted }}>Empresa</span><h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Comercial Rio Negro LTDA</h2><span style={{ fontSize: 12, color: t.txMuted }}>CNPJ: 12.345.678/0001-90</span></div>
+    <div><span style={{ fontSize: 13, color: t.txMuted }}>Empresa</span><h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>{usuario?.nome || "Empresa"}</h2></div>
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-      {[{ l: "Fretes ativos", v: "2", c: t.pri, ic: "📦" }, { l: "Pedidos novos", v: "1", c: t.amber, ic: "🛒" }, { l: "Entregues (mês)", v: "8", c: t.info, ic: "✓" }, { l: "Pendências", v: "R$ 3.600", c: t.err, ic: "💰" }].map((s, i) =>
+      {[{ l: "Fretes ativos", v: lf ? "..." : String(fretesAtivos.length), c: t.pri, ic: "📦" },
+        { l: "Pedidos", v: lp ? "..." : String(pedidos?.length || 0), c: t.amber, ic: "🛒" },
+        { l: "Total fretes", v: lf ? "..." : String(fretes?.length || 0), c: t.info, ic: "✓" },
+        { l: "Devedor", v: lf ? "..." : money(totalDevedor), c: t.err, ic: "💰" }].map((s, i) =>
         <Cd key={i} t={t} style={{ padding: 14, textAlign: "center" }}><div style={{ fontSize: 20, marginBottom: 4 }}>{s.ic}</div><div style={{ fontSize: 22, fontWeight: 700, color: s.c }}>{s.v}</div><div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>{s.l}</div></Cd>)}
     </div>
-    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}><span style={{ fontSize: 14, fontWeight: 600 }}>Pedidos recentes</span>
+    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}><span style={{ fontSize: 14, fontWeight: 600 }}>Fretes recentes</span>
       <button style={{ background: "none", border: "none", color: t.pri, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }} onClick={() => onNav("pedidos")}>Ver todos →</button></div>
-    {PEDIDOS.slice(0, 2).map(p => <Cd key={p.id} t={t} style={{ padding: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>{p.id}</span><Badge status={p.status} t={t} /></div>
-      <div style={{ fontSize: 13 }}>{p.cliente} → {p.dest}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{p.itens}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 6 }}><span style={{ color: t.txMuted }}>{p.data}</span><span style={{ fontWeight: 600 }}>{p.valor}</span></div>
-      {p.progress > 0 && p.progress < 100 && <div style={{ marginTop: 6 }}><Bar value={p.progress} t={t} h={3} /></div>}
-    </Cd>)}
+    {lf ? <div style={{ fontSize: 13, color: t.txMuted, padding: 10, textAlign: "center" }}>Carregando...</div> :
+    fretes?.slice(0, 3).map(f => <Cd key={f.id} t={t} style={{ padding: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>FRT-{f.numeroFrete || f.id}</span><Badge status={f.status || "Aguardando"} t={t} /></div>
+      <div style={{ fontSize: 13 }}>{f.nomeDestinatario}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{f.nomeRota} • {f.embarcacao}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 6 }}><span style={{ color: t.txMuted }}>{fmt(f.dataViagem)}</span><span style={{ fontWeight: 600 }}>{money(f.valorTotal)}</span></div>
+    </Cd>) || <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhum frete encontrado.</div></Cd>}
     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}><span style={{ fontSize: 14, fontWeight: 600 }}>Lojas parceiras</span>
       <button style={{ background: "none", border: "none", color: t.pri, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }} onClick={() => onNav("lojas")}>Ver todas →</button></div>
-    {LOJAS.slice(0, 2).map(l => <Cd key={l.id} t={t} style={{ padding: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av letters={l.av} size={38} t={t} /><div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{l.name}{l.verified && <span style={{ color: t.pri, marginLeft: 4, fontSize: 11 }}>✓</span>}</div><div style={{ fontSize: 12, color: t.txMuted }}>{l.seg} • ★ {l.rating}</div></div></div>
-    </Cd>)}
+    {ll ? <div style={{ fontSize: 13, color: t.txMuted, padding: 10, textAlign: "center" }}>Carregando...</div> :
+    lojas?.slice(0, 2).map(l => <Cd key={l.id} t={t} style={{ padding: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av letters={initials(l.nomeLoja)} size={38} t={t} /><div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{l.nomeLoja}{l.verificada && <span style={{ color: t.pri, marginLeft: 4, fontSize: 11 }}>✓</span>}</div><div style={{ fontSize: 12, color: t.txMuted }}>{l.segmento}</div></div></div>
+    </Cd>) || null}
   </div>;
 }
 
-function LojasParceiras({ t }) {
-  const [cidade, setCidade] = useState("Todas");
+function LojasParceiras({ t, authHeaders }) {
+  const { data: lojas, loading } = useApi("/lojas", authHeaders);
   const [sel, setSel] = useState(null);
-  const cidades = ["Todas", "Jutaí", "Tefé", "Tabatinga", "Fonte Boa", "Parintins"];
-  const filtered = cidade === "Todas" ? LOJAS : LOJAS.filter(l => l.rotas.includes(cidade));
+
+  if (loading) return <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando lojas...</div>;
 
   if (sel) {
-    const loja = LOJAS.find(l => l.id === sel);
+    const loja = lojas?.find(l => l.id === sel);
+    if (!loja) { setSel(null); return null; }
     return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <button onClick={() => setSel(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", fontFamily: "inherit", textAlign: "left", padding: 0 }}>← Voltar</button>
       <Cd t={t} style={{ padding: 18, border: `1px solid ${t.borderStrong}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}><Av letters={loja.av} size={54} t={t} />
-          <div><div style={{ fontSize: 18, fontWeight: 700 }}>{loja.name}</div><div style={{ fontSize: 13, color: t.txMuted }}>{loja.seg}</div>
-            {loja.verified && <div style={{ fontSize: 11, color: t.pri, fontWeight: 600, marginTop: 3 }}>✓ Verificada Naviera</div>}</div></div>
-        <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
-          <div style={{ flex: 1, textAlign: "center", padding: 10, borderRadius: 10, background: t.soft }}><div style={{ fontSize: 18, fontWeight: 700, color: t.amber }}>★ {loja.rating}</div><div style={{ fontSize: 10, color: t.txMuted }}>Avaliação</div></div>
-          <div style={{ flex: 1, textAlign: "center", padding: 10, borderRadius: 10, background: t.soft }}><div style={{ fontSize: 18, fontWeight: 700, color: t.info }}>{loja.fretes}</div><div style={{ fontSize: 10, color: t.txMuted }}>Entregas</div></div></div>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Envia para:</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>{loja.rotas.map(r => <span key={r} style={{ padding: "4px 12px", borderRadius: 14, background: t.accent, fontSize: 12, color: t.pri, fontWeight: 500 }}>{r}</span>)}</div>
-        <button style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: t.priGrad, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Entrar em contato</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}><Av letters={initials(loja.nomeLoja)} size={54} t={t} />
+          <div><div style={{ fontSize: 18, fontWeight: 700 }}>{loja.nomeLoja}</div><div style={{ fontSize: 13, color: t.txMuted }}>{loja.segmento}</div>
+            {loja.verificada && <div style={{ fontSize: 11, color: t.pri, fontWeight: 600, marginTop: 3 }}>Verificada Naviera</div>}</div></div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Descricao:</div>
+        <div style={{ fontSize: 12, color: t.txMuted, marginBottom: 14 }}>{loja.descricao || "Sem descricao."}</div>
       </Cd>
-      <div style={{ fontSize: 13, fontWeight: 600 }}>Avaliações</div>
-      {[{ u: "Maria S.", s: 5, txt: "Sempre no prazo, bem embalado." }, { u: "Pedro L.", s: 4, txt: "Bom atendimento, frete ok." }].map((r, i) =>
-        <Cd key={i} t={t} style={{ padding: 12 }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 13, fontWeight: 600 }}>{r.u}</span><span style={{ fontSize: 12, color: t.amber }}>{"★".repeat(r.s)}{"☆".repeat(5 - r.s)}</span></div>
-          <div style={{ fontSize: 12, color: t.txMuted }}>{r.txt}</div></Cd>)}
     </div>;
   }
 
   return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Lojas parceiras</h3>
     <div style={{ fontSize: 13, color: t.txMuted }}>Fornecedores verificados que embarcam pelo Naviera.</div>
-    <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
-      {cidades.map(c => <button key={c} onClick={() => setCidade(c)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${cidade === c ? t.pri : t.border}`, background: cidade === c ? t.accent : "transparent", color: cidade === c ? t.pri : t.txMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>{c}</button>)}</div>
-    {filtered.map(l => <Cd key={l.id} t={t} style={{ padding: 14, cursor: "pointer" }} onClick={() => setSel(l.id)}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}><Av letters={l.av} size={46} t={t} />
-        <div style={{ flex: 1 }}><div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 600 }}>{l.name}</span>{l.verified && <span style={{ fontSize: 10, color: t.pri }}>✓</span>}</div>
-          <div style={{ fontSize: 12, color: t.txMuted, marginTop: 1 }}>{l.seg}</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 4, fontSize: 11, color: t.txMuted }}><span style={{ color: t.amber }}>★ {l.rating}</span><span>{l.fretes} entregas</span><span>→ {l.rotas.slice(0, 2).join(", ")}{l.rotas.length > 2 ? ` +${l.rotas.length - 2}` : ""}</span></div></div>
+    {(!lojas || lojas.length === 0) && <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma loja cadastrada.</div></Cd>}
+    {lojas?.map(l => <Cd key={l.id} t={t} style={{ padding: 14, cursor: "pointer" }} onClick={() => setSel(l.id)}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}><Av letters={initials(l.nomeLoja)} size={46} t={t} />
+        <div style={{ flex: 1 }}><div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 600 }}>{l.nomeLoja}</span>{l.verificada && <span style={{ fontSize: 10, color: t.pri }}>✓</span>}</div>
+          <div style={{ fontSize: 12, color: t.txMuted, marginTop: 1 }}>{l.segmento}</div></div>
         <span style={{ color: t.txMuted, fontSize: 16 }}>›</span></div></Cd>)}
   </div>;
 }
 
-function PedidosCNPJ({ t }) {
-  const [f, setF] = useState("todos");
-  const filtered = f === "todos" ? PEDIDOS : PEDIDOS.filter(p => { if (f === "novos") return p.status === "Aguardando"; if (f === "transito") return p.status === "Em trânsito"; if (f === "entregue") return p.status === "Entregue"; return true; });
+function PedidosCNPJ({ t, authHeaders }) {
+  const { data: pedidos, loading } = useApi("/lojas/pedidos", authHeaders);
+  if (loading) return <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando pedidos...</div>;
   return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pedidos da loja</h3>
-    <div style={{ fontSize: 13, color: t.txMuted }}>Vincule ao frete para gerar rastreio automático.</div>
-    <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
-      {[["todos", "Todos"], ["novos", "Novos"], ["transito", "Em trânsito"], ["entregue", "Entregues"]].map(([id, l]) =>
-        <button key={id} onClick={() => setF(id)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${f === id ? t.pri : t.border}`, background: f === id ? t.accent : "transparent", color: f === id ? t.pri : t.txMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>{l}</button>)}</div>
-    {filtered.map(p => <Cd key={p.id} t={t} style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>{p.id}</span><Badge status={p.status} t={t} /></div>
-      <div style={{ fontSize: 14, fontWeight: 600 }}>{p.cliente} <span style={{ fontWeight: 400, color: t.txMuted }}>→ {p.dest}</span></div>
-      <div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{p.itens}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted, marginTop: 6 }}><span>{p.data}</span><span style={{ fontWeight: 600, color: t.tx }}>{p.valor}</span></div>
-      {p.frete && <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, background: t.accent, border: `1px solid ${t.border}` }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span style={{ color: t.pri, fontWeight: 600 }}>Frete: {p.frete}</span><span style={{ color: t.txMuted }}>{p.boat}</span></div>
-        {p.progress > 0 && p.progress < 100 && <div style={{ marginTop: 6 }}><Bar value={p.progress} t={t} h={3} /></div>}
-        <div style={{ fontSize: 11, color: t.txMuted, marginTop: 4 }}>Rastreio enviado ao cliente</div></div>}
-      {!p.frete && <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <button style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: "none", background: t.priGrad, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Vincular ao frete</button>
-        <button style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1px solid ${t.border}`, background: "transparent", color: t.txMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Enviar link</button></div>}
+    {(!pedidos || pedidos.length === 0) ? <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhum pedido recebido ainda.</div></Cd> :
+    pedidos.map(p => <Cd key={p.id} t={t} style={{ padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>PED-{String(p.id).padStart(4, "0")}</span><Badge status={p.status || "Aguardando"} t={t} /></div>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>{p.nomeComprador || "Cliente"}</div>
+      <div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{p.descricao || "Sem descricao"}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted, marginTop: 6 }}><span>{fmt(p.dataPedido)}</span><span style={{ fontWeight: 600, color: t.tx }}>{money(p.valorTotal)}</span></div>
+      {p.codigoRastreio && <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, background: t.accent, border: `1px solid ${t.border}` }}>
+        <div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>Rastreio: {p.codigoRastreio}</div></div>}
     </Cd>)}
   </div>;
 }
 
-function FinanceiroCNPJ({ t }) {
+function FinanceiroCNPJ({ t, authHeaders }) {
+  const { data: fretes, loading } = useApi("/fretes", authHeaders);
+  const totalDevedor = fretes?.reduce((s, f) => s + (f.valorDevedor || 0), 0) || 0;
+  const totalPago = fretes?.reduce((s, f) => s + (f.valorPago || 0), 0) || 0;
+  const fretesDevendo = fretes?.filter(f => (f.valorDevedor || 0) > 0) || [];
   return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Financeiro</h3>
+    {loading ? <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando...</div> : <>
     <Cd t={t} style={{ padding: 16 }}>
       <div style={{ fontSize: 12, color: t.txMuted, marginBottom: 4 }}>Total pendente</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: t.err }}>R$ 3.600,00</div>
-      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>1 frete em aberto</div>
-      <button style={{ marginTop: 12, width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: t.priGrad, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Pagar via PIX</button></Cd>
+      <div style={{ fontSize: 28, fontWeight: 700, color: totalDevedor > 0 ? t.err : t.ok }}>{money(totalDevedor)}</div>
+      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>{fretesDevendo.length} frete(s) em aberto</div></Cd>
     <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 13, fontWeight: 600 }}>Receita via lojas — Abril</span><span style={{ fontSize: 15, fontWeight: 700, color: t.pri }}>R$ 8.435</span></div>
-      <div style={{ display: "flex", gap: 12, fontSize: 12, color: t.txMuted }}><span>12 pedidos</span><span>3 cidades</span><span>★ 4.8</span></div></Cd>
-    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Histórico</div>
-    {[{ d: "FRT-1198 — 80 cxs bebidas", v: "R$ 2.900", s: "Pago", dt: "05/04" }, { d: "FRT-1204 — 150 cxs alimentos", v: "R$ 3.600", s: "Pendente", dt: "08/04" }].map((h, i) =>
-      <Cd key={i} t={t} style={{ padding: 12 }}><div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 13 }}>{h.d}</div><div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>{h.dt}</div></div>
-        <div style={{ textAlign: "right" }}><div style={{ fontSize: 14, fontWeight: 700, color: h.s === "Pendente" ? t.err : t.tx }}>{h.v}</div><Badge status={h.s} t={t} /></div></div></Cd>)}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 13, fontWeight: 600 }}>Total pago</span><span style={{ fontSize: 15, fontWeight: 700, color: t.pri }}>{money(totalPago)}</span></div>
+      <div style={{ fontSize: 12, color: t.txMuted }}>{fretes?.length || 0} fretes no total</div></Cd>
+    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Fretes</div>
+    {fretes?.map(f => <Cd key={f.id} t={t} style={{ padding: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 13 }}>FRT-{f.numeroFrete || f.id} — {f.nomeDestinatario}</div><div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>{fmt(f.dataViagem)}</div></div>
+        <div style={{ textAlign: "right" }}><div style={{ fontSize: 14, fontWeight: 700, color: (f.valorDevedor || 0) > 0 ? t.err : t.tx }}>{money(f.valorTotal)}</div>
+          <Badge status={(f.valorDevedor || 0) > 0 ? "Pendente" : "Pago"} t={t} /></div></div></Cd>)}
+    </>}
   </div>;
 }
 
-function LojaCNPJ({ t }) {
+function LojaCNPJ({ t, authHeaders }) {
+  const { data: loja, loading } = useApi("/lojas/minha", authHeaders);
+  if (loading) return <div style={{ fontSize: 13, color: t.txMuted, padding: 20, textAlign: "center" }}>Carregando...</div>;
+  if (!loja) return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minha loja</h3>
+    <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Voce ainda nao tem uma loja cadastrada.</div></Cd>
+  </div>;
   return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <div style={{ display: "flex", justifyContent: "space-between" }}><h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minha loja</h3><Badge status="Verificada" t={t} /></div>
+    <div style={{ display: "flex", justifyContent: "space-between" }}><h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minha loja</h3>{loja.verificada && <Badge status="Verificada" t={t} />}</div>
     <Cd t={t} style={{ padding: 16, border: `1px solid ${t.borderStrong}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}><Av letters="RN" size={50} t={t} />
-        <div><div style={{ fontSize: 16, fontWeight: 600 }}>Comercial Rio Negro</div><div style={{ fontSize: 12, color: t.txMuted }}>Alimentos e bebidas</div><div style={{ fontSize: 11, color: t.pri, fontWeight: 600, marginTop: 2 }}>★ 4.8 • 47 entregas</div></div></div>
-      <div style={{ fontSize: 12, color: t.txMuted, lineHeight: 1.6 }}>Clientes compram, você vincula ao frete, rastreio automático.</div></Cd>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}><Av letters={initials(loja.nomeLoja)} size={50} t={t} />
+        <div><div style={{ fontSize: 16, fontWeight: 600 }}>{loja.nomeLoja}</div><div style={{ fontSize: 12, color: t.txMuted }}>{loja.segmento}</div></div></div>
+      <div style={{ fontSize: 12, color: t.txMuted, lineHeight: 1.6 }}>{loja.descricao || "Clientes compram, voce vincula ao frete, rastreio automatico."}</div></Cd>
     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Como funciona</div>
     {[{ s: "1", ti: "Cliente compra na vitrine", desc: "Pedido aparece na aba Pedidos", c: t.amber },
-      { s: "2", ti: "Você vincula ao frete", desc: "Associa o pedido ao embarque", c: t.pri },
-      { s: "3", ti: "Rastreio automático", desc: "Cliente acompanha até a entrega", c: t.info }].map((s, i) =>
+      { s: "2", ti: "Voce vincula ao frete", desc: "Associa o pedido ao embarque", c: t.pri },
+      { s: "3", ti: "Rastreio automatico", desc: "Cliente acompanha ate a entrega", c: t.info }].map((s, i) =>
       <Cd key={i} t={t} style={{ padding: 12, borderLeft: `3px solid ${s.c}`, borderRadius: "0 14px 14px 0" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
           <div style={{ width: 26, height: 26, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: s.c, flexShrink: 0 }}>{s.s}</div>
           <div><div style={{ fontSize: 14, fontWeight: 600 }}>{s.ti}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{s.desc}</div></div></div></Cd>)}
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
-      {[{ l: "Visualizações", v: "124", c: t.amber }, { l: "Pedidos", v: "12", c: t.pri }, { l: "Receita", v: "R$ 8.4k", c: t.info }].map((s, i) =>
-        <Cd key={i} t={t} style={{ padding: 10, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 700, color: s.c }}>{s.v}</div><div style={{ fontSize: 10, color: t.txMuted, marginTop: 2 }}>{s.l}</div></Cd>)}
-    </div>
-    <button style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: t.priGrad, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginTop: 4 }}>Editar vitrine</button>
   </div>;
 }
 
 /* ═══ API ═══ */
-const API = "http://localhost:8080/api";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
 /* ═══ CADASTRO SCREEN ═══ */
 function TelaCadastro({ t, onVoltar, onSucesso }) {
@@ -335,6 +458,8 @@ function TelaCadastro({ t, onVoltar, onSucesso }) {
   const submit = async () => {
     setErro("");
     if (!form.documento.trim() || !form.nome.trim() || !form.senha.trim()) { setErro("Documento, nome e senha sao obrigatorios."); return; }
+    const docErro = validarDocumento(form.documento, tipo);
+    if (docErro) { setErro(docErro); return; }
     if (form.senha.length < 6) { setErro("Senha deve ter no minimo 6 caracteres."); return; }
     if (form.senha !== form.senhaConfirm) { setErro("As senhas nao conferem."); return; }
     setLoading(true);
@@ -376,7 +501,7 @@ function TelaCadastro({ t, onVoltar, onSucesso }) {
 }
 
 /* ═══ PERFIL SCREEN ═══ */
-function PerfilScreen({ t, token, authHeaders, usuario }) {
+function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange }) {
   const [perfil, setPerfil] = useState(null);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({});
@@ -384,6 +509,7 @@ function PerfilScreen({ t, token, authHeaders, usuario }) {
   const [sucesso, setSucesso] = useState("");
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
 
@@ -395,6 +521,24 @@ function PerfilScreen({ t, token, authHeaders, usuario }) {
       .catch(e => setErro(typeof e === "string" ? e : "Erro de conexao."))
       .finally(() => setLoading(false));
   }, []);
+
+  const uploadFoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErro(""); setSucesso(""); setUploadingFoto(true);
+    const fd = new FormData();
+    fd.append("foto", file);
+    try {
+      const res = await fetch(`${API}/perfil/foto`, { method: "POST", headers: { "Authorization": authHeaders.Authorization }, body: fd });
+      const data = await res.json();
+      if (!res.ok) { setErro(data.erro || "Erro ao enviar foto."); return; }
+      setPerfil(p => ({ ...p, fotoUrl: data.fotoUrl }));
+      if (onFotoChange) onFotoChange(`${API}${data.fotoUrl}`);
+      setSucesso("Foto atualizada!");
+    } catch { setErro("Erro de conexao."); } finally { setUploadingFoto(false); }
+  };
+
+  const fotoSrc = perfil?.fotoUrl ? `${API}${perfil.fotoUrl}` : null;
 
   const salvar = async () => {
     setErro(""); setSucesso(""); setSalvando(true);
@@ -417,8 +561,15 @@ function PerfilScreen({ t, token, authHeaders, usuario }) {
     {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{erro}</div>}
     {sucesso && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.okBg, color: t.okTx, fontSize: 12 }}>{sucesso}</div>}
     {perfil && <Cd t={t}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <Av letters={perfil.nome ? perfil.nome.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?"} size={48} t={t} />
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+        <div style={{ position: "relative" }}>
+          {fotoSrc ? <img src={fotoSrc} alt="Foto" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${t.border}` }} />
+            : <Av letters={initials(perfil.nome)} size={64} t={t} />}
+          <label style={{ position: "absolute", bottom: -2, right: -2, width: 24, height: 24, borderRadius: "50%", background: t.priGrad, display: "flex", alignItems: "center", justifyContent: "center", cursor: uploadingFoto ? "default" : "pointer", border: `2px solid ${t.card}` }}>
+            <span style={{ fontSize: 12, color: "#fff" }}>{uploadingFoto ? "..." : "+"}</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadFoto} style={{ display: "none" }} disabled={uploadingFoto} />
+          </label>
+        </div>
         <div><div style={{ fontSize: 16, fontWeight: 700 }}>{perfil.nome}</div><div style={{ fontSize: 12, color: t.txMuted }}>{perfil.tipo} {perfil.documento}</div></div>
       </div>
       {editando ? <>
@@ -449,19 +600,40 @@ const TABS_CPF = [{ id: "home", label: "Inicio", icon: "🏠" }, { id: "amigos",
 const TABS_CNPJ = [{ id: "home", label: "Painel", icon: "▣" }, { id: "pedidos", label: "Pedidos", icon: "🛒" }, { id: "lojas", label: "Parceiros", icon: "🤝" }, { id: "financeiro", label: "Financ.", icon: "💳" }, { id: "loja", label: "Loja", icon: "🏪" }];
 
 export default function Naviera() {
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(() => { try { const u = JSON.parse(localStorage.getItem("naviera_usuario")); return u?.tipo === "CNPJ" ? "cnpj" : u ? "cpf" : null; } catch { return null; } });
   const [tab, setTab] = useState("home");
+  const [tabHistory, setTabHistory] = useState([]);
+  const navigateTab = (newTab) => {
+    setTabHistory(h => [...h, tab]);
+    setTab(newTab);
+  };
+  const goBack = () => {
+    if (tabHistory.length > 0) {
+      const prev = tabHistory[tabHistory.length - 1];
+      setTabHistory(h => h.slice(0, -1));
+      setTab(prev);
+    }
+  };
   const [mode, setMode] = useState("light");
   const [aiOpen, setAiOpen] = useState(false);
   const [tela, setTela] = useState("login");
   const [msgSucesso, setMsgSucesso] = useState("");
-  const [token, setToken] = useState(null);
-  const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem("naviera_token"));
+  const [usuario, setUsuario] = useState(() => { try { return JSON.parse(localStorage.getItem("naviera_usuario")); } catch { return null; } });
+  const [minhaFoto, setMinhaFoto] = useState(null);
   const [loginDoc, setLoginDoc] = useState("");
   const [loginSenha, setLoginSenha] = useState("");
   const [loginErro, setLoginErro] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const t = T[mode];
+
+  useEffect(() => {
+    if (!token) { setMinhaFoto(null); return; }
+    fetch(`${API}/perfil`, { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.fotoUrl) setMinhaFoto(`${API}${d.fotoUrl}`); })
+      .catch(() => {});
+  }, [token]);
 
   const doLogin = async () => {
     setLoginErro("");
@@ -474,15 +646,17 @@ export default function Naviera() {
       });
       const data = await res.json();
       if (!res.ok) { setLoginErro(data.erro || "Credenciais invalidas."); return; }
+      localStorage.setItem("naviera_token", data.token);
+      localStorage.setItem("naviera_usuario", JSON.stringify({ nome: data.nome, tipo: data.tipo, id: data.id }));
       setToken(data.token);
       setUsuario({ nome: data.nome, tipo: data.tipo, id: data.id });
       setProfile(data.tipo === "CNPJ" ? "cnpj" : "cpf");
-      setTab("home");
+      setTab("home"); setTabHistory([]);
       setLoginDoc(""); setLoginSenha(""); setMsgSucesso("");
     } catch { setLoginErro("Erro de conexao com o servidor."); } finally { setLoginLoading(false); }
   };
 
-  const doLogout = () => { setProfile(null); setToken(null); setUsuario(null); setTab("home"); };
+  const doLogout = () => { localStorage.removeItem("naviera_token"); localStorage.removeItem("naviera_usuario"); setProfile(null); setToken(null); setUsuario(null); setTab("home"); setTabHistory([]); };
 
   const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
 
@@ -490,7 +664,14 @@ export default function Naviera() {
     <div style={{ minHeight: "100vh", background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Sora', sans-serif", color: t.tx, transition: "all 0.3s" }}>
       <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
       {tela === "cadastro" ? (
-        <TelaCadastro t={t} onVoltar={() => setTela("login")} onSucesso={(data) => { setMsgSucesso(`Conta criada com sucesso! Faca login para continuar.`); setTela("login"); }} />
+        <TelaCadastro t={t} onVoltar={() => setTela("login")} onSucesso={(data) => {
+          localStorage.setItem("naviera_token", data.token);
+          localStorage.setItem("naviera_usuario", JSON.stringify({ nome: data.nome, tipo: data.tipo, id: data.id }));
+          setToken(data.token);
+          setUsuario({ nome: data.nome, tipo: data.tipo, id: data.id });
+          setProfile(data.tipo === "CNPJ" ? "cnpj" : "cpf");
+          setTab("home"); setTabHistory([]);
+        }} />
       ) : (
       <div style={{ width: "100%", maxWidth: 380, textAlign: "center" }}>
         <div style={{ marginBottom: 20 }}><Logo size={60} t={t} /></div>
@@ -516,9 +697,9 @@ export default function Naviera() {
   const tabs = isCPF ? TABS_CPF : TABS_CNPJ;
   const authHeaders = token ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } : {};
   const screen = () => {
-    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} />;
-    if (isCPF) { if (tab === "home") return <HomeCPF t={t} onNav={setTab} />; if (tab === "amigos") return <AmigosCPF t={t} />; if (tab === "mapa") return <MapaCPF t={t} />; if (tab === "passagens") return <PassagensCPF t={t} />; }
-    else { if (tab === "home") return <HomeCNPJ t={t} onNav={setTab} />; if (tab === "pedidos") return <PedidosCNPJ t={t} />; if (tab === "lojas") return <LojasParceiras t={t} />; if (tab === "financeiro") return <FinanceiroCNPJ t={t} />; if (tab === "loja") return <LojaCNPJ t={t} />; }
+    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} onFotoChange={setMinhaFoto} />;
+    if (isCPF) { if (tab === "home") return <HomeCPF t={t} onNav={navigateTab} authHeaders={authHeaders} usuario={usuario} />; if (tab === "amigos") return <AmigosCPF t={t} authHeaders={authHeaders} />; if (tab === "mapa") return <MapaCPF t={t} authHeaders={authHeaders} />; if (tab === "passagens") return <PassagensCPF t={t} authHeaders={authHeaders} />; }
+    else { if (tab === "home") return <HomeCNPJ t={t} onNav={navigateTab} authHeaders={authHeaders} usuario={usuario} />; if (tab === "pedidos") return <PedidosCNPJ t={t} authHeaders={authHeaders} />; if (tab === "lojas") return <LojasParceiras t={t} authHeaders={authHeaders} />; if (tab === "financeiro") return <FinanceiroCNPJ t={t} authHeaders={authHeaders} />; if (tab === "loja") return <LojaCNPJ t={t} authHeaders={authHeaders} />; }
   };
 
   return (
@@ -528,12 +709,15 @@ export default function Naviera() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 10px", borderBottom: `1px solid ${t.border}`, background: t.card }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {tab !== "home" && <button onClick={goBack} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 20, cursor: "pointer", padding: "0 4px 0 0", display: "flex", alignItems: "center", fontFamily: "inherit" }}>←</button>}
           <div style={{ width: 30, height: 30, borderRadius: 8, background: t.accent, display: "flex", alignItems: "center", justifyContent: "center" }}><Logo size={16} t={t} /></div>
           <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: 2 }}>NAVIERA</span>
           <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 6, background: t.accent, color: t.pri, fontWeight: 700, marginLeft: 4, letterSpacing: 0.5 }}>{isCPF ? "CPF" : "CNPJ"}</span>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => setTab("perfil")} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${tab === "perfil" ? t.borderStrong : t.border}`, background: tab === "perfil" ? t.accent : t.soft, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", color: tab === "perfil" ? t.pri : t.txMuted }} title="Meu perfil">👤</button>
+          <button onClick={() => navigateTab("perfil")} style={{ width: 32, height: 32, borderRadius: "50%", border: `2px solid ${tab === "perfil" ? t.pri : t.border}`, background: tab === "perfil" ? t.accent : t.soft, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", color: tab === "perfil" ? t.pri : t.txMuted, padding: 0, overflow: "hidden" }} title="Meu perfil">
+            {minhaFoto ? <img src={minhaFoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
+          </button>
           <button onClick={() => setMode(m => m === "light" ? "dark" : "light")} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>{mode === "light" ? "🌙" : "☀️"}</button>
           <button onClick={doLogout} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`, background: t.soft, color: t.txMuted, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Sair">↩</button>
         </div>
@@ -552,7 +736,7 @@ export default function Naviera() {
       {/* Tab bar */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 420, background: t.card, borderTop: `1px solid ${t.border}`, padding: "6px 8px 12px", zIndex: 40 }}>
         <div style={{ display: "flex", gap: 2 }}>
-          {tabs.map(tb => <button key={tb.id} onClick={() => setTab(tb.id)} style={{ flex: 1, padding: "8px 2px", borderRadius: 8, border: "none", background: tab === tb.id ? t.accent : "transparent", color: tab === tb.id ? t.pri : t.txMuted, fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: "inherit", transition: "all 0.2s" }}>
+          {tabs.map(tb => <button key={tb.id} onClick={() => { setTab(tb.id); setTabHistory([]); }} style={{ flex: 1, padding: "8px 2px", borderRadius: 8, border: "none", background: tab === tb.id ? t.accent : "transparent", color: tab === tb.id ? t.pri : t.txMuted, fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: "inherit", transition: "all 0.2s" }}>
             <span style={{ fontSize: 15 }}>{tb.icon}</span>{tb.label}
             {tab === tb.id && <div style={{ width: 4, height: 4, borderRadius: 2, background: t.pri }} />}
           </button>)}
