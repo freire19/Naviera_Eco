@@ -98,10 +98,13 @@ function Badge({ status, t }) {
     "Em trânsito": [t.infoBg, t.infoTx], "EM_VIAGEM": [t.infoBg, t.infoTx], "Em viagem": [t.infoBg, t.infoTx],
     "Entregue": [t.okBg, t.okTx], "NO_PORTO": [t.warnBg, t.warnTx], "Confirmada": [t.okBg, t.okTx],
     "Reservada": [t.warnBg, t.warnTx], "Aguardando": [t.warnBg, t.warnTx], "No destino": [t.okBg, t.okTx],
-    "Offline": [t.soft, t.txMuted], "Pendente": [t.errBg, t.errTx], "Pago": [t.okBg, t.okTx], "Verificada": [t.okBg, t.okTx]
+    "Offline": [t.soft, t.txMuted], "Pendente": [t.errBg, t.errTx], "Pago": [t.okBg, t.okTx], "Verificada": [t.okBg, t.okTx],
+    "CONFIRMADA": [t.okBg, t.okTx], "PENDENTE_CONFIRMACAO": [t.warnBg, t.warnTx], "EMBARCADO": [t.infoBg, t.infoTx],
+    "CANCELADA": [t.errBg, t.errTx], "EXPIRADA": [t.soft, t.txMuted], "PENDENTE": [t.errBg, t.errTx]
   };
   const [bg, c] = m[status] || [t.soft, t.txMuted];
-  const label = status === "EM_VIAGEM" ? "Em viagem" : status === "NO_PORTO" ? "No porto" : status;
+  const labels = { "EM_VIAGEM": "Em viagem", "NO_PORTO": "No porto", "CONFIRMADA": "Confirmada", "PENDENTE_CONFIRMACAO": "Aguardando pgto", "EMBARCADO": "Embarcado", "CANCELADA": "Cancelada", "EXPIRADA": "Expirada", "PENDENTE": "Pendente" };
+  const label = labels[status] || status;
   return <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: bg, color: c, fontWeight: 600 }}>{label}</span>;
 }
 
@@ -440,15 +443,17 @@ function MapaCPF({ t, authHeaders }) {
   </div>;
 }
 
-/* ═══ BILHETE DIGITAL — NFT-style ticket ═══ */
-function BilheteScreen({ bilhete, t, onBack }) {
+/* ═══ BILHETE DIGITAL — NFT-style ticket (always dark) ═══ */
+function BilheteScreen({ bilhete, t: _t, onBack }) {
+  // Força tema dark pro bilhete — visual premium
+  const t = { bg: "#040D0A", card: "#0F2D24", soft: "#0A1F18", accent: "#0F2D24", tx: "#F0FDF4", txSoft: "#6EE7B7", txMuted: "#34D399", pri: "#34D399", priGrad: "linear-gradient(135deg, #059669, #34D399)", border: "rgba(52,211,153,0.08)", borderStrong: "rgba(52,211,153,0.2)", info: "#0EA5E9", ok: "#4ADE80", okBg: "#0f2b1c", err: "#EF4444", errBg: "#450a0a", amber: "#FBBF24", amberBg: "#3a3520", shadow: "none" };
   const [now, setNow] = useState(Date.now());
   const [brightness, setBrightness] = useState(false);
   useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
 
   const totp = (() => {
     const counter = Math.floor(now / 30000);
-    let h = 0; const s = (bilhete.totp_secret || bilhete.totpSecret || "x") + counter;
+    let h = 0; const s = (bilhete.totp_secret || bilhete.totpSecret || bilhete.numero_bilhete || "x") + counter;
     for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
     return Math.abs(h % 1000000).toString().padStart(6, "0");
   })();
@@ -462,13 +467,16 @@ function BilheteScreen({ bilhete, t, onBack }) {
   const destino = b.destino || "—";
   const embarc = b.embarcacao || "—";
   const data = b.data_viagem || b.dataViagem || "—";
-  const horario = b.horario_saida || b.horarioSaida || "—";
-  const valor = b.valor_total || b.valorTotal || "—";
+  const horario = b.horario_saida || b.horarioSaida || "12:00";
+  const valor = b.valor_total || b.valorTotal || b.valor_a_pagar || "—";
   const numBilhete = b.numero_bilhete || b.numeroBilhete || "00000";
-  const qr = b.qr_hash || b.qrHash || "demo";
+  const qr = b.qr_hash || b.qrHash || numBilhete;
   const idViagem = b.id_viagem || b.idViagem || "?";
+  const acomodacao = b.acomodacao || b.tipo || "Rede";
+  const doc = b.documento || b.numero_documento || "";
+  const docMask = doc ? doc.replace(/(\d{3})(\d+)(\d{2})/, "$1.•••.$3") : "";
 
-  return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+  return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12, background: t.bg, margin: "-16px -18px", padding: "16px 18px 100px", minHeight: "100vh" }}>
     <button onClick={onBack} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
     <div style={{ textAlign: "center", marginBottom: 4 }}>
       <div style={{ fontSize: 10, letterSpacing: 4, textTransform: "uppercase", color: t.txMuted, fontWeight: 300 }}>Bilhete digital</div>
@@ -480,10 +488,7 @@ function BilheteScreen({ bilhete, t, onBack }) {
 
     {/* TICKET CARD */}
     <div style={{ position: "relative", borderRadius: 20, overflow: "hidden", filter: brightness ? "brightness(1.3) contrast(1.1)" : "none" }}>
-      {/* Holographic border */}
-      <div style={{ position: "absolute", inset: 0, borderRadius: 20, padding: 2, background: `conic-gradient(from ${hAngle}deg, #059669, #34D399, #0EA5E9, #8B5CF6, #EC4899, #F59E0B, #059669)`, WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude", opacity: 0.7, pointerEvents: "none", zIndex: 2 }} />
-
-      <div style={{ position: "relative", background: `linear-gradient(170deg, ${t.card} 0%, ${t.soft} 40%, ${t.card} 100%)`, padding: "22px 20px 18px", borderRadius: 20, border: `1px solid ${t.border}` }}>
+      <div style={{ position: "relative", background: `linear-gradient(170deg, ${t.card} 0%, ${t.soft} 40%, ${t.card} 100%)`, padding: "22px 20px 18px", borderRadius: 20, border: `1px solid ${t.borderStrong}` }}>
         {/* Watermark */}
         <div style={{ position: "absolute", fontSize: 100, fontWeight: 800, color: t.pri, opacity: 0.03, letterSpacing: 8, transform: "rotate(-25deg)", top: "25%", left: "-5%", pointerEvents: "none" }}>NAVIERA</div>
 
@@ -514,7 +519,7 @@ function BilheteScreen({ bilhete, t, onBack }) {
         {/* Info grid */}
         <div style={{ background: `${t.pri}0a`, borderRadius: 12, padding: "12px 14px", marginBottom: 12, border: `1px solid ${t.border}` }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
-            {[["Passageiro", nome], ["Data", data], ["Horário", horario], ["Embarcação", embarc]].map(([l, v], i) => (
+            {[["Passageiro", nome], ["Documento", docMask || "—"], ["Data", typeof data === "string" && data.includes("-") ? fmt(data) : data], ["Horário", horario], ["Acomodação", acomodacao], ["Embarcação", embarc]].map(([l, v], i) => (
               <div key={i}><div style={{ fontSize: 8, color: t.txMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>{l}</div><div style={{ fontSize: 12, fontWeight: 600 }}>{typeof v === "number" ? money(v) : v}</div></div>
             ))}
           </div>
@@ -577,78 +582,163 @@ function BilheteScreen({ bilhete, t, onBack }) {
       </div>
     </div>
 
-    {/* Brightness toggle */}
+    {/* Actions */}
     <div style={{ display: "flex", gap: 10 }}>
-      <button onClick={() => setBrightness(!brightness)} className="btn-outline" style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${t.border}`, background: brightness ? `${t.pri}15` : "transparent", color: t.txMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-        <IconSun size={14} color={t.txMuted} /> {brightness ? "Brilho normal" : "Brilho máximo"}
+      <button onClick={() => setBrightness(!brightness)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${t.borderStrong}`, background: brightness ? `${t.pri}15` : "transparent", color: t.txMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <IconSun size={14} color={t.txMuted} /> {brightness ? "Normal" : "Brilho maximo"}
       </button>
+      <button onClick={() => navigator.share?.({ title: `Bilhete ${numBilhete}`, text: `Passagem ${origem}→${destino} - ${embarc} - ${data}` }).catch(() => {})} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: t.priGrad, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Compartilhar</button>
     </div>
     <div style={{ fontSize: 10, color: t.txMuted, opacity: 0.5, textAlign: "center", lineHeight: 1.6 }}>Código rotativo anti-clone. Muda a cada 30s. Screenshots não funcionam. Apresente esta tela ao operador.</div>
   </div>;
 }
 
 function PassagensCPF({ t, authHeaders }) {
+  const { data: embarcacoes, loading: le } = useApi("/embarcacoes", authHeaders);
   const { data: viagens, loading: lv, erro: ev, refresh: rv } = useApi("/viagens/ativas", authHeaders);
-  const { data: tarifas, loading: lt } = useApi("/tarifas", authHeaders);
-  const { data: bilhetes, loading: lb, refresh: rb } = useApi("/bilhetes", authHeaders);
-  const [selBilhete, setSelBilhete] = useState(null);
-  const [comprando, setComprando] = useState(null);
+  const { data: tarifas } = useApi("/tarifas", authHeaders);
+  const { data: minhas, refresh: rm } = useApi("/passagens", authHeaders);
+  const [busca, setBusca] = useState("");
+  const [selEmb, setSelEmb] = useState(null);
+  const [compra, setCompra] = useState(null);
+  const [tipoSel, setTipoSel] = useState(null);
+  const [comprando, setComprando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [erro, setErro] = useState("");
   const [toast, setToast] = useState(null);
+  const [selBilhete, setSelBilhete] = useState(null);
+
+  const hoje = new Date().toISOString().split("T")[0];
+  const viagensEmb = selEmb ? viagens?.filter(v => v.embarcacao === selEmb.nome && v.dataViagem >= hoje && !v.atual) || [] : [];
+  const tarifasDaViagem = compra ? tarifas?.filter(x => x.origem === compra.origem && x.destino === compra.destino) || [] : [];
+  const embFiltradas = busca.trim() ? embarcacoes?.filter(e => e.nome.toLowerCase().includes(busca.toLowerCase()) || (e.rotaPrincipal || "").toLowerCase().includes(busca.toLowerCase())) : embarcacoes;
+
+  const confirmarCompra = async () => {
+    if (!tipoSel) { setErro("Selecione o tipo de passagem."); return; }
+    setErro(""); setComprando(true);
+    try {
+      const res = await fetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: "PIX" }) });
+      const data = await res.json();
+      if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
+      setResultado(data); rm();
+    } catch { setErro("Erro de conexao."); } finally { setComprando(false); }
+  };
 
   if (ev) return <ErrorRetry erro={ev} onRetry={rv} t={t} />;
 
+  // Tela do bilhete digital
   if (selBilhete) return <BilheteScreen bilhete={selBilhete} t={t} onBack={() => setSelBilhete(null)} />;
 
-  const comprar = async (viagem) => {
-    setComprando(viagem.id);
-    try {
-      const res = await fetch(`${API}/bilhetes/comprar`, { method: "POST", headers: authHeaders,
-        body: JSON.stringify({ idViagem: viagem.id, idRota: viagem.idRota, idTipoPassagem: 1 }) });
-      const data = await res.json();
-      if (res.ok) { rb(); setSelBilhete(data); setToast("Passagem comprada!"); }
-      else setToast(data.erro || "Erro ao comprar.");
-    } catch { setToast("Erro de conexão."); } finally { setComprando(null); }
-  };
+  // Tela de sucesso
+  if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", padding: "40px 0" }}>
+    <div style={{ width: 64, height: 64, borderRadius: "50%", background: t.okBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <IconCheck size={32} color={t.ok} />
+    </div>
+    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Passagem emitida!</h3>
+    <Cd t={t} style={{ padding: 16, width: "100%", textAlign: "center" }}>
+      <div style={{ fontSize: 12, color: t.txMuted }}>Bilhete</div>
+      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri, marginTop: 4 }}>{resultado.numeroBilhete}</div>
+      <div style={{ fontSize: 14, fontWeight: 600, marginTop: 12 }}>{money(resultado.valorTotal)}</div>
+      <div style={{ padding: "6px 12px", borderRadius: 8, background: t.warnBg, color: t.warnTx, fontSize: 11, marginTop: 8, display: "inline-block" }}>Aguardando confirmacao do operador</div>
+      <div style={{ fontSize: 11, color: t.txMuted, marginTop: 8, lineHeight: 1.5 }}>O operador recebera a notificacao e confirmara o pagamento. Apos confirmacao, seu bilhete digital ficara ativo.</div>
+    </Cd>
+    <button onClick={() => {
+      setSelBilhete({ numero_bilhete: resultado.numeroBilhete, valor_total: resultado.valorTotal, status_passagem: resultado.status, embarcacao: compra?.embarcacao, origem: compra?.origem, destino: compra?.destino, data_viagem: compra?.dataViagem, totp_secret: resultado.numeroBilhete });
+      setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null);
+    }} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: t.priGrad, color: "#fff", fontSize: 14 }}>Ver bilhete digital</button>
+    <button onClick={() => { setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${t.border}`, background: "transparent", color: t.txMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Voltar para passagens</button>
+  </div>;
 
-  return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    {/* Meus bilhetes */}
-    {bilhetes?.length > 0 && <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Meus bilhetes</h3>
-        <span style={{ fontSize: 11, color: t.txMuted }}>{bilhetes.length} bilhete(s)</span>
+  // Tela de compra
+  if (compra) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <button onClick={() => { setCompra(null); setTipoSel(null); setErro(""); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Comprar passagem</h3>
+    <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
+      <div style={{ fontSize: 16, fontWeight: 600 }}>{compra.embarcacao}</div>
+      <div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{compra.origem} → {compra.destino}</div>
+      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 6 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconCalendar size={12} color={t.txMuted} /> {fmt(compra.dataViagem)}</span>
+        <span>Chegada: {fmt(compra.dataChegada)}</span>
       </div>
-      {bilhetes.slice(0, 5).map((b, i) => <Cd key={b.id || i} t={t} style={{ padding: 14, borderLeft: `3px solid ${b.status === "VALIDO" ? t.pri : t.txMuted}`, borderRadius: "0 14px 14px 0" }} onClick={() => setSelBilhete(b)}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>BLT-{b.numero_bilhete}</span>
-          <Badge status={b.status === "VALIDO" ? "Confirmada" : b.status === "EMBARCADO" ? "Embarcado" : b.status} t={t} />
+    </Cd>
+    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Escolha o tipo</div>
+    {tarifasDaViagem.length > 0 ? tarifasDaViagem.map((x, i) => {
+      const total = (Number(x.valor_transporte) || 0) + (Number(x.valor_alimentacao) || 0) - (Number(x.valor_desconto) || 0);
+      const selected = tipoSel === x.tipo_passageiro_id;
+      return <Cd key={i} t={t} style={{ padding: 14, cursor: "pointer", border: `2px solid ${selected ? t.pri : t.border}`, background: selected ? t.accent : t.card }} onClick={() => setTipoSel(x.tipo_passageiro_id)}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.tipo_passageiro}</div>
+            <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>Transporte + Alimentacao{Number(x.valor_desconto) > 0 ? " - Desconto" : ""}</div></div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: selected ? t.pri : t.tx }}>{money(total)}</div>
         </div>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{b.origem} → {b.destino}</div>
-        <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{b.embarcacao} • {fmt(b.data_viagem)}</div>
-        <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, marginTop: 6 }}>Abrir bilhete →</div>
+      </Cd>;
+    }) : <Cd t={t} style={{ padding: 14, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa disponivel para esta rota.</div></Cd>}
+    {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{erro}</div>}
+    {tarifasDaViagem.length > 0 && <button onClick={confirmarCompra} disabled={comprando || !tipoSel} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: comprando || !tipoSel ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14, opacity: !tipoSel ? 0.5 : 1 }}>{comprando ? "Processando..." : "Confirmar e pagar via PIX"}</button>}
+  </div>;
+
+  // Tela de viagens de uma embarcação
+  if (selEmb) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <button onClick={() => setSelEmb(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
+    {selEmb.fotoUrl && <img src={`${API}${selEmb.fotoUrl}`} alt={selEmb.nome} style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 160 }} />}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div><h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{selEmb.nome}</h3>
+        <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{selEmb.rotaPrincipal || selEmb.rotaAtual || ""}</div></div>
+      <Badge status={selEmb.status || "NO_PORTO"} t={t} />
+    </div>
+    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Proximas saidas</div>
+    {lv ? <Skeleton t={t} height={70} count={2} /> :
+    viagensEmb.length > 0 ? viagensEmb.map(v => <Cd key={v.id} t={t} style={{ padding: 14, cursor: "pointer" }} onClick={() => setCompra(v)}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div><div style={{ fontSize: 14, fontWeight: 600 }}>{v.origem} → {v.destino}</div>
+          <div style={{ display: "flex", gap: 12, fontSize: 12, color: t.txMuted, marginTop: 4 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconCalendar size={11} color={t.txMuted} /> {fmt(v.dataViagem)}</span>
+            <span>→ {fmt(v.dataChegada)}</span>
+          </div></div>
+        <div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>Comprar →</div>
+      </div>
+    </Cd>) : <Cd t={t} style={{ padding: 14, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem futura para esta embarcacao.</div></Cd>}
+  </div>;
+
+  // Tela principal
+  return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Passagens</h3>
+
+    {minhas?.length > 0 && <>
+      <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft }}>Minhas passagens</div>
+      {minhas.map((p, i) => <Cd key={i} t={t} style={{ padding: 12, borderLeft: `3px solid ${t.pri}`, borderRadius: "0 14px 14px 0", cursor: "pointer" }} onClick={() => setSelBilhete(p)}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{p.numero_bilhete}</span>
+          <Badge status={p.status_passagem || "CONFIRMADA"} t={t} />
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{p.embarcacao}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted, marginTop: 4 }}>
+          <span>{p.origem} → {p.destino} • {p.tipo || "Rede"} • {fmt(p.data_viagem)}</span>
+          <span style={{ fontWeight: 600, color: t.tx }}>{money(p.valor_a_pagar)}</span>
+        </div>
+        <div style={{ fontSize: 11, color: t.pri, fontWeight: 600, marginTop: 6 }}>Abrir bilhete →</div>
       </Cd>)}
     </>}
 
-    {/* Viagens disponíveis */}
-    <h3 style={{ margin: bilhetes?.length > 0 ? "8px 0 0" : 0, fontSize: 18, fontWeight: 700 }}>Viagens disponíveis</h3>
-    {lv ? <Skeleton t={t} height={80} count={2} /> :
-    viagens?.length > 0 ? viagens.map(v => <Cd key={v.id} t={t} style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{v.embarcacao}</div><div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{v.origem} → {v.destino}</div></div><Badge status={v.atual ? "Em viagem" : "Confirmada"} t={t} /></div>
-      <div style={{ display: "flex", gap: 16, fontSize: 12, color: t.txMuted, marginTop: 10 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconCalendar size={12} color={t.txMuted} /> {fmt(v.dataViagem)}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><IconClock size={12} color={t.txMuted} /> {v.horarioSaida || "—"}</span>
-      </div>
-      <button onClick={() => comprar(v)} disabled={comprando === v.id} className="btn-primary" style={{ marginTop: 10, padding: "10px 0", background: comprando === v.id ? t.txMuted : t.priGrad, color: "#fff", fontSize: 12 }}>
-        {comprando === v.id ? "Processando..." : "Comprar passagem"}
-      </button>
-    </Cd>) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma viagem ativa.</div></Cd>}
-
-    {/* Tarifas */}
-    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Tarifas por rota</div>
-    {lt ? <Skeleton t={t} height={60} count={3} /> :
-    tarifas?.length > 0 ? tarifas.map((x, i) =>
-      <Cd key={i} t={t} style={{ padding: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><div style={{ fontSize: 14, fontWeight: 600 }}>{x.origem} → {x.destino}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{x.tipoPassageiro}</div></div>
-        <div style={{ textAlign: "right" }}><div style={{ fontSize: 12, color: t.pri, fontWeight: 600 }}>transporte</div><div style={{ fontSize: 16, fontWeight: 700 }}>{money(x.valorTransporte)}</div></div></div></Cd>) :
-      <Cd t={t} style={{ padding: 12, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa cadastrada.</div></Cd>}
+    <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft, marginTop: minhas?.length > 0 ? 4 : 0 }}>Comprar passagem</div>
+    <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar embarcacao ou rota..." className="input-field" style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+    {le ? <Skeleton t={t} height={80} count={2} /> :
+    embFiltradas?.length > 0 ? embFiltradas.map(e => {
+      const proxViagem = viagens?.find(v => v.embarcacao === e.nome && v.dataViagem >= hoje && !v.atual);
+      return <Cd key={e.id} t={t} style={{ padding: 0, overflow: "hidden", cursor: "pointer" }} onClick={() => setSelEmb(e)}>
+        {e.fotoUrl && <img src={`${API}${e.fotoUrl}`} alt={e.nome} style={{ width: "100%", height: 100, objectFit: "cover" }} />}
+        <div style={{ padding: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div><div style={{ fontSize: 15, fontWeight: 600 }}>{e.nome}</div>
+              <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{e.rotaPrincipal || e.rotaAtual || ""}</div></div>
+            <Badge status={e.status || "NO_PORTO"} t={t} />
+          </div>
+          {proxViagem ? <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: t.pri, fontWeight: 600, marginTop: 6 }}><IconCalendar size={11} color={t.pri} /> Proxima: {fmt(proxViagem.dataViagem)}</div>
+            : <div style={{ fontSize: 11, color: t.txMuted, marginTop: 6 }}>Sem viagens futuras</div>}
+          <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, marginTop: 6 }}>Ver datas e comprar →</div>
+        </div>
+      </Cd>;
+    }) : <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>{busca ? `Nenhum resultado para "${busca}"` : "Nenhuma embarcacao cadastrada."}</div></Cd>}
 
     {toast && <Toast message={toast} t={t} onClose={() => setToast(null)} />}
   </div>;
