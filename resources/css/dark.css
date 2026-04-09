@@ -4,32 +4,32 @@
 
 /* --- 1. FUNDO GERAL E ROOT --- */
 .root, .scene, .dialog-pane, .border-pane, .stack-pane, .flow-pane {
-    -fx-base: #121212 !important;
-    -fx-background: #121212 !important;
-    -fx-background-color: #121212 !important;
-    -fx-control-inner-background: #252526 !important;
+    -fx-base: #040D0A !important;
+    -fx-background: #040D0A !important;
+    -fx-background-color: #040D0A !important;
+    -fx-control-inner-background: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-accent: #0d56df !important;
+    -fx-accent: #34D399 !important;
     -fx-font-family: "Segoe UI", Arial, sans-serif !important;
     -fx-font-size: 14px !important;
 }
 
 /* --- 1.1 SISTEMA DE ABAS PRINCIPAL (MODO ESCURO) --- */
 .main-tab-pane {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 .main-tab-pane .tab-header-area {
-    -fx-background-color: #1a1a2e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-padding: 0;
 }
 
 .main-tab-pane .tab-header-background {
-    -fx-background-color: #1a1a2e !important;
+    -fx-background-color: #0A1F18 !important;
 }
 
 .main-tab-pane .tab {
-    -fx-background-color: #16213e !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5 5 0 0;
     -fx-padding: 8 20 8 20;
     -fx-cursor: hand;
@@ -42,19 +42,19 @@
 }
 
 .main-tab-pane .tab:selected {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .main-tab-pane .tab:selected .tab-label {
-    -fx-text-fill: #4db8ff !important;
+    -fx-text-fill: #6EE7B7 !important;
 }
 
 .main-tab-pane .tab:hover {
-    -fx-background-color: #0f3460 !important;
+    -fx-background-color: #0A1F18 !important;
 }
 
 .main-tab-pane .tab:selected:hover {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .main-tab-pane .tab-close-button {
@@ -66,15 +66,15 @@
 }
 
 .main-tab-pane .tab:selected .tab-close-button {
-    -fx-background-color: #ff5252 !important;
+    -fx-background-color: #EF4444 !important;
 }
 
 .main-tab-pane .tab .tab-close-button:hover {
-    -fx-background-color: #ff1744 !important;
+    -fx-background-color: #EF4444 !important;
 }
 
 .main-tab-pane .tab-content-area {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
     -fx-padding: 0;
 }
 
@@ -82,8 +82,8 @@
 .content-panel, .card-panel, .main-background, .anchor-pane, 
 .vbox, .hbox, .grid-pane, .split-pane, .titled-pane,
 .scroll-pane, .scroll-pane > .viewport {
-    -fx-background: #121212 !important;
-    -fx-background-color: #121212 !important;
+    -fx-background: #040D0A !important;
+    -fx-background-color: #040D0A !important;
     -fx-border-color: transparent !important;
 }
 
@@ -93,7 +93,7 @@
 
 /* --- 3. BOTÕES --- */
 .button-acesso-rapido {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-text-fill: #ffffff !important;
     -fx-border-color: #333 !important;
     -fx-font-size: 14px !important;
@@ -101,8 +101,8 @@
     -fx-background-radius: 5px;
 }
 .button-acesso-rapido:hover {
-    -fx-background-color: #252526 !important;
-    -fx-border-color: #0d56df !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #34D399 !important;
     -fx-effect: dropshadow(three-pass-box, rgba(13, 86, 223, 0.6), 10, 0, 0, 0) !important;
     -fx-cursor: hand;
 }
@@ -114,13 +114,13 @@
     -fx-font-size: 13px !important;
 }
 .button:hover {
-    -fx-background-color: #0d47a1 !important;
+    -fx-background-color: #059669 !important;
     -fx-border-color: white !important;
 }
 
 /* --- DASHBOARD CARDS --- */
 .dashboard-card {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333 !important;
     -fx-border-radius: 5 !important;
     -fx-padding: 15 !important;
@@ -138,32 +138,32 @@
 
 /* --- 4. CALENDÁRIO (SEM AZUL NAS BORDAS) --- */
 .calendar-grid {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333333 !important; /* Cinza escuro discreto */
 }
 .vbox-calendario {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333333 !important; /* Cinza escuro discreto */
 }
 .vbox-calendario:hover { 
-    -fx-background-color: #252526 !important; 
+    -fx-background-color: #0F2D24 !important; 
 }
 
 /* --- 5. TABELAS --- */
 .table-view {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
     -fx-border-color: #333 !important;
 }
 
 /* Cabeçalho da Tabela - AZUL */
 .table-view .column-header-background {
-    -fx-background-color: #0d47a1 !important;
-    -fx-border-bottom-color: #1565c0 !important;
+    -fx-background-color: #059669 !important;
+    -fx-border-bottom-color: #059669 !important;
 }
 
 .table-view .column-header {
-    -fx-background-color: #0d47a1 !important;
-    -fx-border-color: #1565c0 !important;
+    -fx-background-color: #059669 !important;
+    -fx-border-color: #059669 !important;
 }
 
 .table-view .column-header .label {
@@ -173,17 +173,17 @@
 
 /* Células da Tabela */
 .table-row-cell {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: transparent transparent #333 transparent !important;
     -fx-text-fill: white !important;
 }
 
 .table-row-cell:odd {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .table-row-cell:selected {
-    -fx-background-color: #0d56df !important;
+    -fx-background-color: #34D399 !important;
 }
 
 .table-row-cell:hover {
@@ -203,16 +203,16 @@
 /* Viewport da tabela (área branca que sobra) */
 .table-view .virtual-flow .clipped-container,
 .table-view .virtual-flow .scroll-bar {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 .table-view .corner {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
 }
 
 /* Placeholder quando a tabela está vazia */
 .table-view .placeholder {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 .table-view .placeholder .label {
@@ -226,9 +226,9 @@
 .date-picker, .date-picker .text-field,
 .spinner, .spinner .text-field,
 .choice-box {
-    -fx-background-color: #252526 !important;
-    -fx-background: #252526 !important;
-    -fx-control-inner-background: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-background: #0F2D24 !important;
+    -fx-control-inner-background: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
     -fx-border-color: #444444 !important;
     -fx-border-width: 1px !important;
@@ -244,25 +244,25 @@
 
 /* Campos com foco */
 .text-field:focused, .combo-box:focused, .date-picker:focused {
-    -fx-border-color: #0d56df !important;
+    -fx-border-color: #34D399 !important;
     -fx-border-width: 2px !important;
     -fx-background-color: #2d2d30 !important;
 }
 
 /* ComboBox - Editor interno */
 .combo-box .text-field {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
 }
 
 /* ComboBox - Dropdown */
 .combo-box .list-view {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #444444 !important;
 }
 
 .combo-box .list-cell {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
 }
 
@@ -297,7 +297,7 @@
 
 /* --- 8. MENUS E CONTEXTOS --- */
 .menu-bar {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
     -fx-border-color: #333333 !important;
 }
 
@@ -306,7 +306,7 @@
 }
 
 .menu-item, .menu {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .menu-item .label {
@@ -318,7 +318,7 @@
 }
 
 .context-menu {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #444444 !important;
 }
 
@@ -327,19 +327,19 @@
 /* ========================================================================= */
 
 .root-financeiro {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 /* Painéis Cinzas */
 .painel-cabecalho, .painel-lateral {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-effect: none !important;
     -fx-border-color: #333 !important;
 }
 
 /* Painel de Filtros */
 .painel-filtros {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333 !important;
     -fx-border-width: 1px !important;
 }
@@ -359,7 +359,7 @@
 
 /* Card Total Gasto */
 .card-total {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #b71c1c !important;
 }
 .card-total .label {
@@ -373,26 +373,26 @@
 .painel-filtros .combo-box,
 .painel-filtros .date-picker .text-field,
 .painel-filtros .text-field {
-    -fx-background-color: #252526 !important; 
+    -fx-background-color: #0F2D24 !important; 
     -fx-border-color: #444444 !important;
     -fx-text-fill: #ffffff !important;
 }
 
 /* Campo de Valor - Destaque laranja */
 .campo-valor {
-    -fx-background-color: #252526 !important;
-    -fx-border-color: #ff9800 !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #F59E0B !important;
     -fx-text-fill: #ffcc80 !important;
 }
 
 /* Scroll Panes */
 .scroll-pane, .scroll-pane > .viewport {
-    -fx-background: #121212 !important;
-    -fx-background-color: #121212 !important;
+    -fx-background: #040D0A !important;
+    -fx-background-color: #040D0A !important;
 }
 
 .scroll-bar {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 .scroll-bar .thumb {
@@ -405,7 +405,7 @@
 
 /* Botões Específicos */
 .botao-busca {
-    -fx-background-color: #0d47a1 !important;
+    -fx-background-color: #059669 !important;
     -fx-text-fill: white !important;
     -fx-border-color: #444444 !important;
 }
@@ -429,7 +429,7 @@
 }
 
 .radio-button .radio {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #888888 !important;
     -fx-border-width: 2px;
     -fx-border-radius: 50%;
@@ -441,19 +441,19 @@
 }
 
 .check-box .box {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #888888 !important;
     -fx-border-width: 2px;
 }
 
 .radio-button:selected .radio {
-    -fx-background-color: #4db8ff !important;
-    -fx-border-color: #4db8ff !important;
+    -fx-background-color: #6EE7B7 !important;
+    -fx-border-color: #6EE7B7 !important;
 }
 
 .check-box:selected .box {
-    -fx-background-color: #252526 !important;
-    -fx-border-color: #4db8ff !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #6EE7B7 !important;
 }
 
 .radio-button .dot {
@@ -475,39 +475,39 @@
 }
 
 .radio-button:hover .radio {
-    -fx-border-color: #4db8ff !important;
+    -fx-border-color: #6EE7B7 !important;
     -fx-effect: dropshadow(gaussian, rgba(77,184,255,0.5), 4, 0, 0, 0);
 }
 
 /* --- 10. PROGRESS BAR E INDICATORS --- */
 .progress-bar {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .progress-bar .bar {
-    -fx-background-color: #0d56df !important;
+    -fx-background-color: #34D399 !important;
 }
 
 .progress-indicator {
-    -fx-progress-color: #0d56df !important;
+    -fx-progress-color: #34D399 !important;
 }
 
 /* --- 11. TOOLTIPS --- */
 .tooltip {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
     -fx-border-color: #444444 !important;
 }
 
 /* --- 12. SIDEBAR E PAINÉIS LATERAIS --- */
 .sidebar-panel {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
     -fx-border-color: #333333 !important;
 }
 
 /* --- 13. FOOTER --- */
 .footer-panel {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
     -fx-border-color: #333333 !important;
 }
 
@@ -517,7 +517,7 @@
 
 /* Forçar todos os TextField que possam ter fundo branco */
 TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
     -fx-border-color: #444444 !important;
 }
@@ -539,7 +539,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 *[style*="background-color: #fff3e0"],
 *[style*="background-color: #e3f2fd"],
 *[style*="background-color: #f5f5f5"] {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 /* Sobrescrever bordas claras */
@@ -561,18 +561,18 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Qualquer painel com fundo branco vira preto */
 *[style*="background: white"],
 *[style*="background: #fff"] {
-    -fx-background: #121212 !important;
-    -fx-background-color: #121212 !important;
+    -fx-background: #040D0A !important;
+    -fx-background-color: #040D0A !important;
 }
 
 /* Lista de células (List View) */
 .list-view {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #444444 !important;
 }
 
 .list-cell {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
 }
 
@@ -581,27 +581,27 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 }
 
 .list-cell:selected {
-    -fx-background-color: #0d56df !important;
+    -fx-background-color: #34D399 !important;
     -fx-text-fill: #ffffff !important;
 }
 
 /* Tree View */
 .tree-view, .tree-cell {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
 }
 
 .tree-cell:selected {
-    -fx-background-color: #0d56df !important;
+    -fx-background-color: #34D399 !important;
 }
 
 /* Tab Pane */
 .tab-pane {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 .tab {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
 }
 
@@ -610,22 +610,22 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 }
 
 .tab-pane .tab-content-area {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 /* Accordion */
 .accordion .titled-pane > .title {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
 }
 
 .accordion .titled-pane > .content {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 /* Dialog Pane Buttons */
 .dialog-pane .button-bar .button {
-    -fx-background-color: #0d47a1 !important;
+    -fx-background-color: #059669 !important;
     -fx-text-fill: #ffffff !important;
 }
 
@@ -640,7 +640,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Campos de input genéricos */
 .text-input {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
     -fx-prompt-text-fill: #9e9e9e !important;
 }
@@ -652,12 +652,12 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Panes genéricos */
 .pane {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 /* Painéis de informação (sem cores claras) */
 .info-panel {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px !important;
     -fx-border-color: #444444 !important;
     -fx-border-radius: 5px !important;
@@ -666,7 +666,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel de input/adicionar (sem cores claras) */
 .input-panel {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px !important;
     -fx-border-color: #444444 !important;
     -fx-border-radius: 5px !important;
@@ -675,7 +675,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel de totais */
 .totals-panel {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px 5px 0 0 !important;
     -fx-border-color: #444444 !important;
     -fx-padding: 8px 20px !important;
@@ -696,18 +696,18 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Root de telas financeiras */
 .root-financeiro {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 /* Painel de cabeçalho */
 .painel-cabecalho {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333333 !important;
 }
 
 /* Painel de filtros */
 .painel-filtros {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #444444 !important;
     -fx-border-radius: 5px !important;
     -fx-padding: 10px !important;
@@ -715,13 +715,13 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel lateral */
 .painel-lateral {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333333 !important;
 }
 
 /* Cards de informação */
 .card-info {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 8px !important;
     -fx-border-color: #444444 !important;
     -fx-border-width: 1px !important;
@@ -731,14 +731,14 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .card-total {
     -fx-background-color: #2d2d30 !important;
     -fx-background-radius: 8px !important;
-    -fx-border-color: #c62828 !important;
+    -fx-border-color: #DC2626 !important;
     -fx-border-width: 0 0 0 6 !important;
     -fx-padding: 5px 25px !important;
 }
 
 /* Painel de totais (rodapé) */
 .painel-totais {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333333 !important;
     -fx-border-width: 1px 0 0 0 !important;
 }
@@ -755,18 +755,18 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 .botao-categoria:hover {
     -fx-background-color: #444444 !important;
-    -fx-border-color: #0d56df !important;
+    -fx-border-color: #34D399 !important;
 }
 
 /* Botão de busca */
 .botao-busca {
-    -fx-background-color: #0d56df !important;
+    -fx-background-color: #34D399 !important;
     -fx-text-fill: #ffffff !important;
     -fx-font-weight: bold !important;
 }
 
 .botao-busca:hover {
-    -fx-background-color: #0d47a1 !important;
+    -fx-background-color: #059669 !important;
 }
 
 /* Botão de limpar */
@@ -783,7 +783,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Campo de valor com destaque */
 .campo-valor {
     -fx-background-color: #2d2d30 !important;
-    -fx-border-color: #ff9800 !important;
+    -fx-border-color: #F59E0B !important;
     -fx-border-width: 2px !important;
     -fx-font-weight: bold !important;
     -fx-text-fill: #ffffff !important;
@@ -791,7 +791,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel de formulário */
 .painel-formulario {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px !important;
     -fx-border-color: #444444 !important;
     -fx-border-radius: 5px !important;
@@ -806,26 +806,26 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel de taxas */
 .painel-taxas {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #444444 !important;
     -fx-border-radius: 4px !important;
 }
 
 /* Barra de pesquisa */
 .barra-pesquisa {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333333 !important;
 }
 
 /* Painel de rodapé */
 .painel-rodape {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-border-color: #333333 !important;
 }
 
 /* Painel de login */
 .painel-login {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 10px !important;
     -fx-border-color: #444444 !important;
     -fx-border-radius: 10px !important;
@@ -833,8 +833,8 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Dialog de pagamento */
 .dialog-pagamento {
-    -fx-background-color: #252526 !important;
-    -fx-border-color: #0d56df !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #34D399 !important;
     -fx-border-width: 2px !important;
 }
 
@@ -843,7 +843,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
     -fx-background-color: #2d2d30 !important;
     -fx-padding: 10px !important;
     -fx-background-radius: 5px !important;
-    -fx-border-color: #0d56df !important;
+    -fx-border-color: #34D399 !important;
 }
 
 /* Botão cancelar */
@@ -859,8 +859,8 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Dialog estorno */
 .dialog-estorno {
-    -fx-background-color: #252526 !important;
-    -fx-border-color: #c62828 !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #DC2626 !important;
     -fx-border-width: 4px !important;
 }
 
@@ -868,20 +868,20 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .painel-alerta {
     -fx-background-color: #3d2626 !important;
     -fx-border-radius: 5px !important;
-    -fx-border-color: #c62828 !important;
+    -fx-border-color: #DC2626 !important;
 }
 
 /* Dialog quitar dívida */
 .dialog-quitar {
-    -fx-background-color: #252526 !important;
-    -fx-border-color: #2e7d32 !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #059669 !important;
     -fx-border-width: 3px !important;
 }
 
 /* Dialog baixa */
 .dialog-baixa {
-    -fx-background-color: #252526 !important;
-    -fx-border-color: #0d56df !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #34D399 !important;
     -fx-border-width: 2px !important;
 }
 
@@ -889,20 +889,20 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .painel-resumo-pagamento {
     -fx-background-color: #2d2d30 !important;
     -fx-background-radius: 8px !important;
-    -fx-border-color: #2e7d32 !important;
+    -fx-border-color: #059669 !important;
 }
 
 /* Campo destaque viagem */
 .campo-destaque-viagem {
     -fx-background-color: #2d2d30 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-border-color: #0d56df !important;
+    -fx-border-color: #34D399 !important;
     -fx-border-width: 2px !important;
 }
 
 /* Campo de tarifa */
 .campo-tarifa {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
     -fx-font-weight: bold !important;
 }
@@ -910,7 +910,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Botão secundário */
 .botao-secundario {
     -fx-background-color: #444444 !important;
-    -fx-text-fill: #0d56df !important;
+    -fx-text-fill: #34D399 !important;
     -fx-font-weight: bold !important;
 }
 
@@ -923,21 +923,21 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* ========================================================================= */
 
 .scroll-pane {
-    -fx-background-color: #121212 !important;
-    -fx-background: #121212 !important;
+    -fx-background-color: #040D0A !important;
+    -fx-background: #040D0A !important;
 }
 
 .scroll-pane > .viewport {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 .scroll-pane .content {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
 }
 
 /* ScrollBar vertical e horizontal */
 .scroll-bar {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
 }
 
 .scroll-bar .thumb {
@@ -950,16 +950,16 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 }
 
 .scroll-bar .thumb:pressed {
-    -fx-background-color: #0d56df !important;
+    -fx-background-color: #34D399 !important;
 }
 
 .scroll-bar .track {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
 }
 
 .scroll-bar .increment-button,
 .scroll-bar .decrement-button {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-padding: 0 !important;
 }
 
@@ -968,21 +968,21 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* ========================================================================= */
 
 .list-view {
-    -fx-background-color: #121212 !important;
+    -fx-background-color: #040D0A !important;
     -fx-border-color: #333333 !important;
 }
 
 .list-cell {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
     -fx-text-fill: #ffffff !important;
 }
 
 .list-cell:odd {
-    -fx-background-color: #252526 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .list-cell:selected {
-    -fx-background-color: #0d56df !important;
+    -fx-background-color: #34D399 !important;
     -fx-text-fill: #ffffff !important;
 }
 
@@ -995,5 +995,5 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* ========================================================================= */
 
 .filler, .corner {
-    -fx-background-color: #1e1e1e !important;
+    -fx-background-color: #0A1F18 !important;
 }

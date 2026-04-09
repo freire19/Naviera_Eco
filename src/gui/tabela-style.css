@@ -1,6 +1,6 @@
-/* Estilo para cabeçalhos da tabela - Azul */
+/* Estilo para cabeçalhos da tabela - Verde Naviera */
 .table-view .column-header {
-    -fx-background-color: #0056b3;
+    -fx-background-color: #059669;
 }
 
 .table-view .column-header .label {
@@ -19,7 +19,7 @@
 }
 
 .table-view .table-row-cell:selected {
-    -fx-background-color: #0078d7;
+    -fx-background-color: #059669;
 }
 
 /* Aumenta a fonte das células */

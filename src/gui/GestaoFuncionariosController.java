@@ -136,8 +136,8 @@ public class GestaoFuncionariosController {
                 else {
                     setText(item);
                     PagamentoHistorico atual = getTableView().getItems().get(getIndex());
-                    if (atual.tipo.equals("DESCONTO")) setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold;"); 
-                    else setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+                    if (atual.tipo.equals("DESCONTO")) setStyle("-fx-text-fill: #DC2626; -fx-font-weight: bold;"); 
+                    else setStyle("-fx-text-fill: #059669; -fx-font-weight: bold;");
                 }
             }
         });
@@ -206,7 +206,7 @@ public class GestaoFuncionariosController {
         
         if (lblStatusFuncionario != null) {
             lblStatusFuncionario.setText(f.isAtivo() ? "ATIVO" : "DEMITIDO / INATIVO");
-            lblStatusFuncionario.setStyle("-fx-text-fill: " + (f.isAtivo() ? "#2e7d32" : "#c62828") + "; -fx-font-weight: bold;");
+            lblStatusFuncionario.setStyle("-fx-text-fill: " + (f.isAtivo() ? "#059669" : "#DC2626") + "; -fx-font-weight: bold;");
             if(boxDemissao != null) boxDemissao.setDisable(!f.isAtivo());
         }
         
@@ -349,8 +349,8 @@ public class GestaoFuncionariosController {
         lblPago.setText(nf.format(totalDinheiroPago)); 
         lblSaldo.setText(nf.format(saldo));
         
-        if (saldo < 0) lblSaldo.setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-font-size: 26px;");
-        else lblSaldo.setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-font-size: 26px;");
+        if (saldo < 0) lblSaldo.setStyle("-fx-text-fill: #DC2626; -fx-font-weight: bold; -fx-font-size: 26px;");
+        else lblSaldo.setStyle("-fx-text-fill: #059669; -fx-font-weight: bold; -fx-font-size: 26px;");
     }
     
     private void zerarTela() {
@@ -613,7 +613,7 @@ public class GestaoFuncionariosController {
         page.setStyle("-fx-border-color: #cccccc; -fx-border-width: 1px; -fx-background-color: white;");
         
         VBox header = new VBox(2); 
-        header.setStyle("-fx-background-color: #1565c0; -fx-padding: 5;"); 
+        header.setStyle("-fx-background-color: #059669; -fx-padding: 5;"); 
         header.setAlignment(Pos.CENTER_LEFT);
         
         HBox topRow = new HBox();
@@ -650,7 +650,7 @@ public class GestaoFuncionariosController {
         VBox corpoTabela = new VBox();
         
         HBox titulos = new HBox();
-        titulos.setStyle("-fx-background-color: #e3f2fd; -fx-padding: 2; -fx-border-color: #bbdefb; -fx-border-width: 0 0 1 0;");
+        titulos.setStyle("-fx-background-color: #E6F5ED; -fx-padding: 2; -fx-border-color: #bbdefb; -fx-border-width: 0 0 1 0;");
         titulos.getChildren().addAll(
             criarCelulaTexto("DATA", 60, true, Pos.CENTER_LEFT),
             criarCelulaTexto("DESCRIÇÃO", 240, true, Pos.CENTER_LEFT), 
@@ -690,10 +690,10 @@ public class GestaoFuncionariosController {
         totais.add(tDesc, 1, 1);
         
         VBox boxLiq = new VBox(2);
-        boxLiq.setStyle("-fx-background-color: white; -fx-border-color: #1565c0; -fx-border-width: 1; -fx-padding: 5;");
+        boxLiq.setStyle("-fx-background-color: white; -fx-border-color: #059669; -fx-border-width: 1; -fx-padding: 5;");
         boxLiq.setAlignment(Pos.CENTER_RIGHT);
         boxLiq.setPrefWidth(130);
-        Label lLiq = new Label("LÍQUIDO A RECEBER"); lLiq.setFont(Font.font("Arial", FontWeight.BOLD, 9)); lLiq.setTextFill(Color.web("#1565c0"));
+        Label lLiq = new Label("LÍQUIDO A RECEBER"); lLiq.setFont(Font.font("Arial", FontWeight.BOLD, 9)); lLiq.setTextFill(Color.web("#059669"));
         Label lVal = new Label(nf.format(totalVencimentos - totalDescontos)); lVal.setFont(Font.font("Arial", FontWeight.BOLD, 14));
         boxLiq.getChildren().addAll(lLiq, lVal);
         totais.add(boxLiq, 3, 0, 1, 2);

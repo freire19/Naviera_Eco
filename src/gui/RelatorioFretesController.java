@@ -89,7 +89,7 @@ public class RelatorioFretesController implements Initializable {
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     // Cores e Fontes - PADRÃƒO DO SISTEMA
-    private final String COR_AZUL_ESCURO = "#0d47a1";
+    private final String COR_AZUL_ESCURO = "#047857";
     private final String COR_CINZA_CLARO = "#f5f5f5";
     
     private final Font FONT_EMPRESA = Font.font("Arial", FontWeight.BLACK, 16);

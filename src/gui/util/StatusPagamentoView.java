@@ -6,10 +6,10 @@ public class StatusPagamentoView {
 
     public static String getCorCSS(StatusPagamento status) {
         switch (status) {
-            case PAGO: case QUITADO: return "#2e7d32";
+            case PAGO: case QUITADO: return "#059669";
             case PARCIAL: return "#ef6c00";
-            case PENDENTE: case NAO_PAGO: return "#c62828";
-            case EMITIDA: return "#1565c0";
+            case PENDENTE: case NAO_PAGO: return "#DC2626";
+            case EMITIDA: return "#059669";
             case CANCELADA: return "#757575";
             default: return "#000000";
         }

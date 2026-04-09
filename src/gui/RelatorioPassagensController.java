@@ -381,7 +381,7 @@ public class RelatorioPassagensController implements Initializable {
         barChart.getData().add(series);
 
         Platform.runLater(() -> {
-            String[] colors = {"#007bff", "#28a745", "#ffc107", "#dc3545", "#17a2b8", "#6c757d"};
+            String[] colors = {"#059669", "#28a745", "#ffc107", "#dc3545", "#17a2b8", "#6c757d"};
             int i = 0;
             for (XYChart.Data<String, Number> data : series.getData()) {
                 Node node = data.getNode();

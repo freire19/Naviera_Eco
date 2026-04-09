@@ -303,19 +303,19 @@ public class InserirEncomendaController implements Initializable {
     public void handleAudioInput(ActionEvent event) {
         if(btnAudioInput.getText().contains("Ouvindo")) return;
         btnAudioInput.setText("Ouvindo... (Fale agora)");
-        btnAudioInput.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white;"); 
+        btnAudioInput.setStyle("-fx-background-color: #DC2626; -fx-text-fill: white;"); 
         gui.util.OcrAudioService.executarVozAsync(
             texto -> {
                 interpretarTextoEPreencher(texto);
                 Platform.runLater(() -> {
                     btnAudioInput.setText("Microfone");
-                    btnAudioInput.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+                    btnAudioInput.setStyle("-fx-background-color: #047857; -fx-text-fill: white;");
                 });
             },
             e -> Platform.runLater(() -> {
                 AlertHelper.show(AlertType.ERROR, "Erro Audio", "Erro: " + e.getMessage());
                 btnAudioInput.setText("Microfone");
-                btnAudioInput.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+                btnAudioInput.setStyle("-fx-background-color: #047857; -fx-text-fill: white;");
             })
         );
     }
@@ -409,11 +409,11 @@ public class InserirEncomendaController implements Initializable {
     private String extrairApenasNumeros(String texto) { return texto.replaceAll("[^0-9]", ""); }
 
     private void aplicarEstiloBotoes() {
-        estilizarBotao(btnSalvar, "#2e7d32"); 
-        estilizarBotao(btnIniciar, "#1565C0"); 
-        estilizarBotao(btnEntregar, "#0288d1");
+        estilizarBotao(btnSalvar, "#059669"); 
+        estilizarBotao(btnIniciar, "#059669"); 
+        estilizarBotao(btnEntregar, "#0369A1");
         estilizarBotao(btnImprimir, "#607d8b"); 
-        estilizarBotao(btnExcluir, "#c62828"); 
+        estilizarBotao(btnExcluir, "#DC2626"); 
         estilizarBotao(btnEditar, "#ff8f00"); 
         estilizarBotao(btnSair, "#424242"); 
         if(btnAdicionarItem != null) {
@@ -421,7 +421,7 @@ public class InserirEncomendaController implements Initializable {
             btnAdicionarItem.setOnMousePressed(e -> btnAdicionarItem.setStyle("-fx-background-color: #c49000; -fx-text-fill: black; -fx-font-weight: bold;"));
             btnAdicionarItem.setOnMouseReleased(e -> btnAdicionarItem.setStyle("-fx-background-color: #fbc02d; -fx-text-fill: black; -fx-font-weight: bold;"));
         }
-        String estiloAzulForte = "-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
+        String estiloAzulForte = "-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
         if(btnAudioInput != null) btnAudioInput.setStyle(estiloAzulForte);
         if(btnImageInput != null) btnImageInput.setStyle(estiloAzulForte);
     }
@@ -1219,7 +1219,7 @@ public class InserirEncomendaController implements Initializable {
         box.setPrefWidth(400); 
         HBox.setHgrow(box, Priority.ALWAYS);
         if (isSelected) {
-            box.setStyle("-fx-background-color: #0078d7;");
+            box.setStyle("-fx-background-color: #059669;");
             label.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
         } else {
             box.setStyle("-fx-background-color: white;");
@@ -1618,7 +1618,7 @@ public class InserirEncomendaController implements Initializable {
         } else {
             btnEntregar.setDisable(false);
             btnEntregar.setText("Entregar");
-            estilizarBotao(btnEntregar, "#0288d1");
+            estilizarBotao(btnEntregar, "#0369A1");
         }
     }
     

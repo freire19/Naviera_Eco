@@ -59,9 +59,9 @@ public class RelatorioUtil {
     // ========================================================================
 
     // CORES
-    public static final String COR_AZUL_ESCURO = "#0d47a1";
-    public static final String COR_VERDE_ESCURO = "#2e7d32";
-    public static final String COR_VERMELHO = "#c62828";
+    public static final String COR_AZUL_ESCURO = "#047857";
+    public static final String COR_VERDE_ESCURO = "#059669";
+    public static final String COR_VERMELHO = "#DC2626";
     public static final String COR_CINZA_CLARO = "#f5f5f5";
     public static final String COR_CINZA_MEDIO = "#e0e0e0";
 

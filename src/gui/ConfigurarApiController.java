@@ -124,10 +124,10 @@ public class ConfigurarApiController implements Initializable {
         boolean configurado = txtUrlApi.getText() != null && !txtUrlApi.getText().isEmpty();
         if (configurado) {
             lblStatus.setText("● Configurado");
-            lblStatus.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+            lblStatus.setStyle("-fx-text-fill: #059669; -fx-font-weight: bold;");
         } else {
             lblStatus.setText("● Não Configurado");
-            lblStatus.setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;");
+            lblStatus.setStyle("-fx-text-fill: #B45309; -fx-font-weight: bold;");
         }
     }
 
@@ -141,7 +141,7 @@ public class ConfigurarApiController implements Initializable {
 
         btnTestar.setDisable(true);
         lblStatusConexao.setText("⏳ Testando conexão...");
-        lblStatusConexao.setStyle("-fx-text-fill: #3498db;");
+        lblStatusConexao.setStyle("-fx-text-fill: #0369A1;");
 
         new Thread(() -> {
             try {
@@ -156,13 +156,13 @@ public class ConfigurarApiController implements Initializable {
                 Platform.runLater(() -> {
                     if (responseCode == 200) {
                         lblStatusConexao.setText("✅ Conexão OK! Servidor respondendo.");
-                        lblStatusConexao.setStyle("-fx-text-fill: #27ae60;");
+                        lblStatusConexao.setStyle("-fx-text-fill: #059669;");
                     } else if (responseCode == 404) {
                         lblStatusConexao.setText("⚠️ Servidor encontrado, mas endpoint /health não existe. Conexão pode estar OK.");
-                        lblStatusConexao.setStyle("-fx-text-fill: #f39c12;");
+                        lblStatusConexao.setStyle("-fx-text-fill: #F59E0B;");
                     } else {
                         lblStatusConexao.setText("⚠️ Servidor respondeu com código: " + responseCode);
-                        lblStatusConexao.setStyle("-fx-text-fill: #f39c12;");
+                        lblStatusConexao.setStyle("-fx-text-fill: #F59E0B;");
                     }
                     btnTestar.setDisable(false);
                 });
@@ -170,7 +170,7 @@ public class ConfigurarApiController implements Initializable {
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     lblStatusConexao.setText("❌ Erro: " + e.getMessage());
-                    lblStatusConexao.setStyle("-fx-text-fill: #e74c3c;");
+                    lblStatusConexao.setStyle("-fx-text-fill: #DC2626;");
                     btnTestar.setDisable(false);
                 });
             }

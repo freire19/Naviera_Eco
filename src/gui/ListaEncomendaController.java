@@ -306,8 +306,8 @@ public class ListaEncomendaController implements Initializable {
         
         if (selecionado) {
             // Quando SELECIONADO: fundo azul, texto branco, borda destacada
-            String corFundo = escuro ? "#1565c0" : "#0056b3";
-            String corBorda = escuro ? "#1976d2" : "#003d82";
+            String corFundo = escuro ? "#059669" : "#059669";
+            String corBorda = escuro ? "#0d9668" : "#003d82";
             rb.setStyle(
                 "-fx-background-color: " + corFundo + "; " +
                 "-fx-text-fill: white; " +
@@ -348,7 +348,7 @@ public class ListaEncomendaController implements Initializable {
                     setStyle("");
                 } else {
                     setText(item);
-                    setStyle("-fx-text-fill: #1565C0; -fx-font-weight: bold; -fx-font-size: 15px; -fx-alignment: CENTER;");
+                    setStyle("-fx-text-fill: #059669; -fx-font-weight: bold; -fx-font-size: 15px; -fx-alignment: CENTER;");
                 }
             }
         });
@@ -387,7 +387,7 @@ public class ListaEncomendaController implements Initializable {
                     setText(item);
                     Encomenda enc = getTableView().getItems().get(getIndex());
                     if (enc.isEntregue()) {
-                        setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: 800;");
+                        setStyle("-fx-text-fill: #059669; -fx-font-weight: 800;");
                     } else {
                         setStyle("-fx-text-fill: #d84315; -fx-font-weight: 800;");
                     }
@@ -812,7 +812,7 @@ public class ListaEncomendaController implements Initializable {
         l1.setStyle(estiloLinha);
         l2.setStyle(estiloLinha);
         l3.setStyle(estiloLinha);
-        l4.setStyle(estiloLinha + " -fx-text-fill: #c62828;");
+        l4.setStyle(estiloLinha + " -fx-text-fill: #DC2626;");
 
         box.getChildren().addAll(l1, l2, l3, l4);
 
@@ -841,7 +841,7 @@ public class ListaEncomendaController implements Initializable {
             String weight = "normal";
 
             if (i == 5) { // coluna "STATUS"
-                textColor = isPago ? "#2e7d32" : "#c62828";
+                textColor = isPago ? "#059669" : "#DC2626";
                 weight = "bold";
             }
 
@@ -874,7 +874,7 @@ public class ListaEncomendaController implements Initializable {
 
     private void adicionarLinhaGridCabecalho(GridPane grid, int row, String... valores) {
         String style =
-                "-fx-background-color: #1565C0; -fx-text-fill: white; -fx-font-weight: bold; "
+                "-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; "
                         + "-fx-font-size: 11px; -fx-padding: 6;";
         for (int i = 0; i < valores.length; i++) {
             Label lbl = new Label(valores[i]);

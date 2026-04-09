@@ -575,10 +575,10 @@ public class VenderPassagemController implements Initializable {
                     } else {
                         if (item.compareTo(BigDecimal.ZERO) <= 0) {
                             setText("PAGO");
-                            setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                            setStyle("-fx-text-fill: #059669; -fx-font-weight: bold; -fx-alignment: CENTER;");
                         } else {
                             setText("PENDENTE");
-                            setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                            setStyle("-fx-text-fill: #DC2626; -fx-font-weight: bold; -fx-alignment: CENTER;");
                         }
                     }
                 }
@@ -1660,7 +1660,7 @@ public class VenderPassagemController implements Initializable {
         Node bilheteNode = criarLayoutBilheteVisual(p);
 
         Button btnConfirmar = new Button("IMPRIMIR AGORA");
-        btnConfirmar.setStyle("-fx-font-size: 16px; -fx-background-color: #2e7d32; -fx-text-fill: white; -fx-padding: 10px 20px;");
+        btnConfirmar.setStyle("-fx-font-size: 16px; -fx-background-color: #059669; -fx-text-fill: white; -fx-padding: 10px 20px;");
         btnConfirmar.setOnAction(e -> {
             Node nodeParaImpressora = criarLayoutBilheteVisual(p);
             imprimirNodeReal(nodeParaImpressora);

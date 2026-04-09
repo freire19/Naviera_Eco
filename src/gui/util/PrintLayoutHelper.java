@@ -42,7 +42,7 @@ public class PrintLayoutHelper {
     private static final String FONT_REPORT  = "Arial";
 
     /** Azul escuro padrao para headers de tabela e nome da empresa. */
-    private static final String COR_HEADER     = "#1565c0";
+    private static final String COR_HEADER     = "#059669";
     /** Fundo de linha par (zebra clara). */
     private static final String COR_ZEBRA_PAR  = "#f5f5f5";
     /** Fundo de linha impar (zebra branca). */

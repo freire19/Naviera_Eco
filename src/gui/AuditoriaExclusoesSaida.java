@@ -76,7 +76,7 @@ public class AuditoriaExclusoesSaida {
 
         // --- CABEÇALHO ---
         VBox header = new VBox(5);
-        header.setStyle("-fx-background-color: #1565c0; -fx-padding: 15;");
+        header.setStyle("-fx-background-color: #059669; -fx-padding: 15;");
         header.setAlignment(Pos.CENTER);
 
         Label lblTitulo = new Label("REGISTRO DE EXCLUSÕES - SAÍDAS");
@@ -136,11 +136,11 @@ public class AuditoriaExclusoesSaida {
         boxBotoes.setStyle("-fx-background-color: #f4f4f4; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;");
 
         Button btnImprimir = new Button("IMPRIMIR RELATÓRIO");
-        btnImprimir.setStyle("-fx-background-color: #1565c0; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnImprimir.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;");
         btnImprimir.setOnAction(e -> imprimirRelatorioAuditoria());
 
         Button btnLimparHistorico = new Button("APAGAR REGISTRO");
-        btnLimparHistorico.setStyle("-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnLimparHistorico.setStyle("-fx-background-color: #DC2626; -fx-text-fill: white; -fx-font-weight: bold;");
         btnLimparHistorico.setOnAction(e -> apagarRegistroSelecionado());
 
         Button btnFechar = new Button("FECHAR");
@@ -359,7 +359,7 @@ public class AuditoriaExclusoesSaida {
 
     private void adicionarCelulaCabecalho(GridPane grid, String texto, int col) {
         StackPane pane = new StackPane();
-        pane.setStyle("-fx-background-color: #1565c0; -fx-padding: 6;"); 
+        pane.setStyle("-fx-background-color: #059669; -fx-padding: 6;"); 
         Label label = new Label(texto);
         label.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 9px;");
         pane.getChildren().add(label);

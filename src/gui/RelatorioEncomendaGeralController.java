@@ -87,7 +87,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
     private ObservableList<Rota> obsListaRotas;
 
     // Cores e Fontes
-    private final String COR_AZUL_ESCURO = "#0d47a1";
+    private final String COR_AZUL_ESCURO = "#047857";
     private final String COR_CINZA_CLARO = "#f5f5f5"; // VOLTANDO PARA CINZA PARA SEGURANÇA
     
     private final Font FONT_EMPRESA = Font.font("Arial", FontWeight.BLACK, 16);

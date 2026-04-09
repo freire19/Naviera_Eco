@@ -340,6 +340,8 @@ function AmigosCPF({ t, authHeaders }) {
 function MapaCPF({ t, authHeaders }) {
   const { data: boats, loading, erro, refresh } = useApi("/embarcacoes", authHeaders);
   const [sel, setSel] = useState(null);
+  const embId = sel !== null ? boats?.[sel]?.id : null;
+  const { data: viagensEmb } = useApi(embId ? `/viagens/embarcacao/${embId}` : null, embId ? authHeaders : null);
 
   if (loading) return <Skeleton t={t} height={80} count={3} />;
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
@@ -348,7 +350,6 @@ function MapaCPF({ t, authHeaders }) {
     const detalhe = boats?.[sel];
     if (!detalhe) { setSel(null); return null; }
 
-    const { data: viagensEmb } = useApi(`/viagens/embarcacao/${detalhe.id}`, authHeaders);
     const emViagem = detalhe.status === "EM_VIAGEM";
 
     return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -559,12 +560,12 @@ function BilheteScreen({ bilhete, t: _t, onBack }) {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <svg width="20" height="20" viewBox="0 0 20 20">
                 <circle cx="10" cy="10" r="8" fill="none" stroke={t.border} strokeWidth="2" />
-                <circle cx="10" cy="10" r="8" fill="none" stroke={timeLeft <= 5 ? "#EF4444" : t.pri} strokeWidth="2"
+                <circle cx="10" cy="10" r="8" fill="none" stroke={timeLeft <= 5 ? t.err : t.pri} strokeWidth="2"
                   strokeDasharray={`${2 * Math.PI * 8}`} strokeDashoffset={`${2 * Math.PI * 8 * (1 - pct / 100)}`}
                   transform="rotate(-90 10 10)" style={{ transition: "stroke-dashoffset 1s linear" }} />
-                <text x="10" y="10" textAnchor="middle" dominantBaseline="central" fill={timeLeft <= 5 ? "#EF4444" : t.pri} fontSize="7" fontWeight="700">{timeLeft}</text>
+                <text x="10" y="10" textAnchor="middle" dominantBaseline="central" fill={timeLeft <= 5 ? t.err : t.pri} fontSize="7" fontWeight="700">{timeLeft}</text>
               </svg>
-              <div><div style={{ fontSize: 10, color: timeLeft <= 5 ? "#EF4444" : t.txMuted }}>{timeLeft <= 5 ? "Renovando..." : `Renova em ${timeLeft}s`}</div>
+              <div><div style={{ fontSize: 10, color: timeLeft <= 5 ? t.err : t.txMuted }}>{timeLeft <= 5 ? "Renovando..." : `Renova em ${timeLeft}s`}</div>
                 <div style={{ fontSize: 8, color: t.txMuted, opacity: 0.5, marginTop: 1 }}>HMAC-SHA256 • Anti-clone</div></div>
             </div>
           </div>

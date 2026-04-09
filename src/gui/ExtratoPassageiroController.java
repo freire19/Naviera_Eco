@@ -214,8 +214,8 @@ public class ExtratoPassageiroController implements Initializable {
                 if (empty || item == null) { setText(null); setStyle(""); }
                 else {
                     setText(item);
-                    if (item.contains("0,00")) setStyle("-fx-text-fill: #2e7d32; -fx-alignment: CENTER-RIGHT;");
-                    else setStyle("-fx-text-fill: #c62828; -fx-font-weight: bold; -fx-alignment: CENTER-RIGHT;");
+                    if (item.contains("0,00")) setStyle("-fx-text-fill: #059669; -fx-alignment: CENTER-RIGHT;");
+                    else setStyle("-fx-text-fill: #DC2626; -fx-font-weight: bold; -fx-alignment: CENTER-RIGHT;");
                 }
             }
         });

@@ -122,7 +122,7 @@ public class ListaFretesController {
             @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setText(null); setStyle(""); } 
-                else { setText(item); setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #0078D7; -fx-alignment: CENTER;"); }
+                else { setText(item); setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #059669; -fx-alignment: CENTER;"); }
             }
         });
         colRemetente.setCellValueFactory(new PropertyValueFactory<>("remetente"));
@@ -132,11 +132,11 @@ public class ListaFretesController {
         colDataViagem.setStyle("-fx-alignment: CENTER;");
         colEmissao.setCellValueFactory(new PropertyValueFactory<>("emissao"));
         colNominal.setCellValueFactory(new PropertyValueFactory<>("nominal"));
-        colNominal.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #0078D7;");
+        colNominal.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #059669;");
         colDevedor.setCellValueFactory(new PropertyValueFactory<>("devedor"));
-        colDevedor.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #d32f2f;");
+        colDevedor.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #DC2626;");
         colBaixado.setCellValueFactory(new PropertyValueFactory<>("baixado"));
-        colBaixado.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #2e7d32;");
+        colBaixado.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #059669;");
         colConferente.setCellValueFactory(new PropertyValueFactory<>("conferente"));
     }
     
@@ -309,7 +309,7 @@ public class ListaFretesController {
         // Adiciona titulo do relatorio e linha de filtro abaixo do header da empresa
         Label lTitulo = new Label("RELATÓRIO DE FRETES");
         lTitulo.setFont(Font.font("Arial", FontWeight.BLACK, 14));
-        lTitulo.setTextFill(Color.web("#0d47a1"));
+        lTitulo.setTextFill(Color.web("#047857"));
         Label lFiltro = new Label("Filtro: " + filtroViagem + " | Emissão: "
                 + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
         lFiltro.setFont(Font.font("Arial", 10));
@@ -329,7 +329,7 @@ public class ListaFretesController {
         HBox box = new HBox(5);
         box.setPrefWidth(w);
         box.setPadding(new Insets(5));
-        box.setStyle("-fx-background-color: #0d47a1;");
+        box.setStyle("-fx-background-color: #047857;");
 
         box.getChildren().addAll(
             criarCelHeader("Nº", w * 0.08),
@@ -348,7 +348,7 @@ public class ListaFretesController {
         HBox box = new HBox(5);
         box.setPrefWidth(w);
         box.setPadding(new Insets(3, 5, 3, 5));
-        box.setStyle(par ? "-fx-background-color: white;" : "-fx-background-color: #e3f2fd;"); 
+        box.setStyle(par ? "-fx-background-color: white;" : "-fx-background-color: #E6F5ED;"); 
 
         box.getChildren().addAll(
             criarCelNormal(f.getNumFrete(), w * 0.08, Pos.CENTER),

@@ -242,7 +242,7 @@ public class CadastroFreteController implements Initializable {
     }
 
     private void aplicarEstiloBotoesIA() {
-        String estiloAzulForte = "-fx-background-color: #0d47a1; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
+        String estiloAzulForte = "-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
         if(btnAudio != null) {
             btnAudio.setStyle(estiloAzulForte);
             btnAudio.setText("Voz");
@@ -425,7 +425,7 @@ public class CadastroFreteController implements Initializable {
                 Node content = ((CustomMenuItem) mi).getContent();
                 if (content instanceof HBox) {
                     if (i == idx) {
-                        content.setStyle("-fx-background-color: #1565C0;");
+                        content.setStyle("-fx-background-color: #059669;");
                         // Muda cor do texto para branco
                         for (Node child : ((HBox) content).getChildren()) {
                             if (child instanceof Label) {
@@ -637,11 +637,11 @@ public class CadastroFreteController implements Initializable {
             String sufixo;
             if (rbComDesconto != null && rbComDesconto.isSelected()) {
                 precoExibir = itemFrete.getPrecoUnitarioDesconto();
-                corTexto = "#2e7d32";
+                corTexto = "#059669";
                 sufixo = " (Desc.)";
             } else {
                 precoExibir = itemFrete.getPrecoUnitarioPadrao();
-                corTexto = "#0d47a1";
+                corTexto = "#047857";
                 sufixo = " (Normal)";
             }
 
@@ -1824,20 +1824,20 @@ public class CadastroFreteController implements Initializable {
         }
 
         btnAudio.setText("Ouvindo... (Fale)");
-        btnAudio.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white;");
+        btnAudio.setStyle("-fx-background-color: #DC2626; -fx-text-fill: white;");
 
         gui.util.OcrAudioService.executarVozAsync(
             texto -> {
                 interpretarTextoFreteEPreencher(texto);
                 Platform.runLater(() -> {
                     btnAudio.setText("Voz");
-                    btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+                    btnAudio.setStyle("-fx-background-color: #047857; -fx-text-fill: white;");
                 });
             },
             e -> Platform.runLater(() -> {
                 AlertHelper.show(AlertType.ERROR, "Erro Audio", "Erro no microfone ou modelo: " + e.getMessage());
                 btnAudio.setText("Voz");
-                btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
+                btnAudio.setStyle("-fx-background-color: #047857; -fx-text-fill: white;");
             })
         );
     }

@@ -360,7 +360,7 @@ public class FinanceiroSaidaController {
         grid.setPadding(new Insets(20, 150, 10, 10));
 
         Label lblOperador = new Label(solicitanteFinal);
-        lblOperador.setStyle("-fx-font-weight: bold; -fx-text-fill: #1565c0;");
+        lblOperador.setStyle("-fx-font-weight: bold; -fx-text-fill: #059669;");
 
         PasswordField password = new PasswordField();
         password.setPromptText("Senha do Gerente/Admin");
@@ -604,7 +604,7 @@ public class FinanceiroSaidaController {
         }
 
         Label lblTotal = new Label("TOTAL GERAL: " + nf.format(geral));
-        lblTotal.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1565c0;");
+        lblTotal.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #059669;");
         
         box.getChildren().addAll(grid, lblTotal);
         return box;
@@ -627,7 +627,7 @@ public class FinanceiroSaidaController {
         }
         String nomeEmpresa = (dados.nome != null && !dados.nome.isEmpty()) ? dados.nome : "F/B DEUS DE ALIANÇA V";
         Label lblEmpresa = new Label(nomeEmpresa.toUpperCase());
-        lblEmpresa.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1565c0;"); 
+        lblEmpresa.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #059669;"); 
         Label lblTitulo = new Label("RELATÓRIO FINANCEIRO - SAÍDAS");
         lblTitulo.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #333;");
         cabecalho.getChildren().addAll(lblEmpresa, lblTitulo);
@@ -668,7 +668,7 @@ public class FinanceiroSaidaController {
     
     private void adicionarCelulaCabecalho(GridPane grid, String texto, int col) {
         StackPane pane = new StackPane();
-        pane.setStyle("-fx-background-color: #1565c0; -fx-padding: 6;"); 
+        pane.setStyle("-fx-background-color: #059669; -fx-padding: 6;"); 
         Label label = new Label(texto);
         label.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
         label.setWrapText(true);
@@ -707,7 +707,7 @@ public class FinanceiroSaidaController {
     private String getCorPorForma(String forma) {
         if (forma == null) return "black";
         switch (forma.toUpperCase()) {
-            case "DINHEIRO": return "#2e7d32"; case "PIX": return "#1565c0"; case "CARTAO": return "#e65100"; case "TRANSFERENCIA": return "#6a1b9a"; case "BOLETO": return "#c62828"; default: return "black";
+            case "DINHEIRO": return "#059669"; case "PIX": return "#059669"; case "CARTAO": return "#B45309"; case "TRANSFERENCIA": return "#7C3AED"; case "BOLETO": return "#DC2626"; default: return "black";
         }
     }
 

@@ -331,7 +331,7 @@ public class TabelaPrecoFreteController implements Initializable {
             }
 
             HBox header = new HBox(10);
-            header.setStyle("-fx-background-color: #0d47a1; -fx-padding: 5;");
+            header.setStyle("-fx-background-color: #047857; -fx-padding: 5;");
             
             Label hDesc = new Label("DESCRIÇÃO"); 
             hDesc.setTextFill(Color.WHITE); 
@@ -373,7 +373,7 @@ public class TabelaPrecoFreteController implements Initializable {
                     Label cNorm = new Label(df.format(item.getPrecoUnitarioPadrao())); 
                     cNorm.setPrefWidth(wPreco); 
                     cNorm.setAlignment(Pos.CENTER_RIGHT); 
-                    cNorm.setTextFill(Color.web("#0d47a1"));
+                    cNorm.setTextFill(Color.web("#047857"));
                     row.getChildren().add(cNorm);
                 }
 
@@ -381,7 +381,7 @@ public class TabelaPrecoFreteController implements Initializable {
                     Label cDescnt = new Label(df.format(item.getPrecoUnitarioDesconto())); 
                     cDescnt.setPrefWidth(wPreco); 
                     cDescnt.setAlignment(Pos.CENTER_RIGHT); 
-                    cDescnt.setTextFill(Color.web("#2e7d32"));
+                    cDescnt.setTextFill(Color.web("#059669"));
                     row.getChildren().add(cDescnt);
                 }
                 

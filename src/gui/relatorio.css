@@ -11,7 +11,7 @@
 .title-label {
     -fx-font-size: 28px;
     -fx-font-weight: bold;
-    -fx-text-fill: #007bff; /* Azul Vibrante */
+    -fx-text-fill: #059669; /* Azul Vibrante */
 }
 
 .filter-pane {
@@ -40,24 +40,24 @@
 .dashboard-value {
     -fx-font-size: 22px;
     -fx-font-weight: bold;
-    -fx-text-fill: #007bff; /* Azul Vibrante */
+    -fx-text-fill: #059669; /* Azul Vibrante */
 }
 
 .dashboard-value-devedor {
     -fx-font-size: 22px;
     -fx-font-weight: bold;
-    -fx-text-fill: #c43434; /* Vermelho */
+    -fx-text-fill: #DC2626; /* Vermelho */
 }
 
 .button {
-    -fx-background-color: #007bff; /* Azul Vibrante */
+    -fx-background-color: #059669; /* Azul Vibrante */
     -fx-text-fill: white;
     -fx-font-weight: bold;
     -fx-background-radius: 5px;
 }
 
 .button:hover {
-    -fx-background-color: #0056b3;
+    -fx-background-color: #047857;
 }
 
 .chart-title {

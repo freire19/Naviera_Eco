@@ -295,11 +295,11 @@ public class TelaPrincipalController implements Initializable {
 
         String corBordaNormal = isModoEscuro ? "#333333" : "#cccccc";
 
-        String corBordaDestaque = isModoEscuro ? "#0d56df" : "#1976d2";
-        String corFundoHover = isModoEscuro ? "#121a33" : "#e3f2fd";
+        String corBordaDestaque = isModoEscuro ? "#0d56df" : "#0d9668";
+        String corFundoHover = isModoEscuro ? "#121a33" : "#E6F5ED";
         String corFundoPadrao = isModoEscuro ? "#333333" : "white";
         String corFeriado = isModoEscuro ? "#b71c1c" : "#fff9c4";
-        String corHojeFundo = isModoEscuro ? "#0d56df" : "#e3f2fd";
+        String corHojeFundo = isModoEscuro ? "#0d56df" : "#E6F5ED";
 
         calendarioGrid.setStyle("-fx-border-color: " + corBordaNormal + "; -fx-border-width: 1px;");
 
@@ -385,7 +385,7 @@ public class TelaPrincipalController implements Initializable {
                 String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
                 Label lbl = new Label("\uD83D\uDEA2 " + destino);
                 String bg = isModoEscuro ? "#1a3c7d" : "#ffcdd2";
-                String tx = isModoEscuro ? "#ffffff" : "#c62828";
+                String tx = isModoEscuro ? "#ffffff" : "#DC2626";
                 lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
                 lbl.setMaxWidth(Double.MAX_VALUE);
                 cell.getChildren().add(lbl);
@@ -398,7 +398,7 @@ public class TelaPrincipalController implements Initializable {
             if (b.vencimento.equals(data)) {
                 Label lbl = new Label("\uD83D\uDCC4 " + nf.format(b.valor));
                 String bg = isModoEscuro ? "#b71c1c" : "#ffebee";
-                String tx = isModoEscuro ? "#ffffff" : "#c62828";
+                String tx = isModoEscuro ? "#ffffff" : "#DC2626";
                 lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
                 lbl.setMaxWidth(Double.MAX_VALUE);
                 Tooltip.install(lbl, new Tooltip("Vencimento: " + b.descricao + "\nValor: " + nf.format(b.valor)));
@@ -1246,7 +1246,7 @@ public class TelaPrincipalController implements Initializable {
         
         // Nome do Sistema
         Label lblNome = new Label("Naviera - Navegação Fluvial");
-        lblNome.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0d47a1;");
+        lblNome.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #047857;");
         
         // Versão
         Label lblVersao = new Label("Versão 1.0");

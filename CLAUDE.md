@@ -138,6 +138,48 @@ docker compose up -d --build
 - **Estorno** = refund/reversal
 - **Saida** = cash outflow/expense; **Entrada** = cash inflow
 
+## Brand / Visual Identity
+
+O arquivo `docs/BRAND.jsx` e a referencia oficial da identidade visual do projeto Naviera. Qualquer mudanca de UI/UX deve seguir este guide.
+
+- **Fonte principal**: Sora (wght 300–800) | **Monospace**: Space Mono
+- **Cor primaria**: `#059669` (light) / `#34D399` (dark)
+- **Gradiente primario**: `linear-gradient(135deg, #059669, #34D399)`
+- **Logo**: Componente `LogoV3` com variantes: `full` (horizontal), `stacked`, `symbol`, `icon`
+- **Temas**: Light e Dark com paletas completas definidas no arquivo
+
+### Paleta Light
+| Uso | Cor |
+|-----|-----|
+| Background | `#F7FBF9` |
+| Card | `#FFFFFF` |
+| Soft/Accent | `#EEF7F2` / `#E6F5ED` |
+| Texto | `#0F2620` |
+| Texto suave | `#3D6B56` |
+| Texto muted | `#7BA393` |
+| Primaria | `#059669` |
+| Border | `rgba(5,150,105,0.12)` |
+
+### Paleta Dark
+| Uso | Cor |
+|-----|-----|
+| Background | `#040D0A` |
+| Card | `#0F2D24` |
+| Soft/Accent | `#0A1F18` / `#0F2D24` |
+| Texto | `#F0FDF4` |
+| Texto suave | `#6EE7B7` |
+| Texto muted | `#34D399` |
+| Primaria | `#34D399` |
+| Border | `rgba(52,211,153,0.08)` |
+
+### Cores semanticas
+| Uso | Cor |
+|-----|-----|
+| Info | `#0EA5E9` |
+| Warning/Amber | `#F59E0B` |
+| Danger/Error | `#EF4444` |
+| Success/OK | `#4ADE80` |
+
 ## Known Critical Issues
 
 The project has extensive audit documentation in `docs/audits/current/` and a summary in `docs/STATUS.md` (32+ critical issues). Key architectural problems to be aware of when making changes:

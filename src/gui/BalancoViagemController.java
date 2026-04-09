@@ -153,7 +153,7 @@ public class BalancoViagemController {
                 String d = txt.contains("=") ? txt.split("=")[0].trim() : txt;
                 String v = txt.contains("=") ? txt.split("=")[1].trim() : "";
                 String c = "#333333";
-                if(d.toUpperCase().contains("PASSAGE")) c="#2E7D32"; else if(d.toUpperCase().contains("ENCOMENDA")) c="#EF6C00"; else if(d.toUpperCase().contains("FRETE")) c="#1565C0";
+                if(d.toUpperCase().contains("PASSAGE")) c="#059669"; else if(d.toUpperCase().contains("ENCOMENDA")) c="#EF6C00"; else if(d.toUpperCase().contains("FRETE")) c="#059669";
                 
                 Label ld = new Label(d); ld.setStyle("-fx-text-fill:"+c+"; -fx-font-weight:bold; -fx-font-size:14px;");
                 Label lv = new Label(v); lv.setStyle("-fx-text-fill:"+c+"; -fx-font-weight:bold; -fx-font-size:15px;");
@@ -164,7 +164,7 @@ public class BalancoViagemController {
         lblTotalGeralEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
         lblTotalGeralSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
         lblSaldoFinal.setText(formatar(dadosAtuais.getLucroLiquido()));
-        lblSaldoFinal.setStyle(dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO) >= 0 ? "-fx-text-fill:#2e7d32;" : "-fx-text-fill:#c62828;");
+        lblSaldoFinal.setStyle(dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO) >= 0 ? "-fx-text-fill:#059669;" : "-fx-text-fill:#DC2626;");
     }
 
     // --- ABA 2 (VISUAL NA TELA) ---
@@ -218,7 +218,7 @@ public class BalancoViagemController {
         lblCardEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
         lblCardSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
         lblCardSaldo.setText(formatar(dadosAtuais.getLucroLiquido()));
-        lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO) >= 0?"-fx-text-fill:#1565C0;":"-fx-text-fill:#c62828;");
+        lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO) >= 0?"-fx-text-fill:#059669;":"-fx-text-fill:#DC2626;");
 
         totalPendenteGlobal = BigDecimal.ZERO;
         try (Connection con = ConexaoBD.getConnection();
@@ -239,7 +239,7 @@ public class BalancoViagemController {
             String cat = entry.getKey();
             BigDecimal sub = entry.getValue().stream().map(LinhaDespesaDetalhada::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
             Label lCat = new Label("CATEGORIA: " + cat);
-            lCat.setStyle("-fx-font-weight:bold; -fx-text-fill:#1565C0; -fx-font-size:12px; -fx-padding: 10 0 2 0;");
+            lCat.setStyle("-fx-font-weight:bold; -fx-text-fill:#059669; -fx-font-size:12px; -fx-padding: 10 0 2 0;");
             vboxDespesasDetalhadasTela.getChildren().add(lCat);
             vboxDespesasDetalhadasTela.getChildren().add(new Separator());
             int i = 0;
@@ -263,7 +263,7 @@ public class BalancoViagemController {
         String[] p = txt.split("=");
         Label desc = new Label(p[0].trim()); desc.setStyle("-fx-font-weight:bold; -fx-text-fill:#333;");
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Label val = new Label(p.length>1?p[1].trim():""); val.setStyle("-fx-font-weight:bold; -fx-text-fill:#2E7D32;");
+        Label val = new Label(p.length>1?p[1].trim():""); val.setStyle("-fx-font-weight:bold; -fx-text-fill:#059669;");
         row.getChildren().addAll(desc, sp, val); vboxReceitasDetalhadasTela.getChildren().add(row);
     }
 
@@ -279,8 +279,8 @@ public class BalancoViagemController {
         // CORRIGIDO: FORÇA A COR AZUL NA ENTRADA E VERMELHO NA SAÍDA
         // Usando style diretamente no node e runLater para garantir que o node existe
         javafx.application.Platform.runLater(() -> {
-            if(dEntrada.getNode() != null) dEntrada.getNode().setStyle("-fx-bar-fill: #1565C0;"); // AZUL
-            if(dSaida.getNode() != null) dSaida.getNode().setStyle("-fx-bar-fill: #C62828;");   // VERMELHO
+            if(dEntrada.getNode() != null) dEntrada.getNode().setStyle("-fx-bar-fill: #059669;"); // AZUL
+            if(dSaida.getNode() != null) dSaida.getNode().setStyle("-fx-bar-fill: #DC2626;");   // VERMELHO
         });
     }
 
@@ -337,7 +337,7 @@ public class BalancoViagemController {
                 
                 Label lCat = new Label("CATEGORIA: " + cat.toUpperCase()); 
                 lCat.setFont(Font.font("Arial", FontWeight.BOLD, 12));
-                lCat.setTextFill(Color.web("#1565C0")); 
+                lCat.setTextFill(Color.web("#059669")); 
                 lCat.setPrefWidth(515);
                 pagAtual.getChildren().addAll(new Region(){{setPrefHeight(10);}}, lCat); y+=35;
 
@@ -413,7 +413,7 @@ public class BalancoViagemController {
         VBox h = new VBox(5); h.setAlignment(Pos.CENTER);
         if(empresaLogoPath!=null && !empresaLogoPath.isEmpty()) { try{ImageView iv=new ImageView(gui.util.ImageCache.get(empresaLogoPath)); iv.setFitHeight(50); iv.setPreserveRatio(true); h.getChildren().add(iv);}catch(Exception e){} }
         else { try{ImageView iv=new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/logo_login.png"))); iv.setFitHeight(50); iv.setPreserveRatio(true); h.getChildren().add(iv);}catch(Exception e){} }
-        Text t1 = new Text(empresaNome.toUpperCase()); t1.setFont(Font.font("Arial",FontWeight.BOLD,20)); t1.setFill(Color.web("#1565C0")); // Azul
+        Text t1 = new Text(empresaNome.toUpperCase()); t1.setFont(Font.font("Arial",FontWeight.BOLD,20)); t1.setFill(Color.web("#059669")); // Azul
         h.getChildren().addAll(t1, new Text(empresaEndereco){{setFont(Font.font("Arial",10));}}, new Text("CNPJ: "+empresaCnpj){{setFont(Font.font("Arial",10));}});
         p.getChildren().addAll(h, new Region(){{setPrefHeight(10);}}, new Line(0,0,515,0), new Region(){{setPrefHeight(10);}});
         Text t2 = new Text(det?"RELATÓRIO DETALHADO":"RESUMO GERAL"); t2.setFont(Font.font("Arial",FontWeight.BOLD,14));
