@@ -31,12 +31,18 @@ public class QuitarDividaEncomendaTotalController {
 
     @FXML
     public void initialize() {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Quitar Divida"); return; }
         txtDesconto.textProperty().addListener((o,old,nw) -> calcular());
 
         // DR010: carrega combos em background
         Thread bg = new Thread(() -> {
-            carregarFormas();
-            carregarCaixas();
+            try {
+                carregarFormas();
+                carregarCaixas();
+            } catch (Exception e) {
+                System.err.println("Erro em QuitarDividaEncomendaTotalController (bg init): " + e.getMessage());
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("QuitarDividaEncomendaTotalController", e));
+            }
         });
         bg.setDaemon(true);
         bg.start();
@@ -95,6 +101,27 @@ public class QuitarDividaEncomendaTotalController {
         });
     }
 
-    @FXML void confirmar() { confirmado = true; ((Stage)btnConfirmar.getScene().getWindow()).close(); }
+    @FXML void confirmar() {
+        // DL054: validar desconto e forma de pagamento antes de confirmar
+        double desc = converter(txtDesconto.getText());
+        if (desc > totalDivida) {
+            javafx.scene.control.Alert a = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            a.setTitle("Desconto Invalido");
+            a.setHeaderText(null);
+            a.setContentText("O desconto (R$ " + String.format("%.2f", desc) + ") nao pode ser maior que a divida total (R$ " + String.format("%.2f", totalDivida) + ").");
+            a.showAndWait();
+            return;
+        }
+        if (cmbFormaPagamento.getValue() == null || cmbFormaPagamento.getValue().trim().isEmpty()) {
+            javafx.scene.control.Alert a = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            a.setTitle("Campo Obrigatorio");
+            a.setHeaderText(null);
+            a.setContentText("Selecione a forma de pagamento.");
+            a.showAndWait();
+            return;
+        }
+        confirmado = true;
+        ((Stage)btnConfirmar.getScene().getWindow()).close();
+    }
     @FXML void cancelar() { ((Stage)btnConfirmar.getScene().getWindow()).close(); }
 }

@@ -40,7 +40,8 @@ public class ItemEncomendaPadrao {
 
     @Override
     public String toString() {
-        return nomeItem; // Isso faz aparecer o nome certo no ComboBox
+        // DR128: retorna string vazia se nomeItem for null (evita NPE em ComboBox/ListView)
+        return nomeItem != null ? nomeItem : "";
     }
 
     @Override

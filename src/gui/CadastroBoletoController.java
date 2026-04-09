@@ -54,11 +54,24 @@ public class CadastroBoletoController {
         spParcelas.valueProperty().addListener((obs, oldVal, newVal) -> gerarCamposData(newVal));
         gerarCamposData(1);
 
-        // DR010: carrega dados em background
+        // DR010+DR104: carrega dados em background, atualiza UI via Platform.runLater
         Thread bg = new Thread(() -> {
-            buscarViagemAtual();
-            carregarCategorias();
-            javafx.application.Platform.runLater(this::filtrar);
+            try {
+                buscarViagemAtual();
+                // DR104: buscar categorias em bg, atualizar ComboBox na FX thread
+                ObservableList<String> cats = FXCollections.observableArrayList();
+                try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()){
+                    while(rs.next()) cats.add(rs.getString(1));
+                } catch(Exception e) { System.err.println("Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
+                final ObservableList<String> finalCats = cats;
+                javafx.application.Platform.runLater(() -> {
+                    cmbCategoria.setItems(finalCats);
+                    configurarAutocomplete(cmbCategoria, finalCats);
+                    filtrar();
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         });
         bg.setDaemon(true);
         bg.start();
@@ -138,68 +151,71 @@ public class CadastroBoletoController {
             if(cat == null) cat = cmbCategoria.getEditor().getText();
             int idCat = buscarOuCriarCategoria(cat);
             
-            Connection con = ConexaoBD.getConnection();
-            con.setAutoCommit(false);
-            
-            String sqlFinanceiro = "INSERT INTO financeiro_saidas (descricao, valor_total, data_vencimento, status, forma_pagamento, id_categoria, numero_parcela, total_parcelas, observacoes, id_viagem) VALUES (?, ?, ?, 'PENDENTE', 'BOLETO', ?, ?, ?, ?, ?)";
-            String sqlAgenda = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
+            try (Connection con = ConexaoBD.getConnection()) {
+                con.setAutoCommit(false);
 
-            try(PreparedStatement stmtFin = con.prepareStatement(sqlFinanceiro);
-                PreparedStatement stmtAgenda = con.prepareStatement(sqlAgenda)) {
-                
-                for(int i=0; i<parcelas; i++) {
-                    LocalDate vencimento = pickersDatas.get(i).getValue();
-                    if(vencimento == null) vencimento = LocalDate.now().plusMonths(i+1);
-                    
-                    // DL014: ultima parcela absorve centavos restantes
-                    java.math.BigDecimal valorDestaParcela = (i == parcelas - 1) ? valorUltimaParcela : valorParcela;
+                String sqlFinanceiro = "INSERT INTO financeiro_saidas (descricao, valor_total, data_vencimento, status, forma_pagamento, id_categoria, numero_parcela, total_parcelas, observacoes, id_viagem) VALUES (?, ?, ?, 'PENDENTE', 'BOLETO', ?, ?, ?, ?, ?)";
+                String sqlAgenda = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
 
-                    // 1. Insere no Financeiro
-                    stmtFin.setString(1, txtDescricao.getText());
-                    stmtFin.setBigDecimal(2, valorDestaParcela);
-                    stmtFin.setDate(3, Date.valueOf(vencimento));
-                    stmtFin.setInt(4, idCat);
-                    stmtFin.setInt(5, i + 1);
-                    stmtFin.setInt(6, parcelas);
-                    stmtFin.setString(7, txtObs.getText());
-                    stmtFin.setInt(8, idViagemAtual);
-                    stmtFin.addBatch();
+                try (PreparedStatement stmtFin = con.prepareStatement(sqlFinanceiro);
+                     PreparedStatement stmtAgenda = con.prepareStatement(sqlAgenda)) {
 
-                    // 2. Insere na Agenda (Aviso de Vencimento)
-                    stmtAgenda.setDate(1, Date.valueOf(vencimento));
-                    stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i+1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorDestaParcela));
-                    stmtAgenda.addBatch();
+                    for (int i = 0; i < parcelas; i++) {
+                        LocalDate vencimento = pickersDatas.get(i).getValue();
+                        if (vencimento == null) vencimento = LocalDate.now().plusMonths(i + 1);
+
+                        // DL014: ultima parcela absorve centavos restantes
+                        java.math.BigDecimal valorDestaParcela = (i == parcelas - 1) ? valorUltimaParcela : valorParcela;
+
+                        stmtFin.setString(1, txtDescricao.getText());
+                        stmtFin.setBigDecimal(2, valorDestaParcela);
+                        stmtFin.setDate(3, Date.valueOf(vencimento));
+                        stmtFin.setInt(4, idCat);
+                        stmtFin.setInt(5, i + 1);
+                        stmtFin.setInt(6, parcelas);
+                        stmtFin.setString(7, txtObs.getText());
+                        stmtFin.setInt(8, idViagemAtual);
+                        stmtFin.addBatch();
+
+                        stmtAgenda.setDate(1, Date.valueOf(vencimento));
+                        stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i + 1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorDestaParcela));
+                        stmtAgenda.addBatch();
+                    }
+                    stmtFin.executeBatch();
+                    stmtAgenda.executeBatch();
+
+                    con.commit();
+
+                    alert("Boletos gerados e adicionados à Agenda!");
+                    txtDescricao.clear();
+                    txtValor.clear();
+                    filtrar();
+
+                } catch (Exception ex) {
+                    con.rollback();
+                    ex.printStackTrace();
                 }
-                stmtFin.executeBatch();
-                stmtAgenda.executeBatch();
-                
-                con.commit();
-                
-                alert("Boletos gerados e adicionados à Agenda!");
-                txtDescricao.clear();
-                txtValor.clear();
-                filtrar(); 
-                
-            } catch(Exception ex) {
-                con.rollback();
-                ex.printStackTrace();
-            } finally { con.setAutoCommit(true); }
+            }
             
-        } catch (Exception e) { e.printStackTrace(); alert("Erro: " + e.getMessage()); }
+        } catch (Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
     }
     
     private int buscarOuCriarCategoria(String nome) throws SQLException {
         if(nome == null || nome.isEmpty()) return 1;
-        Connection con = ConexaoBD.getConnection();
-        try (PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ?")) {
-            stmt.setString(1, nome.toUpperCase());
-            ResultSet rs = stmt.executeQuery();
-            if(rs.next()) return rs.getInt(1);
-        }
-        try (PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome) VALUES (?) RETURNING id")) {
-            stmt.setString(1, nome.toUpperCase());
-            ResultSet rs = stmt.executeQuery();
-            if(rs.next()) return rs.getInt(1);
+        // #DB008: Connection em try-with-resources (antes vazava em cada early return)
+        try (Connection con = ConexaoBD.getConnection()) {
+            try (PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ?")) {
+                stmt.setString(1, nome.toUpperCase());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if(rs.next()) return rs.getInt(1);
+                }
+            }
+            try (PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome) VALUES (?) RETURNING id")) {
+                stmt.setString(1, nome.toUpperCase());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if(rs.next()) return rs.getInt(1);
+                }
+            }
         }
         return 1;
     }
@@ -229,17 +245,26 @@ public class CadastroBoletoController {
     @FXML
     public void filtrar() {
         ObservableList<Boleto> lista = FXCollections.observableArrayList();
+        // DL049: filtrar boletos pela viagem ativa
         StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE forma_pagamento = 'BOLETO' ");
+        java.util.List<Object> params = new java.util.ArrayList<>();
 
+        if (idViagemAtual > 0) {
+            sql.append(" AND id_viagem = ?");
+            params.add(idViagemAtual);
+        }
         if(dpFiltroData.getValue() != null) {
             sql.append(" AND data_vencimento = ?");
+            params.add(java.sql.Date.valueOf(dpFiltroData.getValue()));
         }
         sql.append(" ORDER BY data_vencimento ASC");
 
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         try(Connection c = ConexaoBD.getConnection(); PreparedStatement ps = c.prepareStatement(sql.toString())){
-            if(dpFiltroData.getValue() != null) {
-                ps.setDate(1, java.sql.Date.valueOf(dpFiltroData.getValue()));
+            for (int i = 0; i < params.size(); i++) {
+                Object param = params.get(i);
+                if (param instanceof Integer) ps.setInt(i + 1, (Integer) param);
+                else if (param instanceof java.sql.Date) ps.setDate(i + 1, (java.sql.Date) param);
             }
             ResultSet rs = ps.executeQuery();
             while(rs.next()){

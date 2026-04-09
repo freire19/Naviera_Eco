@@ -20,8 +20,10 @@ public class Encomenda {
     private String formaPagamento; 
     private String localPagamento; // CAMPO NOVO (Caixa)
     
-    private Integer idCaixa; 
-    private String dataLancamento; 
+    private Integer idCaixa;
+    // #034: tipo seguro para data; getter String mantido para compatibilidade com PropertyValueFactory
+    private java.time.LocalDate dataLancamentoDate;
+    private String dataLancamento;
     
     // Campos de Entrega
     private boolean entregue;
@@ -85,6 +87,15 @@ public class Encomenda {
     
     public String getDataLancamento() { return dataLancamento; }
     public void setDataLancamento(String dataLancamento) { this.dataLancamento = dataLancamento; }
+
+    /** #034: getter/setter tipado para uso em novo codigo. */
+    public java.time.LocalDate getDataLancamentoDate() { return dataLancamentoDate; }
+    public void setDataLancamentoDate(java.time.LocalDate dataLancamentoDate) {
+        this.dataLancamentoDate = dataLancamentoDate;
+        this.dataLancamento = (dataLancamentoDate != null)
+            ? dataLancamentoDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+            : null;
+    }
     
     public boolean isEntregue() { return entregue; }
     public void setEntregue(boolean entregue) { this.entregue = entregue; }

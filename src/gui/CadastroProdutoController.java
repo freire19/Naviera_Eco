@@ -5,6 +5,7 @@ import dao.ItemEncomendaPadraoDAO;
 import model.ItemFrete;
 import model.ItemEncomendaPadrao; 
 
+import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -60,10 +61,25 @@ public class CadastroProdutoController {
 
     @FXML
     public void initialize() {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Cadastro de Produtos"); return; }
         configurarTabelaFrete();
         configurarTabelaEncomenda();
-        carregarFrete();
-        carregarEncomenda();
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<ItemFrete> itensF = new ItemFreteDAO().listarTodos(false);
+                List<ItemEncomendaPadrao> itensE = new ItemEncomendaPadraoDAO().listarTodos(false);
+                Platform.runLater(() -> {
+                    if (itensF != null) listaFrete.addAll(itensF);
+                    if (itensE != null) listaEncomenda.addAll(itensE);
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
 
         btnSalvarFrete.setOnAction(e -> onSalvarFrete());
         btnSalvarEnc .setOnAction(e -> onSalvarEncomenda());

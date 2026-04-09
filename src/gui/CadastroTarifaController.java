@@ -30,6 +30,7 @@ import java.util.ResourceBundle;
 import java.util.Optional;
 import java.sql.SQLException;
 import java.util.Objects;
+import javafx.application.Platform;
 
 public class CadastroTarifaController implements Initializable {
 
@@ -68,9 +69,32 @@ public class CadastroTarifaController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Cadastro de Tarifas"); return; }
         configurarTabela();
-        popularComboBoxes();
-        carregarDadosTabela();
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<String> tiposPassageiroNomes = auxDao.listarPassagemAux();
+                List<Rota> rotas = rotaDAO.listarTodasAsRotasComoObjects();
+                List<Tarifa> tarifas = tarifaDAO.listarTodos();
+                Platform.runLater(() -> {
+                    if (tiposPassageiroNomes != null && !tiposPassageiroNomes.isEmpty()) {
+                        observableListTiposPassageiro.setAll(tiposPassageiroNomes);
+                        cmbTipoPassageiro.setItems(observableListTiposPassageiro);
+                    }
+                    if (rotas != null && !rotas.isEmpty()) {
+                        observableListRotas.setAll(rotas);
+                        cmbRota.setItems(observableListRotas);
+                    }
+                    observableListTarifas.setAll(tarifas);
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
 
         tableTarifas.getSelectionModel().selectedItemProperty().addListener(
             (observable, oldValue, newValue) -> {

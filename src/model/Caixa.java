@@ -23,7 +23,8 @@ public class Caixa {
     // O segredo para o ComboBox mostrar o nome bonito:
     @Override
     public String toString() {
-        return nome; 
+        // DR128: retorna string vazia se nome for null (evita NPE em ComboBox/ListView)
+        return nome != null ? nome : "";
     }
 
     @Override

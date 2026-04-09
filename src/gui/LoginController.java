@@ -18,6 +18,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ResourceBundle;
+import javafx.application.Platform;
 
 public class LoginController implements Initializable {
 
@@ -34,22 +35,28 @@ public class LoginController implements Initializable {
     }
 
     private void carregarUsuariosNoCombo() {
-        ObservableList<String> logins = FXCollections.observableArrayList();
-        String sql = "SELECT login_usuario FROM usuarios WHERE ativo = true ORDER BY login_usuario";
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<String> logins = FXCollections.observableArrayList();
+                String sql = "SELECT login_usuario FROM usuarios WHERE ativo = true ORDER BY login_usuario";
 
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+                try (Connection conn = ConexaoBD.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql);
+                     ResultSet rs = stmt.executeQuery()) {
 
-            while (rs.next()) {
-                logins.add(rs.getString("login_usuario"));
+                    while (rs.next()) {
+                        logins.add(rs.getString("login_usuario"));
+                    }
+                }
+                Platform.runLater(() -> cmbUsuario.setItems(logins));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", "Erro ao carregar usuarios."));
             }
-            cmbUsuario.setItems(logins);
-
-        } catch (Exception e) {
-            System.err.println("Erro ao carregar usuarios no combo: " + e.getMessage());
-            showAlert(AlertType.ERROR, "Erro", "Erro ao carregar usuarios.");
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     @FXML
@@ -58,7 +65,8 @@ public class LoginController implements Initializable {
         if (login == null || login.isEmpty()) {
             login = cmbUsuario.getEditor().getText();
         }
-        String senha = txtSenha.getText().trim();
+        // DL064: nao aplicar trim() na senha — BCrypt compara string exata
+        String senha = txtSenha.getText();
 
         if (login == null || login.isEmpty() || senha.isEmpty()) {
             showAlert(AlertType.WARNING, "Campos Vazios", "Selecione um usuario e digite a senha.");

@@ -243,9 +243,17 @@ public class ExtratoClienteEncomendaController {
                 String forma = controller.getForma();
                 String caixa = controller.getCaixa();
 
-                // Cálculo Proporcional do Desconto
+                // DL047: validar desconto antes de calcular fator proporcional
+                if (descontoTotal > dividaTotalAtual) {
+                    Alert aErro = new Alert(Alert.AlertType.ERROR);
+                    aErro.setTitle("Erro");
+                    aErro.setHeaderText("Desconto invalido");
+                    aErro.setContentText("O desconto (R$ " + String.format("%,.2f", descontoTotal) + ") nao pode ser maior que a divida total (R$ " + String.format("%,.2f", dividaTotalAtual) + ").");
+                    aErro.showAndWait();
+                    return;
+                }
+
                 double fatorPagamento = (dividaTotalAtual - descontoTotal) / dividaTotalAtual;
-                if (fatorPagamento < 0) fatorPagamento = 0; 
 
                 String sqlUpdate = "UPDATE encomendas SET " +
                                    "desconto = (total_a_pagar - valor_pago) * (1 - ?), " +

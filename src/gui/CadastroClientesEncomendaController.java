@@ -3,6 +3,7 @@ package gui;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import javafx.application.Platform;
 import dao.ClienteEncomendaDAO;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -49,7 +50,18 @@ public class CadastroClientesEncomendaController implements Initializable {
             }
         );
         
-        carregarClientes();
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                java.util.List<ClienteEncomenda> dados = clienteDAO.listarTodos();
+                Platform.runLater(() -> obsListaClientes.setAll(dados));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+
         limparSelecao();
     }
 

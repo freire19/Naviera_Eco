@@ -94,6 +94,7 @@ public class TabelasAuxiliaresController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Tabelas Auxiliares"); return; }
         // Sexo
         colSexoNome.setCellValueFactory(new PropertyValueFactory<>("nome"));
         tableSexo.setItems(listaSexo);

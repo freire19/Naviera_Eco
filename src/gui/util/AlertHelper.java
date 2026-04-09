@@ -55,6 +55,8 @@ public class AlertHelper {
      * Loga o erro real em stderr e mostra mensagem generica ao usuario.
      */
     public static void errorSafe(String contexto, Exception e) {
+        // DR131: registrar no log de erros alem de imprimir em stderr
+        LogService.registrarErro(contexto, e);
         System.err.println("Erro em " + contexto + ": " + e.getMessage());
         show(AlertType.ERROR, "Erro", "Ocorreu um erro ao " + contexto.toLowerCase() + ". Tente novamente ou contate o suporte.");
     }

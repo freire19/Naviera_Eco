@@ -31,6 +31,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
 import javafx.scene.transform.Scale;
+import javafx.application.Platform;
 import javafx.stage.Stage;
 import model.Empresa;
 import model.Rota;
@@ -101,10 +102,25 @@ public class RelatorioFretesController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Relatorio de Fretes"); return; }
         configurarColunasTabela();
-        carregarViagens();
-        carregarRotas();
-        configurarListeners();
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<Viagem> viagens = viagemDAO.listarTodasViagensResumido();
+                Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+                List<Rota> rotasList = rotaDAO.listarTodasAsRotasComoObjects();
+                Platform.runLater(() -> {
+                    preencherViagens(viagens, viagemAtiva);
+                    preencherRotas(rotasList);
+                    configurarListeners();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados iniciais RelatorioFretes: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarColunasTabela() {
@@ -126,39 +142,49 @@ public class RelatorioFretesController implements Initializable {
         tabelaDevedores.setItems(listaDevedores);
     }
 
+    // DR117: aceita dados pre-carregados para ser chamado do Platform.runLater
+    private void preencherViagens(List<Viagem> viagens, Viagem viagemAtiva) {
+        cmbViagem.setItems(FXCollections.observableArrayList(viagens));
+        if (viagemAtiva != null) {
+            for (Viagem v : viagens) {
+                if (v.getId().equals(viagemAtiva.getId())) {
+                    cmbViagem.setValue(v);
+                    break;
+                }
+            }
+        } else if (!viagens.isEmpty()) {
+            cmbViagem.setValue(viagens.get(0));
+        }
+    }
+
     private void carregarViagens() {
         try {
             List<Viagem> viagens = viagemDAO.listarTodasViagensResumido();
-            cmbViagem.setItems(FXCollections.observableArrayList(viagens));
-            
             Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-            if (viagemAtiva != null) {
-                for (Viagem v : viagens) {
-                    if (v.getId().equals(viagemAtiva.getId())) {
-                        cmbViagem.setValue(v);
-                        break;
-                    }
-                }
-            } else if (!viagens.isEmpty()) {
-                cmbViagem.setValue(viagens.get(0));
-            }
+            Platform.runLater(() -> preencherViagens(viagens, viagemAtiva));
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void carregarRotas() {
+    // DR117: aceita dados pre-carregados para ser chamado do Platform.runLater
+    private void preencherRotas(List<Rota> rotasList) {
         List<String> rotas = new ArrayList<>();
         rotas.add("Todas as Rotas");
-        try {
-            for (Rota r : rotaDAO.listarTodasAsRotasComoObjects()) {
-                rotas.add(r.getOrigem() + " - " + r.getDestino());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        for (Rota r : rotasList) {
+            rotas.add(r.getOrigem() + " - " + r.getDestino());
         }
         cmbRota.setItems(FXCollections.observableArrayList(rotas));
         cmbRota.setValue("Todas as Rotas");
+    }
+
+    private void carregarRotas() {
+        try {
+            List<Rota> rotasList = rotaDAO.listarTodasAsRotasComoObjects();
+            Platform.runLater(() -> preencherRotas(rotasList));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void configurarListeners() {
@@ -311,8 +337,9 @@ public class RelatorioFretesController implements Initializable {
                 String numFrete = rs.getString("numero_frete");
                 double total = rs.getDouble("valor_total_itens");
                 double pago = rs.getDouble("valor_pago");
-                double devedor = rs.getDouble("valor_devedor");
-                
+                // DL053: recalcular devedor em tempo real em vez de usar campo persistido
+                double devedor = Math.max(0, total - pago);
+
                 listaDevedores.add(new FreteDevedor(total, pago, devedor, numFrete));
                 totalEmAberto += devedor;
             }

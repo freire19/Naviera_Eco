@@ -32,6 +32,7 @@ public class HistoricoEstornosPassagensController {
 
     @FXML
     public void initialize() {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Historico Estornos Passagens"); return; }
         // Configura as colunas
         colData.setCellValueFactory(new PropertyValueFactory<>("dataHora"));
         colBilhete.setCellValueFactory(new PropertyValueFactory<>("bilhete"));
@@ -69,30 +70,32 @@ public class HistoricoEstornosPassagensController {
             stmt.setTimestamp(1, java.sql.Timestamp.valueOf(dpInicio.getValue().atStartOfDay()));
             stmt.setTimestamp(2, java.sql.Timestamp.valueOf(dpFim.getValue().atTime(23, 59, 59)));
 
-            ResultSet rs = stmt.executeQuery();
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-
-            while (rs.next()) {
-                String dataFmt = sdf.format(rs.getTimestamp("data_hora"));
-                String bilhete = rs.getString("numero_bilhete");
-                if (bilhete == null) bilhete = "N/A";
-                
-                lista.add(new LogEstornoPassagem(
-                    dataFmt,
-                    bilhete, 
-                    String.format("R$ %.2f", rs.getDouble("valor_estornado")),
-                    rs.getString("forma_devolucao"),
-                    rs.getString("motivo"),
-                    rs.getString("nome_autorizador")
-                ));
+            // DR113: ResultSet em try-with-resources
+            try (ResultSet rs = stmt.executeQuery()) {
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                while (rs.next()) {
+                    String dataFmt = sdf.format(rs.getTimestamp("data_hora"));
+                    String bilhete = rs.getString("numero_bilhete");
+                    if (bilhete == null) bilhete = "N/A";
+                    lista.add(new LogEstornoPassagem(
+                        dataFmt, bilhete,
+                        String.format("R$ %.2f", rs.getDouble("valor_estornado")),
+                        rs.getString("forma_devolucao"),
+                        rs.getString("motivo"),
+                        rs.getString("nome_autorizador")
+                    ));
+                }
             }
             javafx.application.Platform.runLater(() -> tabela.setItems(lista));
 
         } catch (Exception e) {
             e.printStackTrace();
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setContentText("Erro ao buscar histórico: " + e.getMessage());
-            alert.showAndWait();
+            // DR113: Alert via Platform.runLater (carregarDados() pode ser chamado de bg thread)
+            javafx.application.Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setContentText("Erro ao buscar histórico: " + e.getMessage());
+                alert.showAndWait();
+            });
         }
     }
 

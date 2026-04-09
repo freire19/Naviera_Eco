@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.ResourceBundle;
 
 import dao.ConexaoBD;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -79,13 +80,38 @@ public class TabelaPrecoFreteController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Tabela de Precos Frete"); return; }
         listaItens = FXCollections.observableArrayList();
         configurarTabela();
-        carregarDados();
-        
         configurarMascaraMoeda(txtPrecoNormal);
         configurarMascaraMoeda(txtPrecoDesconto);
-        limparCampos(); 
+        limparCampos();
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                java.util.List<ItemFrete> dados = new java.util.ArrayList<>();
+                String sql = "SELECT * FROM itens_frete_padrao ORDER BY nome_item";
+                try (Connection conn = ConexaoBD.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql);
+                     ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int id = rs.getInt("id_item_frete");
+                        String nome = rs.getString("nome_item");
+                        String desc = rs.getString("descricao");
+                        if (desc == null) desc = "";
+                        BigDecimal pNormal = rs.getBigDecimal("preco_unitario_padrao");
+                        BigDecimal pDesc = rs.getBigDecimal("preco_unitario_desconto");
+                        dados.add(new ItemFrete(id, nome, desc, "UN", pNormal, pDesc, true));
+                    }
+                }
+                Platform.runLater(() -> listaItens.setAll(dados));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void configurarTabela() {

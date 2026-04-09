@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 import dao.AuxiliaresDAO;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -41,8 +42,23 @@ public class FinalizarPagamentoPassagemController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Finalizar Pagamento"); return; }
         this.auxiliaresDAO = new AuxiliaresDAO();
-        carregarComboBoxes();
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<String> caixas = auxiliaresDAO.listarCaixas();
+                Platform.runLater(() -> {
+                    cmbCaixa.setItems(FXCollections.observableArrayList(caixas));
+                    if (!caixas.isEmpty()) cmbCaixa.getSelectionModel().selectFirst();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar caixas FinalizarPagamentoPassagem: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
         
         // Listeners para os 3 campos de pagamento
         txtDinheiro.textProperty().addListener((obs, oldVal, newVal) -> calcularTotais());
@@ -133,14 +149,22 @@ public class FinalizarPagamentoPassagemController implements Initializable {
         return true;
     }
 
+    // DR117: background thread para nao bloquear FX thread (usado em refresh)
     private void carregarComboBoxes() {
-        try {
-            List<String> caixas = auxiliaresDAO.listarCaixas();
-            cmbCaixa.setItems(FXCollections.observableArrayList(caixas));
-            if(!caixas.isEmpty()) cmbCaixa.getSelectionModel().selectFirst();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        Thread bg = new Thread(() -> {
+            try {
+                List<String> caixas = auxiliaresDAO.listarCaixas();
+                Platform.runLater(() -> {
+                    cmbCaixa.setItems(FXCollections.observableArrayList(caixas));
+                    if (!caixas.isEmpty()) cmbCaixa.getSelectionModel().selectFirst();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar caixas FinalizarPagamentoPassagem: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     
     private void calcularTotais() {

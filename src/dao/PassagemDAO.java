@@ -13,6 +13,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+// DR026: Convencao de retorno de erro neste DAO — metodos que retornam int usam -1 para
+// indicar falha; metodos que retornam Long/Object retornam null em caso de erro.
+// Esta convencao nao e uniforme em todos os DAOs do projeto (veja DR026 em STATUS.md).
 public class PassagemDAO {
 
     private final AuxiliaresDAO auxiliaresDAO = new AuxiliaresDAO();
@@ -32,7 +35,7 @@ public class PassagemDAO {
                  Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(fallback)) {
                 if (rs.next()) return rs.getInt(1);
-            } catch (SQLException ex) { ex.printStackTrace(); }
+            } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); }
         }
         return 1;
     }
@@ -212,7 +215,8 @@ public class PassagemDAO {
                 p.setStrViagem(p.getStrViagem() + "||" + chegada);
             }
         } catch (Exception e) {
-            // Coluna data_chegada pode não existir em todas as queries
+            // DR120: log minimo para coluna opcional
+            System.err.println("PassagemDAO: coluna data_chegada ausente nesta query");
         }
 
         p.setDescricaoHorarioSaida(rs.getString("descricao_horario_saida"));
@@ -229,6 +233,8 @@ public class PassagemDAO {
 
     public List<Passagem> listarTodos() {
         List<Passagem> passagens = new ArrayList<>();
+        // #DB030: pre-carregar caches auxiliares para evitar N+1 no cold-start
+        try { auxiliaresDAO.preCarregarCachesPassagem(); } catch (SQLException e) { /* cache opcional */ }
         String sql = getBaseQuery() + "ORDER BY p.data_emissao DESC, p.numero_bilhete DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -240,6 +246,7 @@ public class PassagemDAO {
 
     public List<Passagem> listarPorViagem(long idViagem) {
         List<Passagem> passagens = new ArrayList<>();
+        try { auxiliaresDAO.preCarregarCachesPassagem(); } catch (SQLException e) { /* cache opcional */ }
         String sql = getBaseQuery() + " WHERE p.id_viagem = ? ORDER BY pa.nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -332,12 +339,45 @@ public class PassagemDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
             stmt.setString(1, "%" + nomePassageiro + "%");
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) lista.add(mapResultSetToPassagem(rs));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) lista.add(mapResultSetToPassagem(rs));
+            }
         } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return lista;
     }
     
+    /**
+     * #DB007: Quita divida por ID do passageiro (seguro contra homonimos).
+     */
+    public boolean quitarDividaTotalPassageiroPorId(long idPassageiro) {
+        String sql = "UPDATE passagens SET " +
+                     "valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + (valor_total - valor_pago), " +
+                     "valor_pago = valor_total, " +
+                     "valor_devedor = 0, " +
+                     "status_passagem = 'PAGO' " +
+                     "WHERE id_passageiro = ? " +
+                     "AND valor_devedor > 0";
+        try (Connection conn = ConexaoBD.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int rows;
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setLong(1, idPassageiro);
+                    rows = stmt.executeUpdate();
+                }
+                conn.commit();
+                return rows > 0;
+            } catch (SQLException ex) {
+                try { conn.rollback(); } catch (SQLException re) { System.err.println("Erro no rollback: " + re.getMessage()); }
+                throw ex;
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em PassagemDAO.quitarDividaPorId: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** @deprecated Use quitarDividaTotalPassageiroPorId(long) para evitar homonimos. */
     public boolean quitarDividaTotalPassageiro(String nomePassageiro) {
         String sql = "UPDATE passagens p SET " +
                      "valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + (valor_total - valor_pago), " +
@@ -359,22 +399,8 @@ public class PassagemDAO {
                 rows = stmt.executeUpdate();
             }
 
-            // Se não atualizou com nome exato, tenta com LIKE para garantir
-            if (rows == 0) {
-                try (PreparedStatement stmt2 = conn.prepareStatement(
-                    "UPDATE passagens p SET " +
-                    "valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + (valor_total - valor_pago), " +
-                    "valor_pago = valor_total, " +
-                    "valor_devedor = 0, " +
-                    "status_passagem = 'PAGO' " +
-                    "FROM passageiros pa " +
-                    "WHERE p.id_passageiro = pa.id_passageiro " +
-                    "AND pa.nome_passageiro ILIKE ? " +
-                    "AND p.valor_devedor > 0")) {
-                    stmt2.setString(1, "%" + nomePassageiro + "%");
-                    rows = stmt2.executeUpdate();
-                }
-            }
+            // #020: Fallback LIKE removido — busca exata apenas (TRIM+ILIKE).
+            // Para quitacao segura, usar metodo por ID do passageiro.
 
             conn.commit();
             return rows > 0;
@@ -383,7 +409,7 @@ public class PassagemDAO {
             if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { System.err.println("Erro no rollback: " + ex.getMessage()); } }
             return false;
         } finally {
-            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); } }
+            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
         }
     }
 }

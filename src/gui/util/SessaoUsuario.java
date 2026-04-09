@@ -4,8 +4,9 @@ package gui.util; // Adapte o nome do pacote para onde você criou o arquivo!
 import model.Usuario; // Adapte para o pacote onde sua classe Usuario.java está!
 
 public class SessaoUsuario {
-    private static Usuario usuarioLogado;
-    private static long ultimaAtividade = 0;
+    // #DB018: volatile para visibilidade entre threads (SyncClient roda em background)
+    private static volatile Usuario usuarioLogado;
+    private static volatile long ultimaAtividade = 0;
     private static final long TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas (jornada de trabalho)
 
     public static void setUsuarioLogado(Usuario usuario) {
@@ -19,6 +20,8 @@ public class SessaoUsuario {
             clearSession();
             return null;
         }
+        // #024: renovar atividade em cada acesso (garante que uso ativo nao expira)
+        if (usuarioLogado != null) touch();
         return usuarioLogado;
     }
 

@@ -68,9 +68,8 @@ public class TipoPassageiroDAO {
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nome);
-            ResultSet rs = ps.executeQuery();
-            if(rs.next()) {
-                return rs.getInt("id");
+            try (ResultSet rs = ps.executeQuery()) {
+                if(rs.next()) return rs.getInt("id");
             }
         } catch(SQLException e){
             System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
@@ -78,15 +77,13 @@ public class TipoPassageiroDAO {
         return 0;
     }
 
-    // Se quiser buscar nome por id:
     public String buscarNomePorId(int id) {
         String sql = "SELECT nome FROM tipo_passageiro WHERE id=?";
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if(rs.next()) {
-                return rs.getString("nome");
+            try (ResultSet rs = ps.executeQuery()) {
+                if(rs.next()) return rs.getString("nome");
             }
         } catch(SQLException e){
             System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());

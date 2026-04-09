@@ -111,8 +111,8 @@ public class GestaoFuncionariosController {
                 else {
                     String textoLimpo = item;
                     if (funcionarioSelecionado != null) {
-                        textoLimpo = item.replace(funcionarioSelecionado.nome, "")
-                                     .replace(funcionarioSelecionado.nome.toUpperCase(), "")
+                        textoLimpo = item.replace(funcionarioSelecionado.getNome(), "")
+                                     .replace(funcionarioSelecionado.getNome().toUpperCase(), "")
                                      .replace(" - - ", " - ").trim();
                         if (textoLimpo.startsWith("- ")) textoLimpo = textoLimpo.substring(2);
                     }
@@ -181,54 +181,54 @@ public class GestaoFuncionariosController {
              ResultSet rs = stmt.executeQuery()) {
             while(rs.next()) {
                 Funcionario f = new Funcionario();
-                f.id = rs.getInt("id");
-                f.nome = rs.getString("nome");
-                f.cargo = rs.getString("cargo");
-                f.salario = rs.getDouble("salario");
-                if (rs.getDate("data_admissao") != null) f.dataAdmissao = rs.getDate("data_admissao").toLocalDate();
-                try { if (rs.getDate("data_inicio_calculo") != null) f.dataInicioCalculo = rs.getDate("data_inicio_calculo").toLocalDate(); } catch (Exception e) { /* coluna opcional */ }
-                try { f.recebe13 = rs.getBoolean("recebe_decimo_terceiro"); } catch (Exception e) { f.recebe13 = false; }
+                f.setId(rs.getInt("id"));
+                f.setNome(rs.getString("nome"));
+                f.setCargo(rs.getString("cargo"));
+                f.setSalario(rs.getDouble("salario"));
+                if (rs.getDate("data_admissao") != null) f.setDataAdmissao(rs.getDate("data_admissao").toLocalDate());
+                try { if (rs.getDate("data_inicio_calculo") != null) f.setDataInicioCalculo(rs.getDate("data_inicio_calculo").toLocalDate()); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna data_inicio_calculo ausente ou invalida — " + e.getMessage()); }
+                try { f.setRecebe13(rs.getBoolean("recebe_decimo_terceiro")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna recebe_decimo_terceiro indisponivel — " + e.getMessage()); f.setRecebe13(false); }
+
+                try { f.setClt(rs.getBoolean("is_clt")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna is_clt indisponivel — " + e.getMessage()); f.setClt(false); }
+                try { f.setValorInss(rs.getDouble("valor_inss")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna valor_inss indisponivel — " + e.getMessage()); f.setValorInss(0.0); }
+                try { f.setDescontarInss(rs.getBoolean("descontar_inss")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna descontar_inss indisponivel — " + e.getMessage()); f.setDescontarInss(false); }
+
+                try { f.setAtivo(rs.getBoolean("ativo")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna ativo indisponivel — " + e.getMessage()); f.setAtivo(true); }
                 
-                try { f.isClt = rs.getBoolean("is_clt"); } catch (Exception e) { f.isClt = false; }
-                try { f.valorInss = rs.getDouble("valor_inss"); } catch (Exception e) { f.valorInss = 0.0; }
-                try { f.descontarInss = rs.getBoolean("descontar_inss"); } catch (Exception e) { f.descontarInss = false; }
-                
-                try { f.ativo = rs.getBoolean("ativo"); } catch (Exception e) { f.ativo = true; } 
-                
-                f.cpf = rs.getString("cpf"); f.rg = rs.getString("rg"); f.ctps = rs.getString("ctps");
-                f.telefone = rs.getString("telefone"); f.endereco = rs.getString("endereco");
-                if (rs.getDate("data_nascimento") != null) f.dataNascimento = rs.getDate("data_nascimento").toLocalDate();
+                f.setCpf(rs.getString("cpf")); f.setRg(rs.getString("rg")); f.setCtps(rs.getString("ctps"));
+                f.setTelefone(rs.getString("telefone")); f.setEndereco(rs.getString("endereco"));
+                if (rs.getDate("data_nascimento") != null) f.setDataNascimento(rs.getDate("data_nascimento").toLocalDate());
                 lista.add(f);
             }
-        } catch (SQLException e) { e.printStackTrace(); javafx.application.Platform.runLater(() -> alert("Erro: " + e.getMessage())); }
+        } catch (SQLException e) { e.printStackTrace(); javafx.application.Platform.runLater(() -> alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage())); }
         ObservableList<Funcionario> finalLista = lista;
         javafx.application.Platform.runLater(() -> listaFuncionarios.setItems(finalLista));
     }
     
     private void selecionarFuncionario(Funcionario f) {
         this.funcionarioSelecionado = f;
-        txtNome.setText(f.nome);
-        txtCpf.setText(f.cpf != null ? f.cpf : "");
-        txtRg.setText(f.rg != null ? f.rg : "");
-        txtCtps.setText(f.ctps != null ? f.ctps : "");
-        txtTelefone.setText(f.telefone != null ? f.telefone : "");
-        txtEndereco.setText(f.endereco != null ? f.endereco : "");
-        txtCargo.setText(f.cargo);
-        txtSalario.setText(String.format("%.2f", f.salario));
+        txtNome.setText(f.getNome());
+        txtCpf.setText(f.getCpf() != null ? f.getCpf() : "");
+        txtRg.setText(f.getRg() != null ? f.getRg() : "");
+        txtCtps.setText(f.getCtps() != null ? f.getCtps() : "");
+        txtTelefone.setText(f.getTelefone() != null ? f.getTelefone() : "");
+        txtEndereco.setText(f.getEndereco() != null ? f.getEndereco() : "");
+        txtCargo.setText(f.getCargo());
+        txtSalario.setText(String.format("%.2f", f.getSalario()));
         
-        if(txtValorInss != null) txtValorInss.setText(String.format("%.2f", f.valorInss));
-        if(chkDescontarInss != null) chkDescontarInss.setSelected(f.descontarInss);
-        if(chkClt != null) chkClt.setSelected(f.isClt);
+        if(txtValorInss != null) txtValorInss.setText(String.format("%.2f", f.getValorInss()));
+        if(chkDescontarInss != null) chkDescontarInss.setSelected(f.isDescontarInss());
+        if(chkClt != null) chkClt.setSelected(f.isClt());
         
-        dpAdmissao.setValue(f.dataAdmissao);
-        dpDataNascimento.setValue(f.dataNascimento);
-        dpInicioCalculo.setValue(f.dataInicioCalculo); 
-        if(chkDecimo != null) chkDecimo.setSelected(f.recebe13);
+        dpAdmissao.setValue(f.getDataAdmissao());
+        dpDataNascimento.setValue(f.getDataNascimento());
+        dpInicioCalculo.setValue(f.getDataInicioCalculo()); 
+        if(chkDecimo != null) chkDecimo.setSelected(f.isRecebe13());
         
         if (lblStatusFuncionario != null) {
-            lblStatusFuncionario.setText(f.ativo ? "ATIVO" : "DEMITIDO / INATIVO");
-            lblStatusFuncionario.setStyle("-fx-text-fill: " + (f.ativo ? "#2e7d32" : "#c62828") + "; -fx-font-weight: bold;");
-            if(boxDemissao != null) boxDemissao.setDisable(!f.ativo);
+            lblStatusFuncionario.setText(f.isAtivo() ? "ATIVO" : "DEMITIDO / INATIVO");
+            lblStatusFuncionario.setStyle("-fx-text-fill: " + (f.isAtivo() ? "#2e7d32" : "#c62828") + "; -fx-font-weight: bold;");
+            if(boxDemissao != null) boxDemissao.setDisable(!f.isAtivo());
         }
         
         String mesAtual = LocalDate.now().format(dtfMesExtenso).toUpperCase();
@@ -288,17 +288,17 @@ public class GestaoFuncionariosController {
             stmt.setDouble(14, vInss);
             stmt.setBoolean(15, descInss);
             
-            if (funcionarioSelecionado != null) stmt.setInt(16, funcionarioSelecionado.id);
+            if (funcionarioSelecionado != null) stmt.setInt(16, funcionarioSelecionado.getId());
             stmt.executeUpdate();
             alert("Salvo com sucesso!");
             
-            int idSelecionado = funcionarioSelecionado != null ? funcionarioSelecionado.id : 0;
+            int idSelecionado = funcionarioSelecionado != null ? funcionarioSelecionado.getId() : 0;
             carregarFuncionarios(); 
             for(Funcionario f : listaFuncionarios.getItems()) {
-                if(f.id == idSelecionado) { listaFuncionarios.getSelectionModel().select(f); break; }
+                if(f.setId(= idSelecionado) { listaFuncionarios.getSelectionModel().select(f)); break; }
             }
             
-        } catch (Exception e) { e.printStackTrace(); alert("Erro ao salvar: " + e.getMessage()); }
+        } catch (Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar: " + e.getMessage()); }
     }
 
     /**
@@ -319,15 +319,19 @@ public class GestaoFuncionariosController {
     }
 
     private void calcularFinanceiro(Funcionario f) {
-        if (f.dataAdmissao == null) return;
+        if (f.setDataAdmissao(= null) return);
         
-        if (f.recebe13 && lblProvisaoDecimo != null) {
-            long mesesTotais = ChronoUnit.MONTHS.between(f.dataAdmissao, LocalDate.now());
-            double provisao = (f.salario / 12.0) * mesesTotais;
+        if (f.isRecebe13() && lblProvisaoDecimo != null) {
+            // DL036: calcular meses trabalhados no ANO CORRENTE (nao total desde admissao)
+            LocalDate inicioAno = LocalDate.of(LocalDate.now().getYear(), 1, 1);
+            LocalDate base = f.getDataAdmissao().isAfter(inicioAno) ? f.getDataAdmissao() : inicioAno;
+            long mesesNoAno = ChronoUnit.MONTHS.between(base, LocalDate.now()) + 1;
+            mesesNoAno = Math.min(mesesNoAno, 12); // maximo 12 meses
+            double provisao = (f.getSalario() / 12.0) * mesesNoAno;
             lblProvisaoDecimo.setText("Provisão 13º: " + nf.format(provisao));
         }
 
-        LocalDate dataInicio = (f.dataInicioCalculo != null) ? f.dataInicioCalculo : f.dataAdmissao;
+        LocalDate dataInicio = (f.getDataInicioCalculo() != null) ? f.getDataInicioCalculo() : f.getDataAdmissao();
         LocalDate dataHoje = LocalDate.now();
         
         if (dataInicio.isAfter(dataHoje)) {
@@ -344,7 +348,7 @@ public class GestaoFuncionariosController {
             lblMesReferenciaSistema.setText(mesRef);
         }
         
-        double salarioDiario = f.salario / 30.0;
+        double salarioDiario = f.getSalario() / 30.0;
         if(lblValorDiaria != null) lblValorDiaria.setText("Valor Diária: " + nf.format(salarioDiario));
         
         double totalDinheiroPago = buscarTotalPagamentosReais(f, dataInicio);
@@ -359,8 +363,8 @@ public class GestaoFuncionariosController {
         boolean inssJaLancado = verificarSeExisteEventoRH(f, dataInicio, "INSS");
         if (!inssJaLancado) inssJaLancado = verificarSeExisteDescontoLegado(f, dataInicio, "ENCARGOS");
         
-        if (!inssJaLancado && f.descontarInss && f.valorInss > 0) {
-            descontoAutomatico = f.valorInss;
+        if (!inssJaLancado && f.isDescontarInss() && f.getValorInss() > 0) {
+            descontoAutomatico = f.getValorInss();
         }
 
         double salarioAcumulado = diasTrabalhados * salarioDiario;
@@ -404,7 +408,7 @@ public class GestaoFuncionariosController {
             try {
                 String descricao = "DESC. " + txtDesc.getText().toUpperCase();
                 double valor = Double.parseDouble(txtVal.getText().replace(".", "").replace(",", "."));
-                lancarEventoContabil(funcionarioSelecionado, "DESCONTO_MANUAL", descricao, valor, LocalDate.now(), funcionarioSelecionado.dataInicioCalculo);
+                lancarEventoContabil(funcionarioSelecionado, "DESCONTO_MANUAL", descricao, valor, LocalDate.now(), funcionarioSelecionado.getDataInicioCalculo());
                 alert("Desconto lançado no prontuário do funcionário!");
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
@@ -428,13 +432,26 @@ public class GestaoFuncionariosController {
         if (result.isPresent()) {
             try {
                 LocalDate dataFalta = result.get();
-                double valorDesconto = funcionarioSelecionado.salario / 30.0;
-                String descricao = "FALTA - " + funcionarioSelecionado.nome.toUpperCase() + " - " + dataFalta.format(dtf);
-                lancarEventoContabil(funcionarioSelecionado, "FALTA", descricao, valorDesconto, dataFalta, funcionarioSelecionado.dataInicioCalculo);
+                // DL061: verificar se ja existe falta para o mesmo dia
+                String sqlCheck = "SELECT COUNT(*) FROM eventos_rh WHERE funcionario_id = ? AND data_referencia = ? AND tipo = 'FALTA'";
+                try (Connection conCheck = dao.ConexaoBD.getConnection();
+                     java.sql.PreparedStatement psCheck = conCheck.prepareStatement(sqlCheck)) {
+                    psCheck.setInt(1, funcionarioSelecionado.getId());
+                    psCheck.setDate(2, java.sql.Date.valueOf(dataFalta));
+                    try (java.sql.ResultSet rsCheck = psCheck.executeQuery()) {
+                        if (rsCheck.next() && rsCheck.getInt(1) > 0) {
+                            alert("Ja existe falta registrada para " + funcionarioSelecionado.getNome() + " em " + dataFalta.format(dtf) + ".");
+                            return;
+                        }
+                    }
+                }
+                double valorDesconto = funcionarioSelecionado.getSalario() / 30.0;
+                String descricao = "FALTA - " + funcionarioSelecionado.getNome().toUpperCase() + " - " + dataFalta.format(dtf);
+                lancarEventoContabil(funcionarioSelecionado, "FALTA", descricao, valorDesconto, dataFalta, funcionarioSelecionado.getDataInicioCalculo());
                 alert("Falta registrada no prontuário! Valor: " + nf.format(valorDesconto));
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
-            } catch(Exception e) { e.printStackTrace(); alert("Erro: " + e.getMessage()); }
+            } catch(Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
         }
     }
     
@@ -442,7 +459,7 @@ public class GestaoFuncionariosController {
     public void fecharMes() {
         if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
         
-        LocalDate dataInicio = (funcionarioSelecionado.dataInicioCalculo != null) ? funcionarioSelecionado.dataInicioCalculo : funcionarioSelecionado.dataAdmissao;
+        LocalDate dataInicio = (funcionarioSelecionado.getDataInicioCalculo() != null) ? funcionarioSelecionado.getDataInicioCalculo() : funcionarioSelecionado.getDataAdmissao();
         LocalDate dataHoje = LocalDate.now();
         
         double totalPago = buscarTotalPagamentosReais(funcionarioSelecionado, dataInicio);
@@ -453,14 +470,14 @@ public class GestaoFuncionariosController {
         boolean inssJaLancado = verificarSeExisteEventoRH(funcionarioSelecionado, dataInicio, "INSS");
         if (!inssJaLancado) inssJaLancado = verificarSeExisteDescontoLegado(funcionarioSelecionado, dataInicio, "ENCARGOS");
         
-        if (!inssJaLancado && funcionarioSelecionado.descontarInss && funcionarioSelecionado.valorInss > 0) {
-            descontoInss = funcionarioSelecionado.valorInss;
+        if (!inssJaLancado && funcionarioSelecionado.isDescontarInss() && funcionarioSelecionado.getValorInss() > 0) {
+            descontoInss = funcionarioSelecionado.getValorInss();
         }
 
         double diasTrabalhados = calcularDiasComerciais(dataInicio, dataHoje);
         if (diasTrabalhados > 30) diasTrabalhados = 30;
         
-        double salarioDiario = funcionarioSelecionado.salario / 30.0;
+        double salarioDiario = funcionarioSelecionado.getSalario() / 30.0;
         double acumulado = diasTrabalhados * salarioDiario;
         double saldoParaPagar = acumulado - totalPago - totalDescontosRH - descontoInss;
         saldoParaPagar = Math.round(saldoParaPagar * 100.0) / 100.0;
@@ -482,10 +499,8 @@ public class GestaoFuncionariosController {
         Optional<ButtonType> res = confirm.showAndWait();
         if (res.isPresent() && res.get() == ButtonType.OK) {
             try {
+                // DL052: data de referencia e sempre o ultimo dia do periodo trabalhado (mes atual)
                 LocalDate dataReferenciaFechamento = dataHoje;
-                if (dataHoje.getDayOfMonth() < 20) {
-                    dataReferenciaFechamento = dataHoje.withDayOfMonth(1).minusDays(1);
-                }
                 
                 if (descontoInss > 0) {
                     lancarEventoContabil(funcionarioSelecionado, "INSS", "DESC. ENCARGOS (INSS/FOLHA)", descontoInss, dataReferenciaFechamento, dataInicio);
@@ -493,7 +508,7 @@ public class GestaoFuncionariosController {
                 
                 if (saldoParaPagar > 0) {
                     String mesExtenso = dataInicio.format(dtfMesExtenso).toUpperCase();
-                    String desc = "FECHAMENTO MENSAL " + funcionarioSelecionado.nome.toUpperCase() + " REF " + mesExtenso;
+                    String desc = "FECHAMENTO MENSAL " + funcionarioSelecionado.getNome().toUpperCase() + " REF " + mesExtenso;
                     lancarDebitoAutomatico(funcionarioSelecionado, desc, saldoParaPagar, dataReferenciaFechamento, "DINHEIRO");
                 }
                 
@@ -502,15 +517,15 @@ public class GestaoFuncionariosController {
                     novaDataInicio = dataHoje.withDayOfMonth(1).plusMonths(1);
                 }
                 
-                atualizarDataInicioCalculo(funcionarioSelecionado.id, novaDataInicio);
-                funcionarioSelecionado.dataInicioCalculo = novaDataInicio;
+                atualizarDataInicioCalculo(funcionarioSelecionado.getId(), novaDataInicio);
+                funcionarioSelecionado.setDataInicioCalculo(novaDataInicio);
                 dpInicioCalculo.setValue(novaDataInicio); 
                 
                 alert("Ciclo Fechado! Novo ciclo iniciado em: " + novaDataInicio.format(dtf));
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
                 
-            } catch(Exception e) { e.printStackTrace(); alert("Erro: " + e.getMessage()); }
+            } catch(Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
         }
     }
 
@@ -524,63 +539,69 @@ public class GestaoFuncionariosController {
 
     // --- MÉTODOS DE BUSCA SEPARADOS ---
     
+    // #DB014/#DB015: try-with-resources + getBigDecimal para valores financeiros
     private double buscarTotalPagamentosReais(Funcionario f, LocalDate inicio) {
-         try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE funcionario_id = ? AND is_excluido = false AND data_pagamento >= ? AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setInt(1, f.id);
+        String sql = "SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas WHERE funcionario_id = ? AND is_excluido = false AND data_pagamento >= ? AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, f.getId());
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getDouble("total");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) { java.math.BigDecimal v = rs.getBigDecimal("total"); return v != null ? v.doubleValue() : 0.0; }
+            }
         } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalPagamentosReais: " + e.getMessage()); }
         return 0.0;
     }
 
     private double buscarTotalEventosRH(Funcionario f, LocalDate dataReferencia) {
-        try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT SUM(valor) as total FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ?";
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setInt(1, f.id);
+        String sql = "SELECT COALESCE(SUM(valor), 0) as total FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ?";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, f.getId());
             stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getDouble("total");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) { java.math.BigDecimal v = rs.getBigDecimal("total"); return v != null ? v.doubleValue() : 0.0; }
+            }
         } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalEventosRH: " + e.getMessage()); }
         return 0.0;
     }
 
     private double buscarTotalDescontosLegado(Funcionario f, LocalDate inicio) {
-         try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT SUM(valor_pago) as total FROM financeiro_saidas WHERE funcionario_id = ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setInt(1, f.id);
+        String sql = "SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas WHERE funcionario_id = ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, f.getId());
             stmt.setDate(2, java.sql.Date.valueOf(inicio));
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getDouble("total");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) { java.math.BigDecimal v = rs.getBigDecimal("total"); return v != null ? v.doubleValue() : 0.0; }
+            }
         } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalDescontosLegado: " + e.getMessage()); }
         return 0.0;
     }
 
     private boolean verificarSeExisteEventoRH(Funcionario f, LocalDate dataReferencia, String tipo) {
-        try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT COUNT(*) FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ? AND tipo = ?";
-            PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setInt(1, f.id);
+        String sql = "SELECT COUNT(*) FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ? AND tipo = ?";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, f.getId());
             stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
             stmt.setString(3, tipo);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getInt(1) > 0;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
         } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteEventoRH: " + e.getMessage()); }
         return false;
     }
 
     private boolean verificarSeExisteDescontoLegado(Funcionario f, LocalDate dataReferencia, String termo) {
-        try (Connection con = ConexaoBD.getConnection()) {
-            String sql = "SELECT COUNT(*) FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND data_pagamento >= ? AND forma_pagamento = 'DESCONTO'";
-            PreparedStatement stmt = con.prepareStatement(sql);
+        String sql = "SELECT COUNT(*) FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND data_pagamento >= ? AND forma_pagamento = 'DESCONTO'";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, "%" + termo.toUpperCase() + "%");
             stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getInt(1) > 0;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
         } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteDescontoLegado: " + e.getMessage()); }
         return false;
     }
@@ -591,7 +612,7 @@ public class GestaoFuncionariosController {
          try {
             double valor = Double.parseDouble(txtValorPagamento.getText().replace(".", "").replace(",", "."));
             if (txtDescricaoPagamento.getText().isEmpty()) { alert("Digite uma descrição."); return; }
-            String desc = "PAGTO " + funcionarioSelecionado.nome.toUpperCase() + " - " + txtDescricaoPagamento.getText().toUpperCase();
+            String desc = "PAGTO " + funcionarioSelecionado.getNome().toUpperCase() + " - " + txtDescricaoPagamento.getText().toUpperCase();
             
             lancarDebitoAutomatico(funcionarioSelecionado, desc, valor, LocalDate.now(), "DINHEIRO");
             
@@ -615,8 +636,10 @@ public class GestaoFuncionariosController {
     
     private void lancarDebitoAutomatico(Funcionario f, String descricao, double valor, LocalDate dataRef, String formaPagamento) {
         try {
-            int idViagem = 1; 
-            try (Connection con = ConexaoBD.getConnection(); ResultSet rs = con.prepareStatement("SELECT id_viagem FROM viagens WHERE is_atual = true LIMIT 1").executeQuery()) {
+            int idViagem = 1;
+            try (Connection con = ConexaoBD.getConnection();
+                 PreparedStatement psViagem = con.prepareStatement("SELECT id_viagem FROM viagens WHERE is_atual = true LIMIT 1");
+                 ResultSet rs = psViagem.executeQuery()) {
                 if(rs.next()) idViagem = rs.getInt(1);
             }
             
@@ -632,7 +655,7 @@ public class GestaoFuncionariosController {
                 stmt.setInt(8, idCategoria);
 
                 stmt.setInt(9, idViagem);
-                stmt.setInt(10, f.id);
+                stmt.setInt(10, f.getId());
                 stmt.executeUpdate();
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -641,7 +664,7 @@ public class GestaoFuncionariosController {
     private void lancarEventoContabil(Funcionario f, String tipo, String descricao, double valor, LocalDate dataEvento, LocalDate dataReferencia) {
         String sql = "INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, f.id);
+            stmt.setInt(1, f.getId());
             stmt.setString(2, tipo); 
             stmt.setString(3, descricao);
             stmt.setDouble(4, valor);
@@ -650,7 +673,7 @@ public class GestaoFuncionariosController {
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
-            alert("Erro ao salvar evento RH: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar evento RH: " + e.getMessage());
         }
     }
     
@@ -673,16 +696,17 @@ public class GestaoFuncionariosController {
                       "AND ( (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false ) " +
                       "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ?";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sqlFin)) {
-            stmt.setInt(1, f.id);
+            stmt.setInt(1, f.getId());
             stmt.setInt(2, mes);
             stmt.setInt(3, ano);
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()) {
-                String forma = rs.getString("forma_pagamento");
-                if (forma != null && (forma.equals("DESCONTO") || forma.equals("RETIDO"))) {
-                    historico.add(new PagamentoHistorico(rs.getDate("data_pagamento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor_pago"), "DESCONTO"));
-                } else {
-                    historico.add(new PagamentoHistorico(rs.getDate("data_pagamento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor_pago"), "DINHEIRO"));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while(rs.next()) {
+                    String forma = rs.getString("forma_pagamento");
+                    if (forma != null && (forma.equals("DESCONTO") || forma.equals("RETIDO"))) {
+                        historico.add(new PagamentoHistorico(rs.getDate("data_pagamento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor_pago"), "DESCONTO"));
+                    } else {
+                        historico.add(new PagamentoHistorico(rs.getDate("data_pagamento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor_pago"), "DINHEIRO"));
+                    }
                 }
             }
         } catch (SQLException e) { e.printStackTrace(); }
@@ -691,23 +715,24 @@ public class GestaoFuncionariosController {
                         "WHERE funcionario_id = ? " +
                         "AND EXTRACT(MONTH FROM data_evento) = ? AND EXTRACT(YEAR FROM data_evento) = ?";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sqlRH)) {
-            stmt.setInt(1, f.id);
+            stmt.setInt(1, f.getId());
             stmt.setInt(2, mes);
             stmt.setInt(3, ano);
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()) {
-                historico.add(new PagamentoHistorico(rs.getDate("data_evento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor"), "DESCONTO"));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while(rs.next()) {
+                    historico.add(new PagamentoHistorico(rs.getDate("data_evento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor"), "DESCONTO"));
+                }
             }
         } catch (SQLException e) { e.printStackTrace(); }
         
         boolean temInssGravado = historico.stream().anyMatch(h -> h.getDescricao().contains("INSS") || h.getDescricao().contains("ENCARGOS"));
         
-        if (!temInssGravado && f.descontarInss && f.valorInss > 0) {
+        if (!temInssGravado && f.isDescontarInss() && f.getValorInss() > 0) {
             LocalDate dataInss = LocalDate.of(ano, mes, 1).plusMonths(1).minusDays(1);
             if (dataInss.isAfter(LocalDate.now())) dataInss = LocalDate.now();
             
-            if (f.dataAdmissao.isBefore(dataInss) || f.dataAdmissao.isEqual(dataInss)) {
-                historico.add(new PagamentoHistorico(dataInss, "DESC. ENCARGOS (INSS/FOLHA) - PREVISÃO", f.valorInss, "DESCONTO"));
+            if (f.getDataAdmissao().isBefore(dataInss) || f.getDataAdmissao().isEqual(dataInss)) {
+                historico.add(new PagamentoHistorico(dataInss, "DESC. ENCARGOS (INSS/FOLHA) - PREVISÃO", f.getValorInss(), "DESCONTO"));
             }
         }
         
@@ -782,9 +807,9 @@ public class GestaoFuncionariosController {
         if(mesCompetencia == null) mesCompetencia = "";
         
         gridDados.add(textoBold("FUNCIONÁRIO:", 10), 0, 0);
-        gridDados.add(new Text(funcionarioSelecionado.nome), 1, 0);
+        gridDados.add(new Text(funcionarioSelecionado.getNome()), 1, 0);
         gridDados.add(textoBold("CARGO:", 10), 0, 1);
-        gridDados.add(new Text(funcionarioSelecionado.cargo), 1, 1);
+        gridDados.add(new Text(funcionarioSelecionado.getCargo()), 1, 1);
         gridDados.add(textoBold("COMPETÊNCIA:", 10), 2, 0);
         gridDados.add(textoBold(mesCompetencia, 11), 3, 0);
         
@@ -801,13 +826,13 @@ public class GestaoFuncionariosController {
         );
         corpoTabela.getChildren().add(titulos);
         
-        corpoTabela.getChildren().add(criarLinhaHolerite("", "SALÁRIO BASE MENSAL", "30d", nf.format(funcionarioSelecionado.salario), ""));
+        corpoTabela.getChildren().add(criarLinhaHolerite("", "SALÁRIO BASE MENSAL", "30d", nf.format(funcionarioSelecionado.getSalario()), ""));
         
-        double totalVencimentos = funcionarioSelecionado.salario;
+        double totalVencimentos = funcionarioSelecionado.getSalario();
         double totalDescontos = 0;
         
         for(PagamentoHistorico p : tabelaHistorico.getItems()) {
-            String desc = p.getDescricao().replace(funcionarioSelecionado.nome, "").replace(funcionarioSelecionado.nome.toUpperCase(), "").replace(" - - ", " ").trim();
+            String desc = p.getDescricao().replace(funcionarioSelecionado.getNome(), "").replace(funcionarioSelecionado.getNome().toUpperCase(), "").replace(" - - ", " ").trim();
             if(desc.startsWith("- ")) desc = desc.substring(2);
             if(desc.length() > 32) desc = desc.substring(0, 32) + "..."; 
             
@@ -884,26 +909,44 @@ public class GestaoFuncionariosController {
         if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Demissão");
-        confirm.setHeaderText("Deseja realmente demitir " + funcionarioSelecionado.nome + "?");
+        confirm.setHeaderText("Deseja realmente demitir " + funcionarioSelecionado.getNome() + "?");
         Optional<ButtonType> res = confirm.showAndWait();
         if (res.isPresent() && res.get() == ButtonType.OK) {
             try (Connection con = ConexaoBD.getConnection(); 
                  PreparedStatement stmt = con.prepareStatement("UPDATE funcionarios SET ativo = false WHERE id = ?")) {
-                stmt.setInt(1, funcionarioSelecionado.id);
+                stmt.setInt(1, funcionarioSelecionado.getId());
                 stmt.executeUpdate();
                 alert("Funcionário demitido com sucesso.");
                 carregarFuncionarios(); 
-            } catch (SQLException e) { alert("Erro: " + e.getMessage()); }
+            } catch (SQLException e) { alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
         }
     }
 
     private void alert(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).show(); }
     
+    // D019: campos PII como private com getters
     public static class Funcionario {
-        int id; String nome, cpf, rg, ctps, telefone, endereco, cargo;
-        double salario; LocalDate dataAdmissao, dataNascimento, dataInicioCalculo;
-        boolean recebe13; boolean ativo; boolean isClt;
-        double valorInss; boolean descontarInss;
+        private int id; private String nome, cpf, rg, ctps, telefone, endereco, cargo;
+        private double salario; private LocalDate dataAdmissao, dataNascimento, dataInicioCalculo;
+        private boolean recebe13; private boolean ativo; private boolean isClt;
+        private double valorInss; private boolean descontarInss;
+        public int getId() { return id; } public void setId(int id) { this.id = id; }
+        public String getNome() { return nome; } public void setNome(String nome) { this.nome = nome; }
+        public String getCpf() { return cpf; } public void setCpf(String cpf) { this.cpf = cpf; }
+        public String getRg() { return rg; } public void setRg(String rg) { this.rg = rg; }
+        public String getCtps() { return ctps; } public void setCtps(String ctps) { this.ctps = ctps; }
+        public String getTelefone() { return telefone; } public void setTelefone(String telefone) { this.telefone = telefone; }
+        public String getEndereco() { return endereco; } public void setEndereco(String endereco) { this.endereco = endereco; }
+        public String getCargo() { return cargo; } public void setCargo(String cargo) { this.cargo = cargo; }
+        public double getSalario() { return salario; } public void setSalario(double salario) { this.salario = salario; }
+        public LocalDate getDataAdmissao() { return dataAdmissao; } public void setDataAdmissao(LocalDate d) { this.dataAdmissao = d; }
+        public LocalDate getDataNascimento() { return dataNascimento; } public void setDataNascimento(LocalDate d) { this.dataNascimento = d; }
+        public LocalDate getDataInicioCalculo() { return dataInicioCalculo; } public void setDataInicioCalculo(LocalDate d) { this.dataInicioCalculo = d; }
+        public boolean isRecebe13() { return recebe13; } public void setRecebe13(boolean v) { this.recebe13 = v; }
+        public boolean isAtivo() { return ativo; } public void setAtivo(boolean v) { this.ativo = v; }
+        public boolean isClt() { return isClt; } public void setClt(boolean v) { this.isClt = v; }
+        public double getValorInss() { return valorInss; } public void setValorInss(double v) { this.valorInss = v; }
+        public boolean isDescontarInss() { return descontarInss; } public void setDescontarInss(boolean v) { this.descontarInss = v; }
         @Override public String toString() { return nome + (ativo ? "" : " (INATIVO)"); }
     }
     

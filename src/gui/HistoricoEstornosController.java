@@ -29,6 +29,7 @@ public class HistoricoEstornosController {
 
     @FXML
     public void initialize() {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Historico de Estornos"); return; }
         dpInicio.setValue(LocalDate.now().minusDays(30));
         dpFim.setValue(LocalDate.now());
 
@@ -69,23 +70,25 @@ public class HistoricoEstornosController {
             
             stmt.setDate(1, java.sql.Date.valueOf(dpInicio.getValue()));
             stmt.setDate(2, java.sql.Date.valueOf(dpFim.getValue()));
-            ResultSet rs = stmt.executeQuery();
-
-            while(rs.next()) {
-                lista.add(new EstornoLog(
-                    sdf.format(rs.getTimestamp("data_hora")),
-                    rs.getString("numero_encomenda"),
-                    rs.getDouble("valor_estornado"),
-                    rs.getString("forma_devolucao"),
-                    rs.getString("motivo"),
-                    rs.getString("nome_autorizador")
-                ));
+            // DR113: ResultSet em try-with-resources
+            try (ResultSet rs = stmt.executeQuery()) {
+                while(rs.next()) {
+                    lista.add(new EstornoLog(
+                        sdf.format(rs.getTimestamp("data_hora")),
+                        rs.getString("numero_encomenda"),
+                        rs.getDouble("valor_estornado"),
+                        rs.getString("forma_devolucao"),
+                        rs.getString("motivo"),
+                        rs.getString("nome_autorizador")
+                    ));
+                }
             }
             javafx.application.Platform.runLater(() -> tabela.setItems(lista));
 
         } catch (Exception e) {
             e.printStackTrace();
-            new Alert(Alert.AlertType.ERROR, "Erro ao buscar histórico: " + e.getMessage()).show();
+            // DR113: Alert via Platform.runLater (filtrar() pode ser chamado de bg thread)
+            javafx.application.Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Erro ao buscar histórico: " + e.getMessage()).show());
         }
     }
 

@@ -12,6 +12,8 @@ import javafx.beans.property.SimpleStringProperty;
 
 import javafx.beans.property.StringProperty;
 
+import javafx.application.Platform;
+
 import javafx.collections.FXCollections;
 
 import javafx.collections.ObservableList;
@@ -69,6 +71,7 @@ private ObservableList<Conferente> lista = FXCollections.observableArrayList();
 @Override
 
 public void initialize(URL location, ResourceBundle resources) {
+if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Cadastro de Conferentes"); return; }
 
 // conferenteDAO = new ConferenteDAO(); // Instanciar o DAO aqui
 
@@ -80,7 +83,25 @@ tabela.setItems(lista);
 
 
 
-carregarDoBanco();
+// DR117: background thread para nao bloquear FX thread
+Thread bg = new Thread(() -> {
+    try {
+        java.util.List<Conferente> dados = new java.util.ArrayList<>();
+        String sql = "SELECT id_conferente, nome_conferente FROM conferentes ORDER BY nome_conferente";
+        try (java.sql.Connection conn = ConexaoBD.getConnection();
+             java.sql.Statement st = conn.createStatement();
+             java.sql.ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                dados.add(new Conferente(rs.getLong("id_conferente"), rs.getString("nome_conferente")));
+            }
+        }
+        Platform.runLater(() -> lista.setAll(dados));
+    } catch (Exception e) {
+        System.err.println("Erro ao carregar dados: " + e.getMessage());
+    }
+});
+bg.setDaemon(true);
+bg.start();
 
 
 

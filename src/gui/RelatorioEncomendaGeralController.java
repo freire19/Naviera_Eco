@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
+
+import javafx.application.Platform;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -106,14 +108,28 @@ public class RelatorioEncomendaGeralController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Relatorio de Encomendas"); return; }
         viagemDAO = new ViagemDAO();
         encomendaDAO = new EncomendaDAO();
         encomendaItemDAO = new EncomendaItemDAO();
         rotaDAO = new RotaDAO();
         obsListaViagens = FXCollections.observableArrayList();
         obsListaRotas = FXCollections.observableArrayList();
-        carregarViagens();
-        carregarRotas();
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<model.Viagem> viagens = viagemDAO.listarTodasViagensResumido();
+                List<model.Rota> rotas = rotaDAO.listarTodasAsRotasComoObjects();
+                Platform.runLater(() -> {
+                    carregarViagensComDados(viagens);
+                    carregarRotasComDados(rotas);
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados iniciais RelatorioEncomendaGeral: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     public void setViagemInicial(Viagem viagem) {
@@ -127,28 +143,39 @@ public class RelatorioEncomendaGeralController implements Initializable {
         }
     }
 
+    // DR117: aceita dados pre-carregados para ser chamado do Platform.runLater
+    private void carregarViagensComDados(List<Viagem> viagens) {
+        obsListaViagens.setAll(viagens);
+        cmbViagem.setItems(obsListaViagens);
+        cmbViagem.setCellFactory(p -> new ListCell<Viagem>() {
+            @Override protected void updateItem(Viagem item, boolean empty) { super.updateItem(item, empty); setText(empty || item == null ? null : item.toString()); }
+        });
+        cmbViagem.setButtonCell(new ListCell<Viagem>() {
+            @Override protected void updateItem(Viagem item, boolean empty) { super.updateItem(item, empty); setText(empty || item == null ? null : item.toString()); }
+        });
+        if (!obsListaViagens.isEmpty()) cmbViagem.getSelectionModel().selectFirst();
+    }
+
     private void carregarViagens() {
         try {
-            obsListaViagens.setAll(viagemDAO.listarTodasViagensResumido());
-            cmbViagem.setItems(obsListaViagens);
-            cmbViagem.setCellFactory(p -> new ListCell<Viagem>() {
-                @Override protected void updateItem(Viagem item, boolean empty) { super.updateItem(item, empty); setText(empty || item == null ? null : item.toString()); }
-            });
-            cmbViagem.setButtonCell(new ListCell<Viagem>() {
-                @Override protected void updateItem(Viagem item, boolean empty) { super.updateItem(item, empty); setText(empty || item == null ? null : item.toString()); }
-            });
-            if (!obsListaViagens.isEmpty()) cmbViagem.getSelectionModel().selectFirst();
+            List<Viagem> viagens = viagemDAO.listarTodasViagensResumido();
+            Platform.runLater(() -> carregarViagensComDados(viagens));
         } catch (Exception e) { e.printStackTrace(); }
     }
-    
+
+    // DR117: aceita dados pre-carregados para ser chamado do Platform.runLater
+    private void carregarRotasComDados(List<Rota> rotas) {
+        Rota todas = new Rota(); todas.setId(null); todas.setOrigem("TODAS"); todas.setDestino("AS ROTAS");
+        obsListaRotas.add(todas);
+        obsListaRotas.addAll(rotas);
+        cmbRota.setItems(obsListaRotas);
+        cmbRota.getSelectionModel().selectFirst();
+    }
+
     private void carregarRotas() {
         try {
             List<Rota> rotas = rotaDAO.listarTodasAsRotasComoObjects();
-            Rota todas = new Rota(); todas.setId(null); todas.setOrigem("TODAS"); todas.setDestino("AS ROTAS");
-            obsListaRotas.add(todas);
-            obsListaRotas.addAll(rotas);
-            cmbRota.setItems(obsListaRotas);
-            cmbRota.getSelectionModel().selectFirst();
+            Platform.runLater(() -> carregarRotasComDados(rotas));
         } catch (Exception e) { e.printStackTrace(); }
     }
 

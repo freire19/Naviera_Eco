@@ -30,6 +30,7 @@ public class PagamentoFreteController {
 
     @FXML
     public void initialize() {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Pagamento de Frete"); return; }
         cbTipoPagamento.getItems().addAll("Dinheiro", "Cartão", "PIX");
         cbCaixa.getItems().addAll("Caixa 1", "Caixa 2");
 

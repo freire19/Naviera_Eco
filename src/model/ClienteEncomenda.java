@@ -41,7 +41,8 @@ public class ClienteEncomenda {
     // Método toString para fácil visualização em ComboBoxes
     @Override
     public String toString() {
-        return nomeCliente;
+        // DR128: retorna string vazia se nomeCliente for null (evita NPE em ComboBox/ListView)
+        return nomeCliente != null ? nomeCliente : "";
     }
 
     // Métodos equals e hashCode para comparações corretas

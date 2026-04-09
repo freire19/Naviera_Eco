@@ -44,8 +44,15 @@ public class Passageiro {
     public String getNacionalidade() { return nacionalidade; }
     public void setNacionalidade(String nacionalidade) { this.nacionalidade = nacionalidade; }
 
+    // DS007: toString NAO expoe PII (documento, nascimento) — apenas nome para exibicao
     @Override
     public String toString() {
         return nome != null ? nome : "";
+    }
+
+    /** Retorna documento mascarado para exibicao em logs/relatorios (ex: ***1234). */
+    public String getNumeroDocMascarado() {
+        if (numeroDoc == null || numeroDoc.length() < 4) return "****";
+        return "***" + numeroDoc.substring(numeroDoc.length() - 4);
     }
 }

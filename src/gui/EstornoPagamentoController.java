@@ -31,10 +31,8 @@ public class EstornoPagamentoController {
 
     // Getters
     public BigDecimal getValorEstorno() {
-        try {
-            String txt = txtValorEstorno.getText().replace(".", "").replace(",", ".").trim();
-            return new BigDecimal(txt);
-        } catch(Exception e) { return BigDecimal.ZERO; }
+        // DL038: usa MoneyUtil para parsing consistente independente de Locale
+        return gui.util.MoneyUtil.parseBigDecimalSafe(txtValorEstorno.getText());
     }
     public String getMotivo() { return txtMotivo.getText().toUpperCase(); }
     public String getFormaDevolucao() { return cmbFormaDevolucao.getValue(); }
@@ -44,8 +42,16 @@ public class EstornoPagamentoController {
 
     @FXML
     public void initialize() {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Estorno de Pagamento"); return; }
         // DR010: carrega formas de pagamento em background
-        Thread bg = new Thread(this::carregarFormasPagamento);
+        Thread bg = new Thread(() -> {
+            try {
+                carregarFormasPagamento();
+            } catch (Exception e) {
+                System.err.println("Erro em EstornoPagamentoController (bg init): " + e.getMessage());
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("EstornoPagamentoController", e));
+            }
+        });
         bg.setDaemon(true);
         bg.start();
     }
@@ -54,7 +60,8 @@ public class EstornoPagamentoController {
         this.pagoOriginal = pago != null ? pago : BigDecimal.ZERO;
         lblValorTotal.setText(String.format("R$ %,.2f", total));
         lblValorPago.setText(String.format("R$ %,.2f", pago));
-        txtValorEstorno.setText(String.format("%.2f", pago));
+        // DL038: formatar com separador consistente (pt-BR: virgula decimal)
+        txtValorEstorno.setText(String.format("%,.2f", pago));
     }
 
     /** Overload para compatibilidade com callers legados. */

@@ -735,6 +735,16 @@ public class InserirEncomendaController implements Initializable {
             showAlert(AlertType.WARNING, "Operação Não Permitida", "A encomenda não foi localizada corretamente.\nTente salvar (F3) ou recarregar a tela antes de entregar.");
             return;
         }
+        // DL051: impedir re-entrega que sobrescreveria dados do recebedor original
+        if (encomendaEmEdicao.isEntregue()) {
+            String recebedorOriginal = encomendaEmEdicao.getNomeRecebedor();
+            Alert confirmReentrega = new Alert(AlertType.CONFIRMATION,
+                "Esta encomenda já foi entregue" + (recebedorOriginal != null ? " para " + recebedorOriginal : "") + ".\nDeseja realmente registrar nova entrega? Os dados do recebedor anterior serão substituídos.",
+                ButtonType.YES, ButtonType.NO);
+            confirmReentrega.setTitle("Encomenda Já Entregue");
+            Optional<ButtonType> res = confirmReentrega.showAndWait();
+            if (!res.isPresent() || res.get() != ButtonType.YES) return;
+        }
         try {
             // Salvar o ID antes de qualquer operação que possa limpar encomendaEmEdicao
             final Long idEncomenda = encomendaEmEdicao.getId();
@@ -1375,7 +1385,16 @@ public class InserirEncomendaController implements Initializable {
         }
 
         EncomendaItem item = new EncomendaItem();
-        try { item.setQuantidade(Integer.parseInt(txtQuantidade.getText())); } catch(Exception e) { item.setQuantidade(1); }
+        // DL060: validar quantidade em vez de fallback silencioso
+        try {
+            int qtd = Integer.parseInt(txtQuantidade.getText().trim());
+            if (qtd <= 0) throw new NumberFormatException("Quantidade deve ser positiva");
+            item.setQuantidade(qtd);
+        } catch (NumberFormatException e) {
+            showAlert(AlertType.WARNING, "Quantidade Invalida", "A quantidade informada nao e um numero valido. Verifique e tente novamente.");
+            txtQuantidade.requestFocus();
+            return;
+        }
         item.setDescricao(descricao);
         item.setValorUnitario(valorUnitario);
         item.setValorTotal(item.getValorUnitario().multiply(new BigDecimal(item.getQuantidade())));

@@ -54,6 +54,8 @@ public class ConfigurarApiController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // DS004: somente admin pode configurar API
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Configurar API"); return; }
         // Configurar Spinner
         spnTamanhoMax.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 10));
         
@@ -89,7 +91,13 @@ public class ConfigurarApiController implements Initializable {
                 
                 chkUsarNuvem.setSelected(Boolean.parseBoolean(config.getProperty("usar.nuvem", "false")));
                 txtUrlNuvem.setText(config.getProperty("url.nuvem", ""));
-                txtChaveNuvem.setText(config.getProperty("chave.nuvem", ""));
+                // DS005: decodificar chave nuvem se estava encoded
+                String chaveRaw = config.getProperty("chave.nuvem", "");
+                if ("true".equals(config.getProperty("chave.nuvem.encoded")) && !chaveRaw.isEmpty()) {
+                    try { chaveRaw = new String(java.util.Base64.getDecoder().decode(chaveRaw), java.nio.charset.StandardCharsets.UTF_8); }
+                    catch (Exception ignored) { /* fallback: usa valor raw */ }
+                }
+                txtChaveNuvem.setText(chaveRaw);
                 
                 chkHabilitarXml.setSelected(Boolean.parseBoolean(config.getProperty("habilitar.xml", "true")));
                 chkHabilitarFoto.setSelected(Boolean.parseBoolean(config.getProperty("habilitar.foto", "true")));
@@ -249,8 +257,13 @@ public class ConfigurarApiController implements Initializable {
     @FXML
     private void salvar() {
         try {
-            // Criar pasta de uploads se não existir
+            // DS012: validar que path de uploads esta dentro do diretorio do usuario
             File pastaUploads = new File(txtPastaArquivos.getText());
+            String userHome = System.getProperty("user.home");
+            if (!pastaUploads.getCanonicalPath().startsWith(new File(userHome).getCanonicalPath())) {
+                mostrarAlerta(Alert.AlertType.WARNING, "Caminho Invalido", "A pasta de uploads deve estar dentro do diretorio do usuario.");
+                return;
+            }
             if (!pastaUploads.exists()) {
                 pastaUploads.mkdirs();
             }
@@ -264,7 +277,15 @@ public class ConfigurarApiController implements Initializable {
             
             config.setProperty("usar.nuvem", String.valueOf(chkUsarNuvem.isSelected()));
             config.setProperty("url.nuvem", txtUrlNuvem.getText());
-            config.setProperty("chave.nuvem", txtChaveNuvem.getText());
+            // DS005: ofuscar chave nuvem com Base64 (nao e criptografia forte, mas evita leitura casual)
+            String chaveNuvem = txtChaveNuvem.getText();
+            if (chaveNuvem != null && !chaveNuvem.isEmpty()) {
+                config.setProperty("chave.nuvem", java.util.Base64.getEncoder().encodeToString(chaveNuvem.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                config.setProperty("chave.nuvem.encoded", "true");
+            } else {
+                config.setProperty("chave.nuvem", "");
+                config.setProperty("chave.nuvem.encoded", "false");
+            }
             
             config.setProperty("habilitar.xml", String.valueOf(chkHabilitarXml.isSelected()));
             config.setProperty("habilitar.foto", String.valueOf(chkHabilitarFoto.isSelected()));

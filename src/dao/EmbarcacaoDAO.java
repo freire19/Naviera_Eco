@@ -120,26 +120,20 @@ public class EmbarcacaoDAO {
      * DL006: Verifica integridade referencial antes de excluir.
      * Retorna false se existem viagens usando esta embarcacao.
      */
+    // #DB005: DELETE direto — FK constraint do banco protege contra exclusao com viagens vinculadas
     public boolean excluir(Long id) {
-        String sqlCheck = "SELECT COUNT(*) FROM viagens WHERE id_embarcacao = ?";
         String sql = "DELETE FROM embarcacoes WHERE id_embarcacao = ?";
-        try (Connection conn = ConexaoBD.getConnection()) {
-            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
-                psCheck.setLong(1, id);
-                try (ResultSet rs = psCheck.executeQuery()) {
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        System.err.println("Embarcacao id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
-                        return false;
-                    }
-                }
-            }
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setLong(1, id);
-                return ps.executeUpdate() > 0;
-            }
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
+            if ("23503".equals(e.getSQLState())) {
+                System.err.println("Embarcacao id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
+                return false;
+            }
             System.err.println("Erro ao excluir embarcação: " + e.getMessage());
+            return false;
         }
-        return false;
     }
 }

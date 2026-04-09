@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.ResourceBundle;
 
 import dao.ItemEncomendaPadraoDAO;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -90,11 +91,26 @@ public class TabelaPrecosEncomendaController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Tabela de Precos Encomenda"); return; }
         configurarColunas();
         configurarTabela();
-        carregarItens();
         configurarFiltroPesquisa();
         configurarSelecaoTabela();
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<ItemEncomendaPadrao> itens = itemDAO.listarTodos(false);
+                Platform.runLater(() -> {
+                    masterData.addAll(itens);
+                    tablePrecos.sort();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     // ------------------------------------------------------------

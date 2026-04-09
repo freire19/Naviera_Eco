@@ -75,7 +75,8 @@ import java.util.stream.Collectors;
 public class CadastroFreteController implements Initializable {
 
     // VARIÃVEL ESTÃTICA PARA RECEBER O NÃšMERO DO FRETE
-    private static String staticNumeroFreteParaAbrir = null;
+    // #009: volatile para visibilidade entre chamadas de diferentes controllers
+    private static volatile String staticNumeroFreteParaAbrir = null;
 
     public static void setNumeroFreteParaAbrir(String numFrete) {
         staticNumeroFreteParaAbrir = numFrete;
@@ -167,8 +168,13 @@ public class CadastroFreteController implements Initializable {
 
         // DR010: carrega dados do banco em background para nao bloquear UI
         Thread bgThread = new Thread(() -> {
-            carregarDadosIniciaisComboBoxes();
-            javafx.application.Platform.runLater(this::setComboBoxItems);
+            try {
+                carregarDadosIniciaisComboBoxes();
+                javafx.application.Platform.runLater(this::setComboBoxItems);
+            } catch (Exception e) {
+                System.err.println("Erro em CadastroFreteController (bg init): " + e.getMessage());
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("CadastroFreteController", e));
+            }
         });
         bgThread.setDaemon(true);
         bgThread.start();
@@ -176,8 +182,9 @@ public class CadastroFreteController implements Initializable {
 
         if (cbRota != null) {
             cbRota.valueProperty().addListener((obs, oldVal, newVal) -> {
-                if (newVal != null && newVal.contains("-")) {
-                    String[] partes = newVal.split("-");
+                // DL062: usar " - " (com espacos) para evitar split em nomes com hifen
+                if (newVal != null && newVal.contains(" - ")) {
+                    String[] partes = newVal.split(" - ", 2);
                     if (partes.length > 1 && txtCidadeCobranca != null) {
                         txtCidadeCobranca.setText(partes[1].trim());
                     }
@@ -701,27 +708,28 @@ public class CadastroFreteController implements Initializable {
             String sqlFrete = "SELECT * FROM fretes WHERE numero_frete = ?";
             try (PreparedStatement pst = conn.prepareStatement(sqlFrete)) {
                 pst.setLong(1, numeroFreteLong);
-                ResultSet rs = pst.executeQuery();
-                if (rs.next()) {
-                    // DM015: preenchimento extraido em metodo auxiliar
-                    preencherCamposDoFrete(rs, numFrete);
-                } else {
-                    showAlert(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com nÃºmero: " + numFrete);
-                    return;
+                try (ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        preencherCamposDoFrete(rs, numFrete);
+                    } else {
+                        showAlert(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com numero: " + numFrete);
+                        return;
+                    }
                 }
             }
 
             String sqlItens = "SELECT nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item FROM frete_itens WHERE id_frete = ?";
             try (PreparedStatement pst2 = conn.prepareStatement(sqlItens)) {
                 pst2.setLong(1, freteAtualId);
-                ResultSet rs2 = pst2.executeQuery();
-                listaTabelaItensFrete.clear();
-                while (rs2.next()) {
-                    String descricaoItem = rs2.getString("nome_item_ou_id_produto");
-                    int qtd = rs2.getInt("quantidade");
-                    double precoUnit = rs2.getDouble("preco_unitario");
-                    FreteItem item = new FreteItem(qtd, descricaoItem, precoUnit);
-                    listaTabelaItensFrete.add(item);
+                try (ResultSet rs2 = pst2.executeQuery()) {
+                    listaTabelaItensFrete.clear();
+                    while (rs2.next()) {
+                        String descricaoItem = rs2.getString("nome_item_ou_id_produto");
+                        int qtd = rs2.getInt("quantidade");
+                        double precoUnit = rs2.getDouble("preco_unitario");
+                        FreteItem item = new FreteItem(qtd, descricaoItem, precoUnit);
+                        listaTabelaItensFrete.add(item);
+                    }
                 }
             }
             if (tabelaItens != null) tabelaItens.refresh();
@@ -864,7 +872,11 @@ public class CadastroFreteController implements Initializable {
         public void setPreco(double p) { preco.set(p); }
         public SimpleDoubleProperty precoProperty() { return preco; }
 
-        public double getTotal() { return getQuantidade() * getPreco(); }
+        // #DB022: calculo de total via BigDecimal para evitar erros de arredondamento
+        public double getTotal() { return getTotalBD().doubleValue(); }
+        public java.math.BigDecimal getTotalBD() {
+            return java.math.BigDecimal.valueOf(getQuantidade()).multiply(java.math.BigDecimal.valueOf(getPreco()));
+        }
     }
 
     private void configurarTabela() {
@@ -957,6 +969,7 @@ public class CadastroFreteController implements Initializable {
                         double v = parseValorMonetario(txtpreco.getText());
                         txtpreco.setText(df.format(v));
                     } catch (ParseException e) {
+                        System.err.println("CadastroFreteController: erro ao formatar valor monetario '" + txtpreco.getText() + "' — " + e.getMessage());
                     }
                 }
             });
@@ -1397,16 +1410,23 @@ public class CadastroFreteController implements Initializable {
     }
 
     private long gerarNumeroFreteNoBanco() throws SQLException {
-        String sql = "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes";
-        long proximoNumero = 1;
+        // DL035: usa sequence para evitar race condition (mesmo padrao de passagens/encomendas)
+        String sql = "SELECT nextval('seq_numero_frete')";
         try (Connection conn = ConexaoBD.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) {
-                proximoNumero = rs.getLong(1);
+            if (rs.next()) return rs.getLong(1);
+        } catch (SQLException e) {
+            // Fallback se sequence nao existir ainda (rodar script 010)
+            System.err.println("Sequence seq_numero_frete nao encontrada. Usando fallback MAX+1. Execute o script 010_criar_sequence_frete.sql.");
+            String fallback = "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes";
+            try (Connection conn = ConexaoBD.getConnection();
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(fallback)) {
+                if (rs.next()) return rs.getLong(1);
             }
         }
-        return proximoNumero;
+        return 1;
     }
 
     @FXML private void handleNovoFrete(ActionEvent event) {
@@ -1512,7 +1532,7 @@ public class CadastroFreteController implements Initializable {
                 pstFrete.setBigDecimal(paramIdx++, temNF && txtPesoNota != null ? parseToBigDecimal(txtPesoNota.getText()) : BigDecimal.ZERO);
 
                 BigDecimal totalItens = listaTabelaItensFrete.stream()
-                        .map(i -> BigDecimal.valueOf(i.getTotal()))
+                        .map(i -> i.getTotalBD())
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 pstFrete.setBigDecimal(paramIdx++, totalItens);
                 pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
@@ -1521,12 +1541,45 @@ public class CadastroFreteController implements Initializable {
                         ? parseToBigDecimal(txtValorTotalNota.getText())
                         : totalItens;
                 pstFrete.setBigDecimal(paramIdx++, valorFreteCalculado);
-                pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
-                pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
-                pstFrete.setBigDecimal(paramIdx++, valorFreteCalculado);
-                pstFrete.setString(paramIdx++, null);
-                pstFrete.setString(paramIdx++, null);
-                pstFrete.setString(paramIdx++, "PENDENTE");
+
+                // DL034: no UPDATE, preservar valor_pago/troco/devedor/pagamento existentes
+                if (isNewFrete) {
+                    pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO); // valor_pago
+                    pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO); // troco
+                    pstFrete.setBigDecimal(paramIdx++, valorFreteCalculado); // valor_devedor
+                    pstFrete.setString(paramIdx++, null); // tipo_pagamento
+                    pstFrete.setString(paramIdx++, null); // nome_caixa
+                    pstFrete.setString(paramIdx++, "PENDENTE"); // status_frete
+                } else {
+                    // Buscar valores financeiros existentes antes de sobrescrever
+                    BigDecimal pagoExistente = BigDecimal.ZERO;
+                    BigDecimal trocoExistente = BigDecimal.ZERO;
+                    String tipoPgtoExistente = null;
+                    String caixaExistente = null;
+                    String sqlBusca = "SELECT valor_pago, troco, tipo_pagamento, nome_caixa FROM fretes WHERE id_frete = ?";
+                    try (PreparedStatement psBusca = conn.prepareStatement(sqlBusca)) {
+                        psBusca.setLong(1, freteAtualId);
+                        try (ResultSet rsBusca = psBusca.executeQuery()) {
+                            if (rsBusca.next()) {
+                                pagoExistente = rsBusca.getBigDecimal("valor_pago");
+                                if (pagoExistente == null) pagoExistente = BigDecimal.ZERO;
+                                trocoExistente = rsBusca.getBigDecimal("troco");
+                                if (trocoExistente == null) trocoExistente = BigDecimal.ZERO;
+                                tipoPgtoExistente = rsBusca.getString("tipo_pagamento");
+                                caixaExistente = rsBusca.getString("nome_caixa");
+                            }
+                        }
+                    }
+                    BigDecimal devedorRecalculado = valorFreteCalculado.subtract(pagoExistente).max(BigDecimal.ZERO);
+                    pstFrete.setBigDecimal(paramIdx++, pagoExistente); // valor_pago preservado
+                    pstFrete.setBigDecimal(paramIdx++, trocoExistente); // troco preservado
+                    pstFrete.setBigDecimal(paramIdx++, devedorRecalculado); // valor_devedor recalculado
+                    pstFrete.setString(paramIdx++, tipoPgtoExistente); // tipo_pagamento preservado
+                    pstFrete.setString(paramIdx++, caixaExistente); // nome_caixa preservado
+                    // Recalcular status baseado no pagamento existente
+                    String statusRecalculado = model.StatusPagamento.calcularPorSaldo(devedorRecalculado, pagoExistente).name();
+                    pstFrete.setString(paramIdx++, statusRecalculado);
+                }
 
                 if (this.viagemAtiva != null) {
                     pstFrete.setLong(paramIdx++, this.viagemAtiva.getId());
@@ -1660,7 +1713,8 @@ public class CadastroFreteController implements Initializable {
             return;
         }
 
-        String nomeItemFinal = itemNomeOuDescricao.trim().toLowerCase();
+        // DL065: preservar case original (toUpperCase para documentos fiscais)
+        String nomeItemFinal = itemNomeOuDescricao.trim().toUpperCase();
         if (listaTabelaItensFrete != null) {
             listaTabelaItensFrete.add(new FreteItem(quantidade, nomeItemFinal, precoUnitario));
         }
@@ -2104,11 +2158,12 @@ public class CadastroFreteController implements Initializable {
 
     private void atualizarTotaisAgregados() {
         int totalDeVolumes = 0;
-        double valorTotalAgregado = 0;
+        // #DB022: BigDecimal para soma de valores financeiros
+        java.math.BigDecimal valorTotalAgregado = java.math.BigDecimal.ZERO;
         if (listaTabelaItensFrete != null) {
             for (FreteItem item : listaTabelaItensFrete) {
                 totalDeVolumes += item.getQuantidade();
-                valorTotalAgregado += item.getTotal();
+                valorTotalAgregado = valorTotalAgregado.add(item.getTotalBD());
             }
         }
         if (txtTotalVol != null) {
@@ -2184,14 +2239,16 @@ public class CadastroFreteController implements Initializable {
     }
 
     private BigDecimal parseToBigDecimal(String vS) throws IllegalArgumentException {
+        // DL059: converter direto da String para BigDecimal sem passar por double
         if (vS == null || vS.trim().isEmpty()) {
             return BigDecimal.ZERO;
         }
         try {
-            double vD = parseValorMonetario(vS);
-            return BigDecimal.valueOf(vD).setScale(2, RoundingMode.HALF_UP);
-        } catch (ParseException e) {
-            throw new IllegalArgumentException("Valor monetÃ¡rio invÃ¡lido: '" + vS + "'.", e);
+            String cleaned = vS.replace("R$", "").replace(" ", "")
+                               .replace(".", "").replace(",", ".").trim();
+            return new BigDecimal(cleaned).setScale(2, RoundingMode.HALF_UP);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Valor monetario invalido: '" + vS + "'.", e);
         }
     }
 

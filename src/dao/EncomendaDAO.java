@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import model.Encomenda;
 
+// DR026: Convencao de retorno de erro neste DAO — metodos que retornam Encomenda retornam
+// null em caso de falha; metodos de busca retornam lista vazia ou null. Veja DR026 em STATUS.md.
 public class EncomendaDAO {
 
     /** Insere encomenda sem itens (legado — callers que inserem itens separadamente). */
@@ -84,9 +86,10 @@ public class EncomendaDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idViagem);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                lista.add(mapearEncomenda(rs));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearEncomenda(rs));
+                }
             }
         } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
@@ -141,7 +144,7 @@ public class EncomendaDAO {
             stmt.setBoolean(14, e.isEntregue());
             stmt.setLong(15, e.getId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException ex) { ex.printStackTrace(); return false; }
+        } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); return false; }
     }
     
     public boolean atualizarFinanceiro(Long idEncomenda, java.math.BigDecimal valorPago, String status) {
@@ -206,7 +209,8 @@ public class EncomendaDAO {
         } catch (SQLException e) {
             // Fallback se sequence não existir ainda (rodar script 005)
             System.err.println("Sequence seq_numero_encomenda não encontrada. Usando fallback MAX+1. Execute o script 005.");
-            String fallback = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ?";
+            // DL023: filtrar apenas registros numericos para evitar CAST crash
+            String fallback = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ? AND numero_encomenda ~ '^[0-9]+$'";
             try (Connection conn = ConexaoBD.getConnection();
                  PreparedStatement stmt2 = conn.prepareStatement(fallback)) {
                 stmt2.setLong(1, idViagem);
@@ -214,7 +218,7 @@ public class EncomendaDAO {
                 try (ResultSet rs = stmt2.executeQuery()) {
                     if (rs.next()) return rs.getInt(1) + 1;
                 }
-            } catch (SQLException ex) { ex.printStackTrace(); }
+            } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); }
         }
         return 1;
     }
@@ -236,13 +240,13 @@ public class EncomendaDAO {
         // CORREÇÃO: Leitura segura do booleano
         e.setEntregue(rs.getBoolean("entregue"));
         
-        // Colunas opcionais — podem nao existir em queries com SELECT parcial
-        try { e.setFormaPagamento(rs.getString("forma_pagamento")); } catch (Exception ex) { /* coluna opcional */ }
-        try { e.setLocalPagamento(rs.getString("local_pagamento")); } catch (Exception ex) { /* coluna opcional */ }
-        try { e.setDocRecebedor(rs.getString("doc_recebedor")); } catch (Exception ex) { /* coluna opcional */ }
-        try { e.setNomeRecebedor(rs.getString("nome_recebedor")); } catch (Exception ex) { /* coluna opcional */ }
-        try { e.setNomeRota(rs.getString("rota")); } catch (Exception ex) { /* coluna opcional */ }
-        try { e.setIdCaixa(rs.getInt("id_caixa")); } catch (Exception ex) { /* coluna opcional */ }
+        // DR119: colunas opcionais — log minimo para diagnostico de schema changes
+        try { e.setFormaPagamento(rs.getString("forma_pagamento")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional forma_pagamento ausente"); }
+        try { e.setLocalPagamento(rs.getString("local_pagamento")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional local_pagamento ausente"); }
+        try { e.setDocRecebedor(rs.getString("doc_recebedor")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional doc_recebedor ausente"); }
+        try { e.setNomeRecebedor(rs.getString("nome_recebedor")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional nome_recebedor ausente"); }
+        try { e.setNomeRota(rs.getString("rota")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional rota ausente"); }
+        try { e.setIdCaixa(rs.getInt("id_caixa")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional id_caixa ausente"); }
 
         return e;
     }

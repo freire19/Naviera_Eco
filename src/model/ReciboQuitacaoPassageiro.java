@@ -42,8 +42,11 @@ public class ReciboQuitacaoPassageiro {
     public String getItensPagos() { return itensPagos; }
     public void setItensPagos(String itensPagos) { this.itensPagos = itensPagos; }
 
+    // #DB025: null check para evitar NPE em ListView/ComboBox
     @Override
     public String toString() {
-        return DTF.format(dataPagamento) + " - Valor: R$ " + String.format("%,.2f", valorTotal) + " (" + formaPagamento + ")";
+        String dataStr = dataPagamento != null ? DTF.format(dataPagamento) : "N/A";
+        String formaStr = formaPagamento != null ? formaPagamento : "N/A";
+        return dataStr + " - Valor: R$ " + String.format("%,.2f", valorTotal) + " (" + formaStr + ")";
     }
 }

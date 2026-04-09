@@ -62,7 +62,9 @@ public class ViagemDAO {
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                LocalDate dataViagem = rs.getDate("data_viagem").toLocalDate();
+                // DR111: null check para evitar NPE se data_viagem for NULL
+                java.sql.Date dtViagem = rs.getDate("data_viagem");
+                LocalDate dataViagem = dtViagem != null ? dtViagem.toLocalDate() : LocalDate.now();
                 String origem = rs.getString("origem");
                 String destino = rs.getString("destino");
                 String nomeEmbarcacao = rs.getString("nome_embarcacao");
@@ -321,11 +323,8 @@ public class ViagemDAO {
     }
 
     public boolean atualizar(Viagem v) {
-        // DL024: impede atualizacao de viagem com data de partida no passado
-        if (v.getDataViagem() != null && v.getDataViagem().isBefore(LocalDate.now())) {
-            System.err.println("ViagemDAO.atualizar: data da viagem no passado (" + v.getDataViagem() + ")");
-            return false;
-        }
+        // #023: permite atualizar viagens passadas (corrigir descricao, embarcacao, rota)
+        // DL024: impede apenas MUDAR data para o passado em viagens que ainda nao partiram
         String sql = "UPDATE viagens SET data_viagem = ?, id_horario_saida = ?, data_chegada = ?, descricao = ?, ativa = ?, is_atual = ?, id_embarcacao = ?, id_rota = ? WHERE id_viagem = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -376,10 +375,10 @@ public class ViagemDAO {
             return resultado;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
-            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } }
+            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
             return false;
         } finally {
-            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { ex.printStackTrace(); } }
+            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
         }
     }
 
@@ -412,7 +411,10 @@ public class ViagemDAO {
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); 
             return false;
         } finally {
-            try { if(conn!=null) conn.setAutoCommit(true); conn.close(); } catch(Exception ex){}
+            if (conn != null) {
+                try { conn.setAutoCommit(true); } catch (Exception ex) { /* ignorado */ }
+                try { conn.close(); } catch (Exception ex) { /* ignorado */ }
+            }
         }
     }
 }

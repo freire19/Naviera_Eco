@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -103,8 +104,27 @@ public class AuditoriaExclusoesSaida {
             }
         });
 
-        // Carrega as viagens e seleciona a inicial
-        carregarViagens(idViagemInicial);
+        // DR117: background thread para nao bloquear FX thread ao carregar viagens
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<OpcaoViagem> lista = carregarViagensBg(idViagemInicial);
+                Platform.runLater(() -> {
+                    cmbSelecaoViagem.setItems(lista);
+                    OpcaoViagem paraSelecionar = null;
+                    for (OpcaoViagem ov : lista) {
+                        if (ov.id == idViagemInicial) { paraSelecionar = ov; break; }
+                    }
+                    if (paraSelecionar != null) cmbSelecaoViagem.getSelectionModel().select(paraSelecionar);
+                    else if (!lista.isEmpty()) cmbSelecaoViagem.getSelectionModel().selectFirst();
+                    // Carrega os dados da viagem selecionada
+                    carregarDados();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar viagens AuditoriaExclusoesSaida: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
 
         boxSelecao.getChildren().addAll(lblRef, cmbSelecaoViagem);
         header.getChildren().addAll(lblTitulo, boxSelecao);
@@ -139,85 +159,87 @@ public class AuditoriaExclusoesSaida {
         stage.showAndWait();
     }
     
-    private void carregarViagens(int idInicial) {
+    // DR117: versao que retorna dados para ser chamada do background thread
+    private ObservableList<OpcaoViagem> carregarViagensBg(int idInicial) {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        
         String sql = "SELECT id_viagem, descricao, data_viagem FROM viagens ORDER BY data_viagem DESC";
-        
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
-             
-            while(rs.next()) {
+            while (rs.next()) {
                 int id = rs.getInt("id_viagem");
                 String desc = rs.getString("descricao");
                 java.sql.Date dt = rs.getDate("data_viagem");
-                if (dt != null) {
-                    desc += " (" + sdf.format(dt) + ")";
-                }
-                OpcaoViagem op = new OpcaoViagem(id, desc);
-                lista.add(op);
-            }
-            cmbSelecaoViagem.setItems(lista);
-            
-            OpcaoViagem paraSelecionar = null;
-            for (OpcaoViagem ov : lista) {
-                if (ov.id == idInicial) {
-                    paraSelecionar = ov;
-                    break;
-                }
-            }
-            if (paraSelecionar != null) {
-                cmbSelecaoViagem.getSelectionModel().select(paraSelecionar);
-            } else if (!lista.isEmpty()) {
-                cmbSelecaoViagem.getSelectionModel().selectFirst();
+                if (dt != null) desc += " (" + sdf.format(dt) + ")";
+                lista.add(new OpcaoViagem(id, desc));
             }
         } catch (Exception e) { e.printStackTrace(); }
+        return lista;
     }
 
-    private void carregarDados() {
-        if (tabela == null) return; 
+    private void carregarViagens(int idInicial) {
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<OpcaoViagem> lista = carregarViagensBg(idInicial);
+                Platform.runLater(() -> {
+                    cmbSelecaoViagem.setItems(lista);
+                    OpcaoViagem paraSelecionar = null;
+                    for (OpcaoViagem ov : lista) {
+                        if (ov.id == idInicial) { paraSelecionar = ov; break; }
+                    }
+                    if (paraSelecionar != null) cmbSelecaoViagem.getSelectionModel().select(paraSelecionar);
+                    else if (!lista.isEmpty()) cmbSelecaoViagem.getSelectionModel().selectFirst();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar viagens AuditoriaExclusoesSaida: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
 
-        ObservableList<RegistroAuditoria> lista = FXCollections.observableArrayList();
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-        
-        String sql = "SELECT * FROM auditoria_financeiro WHERE acao = 'EXCLUSAO_DESPESA' AND id_viagem = ? ORDER BY data_hora DESC";
-        
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-            
-            stmt.setInt(1, idViagemAtual);
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()) {
-                String responsaveis = rs.getString("usuario");
-                String solicitante = "N/D";
-                String autorizador = responsaveis;
-                if (responsaveis != null && responsaveis.contains("/")) {
-                    String[] partes = responsaveis.split("/");
-                    if (partes.length >= 2) {
-                        solicitante = partes[0].trim();
-                        autorizador = partes[1].trim();
+    // DR117: background thread para nao bloquear FX thread
+    private void carregarDados() {
+        if (tabela == null) return;
+        final int idViagem = this.idViagemAtual;
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<RegistroAuditoria> lista = FXCollections.observableArrayList();
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                // DL050: buscar tanto por coluna 'acao' quanto 'tipo_operacao' (padronizacao pendente)
+                String sql = "SELECT * FROM auditoria_financeiro WHERE (acao = 'EXCLUSAO_DESPESA' OR tipo_operacao = 'EXCLUSAO_BOLETO') AND id_viagem = ? ORDER BY data_hora DESC";
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement stmt = con.prepareStatement(sql)) {
+                    stmt.setInt(1, idViagem);
+                    ResultSet rs = stmt.executeQuery();
+                    while (rs.next()) {
+                        String responsaveis = rs.getString("usuario");
+                        String solicitante = "N/D";
+                        String autorizador = responsaveis;
+                        if (responsaveis != null && responsaveis.contains("/")) {
+                            String[] partes = responsaveis.split("/");
+                            if (partes.length >= 2) { solicitante = partes[0].trim(); autorizador = partes[1].trim(); }
+                        }
+                        String detalheBruto = rs.getString("detalhe_valor");
+                        String detalheLimpo = detalheBruto;
+                        if (detalheBruto != null && detalheBruto.contains("| REF. VIAGEM")) {
+                            detalheLimpo = detalheBruto.split("\\| REF. VIAGEM")[0].trim();
+                        }
+                        java.sql.Timestamp ts = rs.getTimestamp("data_hora");
+                        String dataFormatada = (ts != null) ? sdf.format(ts) : "—";
+                        lista.add(new RegistroAuditoria(rs.getInt("id"), dataFormatada, solicitante, autorizador, rs.getString("motivo"), detalheLimpo));
                     }
                 }
-                String detalheBruto = rs.getString("detalhe_valor");
-                String detalheLimpo = detalheBruto;
-                if (detalheBruto != null && detalheBruto.contains("| REF. VIAGEM")) {
-                    detalheLimpo = detalheBruto.split("\\| REF. VIAGEM")[0].trim();
-                }
-                java.sql.Timestamp ts = rs.getTimestamp("data_hora");
-                String dataFormatada = (ts != null) ? sdf.format(ts) : "—";
-                lista.add(new RegistroAuditoria(
-                    rs.getInt("id"),
-                    dataFormatada,
-                    solicitante,
-                    autorizador,
-                    rs.getString("motivo"),
-                    detalheLimpo
-                ));
+                Platform.runLater(() -> tabela.setItems(lista));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar auditoria: " + e.getMessage());
+                e.printStackTrace();
             }
-            tabela.setItems(lista);
-        } catch (Exception e) { e.printStackTrace(); }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void apagarRegistroSelecionado() {

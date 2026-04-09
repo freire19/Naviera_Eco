@@ -20,6 +20,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import javafx.application.Platform;
 
 public class CadastroUsuarioController implements Initializable {
 
@@ -56,6 +57,7 @@ public class CadastroUsuarioController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Cadastro de Usuarios"); return; }
         usuarioDAO = new UsuarioDAO(); // Instancia o DAO
         txtId.setDisable(true);
         txtId.setPromptText("Automático");
@@ -67,8 +69,28 @@ public class CadastroUsuarioController implements Initializable {
         chkAtivo.setSelected(true); 
 
         configurarTabela();
-        carregarUsuariosNaTabela();
-        carregarIcones(); 
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<Usuario> dados = usuarioDAO.listarTodos();
+                Platform.runLater(() -> {
+                    if (dados != null) {
+                        listaObservableUsuarios.setAll(dados);
+                    } else {
+                        showAlert(Alert.AlertType.ERROR, "Erro de Carregamento", "Não foi possível carregar a lista de usuários do banco de dados.");
+                        listaObservableUsuarios.clear();
+                    }
+                    tabelaUsuarios.refresh();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+
+        carregarIcones();
 
         tabelaUsuarios.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {

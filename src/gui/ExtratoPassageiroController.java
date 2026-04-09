@@ -107,19 +107,18 @@ public class ExtratoPassageiroController implements Initializable {
         } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.initialize (CSS): " + e.getMessage()); }
     }
 
+    // #034: carregamento sincrono — evita race condition com impressao
     private void carregarDadosEmpresa() {
-        new Thread(() -> {
-            try (Connection conn = ConexaoBD.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao, cnpj, telefone, path_logo FROM configuracao_empresa LIMIT 1")) {
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    if(rs.getString("nome_embarcacao") != null) empNome = rs.getString("nome_embarcacao");
-                    if(rs.getString("cnpj") != null) empCnpj = rs.getString("cnpj");
-                    if(rs.getString("telefone") != null) empTelefone = rs.getString("telefone");
-                    if(rs.getString("path_logo") != null) empPathLogo = rs.getString("path_logo");
-                }
-            } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.carregarDadosEmpresa: " + e.getMessage()); }
-        }).start();
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao, cnpj, telefone, path_logo FROM configuracao_empresa LIMIT 1");
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                if (rs.getString("nome_embarcacao") != null) empNome = rs.getString("nome_embarcacao");
+                if (rs.getString("cnpj") != null) empCnpj = rs.getString("cnpj");
+                if (rs.getString("telefone") != null) empTelefone = rs.getString("telefone");
+                if (rs.getString("path_logo") != null) empPathLogo = rs.getString("path_logo");
+            }
+        } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.carregarDadosEmpresa: " + e.getMessage()); }
     }
 
     private void configuringAutocomplete(ComboBox<String> comboBox, List<String> data) {
@@ -248,54 +247,59 @@ public class ExtratoPassageiroController implements Initializable {
         final String statusFiltro = (statusSelecionado == null) ? "TODOS" : statusSelecionado;
 
         new Thread(() -> {
-            List<Passagem> listaBD = passagemDAO.listarExtratoPorPassageiro(nome, "TODOS");
-            ObservableList<ItemExtrato> itens = FXCollections.observableArrayList();
+            try {
+                List<Passagem> listaBD = passagemDAO.listarExtratoPorPassageiro(nome, "TODOS");
+                ObservableList<ItemExtrato> itens = FXCollections.observableArrayList();
 
-            double totalGeral = 0;
-            double totalPago = 0;
-            double dividaTemp = 0;
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                // DL046: calcular totais SOMENTE sobre itens que passam no filtro de status
+                double totalGeral = 0;
+                double totalPago = 0;
+                double dividaTemp = 0;
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-            for (Passagem p : listaBD) {
-                double vTotal = p.getValorTotal() != null ? p.getValorTotal().doubleValue() : 0;
-                double vPago = p.getValorPago() != null ? p.getValorPago().doubleValue() : 0;
-                double vSaldo = vTotal - vPago;
-                if (vSaldo < model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) vSaldo = 0.0;
+                for (Passagem p : listaBD) {
+                    double vTotal = p.getValorTotal() != null ? p.getValorTotal().doubleValue() : 0;
+                    double vPago = p.getValorPago() != null ? p.getValorPago().doubleValue() : 0;
+                    double vSaldo = vTotal - vPago;
+                    if (vSaldo < model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) vSaldo = 0.0;
 
-                String stCalculado = model.StatusPagamento.calcularPorSaldo(vSaldo, vPago).name();
+                    String stCalculado = model.StatusPagamento.calcularPorSaldo(vSaldo, vPago).name();
 
-                totalGeral += vTotal;
-                totalPago += vPago;
-                dividaTemp += vSaldo;
+                    boolean adicionar = true;
+                    if (statusFiltro.equals("PENDENTES") && stCalculado.equals("PAGO")) adicionar = false;
+                    if (statusFiltro.equals("PAGOS") && !stCalculado.equals("PAGO")) adicionar = false;
 
-                boolean adicionar = true;
-                if (statusFiltro.equals("PENDENTES") && stCalculado.equals("PAGO")) adicionar = false;
-                if (statusFiltro.equals("PAGOS") && !stCalculado.equals("PAGO")) adicionar = false;
+                    if (adicionar) {
+                        totalGeral += vTotal;
+                        totalPago += vPago;
+                        dividaTemp += vSaldo;
 
-                if (adicionar) {
-                    String rota = (p.getOrigem() != null ? p.getOrigem() : "?") + " > " + (p.getDestino() != null ? p.getDestino() : "?");
-                    String desc = "Bil. " + p.getNumBilhete();
-                    // Aqui ajustamos a data para o formato correto (dd/MM/yyyy)
-                    itens.add(new ItemExtrato(dataDisplay(p, dtf), rota, desc, nf.format(vTotal), nf.format(vPago), nf.format(vSaldo), stCalculado));
+                        String rota = (p.getOrigem() != null ? p.getOrigem() : "?") + " > " + (p.getDestino() != null ? p.getDestino() : "?");
+                        String desc = "Bil. " + p.getNumBilhete();
+                        itens.add(new ItemExtrato(dataDisplay(p, dtf), rota, desc, nf.format(vTotal), nf.format(vPago), nf.format(vSaldo), stCalculado));
+                    }
                 }
+
+                double finalGeral = totalGeral;
+                double finalPago = totalPago;
+                double finalDivida = dividaTemp;
+
+                Platform.runLater(() -> {
+                    tabela.setItems(itens);
+                    listaImprimir = itens;
+
+                    totalDividaCalculada = finalDivida;
+
+                    lblTotalPassagens.setText(nf.format(finalGeral));
+                    lblTotalPago.setText(nf.format(finalPago));
+                    lblDivida.setText(nf.format(finalDivida));
+
+                    btnQuitarTudo.setDisable(finalDivida <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
+                });
+            } catch (Exception e) {
+                System.err.println("Erro em ExtratoPassageiroController (bg buscar): " + e.getMessage());
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("ExtratoPassageiroController", e));
             }
-
-            double finalGeral = totalGeral;
-            double finalPago = totalPago;
-            double finalDivida = dividaTemp;
-
-            Platform.runLater(() -> {
-                tabela.setItems(itens);
-                listaImprimir = itens;
-
-                totalDividaCalculada = finalDivida;
-
-                lblTotalPassagens.setText(nf.format(finalGeral));
-                lblTotalPago.setText(nf.format(finalPago));
-                lblDivida.setText(nf.format(finalDivida));
-
-                btnQuitarTudo.setDisable(finalDivida <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
-            });
         }).start();
     }
 
@@ -350,7 +354,9 @@ public class ExtratoPassageiroController implements Initializable {
             try {
                 String[] partes = s.split("\\|");
                 if (partes.length >= 3) {
-                    lista.add(new ItemExtrato(partes[1], "--", partes[0], partes[2], partes[2], "R$ 0,00", "PAGO"));
+                    // DL058: saldo zero e correto aqui — estes itens foram quitados no momento do recibo
+                    // partes[0]=descricao, partes[1]=data, partes[2]=valor pago
+                    lista.add(new ItemExtrato(partes[1], "--", partes[0], partes[2], partes[2], "R$ 0,00", "QUITADO"));
                 }
             } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.reconstruirItensDoRecibo: " + e.getMessage()); }
         }
@@ -397,9 +403,33 @@ public class ExtratoPassageiroController implements Initializable {
             stage.showAndWait();
 
             if (controller.isConfirmado()) {
-                String formaPagamento = "DINHEIRO/PIX"; 
+                // DL045: determinar forma de pagamento real a partir do dialogo
+                Passagem pAtualizada = controller.getPassagemAtualizada();
+                String formaPagamento = "MISTO";
+                if (pAtualizada != null) {
+                    java.math.BigDecimal din = pAtualizada.getValorPagamentoDinheiro();
+                    java.math.BigDecimal pix = pAtualizada.getValorPagamentoPix();
+                    java.math.BigDecimal car = pAtualizada.getValorPagamentoCartao();
+                    if (din == null) din = java.math.BigDecimal.ZERO;
+                    if (pix == null) pix = java.math.BigDecimal.ZERO;
+                    if (car == null) car = java.math.BigDecimal.ZERO;
+                    boolean temDin = din.compareTo(java.math.BigDecimal.ZERO) > 0;
+                    boolean temPix = pix.compareTo(java.math.BigDecimal.ZERO) > 0;
+                    boolean temCar = car.compareTo(java.math.BigDecimal.ZERO) > 0;
+                    if (temDin && !temPix && !temCar) formaPagamento = "DINHEIRO";
+                    else if (!temDin && temPix && !temCar) formaPagamento = "PIX";
+                    else if (!temDin && !temPix && temCar) formaPagamento = "CARTAO";
+                }
 
-                boolean sucesso = passagemDAO.quitarDividaTotalPassageiro(nome);
+                // #DB007: buscar ID do passageiro para quitacao segura (evita homonimos)
+                model.Passageiro passageiroObj = passageiroDAO.buscarPorNome(nome);
+                boolean sucesso = false;
+                if (passageiroObj != null && passageiroObj.getId() != null && passageiroObj.getId() > 0) {
+                    sucesso = passagemDAO.quitarDividaTotalPassageiroPorId(passageiroObj.getId());
+                } else {
+                    // Fallback para nome se passageiro nao encontrado por busca exata
+                    sucesso = passagemDAO.quitarDividaTotalPassageiro(nome);
+                }
                 if (sucesso) {
                     ReciboQuitacaoPassageiro novoRecibo = new ReciboQuitacaoPassageiro(nome, totalDividaCalculada, formaPagamento, itensParaSalvar.toString());
                     reciboDAO.salvar(novoRecibo);
@@ -454,7 +484,7 @@ public class ExtratoPassageiroController implements Initializable {
                                 g2d.drawImage(logo, centerX, y, targetW, targetH, null);
                                 y += targetH + 10;
                             }
-                        } catch (Exception e) {}
+                        } catch (Exception e) { System.err.println("ExtratoPassageiroController: erro ao carregar logo da empresa para impressao — " + e.getMessage()); }
                     }
                     g2d.setColor(Color.BLACK);
                     g2d.setFont(new Font("Arial", Font.BOLD, 10));

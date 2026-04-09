@@ -60,6 +60,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import javafx.application.Platform;
 import javafx.scene.transform.Scale;
 import javafx.stage.Stage;
 import model.ReciboAvulso;
@@ -99,47 +100,62 @@ public class GerarReciboAvulsoController implements Initializable {
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        carregarDadosEmpresa();
-        
-        // 1. Identifica Viagem Ativa
-        this.viagemAtiva = viagemDao.buscarViagemAtiva();
-        
-        // 2. Data padrão = Hoje
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Gerar Recibo Avulso"); return; }
+        // 2. Data padrão = Hoje (UI pura, fica na FX thread)
         dtData.setValue(LocalDate.now());
-        
-        // 3. Configurações Iniciais
+        // 3. Configurações Iniciais (UI pura)
         configurarTabela();
-        carregarListaViagensParaFiltro();
-        
-        // 4. Carrega dados iniciais (Da viagem ativa)
-        if (viagemAtiva != null) {
-            carregarHistorico(viagemAtiva.getId().intValue());
-            if (cmbFiltroViagem != null) {
-                // Formata o texto para a viagem ativa
-                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                String saida = "";
-                if (viagemAtiva.getDataViagem() != null) {
-                    saida = viagemAtiva.getDataViagem().format(dtf);
-                } else {
-                    saida = "--";
-                }
-                
-                String chegada = "--";
-                
-                // --- CORREÇÃO AQUI ---
-                // Alterado de getPrevisaoChegada() para getDataChegada() conforme seu banco de dados
-                try { 
-                    if(viagemAtiva.getDataChegada() != null) {
-                        chegada = viagemAtiva.getDataChegada().format(dtf);
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                carregarDadosEmpresa();
+                // 1. Identifica Viagem Ativa
+                Viagem va = viagemDao.buscarViagemAtiva();
+                // Carrega combo de viagens (DB)
+                ObservableList<String> itensViagens = carregarListaViagensParaFiltroAsync();
+                Platform.runLater(() -> {
+                    this.viagemAtiva = va;
+                    // Preenche combo
+                    if (cmbFiltroViagem != null) {
+                        cmbFiltroViagem.setItems(itensViagens);
+                        cmbFiltroViagem.setOnAction(e -> {
+                            String selecionada = cmbFiltroViagem.getValue();
+                            if (selecionada != null && !selecionada.isEmpty()) {
+                                buscarViagemEAtualizarTabela(selecionada);
+                            }
+                        });
                     }
-                } catch(Exception e){
-                    // Se ainda der erro, tenta pegar data_chegada via reflection ou deixa --
-                }
-                
-                // Formato Exigido: ID - Saida até Chegada
-                cmbFiltroViagem.setValue(viagemAtiva.getId() + " - " + saida + " até " + chegada);
+                    // 4. Carrega dados iniciais (Da viagem ativa)
+                    if (this.viagemAtiva != null) {
+                        carregarHistorico(this.viagemAtiva.getId().intValue() /* #010: IDs < Integer.MAX_VALUE */);
+                        if (cmbFiltroViagem != null) {
+                            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                            String saida = "";
+                            if (this.viagemAtiva.getDataViagem() != null) {
+                                saida = this.viagemAtiva.getDataViagem().format(dtf);
+                            } else {
+                                saida = "--";
+                            }
+                            String chegada = "--";
+                            // Alterado de getPrevisaoChegada() para getDataChegada() conforme banco
+                            try {
+                                if (this.viagemAtiva.getDataChegada() != null) {
+                                    chegada = this.viagemAtiva.getDataChegada().format(dtf);
+                                }
+                            } catch (Exception e) {
+                                // Se ainda der erro, deixa --
+                            }
+                            // Formato Exigido: ID - Saida até Chegada
+                            cmbFiltroViagem.setValue(this.viagemAtiva.getId() + " - " + saida + " até " + chegada);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados iniciais GerarReciboAvulso: " + e.getMessage());
             }
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     // =========================================================================
@@ -153,46 +169,50 @@ public class GerarReciboAvulsoController implements Initializable {
         }
     }
 
-    private void carregarListaViagensParaFiltro() {
-        if (cmbFiltroViagem == null) return; 
-        
+    // DR117: versao que retorna dados para ser chamada do background thread
+    private ObservableList<String> carregarListaViagensParaFiltroAsync() {
         ObservableList<String> itens = FXCollections.observableArrayList();
-        
-        // --- CORREÇÃO AQUI ---
-        // Alterado nome da coluna no SQL também para 'data_chegada'
+        // Alterado nome da coluna no SQL para 'data_chegada'
         String sql = "SELECT id_viagem, data_viagem, data_chegada FROM viagens ORDER BY id_viagem DESC";
-        
-        try (Connection con = ConexaoBD.getConnection(); 
+        try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
-            
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            
             while (rs.next()) {
                 long id = rs.getLong("id_viagem");
                 java.sql.Date dtS = rs.getDate("data_viagem");
-                java.sql.Date dtC = rs.getDate("data_chegada"); // Nome corrigido conforme print
-                
+                java.sql.Date dtC = rs.getDate("data_chegada");
                 String saida = (dtS != null) ? dtS.toLocalDate().format(dtf) : "--";
                 String chegada = (dtC != null) ? dtC.toLocalDate().format(dtf) : "--";
-                
-                // Formato solicitado: ID - Data - Chegada
-                String item = id + " - " + saida + " até " + chegada;
-                itens.add(item);
+                itens.add(id + " - " + saida + " até " + chegada);
             }
-            
-            cmbFiltroViagem.setItems(itens);
-            
-            cmbFiltroViagem.setOnAction(e -> {
-                String selecionada = cmbFiltroViagem.getValue();
-                if (selecionada != null && !selecionada.isEmpty()) {
-                    buscarViagemEAtualizarTabela(selecionada);
-                }
-            });
-            
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        return itens;
+    }
+
+    private void carregarListaViagensParaFiltro() {
+        if (cmbFiltroViagem == null) return;
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<String> itens = carregarListaViagensParaFiltroAsync();
+                Platform.runLater(() -> {
+                    cmbFiltroViagem.setItems(itens);
+                    cmbFiltroViagem.setOnAction(e -> {
+                        String selecionada = cmbFiltroViagem.getValue();
+                        if (selecionada != null && !selecionada.isEmpty()) {
+                            buscarViagemEAtualizarTabela(selecionada);
+                        }
+                    });
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar lista viagens GerarReciboAvulso: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     private void buscarViagemEAtualizarTabela(String viagemString) {
@@ -212,7 +232,7 @@ public class GerarReciboAvulsoController implements Initializable {
     @FXML
     private void handleLimparFiltro(ActionEvent event) {
         if (viagemAtiva != null) {
-            carregarHistorico(viagemAtiva.getId().intValue());
+            carregarHistorico(viagemAtiva.getId().intValue() /* #010: IDs < Integer.MAX_VALUE */);
             if(cmbFiltroViagem != null) cmbFiltroViagem.getSelectionModel().clearSelection();
         }
         if (btnLimparFiltro != null) btnLimparFiltro.setVisible(false);
@@ -313,7 +333,7 @@ public class GerarReciboAvulsoController implements Initializable {
         try { val = Double.parseDouble(txtValor.getText().replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch (Exception e) { System.err.println("Valor invalido no recibo: " + txtValor.getText()); }
         
         // ID VIAGEM ATIVA
-        int idViagemParaSalvar = (viagemAtiva != null) ? viagemAtiva.getId().intValue() : 0;
+        int idViagemParaSalvar = (viagemAtiva != null) ? viagemAtiva.getId().intValue() /* #010: IDs < Integer.MAX_VALUE */ : 0;
 
         return new ReciboAvulso(
             idViagemParaSalvar,
@@ -333,7 +353,7 @@ public class GerarReciboAvulsoController implements Initializable {
             if (filtroAtual != null && !filtroAtual.isEmpty()) {
                 buscarViagemEAtualizarTabela(filtroAtual);
             } else if (viagemAtiva != null) {
-                carregarHistorico(viagemAtiva.getId().intValue());
+                carregarHistorico(viagemAtiva.getId().intValue() /* #010: IDs < Integer.MAX_VALUE */);
             }
             
             acaoImprimir.run();

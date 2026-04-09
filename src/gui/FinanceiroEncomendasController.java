@@ -49,7 +49,12 @@ public class FinanceiroEncomendasController {
 
         // DR010: carrega viagens em background
         Thread bg = new Thread(() -> {
-            carregarComboViagens();
+            try {
+                carregarComboViagens();
+            } catch (Exception e) {
+                System.err.println("Erro em FinanceiroEncomendasController (bg init): " + e.getMessage());
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("FinanceiroEncomendasController", e));
+            }
         });
         bg.setDaemon(true);
         bg.start();
@@ -79,7 +84,7 @@ public class FinanceiroEncomendasController {
             stage.showAndWait();
         } catch(Exception e) { 
             e.printStackTrace(); 
-            alert("Erro ao abrir histórico: " + e.getMessage()); 
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
         }
     }
 
@@ -164,9 +169,11 @@ public class FinanceiroEncomendasController {
 
         String busca = txtBusca.getText().toLowerCase();
         if (!busca.isEmpty()) {
-            sql.append(" AND (LOWER(e.remetente) LIKE ? OR LOWER(e.destinatario) LIKE ?) ");
-            params.add("%" + busca + "%");
-            params.add("%" + busca + "%");
+            // DS003: escape de wildcards LIKE para evitar exfiltracao
+            String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+            sql.append(" AND (LOWER(e.remetente) LIKE ? ESCAPE '\\' OR LOWER(e.destinatario) LIKE ? ESCAPE '\\') ");
+            params.add("%" + buscaEscapada + "%");
+            params.add("%" + buscaEscapada + "%");
         }
 
         sql.append(" ORDER BY e.id_encomenda DESC");
@@ -245,7 +252,7 @@ public class FinanceiroEncomendasController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro ao abrir tela de pagamento: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
         }
     }
     
@@ -269,6 +276,7 @@ public class FinanceiroEncomendasController {
                 java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
                 String novoStatus = (novoPago.compareTo(totalComDesconto.subtract(model.StatusPagamento.TOLERANCIA_PAGAMENTO)) >= 0) ? "PAGO" : "PARCIAL";
 
+                // DL055: total_a_pagar permanece bruto no banco; saldo calculado como total - desconto - pago (via Encomenda.getSaldoDevedor)
                 String sql = "UPDATE encomendas SET valor_pago = ?, desconto = ?, tipo_pagamento = ?, caixa = ?, status_pagamento = ? WHERE id_encomenda = ?";
                 try (PreparedStatement stmt = con.prepareStatement(sql)) {
                     stmt.setBigDecimal(1, novoPago);
@@ -289,7 +297,7 @@ public class FinanceiroEncomendasController {
                 throw ex;
             }
         } catch (SQLException e) {
-            alert("Erro ao salvar no banco: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
         }
     }
     
@@ -325,10 +333,8 @@ public class FinanceiroEncomendasController {
                 java.math.BigDecimal novoPago = selecionada.getPago().subtract(vEstorno);
                 String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PARCIAL" : "PENDENTE";
                 
-                Connection con = null;
-                try {
-                    con = ConexaoBD.getConnection();
-                    con.setAutoCommit(false); 
+                try (Connection con = ConexaoBD.getConnection()) {
+                    con.setAutoCommit(false);
 
                     String sqlUp = "UPDATE encomendas SET valor_pago = ?, status_pagamento = ? WHERE id_encomenda = ?";
                     try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
@@ -348,22 +354,19 @@ public class FinanceiroEncomendasController {
                         stmt.setString(6, nomeAutorizador);
                         stmt.executeUpdate();
                     }
-                    
+
                     con.commit();
                     alert("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
                     carregarDados();
 
                 } catch (Exception ex) {
-                    if(con != null) con.rollback();
                     ex.printStackTrace();
                     alert("Erro ao gravar estorno: " + ex.getMessage());
-                } finally {
-                    if(con != null) con.setAutoCommit(true);
                 }
             }
         } catch (Exception e) { 
             e.printStackTrace();
-            alert("Erro ao abrir tela de estorno: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
         }
     }
 
@@ -399,7 +402,7 @@ public class FinanceiroEncomendasController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro ao abrir extrato: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir extrato: " + e.getMessage());
         }
     }
 

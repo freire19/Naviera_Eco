@@ -55,27 +55,35 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Registrar Pagamento"); return; }
         encomendaDAO = new EncomendaDAO();
         encomendaItemDAO = new EncomendaItemDAO();
-        caixaDAO = new CaixaDAO(); 
-        
-        // --- CARREGAMENTO DOS CAIXAS ---
-        try {
-            List<Caixa> listaCaixas = caixaDAO.listarTodos();
-            if (listaCaixas.isEmpty()) {
-                cmbCaixa.setPromptText("Nenhum caixa cadastrado");
-            } else {
-                cmbCaixa.setItems(FXCollections.observableArrayList(listaCaixas));
-                cmbCaixa.getSelectionModel().selectFirst(); 
+        caixaDAO = new CaixaDAO();
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                List<Caixa> listaCaixas = caixaDAO.listarTodos();
+                Platform.runLater(() -> {
+                    if (listaCaixas.isEmpty()) {
+                        cmbCaixa.setPromptText("Nenhum caixa cadastrado");
+                    } else {
+                        cmbCaixa.setItems(FXCollections.observableArrayList(listaCaixas));
+                        cmbCaixa.getSelectionModel().selectFirst();
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar caixas RegistrarPagamentoEncomenda: " + e.getMessage());
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
+        });
+        bg.setDaemon(true);
+        bg.start();
+
         configurarListener(txtDinheiro);
         configurarListener(txtPix);
         configurarListener(txtCartao);
-        
+
         Platform.runLater(() -> txtDinheiro.requestFocus());
         
         // --- CORREÇÃO DO F3 E ESC ---
@@ -195,8 +203,10 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
         if (cartao.compareTo(BigDecimal.ZERO) > 0) forma.append("CARTAO");
         
         String formaStr = forma.toString().trim();
-        if (formaStr.isEmpty()) formaStr = "PENDENTE";
-        encomendaAtual.setFormaPagamento(formaStr);
+        // DL056: se nenhum valor pago, nao sobrescrever forma_pagamento com "PENDENTE" (que e status, nao forma)
+        if (!formaStr.isEmpty()) {
+            encomendaAtual.setFormaPagamento(formaStr);
+        }
         
         try {
             encomendaAtual.setLocalPagamento(caixaSelecionado.getNome()); 
@@ -223,13 +233,36 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
             }
             
             if (sucessoEncomenda) {
-                if (encomendaAtual.getId() != null) {
-                    encomendaItemDAO.excluirPorEncomenda(encomendaAtual.getId());
-                }
-                
-                for (EncomendaItem item : itensParaSalvar) {
-                    item.setIdEncomenda(encomendaAtual.getId());
-                    encomendaItemDAO.inserir(item);
+                // DL039: excluir+reinserir itens em transacao atomica
+                try (java.sql.Connection conn = dao.ConexaoBD.getConnection()) {
+                    conn.setAutoCommit(false);
+                    try {
+                        if (encomendaAtual.getId() != null) {
+                            try (java.sql.PreparedStatement psDel = conn.prepareStatement(
+                                    "DELETE FROM encomenda_itens WHERE id_encomenda = ?")) {
+                                psDel.setLong(1, encomendaAtual.getId());
+                                psDel.executeUpdate();
+                            }
+                        }
+                        String sqlIns = "INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES (?, ?, ?, ?, ?, ?)";
+                        try (java.sql.PreparedStatement psIns = conn.prepareStatement(sqlIns)) {
+                            for (EncomendaItem item : itensParaSalvar) {
+                                item.setIdEncomenda(encomendaAtual.getId());
+                                psIns.setLong(1, item.getIdEncomenda());
+                                psIns.setInt(2, item.getQuantidade());
+                                psIns.setString(3, item.getDescricao());
+                                psIns.setBigDecimal(4, item.getValorUnitario());
+                                psIns.setBigDecimal(5, item.getValorTotal());
+                                psIns.setString(6, item.getLocalArmazenamento());
+                                psIns.addBatch();
+                            }
+                            psIns.executeBatch();
+                        }
+                        conn.commit();
+                    } catch (java.sql.SQLException ex) {
+                        conn.rollback();
+                        throw ex;
+                    }
                 }
                 
                 // showAlert(AlertType.INFORMATION, "Pagamento registrado e encomenda salva!"); // Removido para ser mais rápido
@@ -247,7 +280,7 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
             
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro técnico: " + e.getMessage());
+            showAlert(AlertType.ERROR, "Erro interno. Contate o administrador."); System.err.println("Erro técnico: " + e.getMessage());
         }
     }
 

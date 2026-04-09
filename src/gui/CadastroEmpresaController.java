@@ -15,6 +15,7 @@ import dao.EmbarcacaoDAO;
 import java.net.URL;
 import java.io.File;
 import java.util.ResourceBundle;
+import javafx.application.Platform;
 
 public class CadastroEmpresaController implements Initializable {
 
@@ -47,13 +48,53 @@ public class CadastroEmpresaController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Configuracoes da Empresa"); return; }
         empresaDAO = new EmpresaDAO();
         embarcacaoDAO = new EmbarcacaoDAO();
         
         // Garante que o texto quebre linha visualmente se for muito longo, mas preserva os Enters
         txtRecomendacoes.setWrapText(true);
-        
-        carregarEmpresa(1); 
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                Empresa e = empresaDAO.buscarPorId(1);
+                Platform.runLater(() -> {
+                    if (e != null) {
+                        empresaAtual = e;
+                        txtCompanhia.setText(e.getCompanhia());
+                        txtEmbarcacao.setText(e.getEmbarcacao());
+                        txtComandante.setText(e.getComandante());
+                        txtProprietario.setText(e.getProprietario());
+                        txtOrigem.setText(e.getOrigem());
+                        txtGerente.setText(e.getGerente());
+                        txtLinhaDoRio.setText(e.getLinhaDoRio());
+                        txtCnpj.setText(e.getCnpj());
+                        txtIe.setText(e.getIe());
+                        txtEndereco.setText(e.getEndereco());
+                        txtCep.setText(e.getCep());
+                        txtTelefone.setText(e.getTelefone());
+                        txtFrase.setText(e.getFrase());
+                        txtCaminhoFoto.setText(e.getCaminhoFoto());
+                        try {
+                            if (e.getRecomendacoesBilhete() != null) {
+                                txtRecomendacoes.setText(e.getRecomendacoesBilhete());
+                            }
+                        } catch (Exception ex) { System.err.println("CadastroEmpresaController.initialize: getRecomendacoesBilhete indisponivel — " + ex.getMessage()); }
+                        lblMensagem.setText("Dados carregados.");
+                    } else {
+                        empresaAtual = null;
+                        limparCampos();
+                        lblMensagem.setText("Nenhuma configuração salva.");
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+
         lblMensagem.setText("");
     }
 
@@ -82,7 +123,7 @@ public class CadastroEmpresaController implements Initializable {
                     txtRecomendacoes.setText(e.getRecomendacoesBilhete());
                 }
             } catch (Exception ex) {
-                // Ignora se o model ainda não tiver o getter
+                System.err.println("CadastroEmpresaController.carregarEmpresa: getRecomendacoesBilhete indisponivel — " + ex.getMessage());
             }
             
             lblMensagem.setText("Dados carregados.");

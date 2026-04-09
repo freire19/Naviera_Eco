@@ -62,6 +62,7 @@ public class ItemFrete {
     
     @Override
     public String toString() {
-        return nomeItem; 
+        // DR128: retorna string vazia se nomeItem for null (evita NPE em ComboBox/ListView)
+        return nomeItem != null ? nomeItem : "";
     }
 }

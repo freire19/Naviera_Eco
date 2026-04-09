@@ -25,12 +25,15 @@ public class SyncClient {
     private static final String CONFIG_FILE = "sync_config.properties";
     private String serverUrl = "http://localhost:8080";
     private String apiToken = "";
-    private boolean autoSyncEnabled = false;
-    private int syncIntervalMinutes = 5;
-    
-    private final ScheduledExecutorService scheduler;
-    private LocalDateTime ultimaSincronizacao;
-    private final List<SyncListener> listeners = new ArrayList<>();
+    // DR108: volatile para visibilidade entre threads (scheduler, FX, CompletableFuture)
+    private volatile boolean autoSyncEnabled = false;
+    private volatile int syncIntervalMinutes = 5;
+
+    // #039/#032: nao-final para permitir recriar apos shutdown via pararSyncAutomatica()
+    private ScheduledExecutorService scheduler;
+    private volatile LocalDateTime ultimaSincronizacao;
+    // DR108: CopyOnWriteArrayList para acesso thread-safe (add/remove na FX thread, iteracao no scheduler)
+    private final List<SyncListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
     
     // Singleton
     private static SyncClient instance;
@@ -61,7 +64,13 @@ public class SyncClient {
                 Properties props = new Properties();
                 props.load(fis);
                 this.serverUrl = props.getProperty("server.url", serverUrl);
-                this.apiToken = props.getProperty("api.token", "");
+                // D022: decodificar token se encoded
+                String tokenRaw = props.getProperty("api.token", "");
+                if ("true".equals(props.getProperty("api.token.encoded")) && !tokenRaw.isEmpty()) {
+                    try { tokenRaw = new String(java.util.Base64.getDecoder().decode(tokenRaw), java.nio.charset.StandardCharsets.UTF_8); }
+                    catch (Exception ignored) { /* fallback: usa valor raw */ }
+                }
+                this.apiToken = tokenRaw;
                 this.autoSyncEnabled = Boolean.parseBoolean(props.getProperty("sync.auto", "false"));
                 this.syncIntervalMinutes = Integer.parseInt(props.getProperty("sync.interval", "5"));
                 
@@ -82,7 +91,14 @@ public class SyncClient {
         try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE)) {
             Properties props = new Properties();
             props.setProperty("server.url", serverUrl);
-            props.setProperty("api.token", apiToken);
+            // D022: ofuscar token com Base64 (nao e criptografia forte, mas evita leitura casual)
+            if (apiToken != null && !apiToken.isEmpty()) {
+                props.setProperty("api.token", java.util.Base64.getEncoder().encodeToString(apiToken.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                props.setProperty("api.token.encoded", "true");
+            } else {
+                props.setProperty("api.token", "");
+                props.setProperty("api.token.encoded", "false");
+            }
             props.setProperty("sync.auto", String.valueOf(autoSyncEnabled));
             props.setProperty("sync.interval", String.valueOf(syncIntervalMinutes));
             if (ultimaSincronizacao != null) {
@@ -106,30 +122,44 @@ public class SyncClient {
     /**
      * Testa conexão com o servidor.
      */
+    // #DB019: HttpURLConnection com disconnect() em finally
     public CompletableFuture<Boolean> testarConexao() {
         return CompletableFuture.supplyAsync(() -> {
+            HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/sync/ping");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(5000);
                 conn.setReadTimeout(5000);
-                
+
                 int responseCode = conn.getResponseCode();
                 return responseCode == 200;
             } catch (Exception e) {
                 notificarListeners(SyncEvent.ERRO, "Falha na conexão: " + e.getMessage());
                 return false;
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         });
     }
     
     /**
      * Inicia sincronização automática.
+     * #039/#032: recria o scheduler se ele foi encerrado por pararSyncAutomatica().
      */
     public void iniciarSyncAutomatica() {
         if (!autoSyncEnabled) return;
-        
+
+        // Se o scheduler foi encerrado, recria para evitar RejectedExecutionException
+        if (scheduler.isShutdown()) {
+            scheduler = Executors.newScheduledThreadPool(1, r -> {
+                Thread t = new Thread(r, "SyncClient-Scheduler");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 sincronizarTudo();
@@ -144,8 +174,17 @@ public class SyncClient {
     /**
      * Para sincronização automática.
      */
+    // #DB028: awaitTermination para garantir conclusao de sync em andamento
     public void pararSyncAutomatica() {
         scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(10, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
         notificarListeners(SyncEvent.INFO, "Sincronização automática parada");
     }
     
@@ -158,25 +197,19 @@ public class SyncClient {
             
             String[] tabelas = {"passageiros", "passagens", "viagens", "encomendas", "fretes"};
             
-            System.out.println("[SYNC DEBUG] ===== INICIANDO SINCRONIZAÇÃO GERAL =====");
-            
             for (String tabela : tabelas) {
                 try {
                     notificarListeners(SyncEvent.PROGRESSO, "Sincronizando " + tabela + "...");
-                    SyncResult resultado = sincronizarTabela(tabela).get();
-                    System.out.println("[SYNC DEBUG] Tabela " + tabela + " retornou: enviados=" + resultado.registrosEnviados + ", recebidos=" + resultado.registrosRecebidos);
+                    // DR109: timeout para evitar bloqueio indefinido do scheduler
+                    SyncResult resultado = sincronizarTabela(tabela).get(60, TimeUnit.SECONDS);
                     resultadoGeral.registrosEnviados += resultado.registrosEnviados;
                     resultadoGeral.registrosRecebidos += resultado.registrosRecebidos;
-                    System.out.println("[SYNC DEBUG] Total acumulado: enviados=" + resultadoGeral.registrosEnviados + ", recebidos=" + resultadoGeral.registrosRecebidos);
                 } catch (Exception e) {
                     System.err.println("[SYNC ERROR] Erro em " + tabela + ": " + e.getMessage());
                     e.printStackTrace();
                     resultadoGeral.erros.add(tabela + ": " + e.getMessage());
                 }
             }
-            
-            System.out.println("[SYNC DEBUG] ===== SINCRONIZAÇÃO FINALIZADA =====");
-            System.out.println("[SYNC DEBUG] TOTAL FINAL: enviados=" + resultadoGeral.registrosEnviados + ", recebidos=" + resultadoGeral.registrosRecebidos);
             
             ultimaSincronizacao = LocalDateTime.now();
             salvarConfiguracoes();
@@ -205,7 +238,6 @@ public class SyncClient {
             try {
                 // 1. Buscar registros pendentes de upload
                 List<Map<String, Object>> pendentes = buscarRegistrosPendentes(tabela);
-                System.out.println("[SYNC DEBUG] " + tabela + " - Pendentes para enviar: " + pendentes.size());
                 
                 // 2. Criar requisição de sync
                 Map<String, Object> request = new HashMap<>();
@@ -217,25 +249,22 @@ public class SyncClient {
                 
                 // 3. Enviar para o servidor
                 String jsonRequest = criarJsonRequest(tabela, ultimaSincronizacao, pendentes);
-                System.out.println("[SYNC DEBUG] " + tabela + " - Enviando requisição para servidor...");
                 String response = enviarPOST("/api/sync", jsonRequest);
-                System.out.println("[SYNC DEBUG] " + tabela + " - Resposta recebida: " + (response != null ? response.substring(0, Math.min(200, response.length())) + "..." : "NULL"));
                 
                 // 4. Processar resposta do servidor
                 Map<String, Object> syncResponse = parseJsonResponse(response);
-                System.out.println("[SYNC DEBUG] " + tabela + " - Resposta parseada: " + syncResponse);
                 
-                resultado.sucesso = (Boolean) syncResponse.getOrDefault("sucesso", false);
+                // #DB021: cast seguro — aceita Boolean ou String "true"/"false"
+                Object sucessoObj = syncResponse.getOrDefault("sucesso", false);
+                resultado.sucesso = sucessoObj instanceof Boolean ? (Boolean) sucessoObj : Boolean.parseBoolean(String.valueOf(sucessoObj));
                 resultado.mensagem = (String) syncResponse.getOrDefault("mensagem", "");
                 resultado.registrosEnviados = pendentes.size(); // Quantidade que enviamos
-                System.out.println("[SYNC DEBUG] " + tabela + " - registrosEnviados definido: " + resultado.registrosEnviados);
                 
                 // Quantidade que o servidor nos enviou
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> registrosDownload = 
                     (List<Map<String, Object>>) syncResponse.get("registrosParaDownload");
                 resultado.registrosRecebidos = registrosDownload != null ? registrosDownload.size() : 0;
-                System.out.println("[SYNC DEBUG] " + tabela + " - registrosRecebidos definido: " + resultado.registrosRecebidos);
                 
                 if (registrosDownload != null) {
                     for (Map<String, Object> registro : registrosDownload) {
@@ -253,8 +282,6 @@ public class SyncClient {
                 resultado.mensagem = "Erro: " + e.getMessage();
                 resultado.erros.add(e.getMessage());
             }
-            
-            System.out.println("[SYNC DEBUG] " + tabela + " - Resultado final: enviados=" + resultado.registrosEnviados + ", recebidos=" + resultado.registrosRecebidos);
             return resultado;
         });
     }
@@ -262,17 +289,24 @@ public class SyncClient {
     /**
      * Busca registros pendentes de sincronização no banco local.
      */
+    // #013/D004: Whitelist de tabelas permitidas para sync (previne SQL injection)
+    private static final java.util.Set<String> TABELAS_SYNC = new java.util.HashSet<>(
+        java.util.Arrays.asList("passageiros", "passagens", "viagens", "encomendas", "fretes", "cad_clientes_encomenda")
+    );
+
+    private static void validarTabelaSync(String tabela) {
+        if (!TABELAS_SYNC.contains(tabela)) {
+            throw new IllegalArgumentException("Tabela nao permitida para sync: " + tabela);
+        }
+    }
+
     private List<Map<String, Object>> buscarRegistrosPendentes(String tabela) {
+        validarTabelaSync(tabela);
         List<Map<String, Object>> pendentes = new ArrayList<>();
-        
-        // Mapeamento de coluna ID por tabela
+
         String colunaId = getColunaId(tabela);
-        
-        // Query que funciona mesmo se excluido for NULL
+
         String sql = "SELECT * FROM " + tabela + " WHERE sincronizado = FALSE AND (excluido = FALSE OR excluido IS NULL)";
-        
-        System.out.println("[SYNC DEBUG] Buscando pendentes de " + tabela);
-        System.out.println("[SYNC DEBUG] SQL: " + sql);
         
         try (java.sql.Connection conn = dao.ConexaoBD.getConnection();
              java.sql.PreparedStatement stmt = conn.prepareStatement(sql);
@@ -301,8 +335,6 @@ public class SyncClient {
                 pendentes.add(syncRegistro);
             }
             
-            System.out.println("[SYNC DEBUG] Encontrados " + pendentes.size() + " registros pendentes em " + tabela);
-            
         } catch (Exception e) {
             System.err.println("Erro ao buscar pendentes de " + tabela + ": " + e.getMessage());
             e.printStackTrace();
@@ -330,10 +362,11 @@ public class SyncClient {
      * Processa um registro recebido do servidor.
      */
     private void processarRegistroRecebido(String tabela, Map<String, Object> registro) {
+        validarTabelaSync(tabela);
         String acao = (String) registro.get("acao");
         String uuid = (String) registro.get("uuid");
         String dadosJson = (String) registro.get("dadosJson");
-        
+
         try {
             // Verificar se já existe localmente
             String sqlCheck = "SELECT id FROM " + tabela + " WHERE uuid = ?::uuid";
@@ -408,8 +441,14 @@ public class SyncClient {
      * Envia requisição POST para o servidor.
      */
     private String enviarPOST(String endpoint, String jsonBody) throws Exception {
+        // D023: aviso se usando HTTP em servidor remoto (nao-localhost)
+        if (serverUrl != null && serverUrl.startsWith("http://") && !serverUrl.contains("localhost") && !serverUrl.contains("127.0.0.1")) {
+            System.err.println("AVISO SEGURANCA: Sync usando HTTP sem TLS para servidor remoto: " + serverUrl);
+        }
         URL url = new URL(serverUrl + endpoint);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        // DS011: desabilitar redirects para evitar vazamento de token
+        conn.setInstanceFollowRedirects(false);
         
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
@@ -430,8 +469,12 @@ public class SyncClient {
         
         int responseCode = conn.getResponseCode();
         
+        // #DB020: null check em InputStream (getErrorStream pode retornar null)
         InputStream is = responseCode < 400 ? conn.getInputStream() : conn.getErrorStream();
-        
+        if (is == null) {
+            throw new Exception("Erro HTTP " + responseCode + ": sem stream de resposta");
+        }
+
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             StringBuilder response = new StringBuilder();
             String line;
@@ -571,7 +614,6 @@ public class SyncClient {
                         String arrayJson = jsonOriginal.substring(arrayStart, arrayEnd);
                         List<Map<String, Object>> registros = parseJsonArray(arrayJson);
                         result.put("registrosParaDownload", registros);
-                        System.out.println("[SYNC DEBUG] Parseados " + registros.size() + " registros para download");
                     }
                 }
             }
@@ -732,6 +774,20 @@ public class SyncClient {
     
     // === Listeners ===
     
+    /**
+     * #035: Recebe dados do servidor e aplica no banco local.
+     * TODO: implementar download de dados (pagamentos app, feedbacks, pedidos online).
+     * Fluxo esperado: GET /api/sync/download?since={lastSync} → parse JSON → INSERT/UPDATE local.
+     */
+    public CompletableFuture<SyncResult> receberDadosDoServidor() {
+        return CompletableFuture.supplyAsync(() -> {
+            notificarListeners(SyncEvent.INICIO, "Recebimento de dados nao implementado.");
+            System.err.println("SyncClient.receberDadosDoServidor: fluxo de recebimento ainda nao implementado (issue #035).");
+            notificarListeners(SyncEvent.ERRO, "Funcionalidade de recebimento pendente de implementacao.");
+            return new SyncResult(false, "Recebimento de dados do servidor ainda nao implementado.");
+        });
+    }
+
     public void addListener(SyncListener listener) {
         listeners.add(listener);
     }
@@ -779,7 +835,14 @@ public class SyncClient {
         public int registrosEnviados = 0;
         public int registrosRecebidos = 0;
         public List<String> erros = new ArrayList<>();
-        
+
+        public SyncResult() {}
+
+        public SyncResult(boolean sucesso, String mensagem) {
+            this.sucesso = sucesso;
+            this.mensagem = mensagem;
+        }
+
         @Override
         public String toString() {
             return String.format("SyncResult[sucesso=%s, enviados=%d, recebidos=%d, erros=%d]",

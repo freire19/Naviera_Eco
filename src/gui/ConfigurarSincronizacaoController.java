@@ -41,6 +41,7 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
     
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Configurar Sincronizacao"); return; }
         syncClient = SyncClient.getInstance();
         syncClient.addListener(this);
         
@@ -112,17 +113,28 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
     
     @FXML
     private void atualizarPendencias() {
-        try (Connection conn = dao.ConexaoBD.getConnection()) {
-            lblPassageirosPend.setText(String.valueOf(contarPendentes(conn, "passageiros")));
-            lblPassagensPend.setText(String.valueOf(contarPendentes(conn, "passagens")));
-            lblViagensPend.setText(String.valueOf(contarPendentes(conn, "viagens")));
-            lblEncomendasPend.setText(String.valueOf(contarPendentes(conn, "encomendas")));
-            lblFretesPend.setText(String.valueOf(contarPendentes(conn, "fretes")));
-            
-            log("Contagem de pendências atualizada.");
-        } catch (Exception e) {
-            log("ERRO ao contar pendências: " + e.getMessage());
-        }
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try (Connection conn = dao.ConexaoBD.getConnection()) {
+                int pass = contarPendentes(conn, "passageiros");
+                int passagens = contarPendentes(conn, "passagens");
+                int viagens = contarPendentes(conn, "viagens");
+                int encomendas = contarPendentes(conn, "encomendas");
+                int fretes = contarPendentes(conn, "fretes");
+                Platform.runLater(() -> {
+                    lblPassageirosPend.setText(String.valueOf(pass));
+                    lblPassagensPend.setText(String.valueOf(passagens));
+                    lblViagensPend.setText(String.valueOf(viagens));
+                    lblEncomendasPend.setText(String.valueOf(encomendas));
+                    lblFretesPend.setText(String.valueOf(fretes));
+                    log("Contagem de pendências atualizada.");
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> log("ERRO ao contar pendências: " + e.getMessage()));
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     
     private int contarPendentes(Connection conn, String tabela) {

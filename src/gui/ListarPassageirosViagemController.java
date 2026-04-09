@@ -5,6 +5,7 @@ import dao.ViagemDAO;
 import dao.ConexaoBD;
 import model.Passagem;
 import model.Viagem;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -77,9 +78,57 @@ public class ListarPassageirosViagemController implements Initializable {
         viagemDAO = new ViagemDAO();
         passagemDAO = new PassagemDAO();
 
-        carregarDadosEmpresaCompleto(); 
         configurarTabela();
-        carregarListaPassageirosDaViagemAtiva();
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                carregarDadosEmpresaCompleto();
+                Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+                List<Passagem> passageiros = null;
+                if (viagemAtiva != null) {
+                    passageiros = passagemDAO.listarPorViagem(viagemAtiva.getId());
+                    int ordem = 1;
+                    for (Passagem p : passageiros) {
+                        p.setOrdem(ordem++);
+                        if (p.getDataNascimento() != null) {
+                            p.setIdade(Period.between(p.getDataNascimento(), LocalDate.now()).getYears());
+                        } else {
+                            p.setIdade(0);
+                        }
+                    }
+                }
+                final Viagem va = viagemAtiva;
+                final List<Passagem> lista = passageiros;
+                Platform.runLater(() -> preencherPassageiros(va, lista));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados ListarPassageiros: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
+
+    private void preencherPassageiros(Viagem viagemAtiva, List<Passagem> passageiros) {
+        if (viagemAtiva == null) {
+            showAlert(AlertType.INFORMATION, "Nenhuma Viagem Ativa", "Não há uma viagem ativa definida.");
+            lblViagemAtivaInfo.setText("Nenhuma viagem ativa.");
+            obsListPassageiros.clear();
+            return;
+        }
+        String dtSaida = (viagemAtiva.getDataViagem() != null) ? viagemAtiva.getDataViagem().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "--";
+        String prevChegada = (viagemAtiva.getDataChegada() != null) ? viagemAtiva.getDataChegada().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "--";
+        lblViagemAtivaInfo.setText(
+            "Embarcação: " + viagemAtiva.getNomeEmbarcacao() +
+            " | Saída: " + dtSaida +
+            " | Prev. Chegada: " + prevChegada +
+            " | Hora: " + viagemAtiva.getHorarioSaidaStr()
+        );
+        if (passageiros != null) {
+            obsListPassageiros.setAll(passageiros);
+        } else {
+            showAlert(AlertType.ERROR, "Erro ao Carregar Lista", "Ocorreu um erro ao carregar a lista de passageiros.");
+        }
     }
     
     private void carregarDadosEmpresaCompleto() {
@@ -122,45 +171,34 @@ public class ListarPassageirosViagemController implements Initializable {
         tablePassageirosViagem.setItems(obsListPassageiros);
     }
 
+    // DR117: background thread para nao bloquear FX thread (usado em refresh)
     private void carregarListaPassageirosDaViagemAtiva() {
-        Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-
-        if (viagemAtiva == null) {
-            showAlert(AlertType.INFORMATION, "Nenhuma Viagem Ativa", "Não há uma viagem ativa definida.");
-            lblViagemAtivaInfo.setText("Nenhuma viagem ativa.");
-            obsListPassageiros.clear();
-            return;
-        }
-
-        String dtSaida = (viagemAtiva.getDataViagem() != null) ? viagemAtiva.getDataViagem().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "--";
-        String prevChegada = (viagemAtiva.getDataChegada() != null) ? viagemAtiva.getDataChegada().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "--";
-
-        lblViagemAtivaInfo.setText(
-            "Embarcação: " + viagemAtiva.getNomeEmbarcacao() +
-            " | Saída: " + dtSaida +
-            " | Prev. Chegada: " + prevChegada +
-            " | Hora: " + viagemAtiva.getHorarioSaidaStr()
-        );
-
-        try {
-            List<Passagem> passageirosDaViagem = passagemDAO.listarPorViagem(viagemAtiva.getId());
-            
-            int ordem = 1;
-            for (Passagem p : passageirosDaViagem) {
-                p.setOrdem(ordem++);
-                if (p.getDataNascimento() != null) {
-                    p.setIdade(Period.between(p.getDataNascimento(), LocalDate.now()).getYears());
-                } else {
-                    p.setIdade(0);
+        Thread bg = new Thread(() -> {
+            try {
+                Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+                List<Passagem> passageiros = null;
+                if (viagemAtiva != null) {
+                    passageiros = passagemDAO.listarPorViagem(viagemAtiva.getId());
+                    int ordem = 1;
+                    for (Passagem p : passageiros) {
+                        p.setOrdem(ordem++);
+                        if (p.getDataNascimento() != null) {
+                            p.setIdade(Period.between(p.getDataNascimento(), LocalDate.now()).getYears());
+                        } else {
+                            p.setIdade(0);
+                        }
+                    }
                 }
+                final Viagem va = viagemAtiva;
+                final List<Passagem> lista = passageiros;
+                Platform.runLater(() -> preencherPassageiros(va, lista));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar passageiros: " + e.getMessage());
+                e.printStackTrace();
             }
-            
-            obsListPassageiros.setAll(passageirosDaViagem);
-
-        } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Lista", "Ocorreu um erro ao carregar a lista de passageiros: " + e.getMessage());
-            e.printStackTrace();
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     @FXML
@@ -226,7 +264,7 @@ public class ListarPassageirosViagemController implements Initializable {
                             y += targetH + 25; 
                         }
                     } catch (Exception e) {
-                        // Se der erro na logo, apenas ignora
+                        System.err.println("ListarPassageirosViagemController.imprimirRelatorioA4: erro ao carregar logo da empresa — " + e.getMessage());
                     }
                 } else {
                     y += 10; 

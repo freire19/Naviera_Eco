@@ -80,7 +80,7 @@ public class FinanceiroPassagensController {
             stage.showAndWait();
         } catch(Exception e) { 
             e.printStackTrace(); 
-            alert("Erro ao abrir histórico: " + e.getMessage()); 
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
         }
     }
 
@@ -176,9 +176,10 @@ public class FinanceiroPassagensController {
 
         String busca = txtBusca.getText().toLowerCase();
         if (!busca.isEmpty()) {
-            sql.append(" AND (LOWER(pas.nome_passageiro) LIKE ? OR CAST(p.numero_bilhete AS TEXT) LIKE ?) ");
-            params.add("%" + busca + "%");
-            params.add("%" + busca + "%");
+            String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+            sql.append(" AND (LOWER(pas.nome_passageiro) LIKE ? ESCAPE '\\' OR CAST(p.numero_bilhete AS TEXT) LIKE ? ESCAPE '\\') ");
+            params.add("%" + buscaEscapada + "%");
+            params.add("%" + buscaEscapada + "%");
         }
 
         sql.append(" ORDER BY p.id_passagem DESC");
@@ -190,7 +191,6 @@ public class FinanceiroPassagensController {
                 Object p = params.get(i);
                 if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
                 else stmt.setString(i + 1, p.toString());
-            }
             }
 
             ResultSet rs = stmt.executeQuery();
@@ -225,20 +225,92 @@ public class FinanceiroPassagensController {
 
         } catch (SQLException e) { 
             e.printStackTrace(); 
-            alert("Erro ao buscar dados: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao buscar dados: " + e.getMessage());
         }
     }
 
+    // DR102: captura valores UI na FX thread, busca dados em bg, atualiza UI via Platform.runLater
     private void carregarDadosEmBackground() {
+        // 1. Capturar valores da UI na FX thread (antes de entrar na bg)
+        final OpcaoViagem viagemSel = cmbViagem.getValue();
+        if (viagemSel == null) return;
+        final int idViagem = viagemSel.id;
+        final boolean apenasDevedores = chkApenasDevedores.isSelected();
+        final String busca = txtBusca.getText() != null ? txtBusca.getText().toLowerCase() : "";
+
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                carregarDados();
+                ObservableList<PassagemFinanceiro> lista = FXCollections.observableArrayList();
+                java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
+
+                StringBuilder sql = new StringBuilder();
+                sql.append("SELECT p.id_passagem, p.numero_bilhete, v.data_viagem, ");
+                sql.append("pas.nome_passageiro, ");
+                sql.append("COALESCE(r.destino, 'N/A') as destino_nome, ");
+                sql.append("p.valor_total, p.valor_pago, p.status_passagem ");
+                sql.append("FROM passagens p ");
+                sql.append("JOIN viagens v ON p.id_viagem = v.id_viagem ");
+                sql.append("JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro ");
+                sql.append("LEFT JOIN rotas r ON p.id_rota = r.id ");
+                sql.append("WHERE 1=1 ");
+
+                java.util.List<Object> params = new java.util.ArrayList<>();
+                if (idViagem > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagem); }
+                if (apenasDevedores) { sql.append(" AND (p.valor_devedor > 0 OR p.valor_pago < p.valor_total) "); }
+                if (!busca.isEmpty()) {
+                    String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+                    sql.append(" AND (LOWER(pas.nome_passageiro) LIKE ? ESCAPE '\\' OR CAST(p.numero_bilhete AS TEXT) LIKE ? ESCAPE '\\') ");
+                    params.add("%" + buscaEscapada + "%");
+                    params.add("%" + buscaEscapada + "%");
+                }
+                sql.append(" ORDER BY p.id_passagem DESC");
+
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement stmt = con.prepareStatement(sql.toString())) {
+                    for (int i = 0; i < params.size(); i++) {
+                        Object p = params.get(i);
+                        if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
+                        else stmt.setString(i + 1, p.toString());
+                    }
+                    ResultSet rs = stmt.executeQuery();
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                    while (rs.next()) {
+                        java.math.BigDecimal total = rs.getBigDecimal("valor_total");
+                        java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
+                        if (total == null) total = java.math.BigDecimal.ZERO;
+                        if (pago == null) pago = java.math.BigDecimal.ZERO;
+                        java.math.BigDecimal devendo = total.subtract(pago);
+                        String dataFmt = "";
+                        if(rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
+                        String statusBD = rs.getString("status_passagem");
+                        if (statusBD == null) statusBD = "PENDENTE";
+                        lista.add(new PassagemFinanceiro(
+                            rs.getInt("id_passagem"), rs.getString("numero_bilhete"), dataFmt,
+                            rs.getString("nome_passageiro"), rs.getString("destino_nome"), total, pago, statusBD
+                        ));
+                        if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
+                    }
+                }
+
+                // 2. Atualizar UI na FX thread
+                final ObservableList<PassagemFinanceiro> finalLista = lista;
+                final java.math.BigDecimal finalSoma = somaPendente;
+                javafx.application.Platform.runLater(() -> {
+                    tabela.setItems(finalLista);
+                    lblTotalPendente.setText(String.format("R$ %,.2f", finalSoma));
+                });
                 return null;
             }
         };
-        task.setOnSucceeded(event -> tabela.refresh());
-        new Thread(task).start();
+        task.setOnFailed(event -> {
+            Throwable ex = task.getException();
+            if (ex != null) ex.printStackTrace();
+            javafx.application.Platform.runLater(() -> alert("Erro ao carregar dados financeiros."));
+        });
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     // =================================================================================
@@ -341,7 +413,7 @@ public class FinanceiroPassagensController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage());
         }
     }
     
@@ -354,7 +426,7 @@ public class FinanceiroPassagensController {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
-            ResultSet rs = stmt.executeQuery();
+            try (ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) {
                 Passagem p = new Passagem();
                 p.setId(rs.getLong("id_passagem"));
@@ -394,12 +466,14 @@ public class FinanceiroPassagensController {
                 
                 return p;
             }
+            } // fecha try(ResultSet)
         } catch (Exception e) {
+            System.err.println("FinanceiroPassagensController.buscarPassagemCompletaPorId: erro ao buscar passagem id=" + id + " — " + e.getMessage());
             e.printStackTrace();
         }
         return null;
     }
-    
+
     private Integer getObjectInt(ResultSet rs, String col) throws SQLException {
         Object o = rs.getObject(col);
         return (o != null) ? (Integer) o : null;
@@ -436,17 +510,23 @@ public class FinanceiroPassagensController {
                 java.math.BigDecimal novoPago = selecionada.getPago().subtract(vEstorno);
                 String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PARCIAL" : "PENDENTE";
 
-                Connection con = null;
-                try {
-                    con = ConexaoBD.getConnection();
+                // #DB010: try-with-resources para fechar conexao automaticamente
+                try (Connection con = ConexaoBD.getConnection()) {
                     con.setAutoCommit(false);
+                    try {
 
+                    // #DB011: null check antes de usar resultado de buscarPassagemCompletaPorId
                     Passagem p = buscarPassagemCompletaPorId(selecionada.getId());
+                    if (p == null) {
+                        alert("Erro ao carregar dados da passagem. Registro nao encontrado.");
+                        return;
+                    }
                     BigDecimal estornoBD = vEstorno;
                     BigDecimal din = p.getValorPagamentoDinheiro();
                     BigDecimal pix = p.getValorPagamentoPix();
                     BigDecimal car = p.getValorPagamentoCartao();
                     
+                    // DL042: cascata din→pix→car com tratamento correto do ultimo trecho
                     if (din.compareTo(estornoBD) >= 0) {
                         din = din.subtract(estornoBD); estornoBD = BigDecimal.ZERO;
                     } else {
@@ -455,7 +535,12 @@ public class FinanceiroPassagensController {
                             pix = pix.subtract(estornoBD); estornoBD = BigDecimal.ZERO;
                         } else {
                             estornoBD = estornoBD.subtract(pix); pix = BigDecimal.ZERO;
-                            if (car.compareTo(estornoBD) >= 0) car = car.subtract(estornoBD);
+                            if (car.compareTo(estornoBD) >= 0) {
+                                car = car.subtract(estornoBD);
+                            } else {
+                                // Estorno excede cartao — zera cartao, excesso absorvido
+                                car = BigDecimal.ZERO;
+                            }
                         }
                     }
 
@@ -486,17 +571,16 @@ public class FinanceiroPassagensController {
                     alert("Estorno realizado com sucesso!");
                     carregarDados();
 
-                } catch (Exception ex) {
-                    if(con != null) con.rollback();
-                    ex.printStackTrace();
-                    alert("Erro ao gravar estorno: " + ex.getMessage());
-                } finally {
-                    if(con != null) con.setAutoCommit(true);
+                    } catch (Exception ex) {
+                        try { con.rollback(); } catch (Exception re) { re.printStackTrace(); }
+                        ex.printStackTrace();
+                        alert("Erro ao gravar estorno: " + ex.getMessage());
+                    }
                 }
             }
         } catch (Exception e) { 
             e.printStackTrace();
-            alert("Erro ao abrir tela de estorno: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
         }
     }
 
@@ -511,6 +595,8 @@ public class FinanceiroPassagensController {
             stage.setMaximized(true);
             stage.show();
         } catch (Exception e) {
+            System.err.println("FinanceiroPassagensController.gerarRelatorioCliente: erro ao abrir tela de extrato — " + e.getMessage());
+            e.printStackTrace();
             alert("Tela de Extrato ainda não criada ou com erro: " + e.getMessage());
         }
     }

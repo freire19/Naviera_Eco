@@ -123,9 +123,10 @@ public class RelatorioUtil {
     private static final String KEY_IMPRESSORA_A4 = "impressora.a4";
     
     // Impressoras salvas (cache em memória)
-    private static String nomeImpressoraTermica = null;
-    private static String nomeImpressoraA4 = null;
-    private static boolean configCarregada = false;
+    // DR124: volatile para visibilidade entre threads (impressoes podem ser disparadas de bg)
+    private static volatile String nomeImpressoraTermica = null;
+    private static volatile String nomeImpressoraA4 = null;
+    private static volatile boolean configCarregada = false;
     
     // ========================================================================
     // DADOS DA EMPRESA - CARREGADOS AUTOMATICAMENTE
@@ -188,7 +189,8 @@ public class RelatorioUtil {
     /**
      * Carrega as configurações de impressoras do arquivo
      */
-    private static void carregarConfigImpressoras() {
+    // DR124: synchronized para evitar race em carregamento concorrente
+    private static synchronized void carregarConfigImpressoras() {
         if (configCarregada) return;
         
         File configFile = new File(CONFIG_FILE);
@@ -642,11 +644,10 @@ public class RelatorioUtil {
             conteudo.getTransforms().add(new Scale(sc, sc));
         }
         
-        if (job.printPage(conteudo)) {
-            job.endJob();
-            return true;
-        }
-        return false;
+        // DR116: sempre chamar endJob() para liberar o PrinterJob
+        boolean sucesso = job.printPage(conteudo);
+        job.endJob();
+        return sucesso;
     }
     
     // ========================================================================

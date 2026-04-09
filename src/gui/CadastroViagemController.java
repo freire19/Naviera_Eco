@@ -394,9 +394,11 @@ public class CadastroViagemController implements Initializable {
         }
 
         if (sucesso) {
+            // DL043: definirViagemAtiva com tratamento de falha explicito
             if (ativa) {
                 if (!viagemDAO.definirViagemAtiva(v.getId())) {
-                    System.err.println("Aviso: Falha ao tentar definir a viagem ID " + v.getId() + " como a única ativa.");
+                    showAlert(Alert.AlertType.WARNING, "Aviso",
+                        "Viagem salva, mas houve falha ao defini-la como ativa. Tente ativa-la manualmente.");
                 }
             }
             showAlert(Alert.AlertType.INFORMATION, "Sucesso", mensagem);
@@ -424,8 +426,23 @@ public class CadastroViagemController implements Initializable {
 
         Optional<ButtonType> resultado = confirmacao.showAndWait();
         if (resultado.isPresent() && resultado.get() == ButtonType.YES) {
+            boolean eraAtiva = viagemSelecionada.getIsAtual();
             if (viagemDAO.excluir(viagemSelecionada.getId())) {
-                showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Viagem excluída com sucesso!");
+                // DL044: se a viagem excluida era a ativa, ativar a mais recente
+                if (eraAtiva) {
+                    dao.ViagemDAO.invalidarCacheViagem();
+                    java.util.List<model.Viagem> restantes = viagemDAO.listarTodasViagensResumido();
+                    if (!restantes.isEmpty()) {
+                        viagemDAO.definirViagemAtiva(restantes.get(0).getId());
+                        showAlert(Alert.AlertType.INFORMATION, "Sucesso",
+                            "Viagem excluída. A viagem ID " + restantes.get(0).getId() + " foi ativada automaticamente.");
+                    } else {
+                        showAlert(Alert.AlertType.WARNING, "Aviso",
+                            "Viagem excluída. Não há outras viagens cadastradas.");
+                    }
+                } else {
+                    showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Viagem excluída com sucesso!");
+                }
                 carregarViagensNaTabela();
                 handleNovaViagem(null);
             } else {

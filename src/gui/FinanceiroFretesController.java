@@ -48,7 +48,12 @@ public class FinanceiroFretesController {
 
         // DR010: carrega viagens em background
         Thread bg = new Thread(() -> {
-            carregarComboViagens();
+            try {
+                carregarComboViagens();
+            } catch (Exception e) {
+                System.err.println("Erro em FinanceiroFretesController (bg init): " + e.getMessage());
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("FinanceiroFretesController", e));
+            }
         });
         bg.setDaemon(true);
         bg.start();
@@ -167,9 +172,10 @@ public class FinanceiroFretesController {
 
         String busca = txtBusca.getText().toLowerCase();
         if (!busca.isEmpty()) {
-            sql.append(" AND (LOWER(f.remetente_nome_temp) LIKE ? OR LOWER(f.destinatario_nome_temp) LIKE ?) ");
-            params.add("%" + busca + "%");
-            params.add("%" + busca + "%");
+            String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+            sql.append(" AND (LOWER(f.remetente_nome_temp) LIKE ? ESCAPE '\\' OR LOWER(f.destinatario_nome_temp) LIKE ? ESCAPE '\\') ");
+            params.add("%" + buscaEscapada + "%");
+            params.add("%" + buscaEscapada + "%");
         }
 
         sql.append(" ORDER BY f.id_frete DESC");
@@ -253,47 +259,51 @@ public class FinanceiroFretesController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro ao abrir tela de pagamento: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
         }
     }
 
     private void salvarPagamento(long idFrete, BaixaPagamentoController dados, java.math.BigDecimal jaPago) {
-        java.math.BigDecimal novoPago = jaPago.add(dados.getValorPago());
-        // Buscar desconto ja armazenado no banco e somar com o novo (DL012)
-        java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM fretes WHERE id_frete = ?")) {
-            stmtQ.setLong(1, idFrete);
-            try (ResultSet rs = stmtQ.executeQuery()) {
-                if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
+        // DL040: usar transacao unica para buscar desconto + atualizar (evita race condition)
+        try (Connection con = ConexaoBD.getConnection()) {
+            con.setAutoCommit(false);
+            try {
+                // Buscar desconto ja armazenado no banco (DL012)
+                java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
+                try (PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM fretes WHERE id_frete = ? FOR UPDATE")) {
+                    stmtQ.setLong(1, idFrete);
+                    try (ResultSet rs = stmtQ.executeQuery()) {
+                        if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
+                    }
+                }
+
+                java.math.BigDecimal novoPago = jaPago.add(dados.getValorPago());
+                java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
+                java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
+                java.math.BigDecimal novoDevedor = totalComDesconto.subtract(novoPago).max(java.math.BigDecimal.ZERO);
+                String novoStatus = (novoDevedor.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) ? "PAGO" : "PENDENTE";
+
+                String sql = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, desconto = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ? WHERE id_frete = ?";
+                try (PreparedStatement stmt = con.prepareStatement(sql)) {
+                    stmt.setBigDecimal(1, novoPago);
+                    stmt.setBigDecimal(2, novoDevedor);
+                    stmt.setBigDecimal(3, descontoTotal);
+                    stmt.setString(4, dados.getFormaPagamento());
+                    stmt.setString(5, dados.getCaixa());
+                    stmt.setString(6, novoStatus);
+                    stmt.setLong(7, idFrete);
+                    stmt.executeUpdate();
+                }
+
+                con.commit();
+                alert("Pagamento registrado com sucesso!");
+                carregarDados();
+            } catch (SQLException ex) {
+                con.rollback();
+                throw ex;
             }
-        } catch (SQLException e) { System.err.println("Erro ao buscar desconto anterior: " + e.getMessage()); }
-
-        java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
-        java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
-        java.math.BigDecimal novoDevedor = totalComDesconto.subtract(novoPago).max(java.math.BigDecimal.ZERO);
-        String novoStatus = (novoDevedor.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) ? "PAGO" : "PENDENTE";
-
-        // DL011: gravar tipo_pagamento e nome_caixa junto
-        String sql = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, desconto = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ? WHERE id_frete = ?";
-
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-
-            stmt.setBigDecimal(1, novoPago);
-            stmt.setBigDecimal(2, novoDevedor);
-            stmt.setBigDecimal(3, descontoTotal);
-            stmt.setString(4, dados.getFormaPagamento());
-            stmt.setString(5, dados.getCaixa());
-            stmt.setString(6, novoStatus);
-            stmt.setLong(7, idFrete);
-            stmt.executeUpdate();
-
-            alert("Pagamento registrado com sucesso!");
-            carregarDados();
-
         } catch (SQLException e) {
-            alert("Erro ao salvar no banco: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
         }
     }
 
@@ -332,49 +342,47 @@ public class FinanceiroFretesController {
 
                 java.math.BigDecimal novoPago = selecionada.getPago().subtract(vEstorno);
                 java.math.BigDecimal novoDevedor = selecionada.getTotal().subtract(novoPago);
-                String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PENDENTE" : "NAO_PAGO";
+                // DL041: usar StatusPagamento.calcular para consistencia com resto do sistema
+                String novoStatus = model.StatusPagamento.calcular(novoPago, selecionada.getTotal()).name();
 
-                Connection con = null;
-                try {
-                    con = ConexaoBD.getConnection();
+                // #DB009: try-with-resources para fechar conexao automaticamente
+                try (Connection con = ConexaoBD.getConnection()) {
                     con.setAutoCommit(false);
+                    try {
+                        // D021: DDL movido para database_scripts/ — tabela log_estornos_fretes deve existir no banco
+                        String sqlUp = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, status_frete = ? WHERE id_frete = ?";
+                        try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
+                            stmt.setBigDecimal(1, novoPago);
+                            stmt.setBigDecimal(2, novoDevedor);
+                            stmt.setString(3, novoStatus);
+                            stmt.setLong(4, selecionada.getId());
+                            stmt.executeUpdate();
+                        }
 
-                    // D021: DDL movido para database_scripts/ — tabela log_estornos_fretes deve existir no banco
-                    String sqlUp = "UPDATE fretes SET valor_pago = ?, valor_devedor = ?, status_frete = ? WHERE id_frete = ?";
-                    try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
-                        stmt.setBigDecimal(1, novoPago);
-                        stmt.setBigDecimal(2, novoDevedor);
-                        stmt.setString(3, novoStatus);
-                        stmt.setLong(4, selecionada.getId());
-                        stmt.executeUpdate();
+                        // Log do estorno
+                        String sqlLog = "INSERT INTO log_estornos_fretes (id_frete, valor_estornado, motivo, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?)";
+                        try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
+                            stmt.setLong(1, selecionada.getId());
+                            stmt.setBigDecimal(2, vEstorno);
+                            stmt.setString(3, motivo);
+                            stmt.setInt(4, idAutorizador);
+                            stmt.setString(5, nomeAutorizador);
+                            stmt.executeUpdate();
+                        }
+
+                        con.commit();
+                        alert("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
+                        carregarDados();
+                    } catch (Exception ex) {
+                        try { con.rollback(); } catch (Exception re) { re.printStackTrace(); }
+                        ex.printStackTrace();
+                        alert("Erro ao gravar estorno: " + ex.getMessage());
                     }
-
-                    // Log do estorno
-                    String sqlLog = "INSERT INTO log_estornos_fretes (id_frete, valor_estornado, motivo, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?)";
-                    try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
-                        stmt.setLong(1, selecionada.getId());
-                        stmt.setBigDecimal(2, vEstorno);
-                        stmt.setString(3, motivo);
-                        stmt.setInt(4, idAutorizador);
-                        stmt.setString(5, nomeAutorizador);
-                        stmt.executeUpdate();
-                    }
-
-                    con.commit();
-                    alert("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
-                    carregarDados();
-
-                } catch (Exception ex) {
-                    if (con != null) con.rollback();
-                    ex.printStackTrace();
-                    alert("Erro ao gravar estorno: " + ex.getMessage());
-                } finally {
-                    if (con != null) con.setAutoCommit(true);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro ao abrir tela de estorno: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
         }
     }
 
@@ -454,7 +462,7 @@ public class FinanceiroFretesController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro ao abrir nota do frete: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir nota do frete: " + e.getMessage());
         }
     }
 

@@ -3,6 +3,8 @@ package dao;
 import model.Empresa; 
 import java.sql.*;
 
+// D026: dados da empresa (CNPJ, tel) sao publicos e usados em recibos/impressao.
+// Auth de escrita esta no CadastroEmpresaController (exigirAdmin). Leitura livre e intencional.
 public class EmpresaDAO {
 
     /** ID fixo do registro unico de configuracao da empresa */

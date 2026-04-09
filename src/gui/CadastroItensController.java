@@ -2,6 +2,7 @@ package gui;
 
 import dao.ConexaoBD;
 import dao.ItemFreteDAO;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty; // Para BigDecimal
 import javafx.beans.property.SimpleStringProperty;
@@ -61,9 +62,23 @@ public class CadastroItensController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Cadastro de Itens"); return; }
         configurarTabela();
         configurarCamposDeEntrada(); // Novo método para configurar listeners dos TextFields
-        carregarItensFrete();
+
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                ItemFreteDAO dao = new ItemFreteDAO();
+                List<ItemFrete> dados = dao.listarTodos(true);
+                Platform.runLater(() -> listaItensFrete.setAll(dados));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+
         atualizarEstadoUI(EstadoUI.VISUALIZACAO); // Inicia no modo de visualização
     }
 

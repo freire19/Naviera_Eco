@@ -34,15 +34,16 @@ public class AgendaDAO {
     }
     
     // --- NOVO: Classe simples para representar Boletos no Calendário ---
+    // #DB027/#DB003: BigDecimal para valor financeiro
     public static class ResumoBoleto {
         public LocalDate vencimento;
         public String descricao;
-        public double valor;
+        public java.math.BigDecimal valor;
 
-        public ResumoBoleto(LocalDate v, String d, double val) {
+        public ResumoBoleto(LocalDate v, String d, java.math.BigDecimal val) {
             this.vencimento = v;
             this.descricao = d;
-            this.valor = val;
+            this.valor = val != null ? val : java.math.BigDecimal.ZERO;
         }
     }
 
@@ -65,9 +66,10 @@ public class AgendaDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                notas.add(rs.getString("descricao"));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    notas.add(rs.getString("descricao"));
+                }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
@@ -126,7 +128,7 @@ public class AgendaDAO {
                         boletos.add(new ResumoBoleto(
                             dt.toLocalDate(),
                             rs.getString("descricao"),
-                            rs.getDouble("valor_total")
+                            rs.getBigDecimal("valor_total")
                         ));
                     }
                 }
@@ -144,14 +146,15 @@ public class AgendaDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                tarefas.add(new TarefaAgenda(
-                    rs.getInt("id_anotacao"),
-                    rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
-                    rs.getString("descricao"),
-                    rs.getBoolean("concluida")
-                ));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    tarefas.add(new TarefaAgenda(
+                        rs.getInt("id_anotacao"),
+                        rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
+                        rs.getString("descricao"),
+                        rs.getBoolean("concluida")
+                    ));
+                }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());

@@ -175,32 +175,36 @@ public class FinanceiroEntradaController {
         double somaPix = 0, somaDinheiro = 0, somaCartao = 0;
 
         StringBuilder sql = new StringBuilder();
+        java.util.List<Object> params = new java.util.ArrayList<>();
 
-        // 1. ENCOMENDAS
+        // 1. ENCOMENDAS — #012: parametrizado
         sql.append("SELECT 'ENCOMENDA' as origem, total_a_pagar as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, caixa as usuario ");
         sql.append("FROM encomendas WHERE 1=1 ");
-        if (idViagemSelecionada > 0) sql.append(" AND id_viagem = ").append(idViagemSelecionada);
+        if (idViagemSelecionada > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagemSelecionada); }
 
         sql.append(" UNION ALL ");
 
         // 2. FRETES
         sql.append("SELECT 'FRETE' as origem, valor_frete_calculado as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, nome_caixa as usuario ");
         sql.append("FROM fretes WHERE 1=1 ");
-        if (idViagemSelecionada > 0) sql.append(" AND id_viagem = ").append(idViagemSelecionada);
+        if (idViagemSelecionada > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagemSelecionada); }
 
         sql.append(" UNION ALL ");
 
-        // 3. PASSAGENS (JOIN COM TABELA AUXILIAR)
+        // 3. PASSAGENS
         sql.append(" SELECT 'PASSAGEM' as origem, p.valor_total as total, p.valor_pago as pago, ");
         sql.append(" COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') as pgto, 'SISTEMA' as usuario ");
         sql.append(" FROM passagens p ");
         sql.append(" LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento ");
         sql.append(" WHERE 1=1 ");
-        if (idViagemSelecionada > 0) sql.append(" AND p.id_viagem = ").append(idViagemSelecionada);
+        if (idViagemSelecionada > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagemSelecionada); }
 
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql.toString());
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = con.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                stmt.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 String tipo = rs.getString("origem"); 
@@ -254,9 +258,10 @@ public class FinanceiroEntradaController {
             graficoBarra.getData().clear();
             graficoBarra.getData().add(serie);
 
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            System.out.println("Erro SQL Dashboard: " + e.getMessage());
+            System.err.println("Erro SQL Dashboard: " + e.getMessage());
         }
     }
 

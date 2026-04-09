@@ -164,7 +164,7 @@ public class FinanceiroSaidaController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            javafx.application.Platform.runLater(() -> alert("Erro ao carregar viagens: " + e.getMessage()));
+            javafx.application.Platform.runLater(() -> alert("Erro interno. Contate o administrador."); System.err.println("Erro ao carregar viagens: " + e.getMessage()));
         }
     }
 
@@ -254,8 +254,9 @@ public class FinanceiroSaidaController {
             
             filtrar(); 
         } catch (Exception e) {
+            System.err.println("FinanceiroSaidaController.abrirGestaoFuncionarios: erro ao abrir tela — " + e.getMessage());
             e.printStackTrace();
-            // alert("Erro ao abrir tela de funcionários: " + e.getMessage());
+            alert("Erro interno. Contate o administrador.");
         }
     }
 
@@ -354,7 +355,7 @@ public class FinanceiroSaidaController {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro ao salvar: " + e.getMessage());
+            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar: " + e.getMessage());
         }
     }
 
@@ -460,7 +461,7 @@ public class FinanceiroSaidaController {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                alert("Erro ao excluir: " + e.getMessage());
+                alert("Erro interno. Contate o administrador."); System.err.println("Erro ao excluir: " + e.getMessage());
             }
         });
     }
@@ -485,7 +486,7 @@ public class FinanceiroSaidaController {
                     System.err.println("Hash invalido para usuario " + login + ": formato nao-BCrypt");
                 }
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { System.err.println("FinanceiroSaidaController.validarPermissaoGerente: erro ao consultar usuarios — " + e.getMessage()); e.printStackTrace(); }
         return null;
     }
 
@@ -751,9 +752,10 @@ public class FinanceiroSaidaController {
             stage.showAndWait();
             
             filtrar(); 
-        } catch (Exception e) { 
-            e.printStackTrace(); 
-            // alert("Erro ao abrir tela: " + e.getMessage()); // Use seu método de alerta se preferir
+        } catch (Exception e) {
+            System.err.println("FinanceiroSaidaController.abrirBoletos: erro ao abrir tela de boletos — " + e.getMessage());
+            e.printStackTrace();
+            alert("Erro interno. Contate o administrador.");
         }
     }
     
@@ -769,7 +771,7 @@ public class FinanceiroSaidaController {
                 stmt.setString(1, res.get().toUpperCase());
                 stmt.executeUpdate();
                 carregarCategorias(); 
-            } catch(Exception e) { alert("Erro: " + e.getMessage()); }
+            } catch(Exception e) { alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
         }
     }
     
@@ -870,6 +872,7 @@ public class FinanceiroSaidaController {
                 d.pathLogo = rs.getString("path_logo");
             }
         } catch (Exception e) {
+            System.err.println("FinanceiroSaidaController.buscarDadosEmpresa: erro ao consultar configuracao_empresa — " + e.getMessage());
             e.printStackTrace();
         }
         return d;

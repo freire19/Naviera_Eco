@@ -86,10 +86,34 @@ public class ListaFretesController {
         configurarListeners();
         aplicarEstiloCabecalho();
 
-        // DR010: carrega dados em background
+        // DR010+DR103: carrega dados em background, atualiza UI via Platform.runLater
         Thread bg = new Thread(() -> {
-            configurarFiltrosIniciais();
-            recarregarDadosDoBanco();
+            try {
+                // 1. Buscar viagens em bg thread (sem tocar UI)
+                List<Viagem> todasAsViagens = viagemDAO.listarTodasViagensResumido();
+                Viagem viagemAtiva = null;
+                List<ViagemFiltroWrapper> wrappers = new java.util.ArrayList<>();
+                wrappers.add(new ViagemFiltroWrapper(0L, "Todas as Viagens"));
+                for (Viagem v : todasAsViagens) {
+                    wrappers.add(new ViagemFiltroWrapper(v.getId(), formatarTextoViagem(v)));
+                    if (v.getIsAtual()) viagemAtiva = v;
+                }
+                final Viagem finalViagem = viagemAtiva;
+
+                // 2. Atualizar ComboBox na FX thread, depois carregar dados
+                javafx.application.Platform.runLater(() -> {
+                    cbViagemFiltro.getItems().setAll(wrappers);
+                    if (finalViagem != null) {
+                        for (ViagemFiltroWrapper w : cbViagemFiltro.getItems()) {
+                            if (w.getId().equals(finalViagem.getId())) { cbViagemFiltro.getSelectionModel().select(w); break; }
+                        }
+                    } else { cbViagemFiltro.getSelectionModel().selectFirst(); }
+                    recarregarDadosDoBanco();
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+                javafx.application.Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", "Falha ao carregar dados iniciais."));
+            }
         });
         bg.setDaemon(true);
         bg.start();

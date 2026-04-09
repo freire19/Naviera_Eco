@@ -39,27 +39,28 @@ public class EncomendaItemDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setLong(1, idEncomenda);
-            ResultSet rs = stmt.executeQuery();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    EncomendaItem item = new EncomendaItem();
+                    // DR121: log em catch de coluna ID
+                    try {
+                        item.setId(rs.getLong("id"));
+                    } catch (SQLException e) {
+                        try { item.setId(rs.getLong("id_item")); } catch (SQLException ex) { System.err.println("EncomendaItemDAO: nem 'id' nem 'id_item' encontrados"); }
+                    }
 
-            while (rs.next()) {
-                EncomendaItem item = new EncomendaItem();
-                try {
-                    item.setId(rs.getLong("id")); 
-                } catch (SQLException e) {
-                    try { item.setId(rs.getLong("id_item")); } catch (SQLException ex) {}
+                    item.setIdEncomenda(rs.getLong("id_encomenda"));
+                    item.setQuantidade(rs.getInt("quantidade"));
+                    item.setDescricao(rs.getString("descricao"));
+                    item.setValorUnitario(rs.getBigDecimal("valor_unitario"));
+                    item.setValorTotal(rs.getBigDecimal("valor_total"));
+                    try {
+                        item.setLocalArmazenamento(rs.getString("local_armazenamento"));
+                    } catch (SQLException e) {
+                        item.setLocalArmazenamento("");
+                    }
+                    lista.add(item);
                 }
-
-                item.setIdEncomenda(rs.getLong("id_encomenda"));
-                item.setQuantidade(rs.getInt("quantidade"));
-                item.setDescricao(rs.getString("descricao"));
-                item.setValorUnitario(rs.getBigDecimal("valor_unitario"));
-                item.setValorTotal(rs.getBigDecimal("valor_total"));
-                try {
-                    item.setLocalArmazenamento(rs.getString("local_armazenamento"));
-                } catch (SQLException e) {
-                    item.setLocalArmazenamento("");
-                }
-                lista.add(item);
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em EncomendaItemDAO: " + e.getMessage());
@@ -79,21 +80,22 @@ public class EncomendaItemDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idViagem);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                long idEnc = rs.getLong("id_encomenda");
-                EncomendaItem item = new EncomendaItem();
-                try { item.setId(rs.getLong("id")); } catch (SQLException e) {
-                    try { item.setId(rs.getLong("id_item")); } catch (SQLException ex) {}
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long idEnc = rs.getLong("id_encomenda");
+                    EncomendaItem item = new EncomendaItem();
+                    try { item.setId(rs.getLong("id")); } catch (SQLException e) {
+                        try { item.setId(rs.getLong("id_item")); } catch (SQLException ex) { System.err.println("EncomendaItemDAO: nem 'id' nem 'id_item' encontrados no ResultSet — " + ex.getMessage()); }
+                    }
+                    item.setIdEncomenda(idEnc);
+                    item.setQuantidade(rs.getInt("quantidade"));
+                    item.setDescricao(rs.getString("descricao"));
+                    item.setValorUnitario(rs.getBigDecimal("valor_unitario"));
+                    item.setValorTotal(rs.getBigDecimal("valor_total"));
+                    try { item.setLocalArmazenamento(rs.getString("local_armazenamento")); }
+                    catch (SQLException e) { item.setLocalArmazenamento(""); }
+                    mapa.computeIfAbsent(idEnc, k -> new ArrayList<>()).add(item);
                 }
-                item.setIdEncomenda(idEnc);
-                item.setQuantidade(rs.getInt("quantidade"));
-                item.setDescricao(rs.getString("descricao"));
-                item.setValorUnitario(rs.getBigDecimal("valor_unitario"));
-                item.setValorTotal(rs.getBigDecimal("valor_total"));
-                try { item.setLocalArmazenamento(rs.getString("local_armazenamento")); }
-                catch (SQLException e) { item.setLocalArmazenamento(""); }
-                mapa.computeIfAbsent(idEnc, k -> new ArrayList<>()).add(item);
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em EncomendaItemDAO.listarItensPorViagem: " + e.getMessage());

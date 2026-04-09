@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD; // Importa sua classe de conexão centralizada
+import javafx.application.Platform;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -31,13 +32,32 @@ public class RotasController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!gui.util.PermissaoService.isAdmin()) { gui.util.PermissaoService.exigirAdmin("Cadastro de Rotas"); return; }
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colOrigem.setCellValueFactory(new PropertyValueFactory<>("origem"));
         colDestino.setCellValueFactory(new PropertyValueFactory<>("destino"));
 
         tabelaRotas.setItems(listaRotas);
 
-        carregarRotasDoBanco();
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                java.util.List<Rota> dados = new java.util.ArrayList<>();
+                String sql = "SELECT id, origem, destino FROM rotas ORDER BY id";
+                try (Connection conn = ConexaoBD.getConnection();
+                     Statement st = conn.createStatement();
+                     ResultSet rs = st.executeQuery(sql)) {
+                    while (rs.next()) {
+                        dados.add(new Rota(rs.getLong("id"), rs.getString("origem"), rs.getString("destino")));
+                    }
+                }
+                Platform.runLater(() -> listaRotas.setAll(dados));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar dados: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
 
         // Configurando as ações dos botões programaticamente
         btnNova.setOnAction(e -> novaRota(e));

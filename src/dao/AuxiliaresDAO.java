@@ -27,9 +27,34 @@ public class AuxiliaresDAO {
         "aux_agentes", "aux_horarios_saida", "aux_acomodacoes", "aux_formas_pagamento", "caixas", "rotas"
     );
 
+    /** DS002: Whitelist de colunas por tabela (previne SQL injection via nome de coluna). */
+    private static final java.util.Map<String, java.util.Set<String>> COLUNAS_PERMITIDAS = new java.util.HashMap<>();
+    static {
+        COLUNAS_PERMITIDAS.put("aux_tipos_documento", new java.util.HashSet<>(Arrays.asList("id_tipo_doc", "nome_tipo_doc")));
+        COLUNAS_PERMITIDAS.put("aux_sexo", new java.util.HashSet<>(Arrays.asList("id_sexo", "nome_sexo")));
+        COLUNAS_PERMITIDAS.put("aux_nacionalidades", new java.util.HashSet<>(Arrays.asList("id_nacionalidade", "nome_nacionalidade")));
+        COLUNAS_PERMITIDAS.put("aux_tipos_passagem", new java.util.HashSet<>(Arrays.asList("id_tipo_passagem", "nome_tipo_passagem")));
+        COLUNAS_PERMITIDAS.put("aux_agentes", new java.util.HashSet<>(Arrays.asList("id_agente", "nome_agente")));
+        COLUNAS_PERMITIDAS.put("aux_horarios_saida", new java.util.HashSet<>(Arrays.asList("id_horario_saida", "descricao_horario_saida")));
+        COLUNAS_PERMITIDAS.put("aux_acomodacoes", new java.util.HashSet<>(Arrays.asList("id_acomodacao", "nome_acomodacao")));
+        COLUNAS_PERMITIDAS.put("aux_formas_pagamento", new java.util.HashSet<>(Arrays.asList("id_forma_pagamento", "nome_forma_pagamento")));
+        COLUNAS_PERMITIDAS.put("caixas", new java.util.HashSet<>(Arrays.asList("id_caixa", "nome_caixa")));
+        COLUNAS_PERMITIDAS.put("rotas", new java.util.HashSet<>(Arrays.asList("id", "origem", "destino")));
+    }
+
     private static void validarTabela(String tabela) {
         if (!TABELAS_PERMITIDAS.contains(tabela)) {
             throw new IllegalArgumentException("Tabela nao permitida: " + tabela);
+        }
+    }
+
+    private static void validarColuna(String tabela, String... colunas) {
+        java.util.Set<String> permitidas = COLUNAS_PERMITIDAS.get(tabela);
+        if (permitidas == null) return; // tabela validada separadamente
+        for (String col : colunas) {
+            if (!permitidas.contains(col)) {
+                throw new IllegalArgumentException("Coluna nao permitida: " + col + " na tabela " + tabela);
+            }
         }
     }
 
@@ -73,6 +98,25 @@ public class AuxiliaresDAO {
         cacheIdParaNome.clear();
     }
 
+    /**
+     * #DB030: Pre-carrega caches das tabelas usadas em mapeamento de passagens.
+     * Chamar antes de iterar listas grandes para evitar N+1 no cold-start.
+     */
+    public void preCarregarCachesPassagem() throws SQLException {
+        String[][] tabelas = {
+            {"aux_acomodacoes", "nome_acomodacao", "id_acomodacao"},
+            {"aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem"},
+            {"aux_agentes", "nome_agente", "id_agente"},
+            {"aux_formas_pagamento", "nome_forma_pagamento", "id_forma_pagamento"},
+            {"caixas", "nome_caixa", "id_caixa"}
+        };
+        for (String[] t : tabelas) {
+            if (!cacheIdParaNome.containsKey(t[0])) {
+                carregarCache(t[0], t[1], t[2]);
+            }
+        }
+    }
+
     // ==================== 5 METODOS GENERICOS (core) ====================
 
     /**
@@ -83,6 +127,7 @@ public class AuxiliaresDAO {
             return null;
         }
         validarTabela(tabela);
+        validarColuna(tabela, colunaNome, colunaId);
 
         // Tenta cache primeiro
         Map<String, Integer> cache = cacheNomeParaId.get(tabela);
@@ -118,6 +163,7 @@ public class AuxiliaresDAO {
     public String buscarNomeAuxiliarPorId(String tabela, String colunaNome, String colunaId, Integer id) throws SQLException {
         if (id == null || id == 0) return null;
         validarTabela(tabela);
+        validarColuna(tabela, colunaNome, colunaId);
 
         Map<Integer, String> cache = cacheIdParaNome.get(tabela);
         if (cache == null) {
@@ -145,25 +191,21 @@ public class AuxiliaresDAO {
      * Insere um valor em qualquer tabela auxiliar (generico).
      * DL008: Verifica duplicata antes de inserir (case-insensitive).
      */
+    // #DB004: INSERT ON CONFLICT DO NOTHING — atomico, sem TOCTOU race condition
     public boolean inserirAuxiliar(String tabela, String colunaNome, String valor) throws SQLException {
         if (valor == null || valor.trim().isEmpty()) return false;
         validarTabela(tabela);
-        // Verifica duplicata case-insensitive antes de inserir
-        String sqlCheck = "SELECT 1 FROM " + tabela + " WHERE " + colunaNome + " ILIKE ?";
-        try (Connection conn = ConexaoBD.getConnection()) {
-            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
-                psCheck.setString(1, valor.trim());
-                try (ResultSet rs = psCheck.executeQuery()) {
-                    if (rs.next()) return false; // ja existe
-                }
+        validarColuna(tabela, colunaNome);
+        String sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?) ON CONFLICT DO NOTHING";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, valor.trim());
+            int rows = ps.executeUpdate();
+            if (rows > 0) {
+                invalidarCache(tabela);
+                return true;
             }
-            String sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?)";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, valor.trim());
-                boolean ok = ps.executeUpdate() > 0;
-                if (ok) invalidarCache(tabela);
-                return ok;
-            }
+            return false; // ja existia (ON CONFLICT)
         }
     }
 
@@ -172,6 +214,7 @@ public class AuxiliaresDAO {
      */
     public List<String> listarAuxiliar(String tabela, String colunaNome) throws SQLException {
         validarTabela(tabela);
+        validarColuna(tabela, colunaNome);
         List<String> lista = new ArrayList<>();
         String sql = "SELECT " + colunaNome + " FROM " + tabela + " ORDER BY " + colunaNome;
         try (Connection conn = ConexaoBD.getConnection();
@@ -187,6 +230,7 @@ public class AuxiliaresDAO {
      */
     public boolean atualizarAuxiliar(String tabela, String colunaNome, String colunaId, int id, String novoNome) throws SQLException {
         validarTabela(tabela);
+        validarColuna(tabela, colunaNome, colunaId);
         String sql = "UPDATE " + tabela + " SET " + colunaNome + "=? WHERE " + colunaId + "=?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -205,6 +249,7 @@ public class AuxiliaresDAO {
      */
     public boolean excluirAuxiliar(String tabela, String colunaId, int id) throws SQLException {
         validarTabela(tabela);
+        validarColuna(tabela, colunaId);
         String sql = "DELETE FROM " + tabela + " WHERE " + colunaId + "=?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

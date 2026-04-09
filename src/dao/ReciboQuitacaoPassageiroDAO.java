@@ -18,7 +18,8 @@ public class ReciboQuitacaoPassageiroDAO {
             
             stmt.setString(1, recibo.getNomePassageiro());
             stmt.setTimestamp(2, Timestamp.valueOf(recibo.getDataPagamento()));
-            stmt.setDouble(3, recibo.getValorTotal());
+            // DL063: usar setBigDecimal para valor financeiro
+            stmt.setBigDecimal(3, recibo.getValorTotal());
             stmt.setString(4, recibo.getFormaPagamento());
             stmt.setString(5, recibo.getItensPagos());
             
@@ -37,17 +38,19 @@ public class ReciboQuitacaoPassageiroDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setString(1, nome);
-            ResultSet rs = stmt.executeQuery();
-            
-            while (rs.next()) {
-                ReciboQuitacaoPassageiro r = new ReciboQuitacaoPassageiro();
-                r.setId(rs.getInt("id"));
-                r.setNomePassageiro(rs.getString("nome_passageiro"));
-                r.setDataPagamento(rs.getTimestamp("data_pagamento").toLocalDateTime());
-                r.setValorTotal(rs.getDouble("valor_total"));
-                r.setFormaPagamento(rs.getString("forma_pagamento"));
-                r.setItensPagos(rs.getString("itens_pagos"));
-                lista.add(r);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    ReciboQuitacaoPassageiro r = new ReciboQuitacaoPassageiro();
+                    r.setId(rs.getInt("id"));
+                    r.setNomePassageiro(rs.getString("nome_passageiro"));
+                    // DR110: null check para evitar NPE se data_pagamento for NULL
+                    java.sql.Timestamp tsPagamento = rs.getTimestamp("data_pagamento");
+                    if (tsPagamento != null) r.setDataPagamento(tsPagamento.toLocalDateTime());
+                    r.setValorTotal(rs.getBigDecimal("valor_total"));
+                    r.setFormaPagamento(rs.getString("forma_pagamento"));
+                    r.setItensPagos(rs.getString("itens_pagos"));
+                    lista.add(r);
+                }
             }
         } catch (Exception e) {
             System.err.println("Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());

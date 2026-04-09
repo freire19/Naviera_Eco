@@ -15,8 +15,10 @@ import java.util.function.Consumer;
  */
 public class OcrAudioService {
 
-    private static final String TESSDATA_PATH = "C:\\SistemaEmbarcacao\\tessdata";
-    private static final String MODELO_VOZ_PATH = "C:\\SistemaEmbarcacao\\modelo-voz";
+    // DR130: substituir caminhos hardcoded Windows por caminho relativo ao home do usuario
+    private static final String BASE_DIR = System.getProperty("user.home") + File.separator + ".sistema_embarcacao";
+    private static final String TESSDATA_PATH = BASE_DIR + File.separator + "tessdata";
+    private static final String MODELO_VOZ_PATH = BASE_DIR + File.separator + "modelo-voz";
     private static final String IDIOMA = "por";
     private static final int DURACAO_GRAVACAO_MS = 5000;
     private static final int CHUNK_SIZE = 4096;
@@ -46,11 +48,13 @@ public class OcrAudioService {
      */
     public static String executarReconhecimentoVoz() throws Exception {
         Model model = new Model(MODELO_VOZ_PATH);
+        TargetDataLine microphone = null;
+        Recognizer recognizer = null;
         try {
             AudioFormat format = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-            TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
-            Recognizer recognizer = new Recognizer(model, (int) SAMPLE_RATE);
+            microphone = (TargetDataLine) AudioSystem.getLine(info);
+            recognizer = new Recognizer(model, (int) SAMPLE_RATE);
 
             microphone.open(format);
             microphone.start();
@@ -68,6 +72,14 @@ public class OcrAudioService {
 
             return extrairTextoDoJson(jsonResult);
         } finally {
+            // DR115: garantir fechamento de microphone e recognizer em caso de excecao
+            if (microphone != null) {
+                try { microphone.stop(); } catch (Exception ignored) {}
+                try { microphone.close(); } catch (Exception ignored) {}
+            }
+            if (recognizer != null) {
+                try { recognizer.close(); } catch (Exception ignored) {}
+            }
             model.close();
         }
     }

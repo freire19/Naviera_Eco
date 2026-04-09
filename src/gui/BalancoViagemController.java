@@ -14,6 +14,7 @@ import java.util.TreeMap;
 
 import dao.BalancoViagemDAO;
 import dao.ConexaoBD;
+import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.FXCollections;
@@ -87,28 +88,57 @@ public class BalancoViagemController {
     private static final double ROW_HEIGHT = 20;
 
     public void inicializarDados(int idViagem) {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Balanco Financeiro"); return; }
         this.idViagemAtual = idViagem;
-        carregarDadosEmpresa();
-        carregarComboViagens();
-        carregarRelatorio(idViagem);
+        // DR117: background thread para nao bloquear FX thread
+        Thread bg = new Thread(() -> {
+            try {
+                carregarDadosEmpresa();
+                // Carrega combo de viagens e relatorio em sequencia
+                Platform.runLater(() -> {
+                    carregarComboViagensFx();
+                    carregarRelatorio(idViagem);
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao inicializar BalancoViagemController: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     
+    // DR117: background thread para nao bloquear FX thread
     private void carregarRelatorio(int id) {
-        try (Connection con = ConexaoBD.getConnection()) {
-            BalancoViagemDAO dao = new BalancoViagemDAO(con);
-            this.dadosAtuais = dao.buscarBalancoDaViagem(id);
-            if (dadosAtuais.isDadosIncompletos()) {
-                Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.setTitle("Dados Incompletos");
-                alert.setHeaderText("O balanço está incompleto — valores podem não refletir a realidade");
-                alert.setContentText("Seções com falha: " + dadosAtuais.getErroDetalhes()
-                    + "\n\nOs dados parciais serão exibidos, mas NÃO devem ser usados para decisões financeiras.");
-                alert.showAndWait();
+        Thread bg = new Thread(() -> {
+            try {
+                model.DadosBalancoViagem dados;
+                try (Connection con = ConexaoBD.getConnection()) {
+                    BalancoViagemDAO dao = new BalancoViagemDAO(con);
+                    dados = dao.buscarBalancoDaViagem(id);
+                }
+                Platform.runLater(() -> {
+                    this.dadosAtuais = dados;
+                    if (dados.isDadosIncompletos()) {
+                        Alert alert = new Alert(Alert.AlertType.WARNING);
+                        alert.setTitle("Dados Incompletos");
+                        alert.setHeaderText("O balanço está incompleto — valores podem não refletir a realidade");
+                        alert.setContentText("Seções com falha: " + dados.getErroDetalhes()
+                            + "\n\nOs dados parciais serão exibidos, mas NÃO devem ser usados para decisões financeiras.");
+                        alert.showAndWait();
+                    }
+                    preencherAbaSimplificada();
+                    // carregarDetalhamentoTab2 opens its own connections internally
+                    carregarDetalhamentoTab2Fx(id);
+                    carregarGraficos();
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar relatorio BalancoViagem: " + e.getMessage());
+                e.printStackTrace();
             }
-            preencherAbaSimplificada();
-            carregarDetalhamentoTab2(con, id);
-            carregarGraficos();
-        } catch (SQLException e) { e.printStackTrace(); }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     // --- ABA 1 ---
@@ -137,6 +167,7 @@ public class BalancoViagemController {
     }
 
     // --- ABA 2 (VISUAL NA TELA) ---
+    // Versao legada mantida para chamadas de impressao que fornecem uma Connection externa
     private void carregarDetalhamentoTab2(Connection con, int idViagem) {
         vboxReceitasDetalhadasTela.getChildren().clear();
         vboxDespesasDetalhadasTela.getChildren().clear();
@@ -144,7 +175,6 @@ public class BalancoViagemController {
         dadosCargasPrint.clear();
 
         // 1. Receitas - PASSAGENS (CORRIGIDO: USA TABELA ROTAS)
-        // SQL: Agrupa por Origem/Destino
         String sqlP = "SELECT r.origem, r.destino, COUNT(*), SUM(p.valor_total) " +
                       "FROM passagens p " +
                       "LEFT JOIN rotas r ON p.id_rota = r.id " +
@@ -154,13 +184,12 @@ public class BalancoViagemController {
             while(rs.next()) {
                 String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
                 String dest = rs.getString(2) == null ? "DESTINO" : rs.getString(2).toUpperCase();
-                // FORMATO: 10 Passagens MANAUS/JUTAI = R$ ...
                 String txt = String.format("%02d Passagens %s/%s = %s", rs.getInt(3), orig, dest, formatar(rs.getDouble(4)));
                 dadosPassagensPrint.add(txt);
                 adicionarLinhaReceitaTela(txt);
             }
         } catch(Exception e) { e.printStackTrace(); }
-        
+
         // 2. Receitas - CARGAS
         try (PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? GROUP BY rota_temp")) {
             s.setInt(1,idViagem); s.setInt(2,idViagem); ResultSet rs = s.executeQuery();
@@ -176,45 +205,109 @@ public class BalancoViagemController {
         // 3. Despesas Agrupadas
         Map<String, List<LinhaDespesaDetalhada>> despesasMap = new TreeMap<>();
         carregarDespesasAgrupadas(despesasMap);
-        
-        for (Map.Entry<String, List<LinhaDespesaDetalhada>> entry : despesasMap.entrySet()) {
-            String cat = entry.getKey();
-            double sub = entry.getValue().stream().mapToDouble(LinhaDespesaDetalhada::getValor).sum();
-            
-            Label lCat = new Label("CATEGORIA: " + cat); 
-            lCat.setStyle("-fx-font-weight:bold; -fx-text-fill:#1565C0; -fx-font-size:12px; -fx-padding: 10 0 2 0;");
-            vboxDespesasDetalhadasTela.getChildren().add(lCat);
-            vboxDespesasDetalhadasTela.getChildren().add(new Separator());
-            
-            int i=0;
-            for(LinhaDespesaDetalhada d : entry.getValue()) {
-                HBox row = new HBox(); row.setPadding(new Insets(3)); 
-                if(i++%2!=0) row.setStyle("-fx-background-color:#f9f9f9;");
-                Label ld = new Label(d.getDescricao()); ld.setPrefWidth(300); ld.setStyle("-fx-font-size:11px;");
-                Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-                Label lv = new Label(formatar(d.getValor())); lv.setStyle("-fx-font-size:11px;");
-                row.getChildren().addAll(ld, sp, lv); vboxDespesasDetalhadasTela.getChildren().add(row);
-            }
-            HBox subBox = new HBox(); subBox.setAlignment(Pos.CENTER_RIGHT); subBox.setPadding(new Insets(0,0,10,0));
-            Label lSub = new Label("TOTAL " + cat + ": " + formatar(sub)); 
-            lSub.setStyle("-fx-font-weight:bold; -fx-font-size:11px; -fx-text-fill:#555;");
-            subBox.getChildren().add(lSub); vboxDespesasDetalhadasTela.getChildren().add(subBox);
-        }
+        renderizarDespesasTela(despesasMap);
 
         // 4. Cards e Pendentes
         lblCardEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
         lblCardSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
         lblCardSaldo.setText(formatar(dadosAtuais.getLucroLiquido()));
         lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido()>=0?"-fx-text-fill:#1565C0;":"-fx-text-fill:#c62828;");
-        
+
+        // DL048: incluir passagens pendentes no calculo de totalPendenteGlobal
         totalPendenteGlobal = 0.0;
-        try (PreparedStatement st1 = con.prepareStatement("SELECT SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? AND status_pagamento='PENDENTE'");
-             PreparedStatement st2 = con.prepareStatement("SELECT SUM(valor_total_itens) FROM fretes WHERE id_viagem=? AND status_frete='PENDENTE'")) {
+        try (PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND valor_devedor > 0.01");
+             PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND status_pagamento != 'PAGO'");
+             PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND status_frete != 'PAGO'")) {
+            st0.setInt(1,idViagem); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) totalPendenteGlobal+=r0.getDouble(1); }
             st1.setInt(1,idViagem); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) totalPendenteGlobal+=r1.getDouble(1); }
             st2.setInt(1,idViagem); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) totalPendenteGlobal+=r2.getDouble(1); }
         } catch(Exception e){ System.err.println("Erro em BalancoViagemController (pendentes): " + e.getMessage()); }
         lblCardPendente.setText(formatar(totalPendenteGlobal));
         lblCardRecebido.setText("Caixa: "+formatar(Math.max(0, dadosAtuais.getTotalEntradas()-totalPendenteGlobal)));
+    }
+
+    // DR117: versao que abre suas proprias conexoes (para uso apos bg thread)
+    private void carregarDetalhamentoTab2Fx(int idViagem) {
+        vboxReceitasDetalhadasTela.getChildren().clear();
+        vboxDespesasDetalhadasTela.getChildren().clear();
+        dadosPassagensPrint.clear();
+        dadosCargasPrint.clear();
+
+        // 1. Receitas - PASSAGENS
+        String sqlP = "SELECT r.origem, r.destino, COUNT(*), SUM(p.valor_total) " +
+                      "FROM passagens p " +
+                      "LEFT JOIN rotas r ON p.id_rota = r.id " +
+                      "WHERE p.id_viagem=? GROUP BY r.origem, r.destino ORDER BY r.origem";
+        try (Connection con = ConexaoBD.getConnection(); PreparedStatement s = con.prepareStatement(sqlP)) {
+            s.setInt(1, idViagem); ResultSet rs = s.executeQuery();
+            while(rs.next()) {
+                String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
+                String dest = rs.getString(2) == null ? "DESTINO" : rs.getString(2).toUpperCase();
+                String txt = String.format("%02d Passagens %s/%s = %s", rs.getInt(3), orig, dest, formatar(rs.getDouble(4)));
+                dadosPassagensPrint.add(txt);
+                adicionarLinhaReceitaTela(txt);
+            }
+        } catch(Exception e) { e.printStackTrace(); }
+
+        // 2. Receitas - CARGAS
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? GROUP BY rota_temp")) {
+            s.setInt(1,idViagem); s.setInt(2,idViagem); ResultSet rs = s.executeQuery();
+            while(rs.next()) {
+                String tipo = rs.getString(1);
+                String rota = rs.getString(2) == null ? "N/D" : rs.getString(2).toUpperCase();
+                String txt = String.format("%02d %ss %s = %s", rs.getInt(3), tipo, rota, formatar(rs.getDouble(4)));
+                dadosCargasPrint.add(txt);
+                adicionarLinhaReceitaTela(txt);
+            }
+        } catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDetalhamentoTab2Fx (cargas): " + e.getMessage()); }
+
+        // 3. Despesas Agrupadas
+        Map<String, List<LinhaDespesaDetalhada>> despesasMap = new TreeMap<>();
+        carregarDespesasAgrupadas(despesasMap);
+        renderizarDespesasTela(despesasMap);
+
+        // 4. Cards e Pendentes
+        lblCardEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
+        lblCardSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
+        lblCardSaldo.setText(formatar(dadosAtuais.getLucroLiquido()));
+        lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido()>=0?"-fx-text-fill:#1565C0;":"-fx-text-fill:#c62828;");
+
+        totalPendenteGlobal = 0.0;
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND valor_devedor > 0.01");
+             PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND status_pagamento != 'PAGO'");
+             PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND status_frete != 'PAGO'")) {
+            st0.setInt(1,idViagem); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) totalPendenteGlobal+=r0.getDouble(1); }
+            st1.setInt(1,idViagem); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) totalPendenteGlobal+=r1.getDouble(1); }
+            st2.setInt(1,idViagem); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) totalPendenteGlobal+=r2.getDouble(1); }
+        } catch(Exception e){ System.err.println("Erro em BalancoViagemController (pendentes Fx): " + e.getMessage()); }
+        lblCardPendente.setText(formatar(totalPendenteGlobal));
+        lblCardRecebido.setText("Caixa: "+formatar(Math.max(0, dadosAtuais.getTotalEntradas()-totalPendenteGlobal)));
+    }
+
+    private void renderizarDespesasTela(Map<String, List<LinhaDespesaDetalhada>> despesasMap) {
+        for (Map.Entry<String, List<LinhaDespesaDetalhada>> entry : despesasMap.entrySet()) {
+            String cat = entry.getKey();
+            double sub = entry.getValue().stream().mapToDouble(LinhaDespesaDetalhada::getValor).sum();
+            Label lCat = new Label("CATEGORIA: " + cat);
+            lCat.setStyle("-fx-font-weight:bold; -fx-text-fill:#1565C0; -fx-font-size:12px; -fx-padding: 10 0 2 0;");
+            vboxDespesasDetalhadasTela.getChildren().add(lCat);
+            vboxDespesasDetalhadasTela.getChildren().add(new Separator());
+            int i = 0;
+            for (LinhaDespesaDetalhada d : entry.getValue()) {
+                HBox row = new HBox(); row.setPadding(new Insets(3));
+                if (i++ % 2 != 0) row.setStyle("-fx-background-color:#f9f9f9;");
+                Label ld = new Label(d.getDescricao()); ld.setPrefWidth(300); ld.setStyle("-fx-font-size:11px;");
+                Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+                Label lv = new Label(formatar(d.getValor())); lv.setStyle("-fx-font-size:11px;");
+                row.getChildren().addAll(ld, sp, lv); vboxDespesasDetalhadasTela.getChildren().add(row);
+            }
+            HBox subBox = new HBox(); subBox.setAlignment(Pos.CENTER_RIGHT); subBox.setPadding(new Insets(0,0,10,0));
+            Label lSub = new Label("TOTAL " + cat + ": " + formatar(sub));
+            lSub.setStyle("-fx-font-weight:bold; -fx-font-size:11px; -fx-text-fill:#555;");
+            subBox.getChildren().add(lSub); vboxDespesasDetalhadasTela.getChildren().add(subBox);
+        }
     }
     
     private void adicionarLinhaReceitaTela(String txt) {
@@ -425,7 +518,7 @@ public class BalancoViagemController {
         String d = txt; double val = v;
         if(receita && txt.contains("=")) {
              String[] p = txt.split("="); d = p[0];
-             try { val = Double.parseDouble(p[1].replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch(Exception e){}
+             try { val = Double.parseDouble(p[1].replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch(Exception e){ System.err.println("BalancoViagemController: erro ao parsear valor monetario '" + p[1] + "' — " + e.getMessage()); }
         }
         
         h.getChildren().add(new Text(d){{setFont(Font.font("Arial",11));}});
@@ -439,18 +532,41 @@ public class BalancoViagemController {
     private String formatar(double v) { return NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(v); }
     private void carregarDadosEmpresa() { String sql = "SELECT nome_embarcacao, cnpj, endereco, telefone, path_logo FROM configuracao_empresa LIMIT 1"; try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) { if (rs.next()) { if (rs.getString(1) != null) this.empresaNome = rs.getString(1); if (rs.getString(2) != null) this.empresaCnpj = rs.getString(2); if (rs.getString(3) != null) this.empresaEndereco = rs.getString(3); if (rs.getString(4) != null) this.empresaTelefone = rs.getString(4); if (rs.getString(5) != null) this.empresaLogoPath = rs.getString(5); } } catch (Exception e) { System.err.println("Erro em BalancoViagemController.carregarDadosEmpresa: " + e.getMessage()); } }
     
-    // Filtro ComboBox ajustado
-    private void carregarComboViagens() { 
-        String sql = "SELECT v.id_viagem, e.nome, v.data_viagem, v.data_chegada FROM viagens v JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao ORDER BY v.data_viagem DESC"; 
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) { 
-            ObservableList<String> l = FXCollections.observableArrayList(); ResultSet rs = stmt.executeQuery(); SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy"); 
-            while(rs.next()) { 
-                String saida = rs.getDate(3)!=null ? sdf.format(rs.getDate(3)) : "--/--/----";
-                String chegada = rs.getDate(4)!=null ? sdf.format(rs.getDate(4)) : "--/--/----";
-                l.add(String.format("Saída: %s - Chegada: %s (ID: %d)", saida, chegada, rs.getInt(1))); 
-                if(rs.getInt(1)==idViagemAtual) { cmbViagens.setValue(l.get(l.size()-1)); textoViagemSelecionada=l.get(l.size()-1); } 
-            } cmbViagens.setItems(l); 
-        } catch(Exception e) { System.err.println("Erro em BalancoViagemController.carregarComboViagens: " + e.getMessage()); }
+    // DR117: versao FX-only chamada do Platform.runLater (faz DB em bg)
+    private void carregarComboViagensFx() {
+        final int idAtual = this.idViagemAtual;
+        Thread bg = new Thread(() -> {
+            try {
+                String sql = "SELECT v.id_viagem, e.nome, v.data_viagem, v.data_chegada FROM viagens v JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao ORDER BY v.data_viagem DESC";
+                ObservableList<String> l = FXCollections.observableArrayList();
+                String valorSelecionado[] = {null};
+                try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
+                    ResultSet rs = stmt.executeQuery();
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                    while (rs.next()) {
+                        String saida = rs.getDate(3) != null ? sdf.format(rs.getDate(3)) : "--/--/----";
+                        String chegada = rs.getDate(4) != null ? sdf.format(rs.getDate(4)) : "--/--/----";
+                        String item = String.format("Saída: %s - Chegada: %s (ID: %d)", saida, chegada, rs.getInt(1));
+                        l.add(item);
+                        if (rs.getInt(1) == idAtual) valorSelecionado[0] = item;
+                    }
+                }
+                final String sel = valorSelecionado[0];
+                Platform.runLater(() -> {
+                    cmbViagens.setItems(l);
+                    if (sel != null) { cmbViagens.setValue(sel); textoViagemSelecionada = sel; }
+                });
+            } catch (Exception e) {
+                System.err.println("Erro em BalancoViagemController.carregarComboViagens: " + e.getMessage());
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
+
+    // Mantida para compatibilidade com chamadas externas
+    private void carregarComboViagens() {
+        carregarComboViagensFx();
     }
 
     @FXML private void handleFiltrarViagem(ActionEvent event) { String sel = cmbViagens.getValue(); if (sel != null) { try { int id = Integer.parseInt(sel.substring(sel.lastIndexOf("(ID: ") + 5, sel.lastIndexOf(")"))); this.idViagemAtual = id; this.textoViagemSelecionada = sel; carregarRelatorio(id); } catch (Exception e) { System.err.println("Erro em BalancoViagemController.handleFiltrarViagem: " + e.getMessage()); } } }

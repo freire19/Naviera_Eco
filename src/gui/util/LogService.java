@@ -30,7 +30,15 @@ public class LogService {
     private static final String ARQUIVO_LOG;
     static {
         String dir = System.getProperty("user.home") + java.io.File.separator + ".sistema_embarcacao";
-        new java.io.File(dir).mkdirs();
+        java.io.File dirFile = new java.io.File(dir);
+        dirFile.mkdirs();
+        // D024: tentar restringir permissoes do diretorio de log (owner-only)
+        dirFile.setReadable(false, false);
+        dirFile.setReadable(true, true);
+        dirFile.setWritable(false, false);
+        dirFile.setWritable(true, true);
+        dirFile.setExecutable(false, false);
+        dirFile.setExecutable(true, true);
         ARQUIVO_LOG = dir + java.io.File.separator + "log_erros.txt";
     }
     
@@ -39,16 +47,34 @@ public class LogService {
         DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     
     // Separador visual
-    private static final String SEPARADOR = 
+    private static final String SEPARADOR =
         "================================================================================";
-    
+
+    // #040: limite de tamanho para rotacao automatica do log (5 MB)
+    private static final long TAMANHO_MAX_LOG = 5L * 1024 * 1024;
+
+    /**
+     * Rotaciona o log se ele ultrapassar TAMANHO_MAX_LOG.
+     * Renomeia o arquivo atual para .bak e inicia um novo.
+     */
+    private static void rotacionarLogSeNecessario() {
+        File arquivo = new File(ARQUIVO_LOG);
+        if (arquivo.exists() && arquivo.length() > TAMANHO_MAX_LOG) {
+            File backup = new File(ARQUIVO_LOG + ".bak");
+            if (backup.exists()) backup.delete();
+            arquivo.renameTo(backup);
+        }
+    }
+
     /**
      * Registra um erro no arquivo de log com exceção
-     * 
+     *
      * @param mensagem Descrição do erro
      * @param e Exceção ocorrida
      */
-    public static void registrarErro(String mensagem, Throwable e) {
+    // DR122: synchronized para evitar intercalacao de output entre threads concorrentes
+    public static synchronized void registrarErro(String mensagem, Throwable e) {
+        rotacionarLogSeNecessario(); // #040: rotacao automatica antes de gravar
         try (FileWriter fw = new FileWriter(ARQUIVO_LOG, true);
              PrintWriter pw = new PrintWriter(fw)) {
             
@@ -130,9 +156,12 @@ public class LogService {
                 }
             }
             
-            // Fallback para Windows
+            // #DB029: Fallback para Windows — processo externo gerenciado pelo usuario
             if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                Runtime.getRuntime().exec("notepad.exe " + arquivo.getAbsolutePath());
+                Process p = new ProcessBuilder("notepad.exe", arquivo.getAbsolutePath()).start();
+                // Processo externo (notepad) — nao chamamos waitFor() para nao travar a UI.
+                // destroyForcibly() no shutdown hook se necessario.
+                p.onExit().thenRun(() -> {}); // registra callback para GC limpar handle
                 return true;
             }
             
@@ -158,7 +187,7 @@ public class LogService {
      * 
      * @return true se limpou com sucesso
      */
-    public static boolean limparLog() {
+    public static synchronized boolean limparLog() {
         try {
             File arquivo = new File(ARQUIVO_LOG);
             if (arquivo.exists()) {
@@ -187,7 +216,7 @@ public class LogService {
      * 
      * @param info Informação a ser registrada
      */
-    public static void registrarInfo(String info) {
+    public static synchronized void registrarInfo(String info) {
         try (FileWriter fw = new FileWriter(ARQUIVO_LOG, true);
              PrintWriter pw = new PrintWriter(fw)) {
             

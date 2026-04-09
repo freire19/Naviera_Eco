@@ -339,10 +339,12 @@ public class VenderPassagemController implements Initializable {
                 });
 
             } catch (Exception e) {
+                System.err.println("Erro ao carregar dados em background: " + e.getMessage());
                 e.printStackTrace();
                 Platform.runLater(() -> {
                     if (rootPane != null) rootPane.setDisable(false);
                     if (btnNovo != null) btnNovo.setDisable(false);
+                    gui.util.AlertHelper.errorSafe("Erro ao carregar dados iniciais. Verifique a conexao com o banco.");
                 });
             }
         });
@@ -510,6 +512,7 @@ public class VenderPassagemController implements Initializable {
                     if (txtTotalPassageiros != null) txtTotalPassageiros.setText(String.valueOf(passagensDaViagemAtual.size()));
                 });
             } catch (Exception e) {
+                System.err.println("VenderPassagemController.carregarPassagensDaViagem: erro ao carregar passagens — " + e.getMessage());
                 e.printStackTrace();
                 Platform.runLater(() -> {
                     if (tablePassagens != null) tablePassagens.getItems().clear();
@@ -557,7 +560,8 @@ public class VenderPassagemController implements Initializable {
         if (colValorTotal != null) { colValorTotal.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getValorTotal())); colValorTotal.setCellFactory(cellFactoryMoeda); }
         if (colValorDesconto != null) { colValorDesconto.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getValorDesconto())); colValorDesconto.setCellFactory(cellFactoryMoeda); }
         if (colValorPago != null) { colValorPago.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getValorPago())); colValorPago.setCellFactory(cellFactoryMoeda); }
-        if (colValorAPagar != null) { colValorAPagar.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getDevedor())); colValorAPagar.setCellFactory(cellFactoryMoeda); }
+        // DL057: coluna "Valor a Pagar" exibe valorAPagar (nao devedor)
+        if (colValorAPagar != null) { colValorAPagar.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getValorAPagar())); colValorAPagar.setCellFactory(cellFactoryMoeda); }
 
         if (colDevedor != null) {
             colDevedor.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getDevedor()));
@@ -610,8 +614,9 @@ public class VenderPassagemController implements Initializable {
         if (nomePassageiroDigitado.isEmpty() ||
             dpDataNascimento.getValue() == null || tipoPassagem == null ||
             acomodacao == null || selectedRotaStr == null ||
-            agente == null || (txtAPagar != null && parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) <= 0)) {
-            showAlert(AlertType.WARNING, "Campos Obrigat\u00f3rios", "Por favor, preencha todos os campos obrigat\u00f3rios e verifique se o valor a pagar \u00e9 maior que zero.");
+            agente == null || (txtAPagar != null && parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) < 0)) {
+            // DL032: permite valor zero (passagem gratuita) — bloqueia apenas negativo
+            showAlert(AlertType.WARNING, "Campos Obrigat\u00f3rios", "Por favor, preencha todos os campos obrigat\u00f3rios.");
             return;
         }
 
@@ -624,7 +629,20 @@ public class VenderPassagemController implements Initializable {
             Passagem passagemParaSalvar = (this.passagemEmEdicao != null) ? this.passagemEmEdicao : new Passagem();
             preencherDadosDaPassagem(passagemParaSalvar, nomePassageiroDigitado, selectedRotaStr);
 
-            boolean pagamentoConfirmado = showFinalizarPagamentoDialog(passagemParaSalvar);
+            // DL032: passagem gratuita (valor zero) — pula dialogo de pagamento
+            boolean pagamentoConfirmado;
+            if (passagemParaSalvar.getValorAPagar() != null &&
+                passagemParaSalvar.getValorAPagar().compareTo(BigDecimal.ZERO) == 0) {
+                passagemParaSalvar.setValorPago(BigDecimal.ZERO);
+                passagemParaSalvar.setDevedor(BigDecimal.ZERO);
+                passagemParaSalvar.setTroco(BigDecimal.ZERO);
+                passagemParaSalvar.setValorPagamentoDinheiro(BigDecimal.ZERO);
+                passagemParaSalvar.setValorPagamentoPix(BigDecimal.ZERO);
+                passagemParaSalvar.setValorPagamentoCartao(BigDecimal.ZERO);
+                pagamentoConfirmado = true;
+            } else {
+                pagamentoConfirmado = showFinalizarPagamentoDialog(passagemParaSalvar);
+            }
 
             if (pagamentoConfirmado) {
                 salvarDadosFinais(passagemParaSalvar);
@@ -679,7 +697,16 @@ public class VenderPassagemController implements Initializable {
         }
 
         passagemParaSalvar.setIdPassageiro(passageiroSalvo.getId());
-        passagemParaSalvar.setStatusPassagem("EMITIDA");
+        // DL033: definir status baseado no resultado real do pagamento
+        BigDecimal devedor = passagemParaSalvar.getDevedor();
+        BigDecimal valorPago = passagemParaSalvar.getValorPago();
+        if (devedor == null || devedor.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
+            passagemParaSalvar.setStatusPassagem(model.StatusPagamento.PAGO.name());
+        } else if (valorPago != null && valorPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) {
+            passagemParaSalvar.setStatusPassagem(model.StatusPagamento.PARCIAL.name());
+        } else {
+            passagemParaSalvar.setStatusPassagem(model.StatusPagamento.PENDENTE.name());
+        }
 
         boolean sucesso;
         if (this.passagemEmEdicao == null) {
@@ -777,7 +804,8 @@ public class VenderPassagemController implements Initializable {
         passagem.setValorDesconto(parseBigDecimal(txtDesconto.getText()));
         passagem.setValorTotal(parseBigDecimal(txtTotal.getText()));
         passagem.setValorAPagar(parseBigDecimal(txtAPagar.getText()));
-        passagem.setStatusPassagem("PENDENTE_PAGAMENTO");
+        // #025: usar enum padrao em vez de string (status real definido em salvarDadosFinais baseado no pagamento)
+        passagem.setStatusPassagem(model.StatusPagamento.PENDENTE.name());
     }
 
     // =======================================================================
@@ -856,11 +884,11 @@ public class VenderPassagemController implements Initializable {
         }
 
         // =====================================================================
-        // LISTENER DE TEXTO: filtra letra por letra
+        // LISTENER DE TEXTO: filtra com debounce (#037)
         // =====================================================================
+        final javafx.animation.PauseTransition debounce = new javafx.animation.PauseTransition(javafx.util.Duration.millis(150));
         comboBox.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
             if (isUpdatingFromCode || isFiltering[0]) return;
-            // Se o usuario esta navegando com setas, nao filtrar (manter lista intacta)
             if (userNavigated[0]) return;
 
             final String textoDigitado;
@@ -891,7 +919,8 @@ public class VenderPassagemController implements Initializable {
                 textoDigitado = (newValue != null) ? newValue : "";
             }
 
-            Platform.runLater(() -> {
+            // #037: debounce — adia filtragem 150ms para evitar lag com listas grandes
+            debounce.setOnFinished(evt -> {
                 if (isUpdatingFromCode || isFiltering[0]) return;
 
                 isFiltering[0] = true;
@@ -934,6 +963,7 @@ public class VenderPassagemController implements Initializable {
                     }
                 }
             });
+            debounce.playFromStart();
         });
 
         // =====================================================================
@@ -1138,6 +1168,7 @@ public class VenderPassagemController implements Initializable {
                 // Na duvida, para novo cadastro, passageiroEmEdicao fica null.
             }
         } catch (Exception e) {
+            System.err.println("VenderPassagemController.preencherPassageiroPorDoc: erro ao buscar passageiro por documento — " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1738,7 +1769,8 @@ public class VenderPassagemController implements Initializable {
             try {
                 File f = new File(this.empPathLogo);
                 if (f.exists()) {
-                    ImageView logo = new ImageView(new Image(new FileInputStream(f)));
+                    // #007: usar URI em vez de FileInputStream (evita leak de handle)
+                    ImageView logo = new ImageView(new Image(f.toURI().toString()));
                     logo.setFitWidth(70); logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
                 }

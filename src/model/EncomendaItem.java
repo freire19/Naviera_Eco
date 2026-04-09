@@ -61,7 +61,8 @@ public class EncomendaItem {
 
     @Override
     public String toString() {
-        return nomeItem; // Usado nos ComboBoxes
+        // DR128: retorna string vazia se nomeItem for null (evita NPE em ComboBox/ListView)
+        return nomeItem != null ? nomeItem : "";
     }
 
     @Override

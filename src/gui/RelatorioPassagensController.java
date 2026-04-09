@@ -84,6 +84,7 @@ public class RelatorioPassagensController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Relatorio de Passagens"); return; }
         passagemDAO = new PassagemDAO();
         viagemDAO = new ViagemDAO();
         rotaDAO = new RotaDAO();
@@ -112,7 +113,7 @@ public class RelatorioPassagensController implements Initializable {
                     if (rotasObjects != null) {
                         for (Rota r : rotasObjects) rotasStrings.add(r.toString());
                     }
-                } catch (Exception e) { /* ignore */ }
+                } catch (Exception e) { System.err.println("RelatorioPassagensController.initialize: erro ao listar rotas — " + e.getMessage()); }
 
                 List<String> tiposPagamento = new ArrayList<>();
                 tiposPagamento.add("Todos");
@@ -239,6 +240,7 @@ public class RelatorioPassagensController implements Initializable {
                 System.err.println("Metodo get" + propertyName + " nao encontrado em Passagem: " + e.getMessage());
                 return new SimpleObjectProperty<>(null);
             } catch (Exception e) {
+                System.err.println("RelatorioPassagensController.formatarColunaDecimal: erro ao invocar get" + propertyName + " — " + e.getMessage());
                 return new SimpleObjectProperty<>(null);
             }
         });

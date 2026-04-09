@@ -101,24 +101,18 @@ public class RotaDAO {
      * DL006: Verifica integridade referencial antes de excluir.
      * Retorna false se existem viagens usando esta rota.
      */
+    // #DB005: DELETE direto — FK constraint do banco protege contra exclusao com viagens vinculadas
     public boolean excluir(long id) {
-        String sqlCheck = "SELECT COUNT(*) FROM viagens WHERE id_rota = ?";
         String sql = "DELETE FROM rotas WHERE id = ?";
-        try (Connection conn = ConexaoBD.getConnection()) {
-            try (PreparedStatement psCheck = conn.prepareStatement(sqlCheck)) {
-                psCheck.setLong(1, id);
-                try (ResultSet rs = psCheck.executeQuery()) {
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        System.err.println("Rota id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
-                        return false;
-                    }
-                }
-            }
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setLong(1, id);
-                return stmt.executeUpdate() > 0;
-            }
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
+            if ("23503".equals(e.getSQLState())) {
+                System.err.println("Rota id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
+                return false;
+            }
             System.err.println("Erro ao excluir rota: " + e.getMessage());
             return false;
         }

@@ -18,7 +18,8 @@ public class ReciboAvulsoDAO {
             stmt.setInt(1, r.getIdViagem());
             stmt.setString(2, r.getNomePagador());
             stmt.setString(3, r.getReferenteA());
-            stmt.setDouble(4, r.getValor());
+            // DL063: usar setBigDecimal para valor financeiro
+            stmt.setBigDecimal(4, r.getValor());
             stmt.setDate(5, Date.valueOf(r.getDataEmissao()));
             stmt.setString(6, r.getTipoRecibo());
             stmt.executeUpdate();
@@ -32,9 +33,10 @@ public class ReciboAvulsoDAO {
         
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idViagem);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                lista.add(montarObjeto(rs));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(montarObjeto(rs));
+                }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
@@ -47,9 +49,10 @@ public class ReciboAvulsoDAO {
         String sql = "SELECT * FROM recibos_avulsos WHERE data_emissao = ? ORDER BY 1 DESC";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                lista.add(montarObjeto(rs));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(montarObjeto(rs));
+                }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
@@ -72,7 +75,8 @@ public class ReciboAvulsoDAO {
         r.setIdViagem(rs.getInt("id_viagem"));
         r.setNomePagador(rs.getString("nome_pagador"));
         r.setReferenteA(rs.getString("referente_a"));
-        r.setValor(rs.getDouble("valor"));
+        // DL063: usar getBigDecimal para valor financeiro
+        r.setValor(rs.getBigDecimal("valor"));
         java.sql.Date dtEmissao = rs.getDate("data_emissao");
         r.setDataEmissao(dtEmissao != null ? dtEmissao.toLocalDate() : null);
         try { r.setTipoRecibo(rs.getString("tipo_recibo")); } catch (Exception e) { r.setTipoRecibo("PADRAO"); }

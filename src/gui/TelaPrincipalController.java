@@ -273,12 +273,19 @@ public class TelaPrincipalController implements Initializable {
     // ================================================================================
     private void construirCalendario() {
         // Carrega dados em background e depois constrói na UI thread
-        new Thread(() -> {
-            List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
-            List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
-            Map<LocalDate, List<String>> notasDoMes = agendaDAO.buscarAnotacoesDoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
-            Platform.runLater(() -> construirCalendarioComDados(viagensDoMes, boletosDoMes, notasDoMes));
-        }).start();
+        // DR114: daemon + try-catch
+        Thread bgCal = new Thread(() -> {
+            try {
+                List<Viagem> viagensDoMes = viagemDAO.listarViagensPorMesAno(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+                List<AgendaDAO.ResumoBoleto> boletosDoMes = agendaDAO.buscarBoletosPendentesNoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+                Map<LocalDate, List<String>> notasDoMes = agendaDAO.buscarAnotacoesDoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
+                Platform.runLater(() -> construirCalendarioComDados(viagensDoMes, boletosDoMes, notasDoMes));
+            } catch (Exception e) {
+                System.err.println("Erro ao carregar calendario: " + e.getMessage());
+            }
+        });
+        bgCal.setDaemon(true);
+        bgCal.start();
     }
 
     /** Constrói o calendário na UI thread usando dados já carregados */
@@ -470,8 +477,10 @@ public class TelaPrincipalController implements Initializable {
         dialog.setHeaderText(resumo.toString());
         dialog.setContentText("Nova anotação rápida:");
         if (isModoEscuro) {
-            DialogPane dialogPane = dialog.getDialogPane();
-            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
+            java.net.URL cssUrl = getClass().getResource(cssEscuro);
+            if (cssUrl != null) {
+                dialog.getDialogPane().getStylesheets().add(cssUrl.toExternalForm());
+            }
         }
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
@@ -495,8 +504,10 @@ public class TelaPrincipalController implements Initializable {
         dialog.setHeaderText("Marcar dias de saída na Agenda (Lembretes):");
 
         if (isModoEscuro) {
-            DialogPane dialogPane = dialog.getDialogPane();
-            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
+            java.net.URL cssUrl = getClass().getResource(cssEscuro);
+            if (cssUrl != null) {
+                dialog.getDialogPane().getStylesheets().add(cssUrl.toExternalForm());
+            }
         }
 
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -620,16 +631,23 @@ public class TelaPrincipalController implements Initializable {
     }
 
     private void atualizarDashboard() {
-        new Thread(() -> {
-            Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
-            long idViagem = viagemAtiva != null ? viagemAtiva.getId() : -1;
-            int[] counts = carregarCountsDashboard(idViagem);
-            Platform.runLater(() -> {
-                txtTotalVolumesFrete.setText(String.valueOf(counts[0]));
-                txtQtdEncomendas.setText(String.valueOf(counts[1]));
-                txtTotalPassageiros.setText(String.valueOf(counts[2]));
-            });
-        }).start();
+        // DR114: daemon + try-catch
+        Thread bgDash = new Thread(() -> {
+            try {
+                Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
+                long idViagem = viagemAtiva != null ? viagemAtiva.getId() : -1;
+                int[] counts = carregarCountsDashboard(idViagem);
+                Platform.runLater(() -> {
+                    txtTotalVolumesFrete.setText(String.valueOf(counts[0]));
+                    txtQtdEncomendas.setText(String.valueOf(counts[1]));
+                    txtTotalPassageiros.setText(String.valueOf(counts[2]));
+                });
+            } catch (Exception e) {
+                System.err.println("Erro ao atualizar dashboard: " + e.getMessage());
+            }
+        });
+        bgDash.setDaemon(true);
+        bgDash.start();
     }
 
     /** Executa as 3 queries do dashboard numa única conexão. Pode ser chamado de qualquer thread. */
@@ -655,7 +673,8 @@ public class TelaPrincipalController implements Initializable {
     }
 
     private void carregarViagensNoCombo() {
-        new Thread(() -> {
+        // DR114: daemon
+        Thread bgViagens = new Thread(() -> {
             try {
                 List<String> listaViagens = viagemDAO.listarViagensParaComboBox();
                 Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
@@ -667,7 +686,9 @@ public class TelaPrincipalController implements Initializable {
             } catch (Exception e) {
                 Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", e.getMessage()));
             }
-        }).start();
+        });
+        bgViagens.setDaemon(true);
+        bgViagens.start();
     }
     
     // DM007: delega para ViagemDAO.definirViagemAtiva() em vez de SQL inline
@@ -745,8 +766,8 @@ public class TelaPrincipalController implements Initializable {
         tabPanePrincipal.getTabs().add(novaAba);
         tabPanePrincipal.getSelectionModel().select(novaAba);
 
-        // Carregar FXML em background thread
-        new Thread(() -> {
+        // DR114: daemon para carregar FXML em background
+        Thread bgFxml = new Thread(() -> {
             try {
                 URL url = getClass().getResource(fxml);
                 if (url == null) {
@@ -776,7 +797,9 @@ public class TelaPrincipalController implements Initializable {
                     showAlert(AlertType.ERROR, "Erro", e.getMessage());
                 });
             }
-        }).start();
+        });
+        bgFxml.setDaemon(true);
+        bgFxml.start();
     }
     
     /**
@@ -873,8 +896,8 @@ public class TelaPrincipalController implements Initializable {
             return;
         }
 
-        // Usamos .intValue() para converter o Objeto Long para int primitivo
-        abrirTelaBalancoFinanceiro(viagemAtiva.getId().intValue()); 
+        // #010: cast seguro Long->int (IDs de viagem nunca excedem Integer.MAX_VALUE)
+        abrirTelaBalancoFinanceiro(Math.toIntExact(viagemAtiva.getId()));
     }
     
     // Método que faz a injeção do ID no BalancoViagemController
@@ -978,22 +1001,29 @@ public class TelaPrincipalController implements Initializable {
                 return;
             }
             
-            // Configurações do banco (podem vir de um arquivo de config)
+            // #014: Ler credenciais de db.properties (nao hardcoded)
             String host = "localhost";
             String porta = "5432";
-            String banco = "embarcacao"; // Nome do seu banco
+            String banco = "sistema_embarcacao";
             String usuario = "postgres";
-            String senha = ""; // Deixe vazio se usar pgpass ou autenticação trust
-            
-            // Tentar buscar configurações do ConexaoBD
+            String senha = "";
             try {
-                // Se você tiver as configs no ConexaoBD, use-as aqui
-                // host = ConexaoBD.getHost();
-                // porta = ConexaoBD.getPorta();
-                // banco = ConexaoBD.getBanco();
-                // usuario = ConexaoBD.getUsuario();
+                java.util.Properties dbProps = new java.util.Properties();
+                try (java.io.FileInputStream fis = new java.io.FileInputStream("db.properties")) {
+                    dbProps.load(fis);
+                }
+                String url = dbProps.getProperty("db.url", "");
+                // Extrai host, porta e banco da URL JDBC: jdbc:postgresql://host:porta/banco
+                if (url.contains("//")) {
+                    String parte = url.substring(url.indexOf("//") + 2);
+                    if (parte.contains(":")) host = parte.substring(0, parte.indexOf(":"));
+                    if (parte.contains(":") && parte.contains("/")) porta = parte.substring(parte.indexOf(":") + 1, parte.indexOf("/"));
+                    if (parte.contains("/")) banco = parte.substring(parte.indexOf("/") + 1);
+                }
+                usuario = dbProps.getProperty("db.usuario", usuario);
+                senha = dbProps.getProperty("db.senha", senha);
             } catch (Exception ex) {
-                // Usar valores padrão
+                System.err.println("Aviso: nao foi possivel ler db.properties para backup. Usando defaults.");
             }
             
             // Mostrar alerta de progresso

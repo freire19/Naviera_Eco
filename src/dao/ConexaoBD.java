@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Pool de conexoes JDBC simples para PostgreSQL.
@@ -21,8 +23,10 @@ public class ConexaoBD {
     private static final int POOL_SIZE;
     private static final long CONNECTION_TIMEOUT_MS = 5000; // 5s para obter conexao
     private static final long MAX_LIFETIME_MS = 30 * 60 * 1000; // 30min — recicla conexoes velhas
-    private static final LinkedBlockingDeque<Connection> pool = new LinkedBlockingDeque<>();
+    private static final LinkedBlockingDeque<Connection> pool;
     private static final java.util.concurrent.ConcurrentHashMap<Connection, Long> createdAt = new java.util.concurrent.ConcurrentHashMap<>();
+    // #001: Semaphore limita total de conexoes abertas (pool + em uso)
+    private static final Semaphore semaphore;
 
     static {
         Properties props = new Properties();
@@ -45,6 +49,14 @@ public class ConexaoBD {
         USUARIO = usuario;
         SENHA = senha;
         POOL_SIZE = Integer.parseInt(props.getProperty("db.pool.tamanho", "5"));
+        // #001/#003: pool com capacidade fixa + semaphore para limitar total de conexoes
+        pool = new LinkedBlockingDeque<>(POOL_SIZE);
+        semaphore = new Semaphore(POOL_SIZE * 3);
+
+        // DS006: aviso de senha fraca
+        if (senha.length() < 8 || "123456".equals(senha) || "password".equals(senha)) {
+            System.err.println("AVISO SEGURANCA: senha do banco e fraca. Altere em db.properties.");
+        }
 
         try {
             Class.forName("org.postgresql.Driver");
@@ -60,56 +72,85 @@ public class ConexaoBD {
      * Inclui timeout e reciclagem de conexoes velhas (max lifetime).
      */
     public static Connection getConnection() throws SQLException {
-        long deadline = System.currentTimeMillis() + CONNECTION_TIMEOUT_MS;
-        while (System.currentTimeMillis() < deadline) {
-            Connection conn = pool.pollFirst();
-            if (conn != null) {
-                // Recicla conexoes velhas (max lifetime)
-                Long created = createdAt.get(conn);
-                if (created != null && (System.currentTimeMillis() - created) > MAX_LIFETIME_MS) {
-                    createdAt.remove(conn);
-                    try { conn.close(); } catch (SQLException ignored) {}
+        // #001: Semaphore limita total de conexoes (pool + em uso)
+        boolean acquired;
+        try {
+            acquired = semaphore.tryAcquire(CONNECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SQLException("Interrompido ao aguardar conexao", e);
+        }
+        if (!acquired) {
+            throw new SQLException("Pool esgotado — limite de " + (POOL_SIZE * 3) + " conexoes atingido");
+        }
+
+        try {
+            long deadline = System.currentTimeMillis() + CONNECTION_TIMEOUT_MS;
+            while (System.currentTimeMillis() < deadline) {
+                Connection conn = pool.pollFirst();
+                if (conn != null) {
+                    // Recicla conexoes velhas (max lifetime)
+                    Long created = createdAt.get(conn);
+                    if (created != null && (System.currentTimeMillis() - created) > MAX_LIFETIME_MS) {
+                        createdAt.remove(conn);
+                        try { conn.close(); } catch (SQLException ignored) {}
+                        continue;
+                    }
+                    try {
+                        if (!conn.isClosed() && conn.isValid(1)) {
+                            return new PooledConnection(conn);
+                        }
+                        createdAt.remove(conn);
+                        try { conn.close(); } catch (SQLException ignored) {}
+                    } catch (SQLException e) {
+                        createdAt.remove(conn);
+                        try { conn.close(); } catch (SQLException ignored) {}
+                    }
                     continue;
                 }
-                try {
-                    if (!conn.isClosed() && conn.isValid(1)) {
-                        return new PooledConnection(conn);
-                    }
-                    createdAt.remove(conn);
-                    try { conn.close(); } catch (SQLException ignored) {}
-                } catch (SQLException e) {
-                    createdAt.remove(conn);
-                    try { conn.close(); } catch (SQLException ignored) {}
-                }
-                continue;
+                // Pool vazio — cria nova conexao
+                // DR106: timeout no DriverManager para evitar bloqueio indefinido se BD inacessivel
+                DriverManager.setLoginTimeout(5);
+                Connection real = DriverManager.getConnection(URL, USUARIO, SENHA);
+                createdAt.put(real, System.currentTimeMillis());
+                return new PooledConnection(real);
             }
-            // Pool vazio — cria nova conexao
-            Connection real = DriverManager.getConnection(URL, USUARIO, SENHA);
-            createdAt.put(real, System.currentTimeMillis());
-            return new PooledConnection(real);
+            throw new SQLException("Timeout ao obter conexao do pool (" + CONNECTION_TIMEOUT_MS + "ms)");
+        } catch (SQLException e) {
+            semaphore.release(); // libera permit se nao conseguiu conexao
+            throw e;
         }
-        throw new SQLException("Timeout ao obter conexao do pool (" + CONNECTION_TIMEOUT_MS + "ms)");
     }
 
     /**
      * Devolve uma conexao real ao pool (chamado pelo PooledConnection.close()).
      */
     static void devolver(Connection realConn) {
-        if (realConn == null) return;
+        if (realConn == null) {
+            semaphore.release();
+            return;
+        }
         try {
-            if (realConn.isClosed()) return;
+            if (realConn.isClosed()) {
+                createdAt.remove(realConn);
+                semaphore.release();
+                return;
+            }
             if (!realConn.getAutoCommit()) {
                 realConn.setAutoCommit(true);
             }
         } catch (SQLException e) {
+            createdAt.remove(realConn);
             try { realConn.close(); } catch (SQLException ignored) {}
+            semaphore.release();
             return;
         }
-        if (pool.size() < POOL_SIZE) {
-            pool.offerFirst(realConn);
-        } else {
+        // #003: offerFirst retorna false se pool cheio (capacidade fixa) — atomico
+        if (!pool.offerFirst(realConn)) {
+            createdAt.remove(realConn);
             try { realConn.close(); } catch (SQLException ignored) {}
         }
+        semaphore.release();
     }
 
     /**

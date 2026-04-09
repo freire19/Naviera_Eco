@@ -41,6 +41,7 @@ public class BaixaPagamentoController {
 
     @FXML
     public void initialize() {
+        if (!gui.util.PermissaoService.isFinanceiro()) { gui.util.PermissaoService.exigirFinanceiro("Baixa de Pagamento"); return; }
         txtDesconto.textProperty().addListener((obs, old, novo) -> calcularTotais());
         txtValorRecebido.textProperty().addListener((obs, old, novo) -> calcularTotais());
 

@@ -62,9 +62,12 @@ public class TelaGerenciarAgendaController implements Initializable {
         colConcluida.setCellValueFactory(param -> {
             TarefaAgenda tarefa = param.getValue();
             SimpleObjectProperty<Boolean> booleanProp = new SimpleObjectProperty<>(tarefa.isConcluida());
+            // DR127: mover DB call para bg thread (evita bloquear FX thread no render de celula)
             booleanProp.addListener((observable, oldValue, newValue) -> {
                 tarefa.setConcluida(newValue);
-                agendaDAO.atualizarStatus(tarefa.getId(), newValue);
+                Thread bgUpdate = new Thread(() -> agendaDAO.atualizarStatus(tarefa.getId(), newValue));
+                bgUpdate.setDaemon(true);
+                bgUpdate.start();
             });
             return booleanProp;
         });

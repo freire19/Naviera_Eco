@@ -63,6 +63,7 @@ public enum StatusPagamento {
         try {
             return valueOf(status.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
+            System.err.println("StatusPagamento.fromString: valor desconhecido '" + status + "' — retornando PENDENTE");
             return PENDENTE;
         }
     }

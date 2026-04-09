@@ -67,11 +67,19 @@ public class PermissaoService {
         return false;
     }
 
+    // DR123: guard de FX thread para evitar IllegalStateException se chamado de bg thread
     private static void negarAcesso(String operacao) {
-        Alert alert = new Alert(AlertType.WARNING);
-        alert.setTitle("Acesso Negado");
-        alert.setHeaderText("Permissao insuficiente");
-        alert.setContentText("Voce nao tem permissao para: " + operacao + "\nContate o administrador do sistema.");
-        alert.showAndWait();
+        Runnable showAlert = () -> {
+            Alert alert = new Alert(AlertType.WARNING);
+            alert.setTitle("Acesso Negado");
+            alert.setHeaderText("Permissao insuficiente");
+            alert.setContentText("Voce nao tem permissao para: " + operacao + "\nContate o administrador do sistema.");
+            alert.showAndWait();
+        };
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            showAlert.run();
+        } else {
+            javafx.application.Platform.runLater(showAlert);
+        }
     }
 }
