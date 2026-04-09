@@ -98,4 +98,15 @@ public class Tarifa {
     public String toString() {
         return "Tarifa [id=" + id + ", rota=" + nomeRota + ", tipoPassageiro=" + nomeTipoPassageiro + "]";
     }
+
+    // DP033: equals/hashCode para collection performance
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Tarifa that = (Tarifa) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
 }

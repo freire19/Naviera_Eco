@@ -2,7 +2,6 @@ package gui;
 
 import dao.PassagemDAO;
 import dao.ViagemDAO;
-import dao.ConexaoBD;
 import model.Passagem;
 import model.Viagem;
 import javafx.application.Platform;
@@ -23,9 +22,6 @@ import javafx.scene.Node;
 import javafx.scene.control.TableCell;
 
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -47,6 +43,7 @@ import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
 import javax.imageio.ImageIO;
+import gui.util.AlertHelper;
 
 public class ListarPassageirosViagemController implements Initializable {
 
@@ -111,7 +108,7 @@ public class ListarPassageirosViagemController implements Initializable {
 
     private void preencherPassageiros(Viagem viagemAtiva, List<Passagem> passageiros) {
         if (viagemAtiva == null) {
-            showAlert(AlertType.INFORMATION, "Nenhuma Viagem Ativa", "Não há uma viagem ativa definida.");
+            AlertHelper.show(AlertType.INFORMATION, "Nenhuma Viagem Ativa", "Não há uma viagem ativa definida.");
             lblViagemAtivaInfo.setText("Nenhuma viagem ativa.");
             obsListPassageiros.clear();
             return;
@@ -127,20 +124,20 @@ public class ListarPassageirosViagemController implements Initializable {
         if (passageiros != null) {
             obsListPassageiros.setAll(passageiros);
         } else {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Lista", "Ocorreu um erro ao carregar a lista de passageiros.");
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Lista", "Ocorreu um erro ao carregar a lista de passageiros.");
         }
     }
     
     private void carregarDadosEmpresaCompleto() {
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao, cnpj, endereco, telefone, path_logo FROM configuracao_empresa LIMIT 1");
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                if(rs.getString("nome_embarcacao") != null) empNome = rs.getString("nome_embarcacao");
-                if(rs.getString("cnpj") != null) empCnpj = rs.getString("cnpj");
-                if(rs.getString("endereco") != null) empEndereco = rs.getString("endereco");
-                if(rs.getString("telefone") != null) empTelefone = rs.getString("telefone");
-                if(rs.getString("path_logo") != null) empPathLogo = rs.getString("path_logo");
+        try {
+            dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
+            model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            if (empresa != null) {
+                if (empresa.getEmbarcacao() != null) empNome = empresa.getEmbarcacao();
+                if (empresa.getCnpj() != null) empCnpj = empresa.getCnpj();
+                if (empresa.getEndereco() != null) empEndereco = empresa.getEndereco();
+                if (empresa.getTelefone() != null) empTelefone = empresa.getTelefone();
+                if (empresa.getCaminhoFoto() != null) empPathLogo = empresa.getCaminhoFoto();
             }
         } catch (Exception e) { e.printStackTrace(); }
     }
@@ -204,7 +201,7 @@ public class ListarPassageirosViagemController implements Initializable {
     @FXML
     private void handleImprimirLista(ActionEvent event) {
         if (obsListPassageiros.isEmpty()) {
-            showAlert(AlertType.WARNING, "Lista Vazia", "Não há passageiros para imprimir.");
+            AlertHelper.show(AlertType.WARNING, "Lista Vazia", "Não há passageiros para imprimir.");
             return;
         }
         imprimirRelatorioA4();
@@ -398,11 +395,15 @@ public class ListarPassageirosViagemController implements Initializable {
 
         boolean doPrint = job.printDialog();
         if (doPrint) {
-            try {
-                job.print();
-            } catch (PrinterException e) {
-                showAlert(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir: " + e.getMessage());
-            }
+            // DP027: mover impressao para background thread (evita congelar FX thread)
+            Thread t = new Thread(() -> {
+                try { job.print(); } catch (PrinterException ex) {
+                    javafx.application.Platform.runLater(() ->
+                        AlertHelper.show(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir: " + ex.getMessage()));
+                }
+            });
+            t.setDaemon(true);
+            t.start();
         }
     }
     
@@ -417,11 +418,4 @@ public class ListarPassageirosViagemController implements Initializable {
         TelaPrincipalController.fecharTelaAtual(btnSair);
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

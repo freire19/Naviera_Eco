@@ -4,10 +4,6 @@ import java.io.File;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
-import dao.ConexaoBD;
 import dao.ReciboAvulsoDAO;
 import dao.ViagemDAO;
 import javafx.beans.property.SimpleObjectProperty;
@@ -192,29 +187,6 @@ public class GerarReciboAvulsoController implements Initializable {
         return itens;
     }
 
-    private void carregarListaViagensParaFiltro() {
-        if (cmbFiltroViagem == null) return;
-        // DR117: background thread para nao bloquear FX thread
-        Thread bg = new Thread(() -> {
-            try {
-                ObservableList<String> itens = carregarListaViagensParaFiltroAsync();
-                Platform.runLater(() -> {
-                    cmbFiltroViagem.setItems(itens);
-                    cmbFiltroViagem.setOnAction(e -> {
-                        String selecionada = cmbFiltroViagem.getValue();
-                        if (selecionada != null && !selecionada.isEmpty()) {
-                            buscarViagemEAtualizarTabela(selecionada);
-                        }
-                    });
-                });
-            } catch (Exception e) {
-                System.err.println("Erro ao carregar lista viagens GerarReciboAvulso: " + e.getMessage());
-            }
-        });
-        bg.setDaemon(true);
-        bg.start();
-    }
-
     private void buscarViagemEAtualizarTabela(String viagemString) {
         try {
             // Pega o ID antes do primeiro traço
@@ -345,26 +317,26 @@ public class GerarReciboAvulsoController implements Initializable {
     }
 
     private void salvarEImprimir(ReciboAvulso r, Runnable acaoImprimir) {
-        try {
-            dao.salvar(r);
-            
-            // ATUALIZA A TABELA COM O FILTRO ATUAL (OU VIAGEM ATIVA)
-            String filtroAtual = (cmbFiltroViagem != null) ? cmbFiltroViagem.getValue() : null;
-            if (filtroAtual != null && !filtroAtual.isEmpty()) {
-                buscarViagemEAtualizarTabela(filtroAtual);
-            } else if (viagemAtiva != null) {
-                carregarHistorico(viagemAtiva.getId().intValue() /* #010: IDs < Integer.MAX_VALUE */);
-            }
-            
-            acaoImprimir.run();
-            txtNome.clear(); txtValor.clear(); txtReferente.clear(); txtValor.setText("");
-        } catch (SQLException e) {
+        boolean salvo = dao.salvar(r);
+        if (!salvo) {
             Alert alert = new Alert(AlertType.ERROR);
             alert.setTitle("Erro");
             alert.setHeaderText(null);
-            alert.setContentText(e.getMessage());
+            alert.setContentText("Não foi possível salvar o recibo. Verifique o log para detalhes.");
             alert.showAndWait();
+            return;
         }
+
+        // ATUALIZA A TABELA COM O FILTRO ATUAL (OU VIAGEM ATIVA)
+        String filtroAtual = (cmbFiltroViagem != null) ? cmbFiltroViagem.getValue() : null;
+        if (filtroAtual != null && !filtroAtual.isEmpty()) {
+            buscarViagemEAtualizarTabela(filtroAtual);
+        } else if (viagemAtiva != null) {
+            carregarHistorico(viagemAtiva.getId().intValue() /* #010: IDs < Integer.MAX_VALUE */);
+        }
+
+        acaoImprimir.run();
+        txtNome.clear(); txtValor.clear(); txtReferente.clear(); txtValor.setText("");
     }
 
     @FXML private void handleImprimirBranco(ActionEvent event) {
@@ -460,7 +432,7 @@ public class GerarReciboAvulsoController implements Initializable {
 
             VBox footer = new VBox(5); footer.setAlignment(Pos.CENTER); footer.setPadding(new Insets(15, 0, 0, 0));
             DateTimeFormatter dtfData = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            Text tDataRecibo = new Text("Manaus, " + r.getDataEmissao().format(dtfData)); tDataRecibo.setFont(Font.font("System", 8));
+            Text tDataRecibo = new Text(empresaEndereco + ", " + r.getDataEmissao().format(dtfData)); tDataRecibo.setFont(Font.font("System", 8));
             Line lineAss = new Line(0, 0, 140, 0); lineAss.getStrokeDashArray().addAll(2d);
             Text tAss = new Text("Assinatura"); tAss.setFont(Font.font("System", 8));
             footer.getChildren().addAll(new Text("\n"), tDataRecibo, new Text("\n"), lineAss, tAss);
@@ -577,7 +549,7 @@ public class GerarReciboAvulsoController implements Initializable {
         String dataH = preenchido ? r.getDataEmissao().format(DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", new Locale("pt","BR"))) : "";
         
         VBox cityBox = new VBox(2); cityBox.setAlignment(Pos.CENTER);
-        Label cityVal = new Label("Manaus, " + dataH); cityVal.setFont(Font.font("Arial", 11));
+        Label cityVal = new Label(empresaEndereco + ", " + dataH); cityVal.setFont(Font.font("Arial", 11));
         Line l1 = new Line(0,0,220,0); l1.setStroke(Color.BLACK);
         Label cityLbl = new Label("Cidade e Data"); cityLbl.setFont(Font.font("Arial", 9));
         cityBox.getChildren().addAll(cityVal, l1, cityLbl);
@@ -606,15 +578,15 @@ public class GerarReciboAvulsoController implements Initializable {
     }
 
     private void carregarDadosEmpresa() {
-        try (Connection con = ConexaoBD.getConnection(); 
-             PreparedStatement stmt = con.prepareStatement("SELECT nome_embarcacao, cnpj, path_logo, endereco, telefone FROM configuracao_empresa LIMIT 1");
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                if(rs.getString("nome_embarcacao")!=null) empresaNome = rs.getString("nome_embarcacao").toUpperCase();
-                if(rs.getString("cnpj")!=null) empresaCnpj = rs.getString("cnpj");
-                if(rs.getString("path_logo")!=null) empresaLogoPath = rs.getString("path_logo");
-                if(rs.getString("endereco")!=null) empresaEndereco = rs.getString("endereco");
-                if(rs.getString("telefone")!=null) empresaTelefone = rs.getString("telefone");
+        try {
+            dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
+            model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            if (empresa != null) {
+                if (empresa.getEmbarcacao() != null) empresaNome = empresa.getEmbarcacao().toUpperCase();
+                if (empresa.getCnpj() != null) empresaCnpj = empresa.getCnpj();
+                if (empresa.getCaminhoFoto() != null) empresaLogoPath = empresa.getCaminhoFoto();
+                if (empresa.getEndereco() != null) empresaEndereco = empresa.getEndereco();
+                if (empresa.getTelefone() != null) empresaTelefone = empresa.getTelefone();
             }
         } catch (Exception e) { System.err.println("Erro em GerarReciboAvulsoController.carregarDadosEmpresa: " + e.getMessage()); }
     }

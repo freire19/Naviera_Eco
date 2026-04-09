@@ -91,6 +91,7 @@ import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob; 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
+import gui.util.AlertHelper;
 
 
 public class VenderPassagemController implements Initializable {
@@ -317,12 +318,12 @@ public class VenderPassagemController implements Initializable {
                     System.err.println("Erro ao carregar rotas: " + e.getMessage());
                 }
 
-                List<String> tipoPassagem = auxiliaresDAO.listarPassagemAux();
-                List<String> sexos = auxiliaresDAO.listarSexo();
-                List<String> tiposDoc = auxiliaresDAO.listarTipoDoc();
-                List<String> nac = auxiliaresDAO.listarNacionalidade();
-                List<String> agentes = auxiliaresDAO.listarAgenteAux();
-                List<String> acomodacoes = auxiliaresDAO.listarAcomodacao();
+                List<String> tipoPassagem = auxiliaresDAO.listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem");
+                List<String> sexos = auxiliaresDAO.listarAuxiliar("aux_sexo", "nome_sexo");
+                List<String> tiposDoc = auxiliaresDAO.listarAuxiliar("aux_tipos_documento", "nome_tipo_doc");
+                List<String> nac = auxiliaresDAO.listarAuxiliar("aux_nacionalidades", "nome_nacionalidade");
+                List<String> agentes = auxiliaresDAO.listarAuxiliar("aux_agentes", "nome_agente");
+                List<String> acomodacoes = auxiliaresDAO.listarAuxiliar("aux_acomodacoes", "nome_acomodacao");
 
                 Platform.runLater(() -> {
                     todosOsPassageiros.setAll(listaP);
@@ -395,23 +396,20 @@ public class VenderPassagemController implements Initializable {
     }
 
     private void carregarConfiguracaoEmpresa() {
-        String sql = "SELECT path_logo, companhia, nome_embarcacao, cnpj, telefone, endereco, frase_relatorio, recomendacoes_bilhete FROM configuracao_empresa LIMIT 1";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            if (rs.next()) {
-                if (rs.getString("path_logo") != null) this.empPathLogo = rs.getString("path_logo");
-                if (rs.getString("companhia") != null) this.empCompanhia = rs.getString("companhia");
-                if (rs.getString("nome_embarcacao") != null) this.empEmbarcacao = rs.getString("nome_embarcacao");
-                if (rs.getString("cnpj") != null) this.empCnpj = rs.getString("cnpj");
-                if (rs.getString("telefone") != null) this.empTelefone = rs.getString("telefone");
-                if (rs.getString("frase_relatorio") != null) this.empFrase = rs.getString("frase_relatorio");
-                if (rs.getString("recomendacoes_bilhete") != null) this.empRecomendacoes = rs.getString("recomendacoes_bilhete").replace("\\n", "\n");
-                
-                this.empProprietario = this.empCompanhia; 
+        try {
+            dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
+            model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            if (empresa != null) {
+                if (empresa.getCaminhoFoto() != null) this.empPathLogo = empresa.getCaminhoFoto();
+                if (empresa.getCompanhia() != null) this.empCompanhia = empresa.getCompanhia();
+                if (empresa.getEmbarcacao() != null) this.empEmbarcacao = empresa.getEmbarcacao();
+                if (empresa.getCnpj() != null) this.empCnpj = empresa.getCnpj();
+                if (empresa.getTelefone() != null) this.empTelefone = empresa.getTelefone();
+                if (empresa.getFrase() != null) this.empFrase = empresa.getFrase();
+                if (empresa.getRecomendacoesBilhete() != null) this.empRecomendacoes = empresa.getRecomendacoesBilhete().replace("\\n", "\n");
+                this.empProprietario = this.empCompanhia;
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -616,12 +614,12 @@ public class VenderPassagemController implements Initializable {
             acomodacao == null || selectedRotaStr == null ||
             agente == null || (txtAPagar != null && parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) < 0)) {
             // DL032: permite valor zero (passagem gratuita) — bloqueia apenas negativo
-            showAlert(AlertType.WARNING, "Campos Obrigat\u00f3rios", "Por favor, preencha todos os campos obrigat\u00f3rios.");
+            AlertHelper.show(AlertType.WARNING, "Campos Obrigat\u00f3rios", "Por favor, preencha todos os campos obrigat\u00f3rios.");
             return;
         }
 
         if (this.viagemSelecionada == null || this.viagemSelecionada.getId() == null) {
-            showAlert(AlertType.ERROR, "Erro de Viagem", "Nenhuma viagem selecionada.");
+            AlertHelper.show(AlertType.ERROR, "Erro de Viagem", "Nenhuma viagem selecionada.");
             return;
         }
 
@@ -650,7 +648,7 @@ public class VenderPassagemController implements Initializable {
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro Cr\u00edtico", "Ocorreu um erro inesperado ao preparar a venda: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro Cr\u00edtico", "Ocorreu um erro inesperado ao preparar a venda: " + e.getMessage());
         }
     }
 
@@ -686,7 +684,7 @@ public class VenderPassagemController implements Initializable {
         Passageiro passageiroSalvo = passageiroDAO.salvarOuAtualizar(passageiroParaSalvar);
 
         if (passageiroSalvo == null) {
-            showAlert(AlertType.ERROR, "Erro", "Falha ao salvar os dados do passageiro.");
+            AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao salvar os dados do passageiro.");
             return;
         }
 
@@ -752,7 +750,7 @@ public class VenderPassagemController implements Initializable {
             });
 
         } else {
-            showAlert(AlertType.ERROR, "Erro", "Erro ao salvar passagem.");
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao salvar passagem.");
         }
     }
 
@@ -1401,54 +1399,36 @@ public class VenderPassagemController implements Initializable {
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 newScene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-
-                    if (event.getCode() == KeyCode.F1) {
-                        if (btnSalvar != null && !btnSalvar.isDisabled()) {
-                            handleSalvar(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.F2) {
-                        if (btnNovo != null && !btnNovo.isDisabled()) {
-                            handleNovo(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.F3) {
-                        if (btnEditar != null && !btnEditar.isDisabled()) {
-                            handleEditar(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.F4) {
-                        if (btnExcluir != null && !btnExcluir.isDisabled()) {
-                            handleExcluir(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.F5) {
-                        if (btnCancelar != null && !btnCancelar.isDisabled()) {
-                            handleCancelar(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.F6) {
-                        if (btnImprimirBilhete != null && !btnImprimirBilhete.isDisabled()) {
-                            handleImprimirBilhete(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.F7) {
-                        if (btnImprimirLista != null && !btnImprimirLista.isDisabled()) {
-                            handleImprimirLista(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.F8) {
-                        if (btnRelatorio != null && !btnRelatorio.isDisabled()) {
-                            handleRelatorio(null);
-                            event.consume();
-                        }
-                    } else if (event.getCode() == KeyCode.ESCAPE) {
-                        if (btnSair != null && !btnSair.isDisabled()) {
-                            handleSair(null);
-                            event.consume();
-                        }
+                    switch (event.getCode()) {
+                        case F1:
+                            if (btnSalvar != null && !btnSalvar.isDisabled()) { handleSalvar(null); event.consume(); }
+                            break;
+                        case F2:
+                            if (btnNovo != null && !btnNovo.isDisabled()) { handleNovo(null); event.consume(); }
+                            break;
+                        case F3:
+                            if (btnEditar != null && !btnEditar.isDisabled()) { handleEditar(null); event.consume(); }
+                            break;
+                        case F4:
+                            if (btnExcluir != null && !btnExcluir.isDisabled()) { handleExcluir(null); event.consume(); }
+                            break;
+                        case F5:
+                            if (btnCancelar != null && !btnCancelar.isDisabled()) { handleCancelar(null); event.consume(); }
+                            break;
+                        case F6:
+                            if (btnImprimirBilhete != null && !btnImprimirBilhete.isDisabled()) { handleImprimirBilhete(null); event.consume(); }
+                            break;
+                        case F7:
+                            if (btnImprimirLista != null && !btnImprimirLista.isDisabled()) { handleImprimirLista(null); event.consume(); }
+                            break;
+                        case F8:
+                            if (btnRelatorio != null && !btnRelatorio.isDisabled()) { handleRelatorio(null); event.consume(); }
+                            break;
+                        case ESCAPE:
+                            if (btnSair != null && !btnSair.isDisabled()) { handleSair(null); event.consume(); }
+                            break;
+                        default: break;
                     }
-
                 });
             }
         });
@@ -1472,7 +1452,7 @@ public class VenderPassagemController implements Initializable {
 
     @FXML private void handleNovo(ActionEvent event) {
         if (viagemSelecionada == null) {
-            showAlert(AlertType.INFORMATION, "Viagem Necess\u00e1ria", "Nenhuma viagem foi informada. Verifique se existe uma viagem 'Atual'.");
+            AlertHelper.show(AlertType.INFORMATION, "Viagem Necess\u00e1ria", "Nenhuma viagem foi informada. Verifique se existe uma viagem 'Atual'.");
             return;
         }
         limparCamposParaNovaVendaAutomatica();
@@ -1556,7 +1536,7 @@ public class VenderPassagemController implements Initializable {
     private void handleEditar(ActionEvent event) {
         Passagem selected = tablePassagens.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem na tabela para editar.");
+            AlertHelper.show(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem na tabela para editar.");
             return;
         }
 
@@ -1604,7 +1584,7 @@ public class VenderPassagemController implements Initializable {
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro", "Erro ao carregar dados para edi\u00e7\u00e3o: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao carregar dados para edi\u00e7\u00e3o: " + e.getMessage());
             configurarEstadoInicialDaTela();
         } finally {
             isUpdatingFromCode = false;
@@ -1615,7 +1595,7 @@ public class VenderPassagemController implements Initializable {
     private void handleExcluir(ActionEvent event) {
         Passagem selected = tablePassagens.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem para excluir.");
             return;
         }
 
@@ -1633,13 +1613,13 @@ public class VenderPassagemController implements Initializable {
                     tablePassagens.getItems().remove(selected);
                     txtTotalPassageiros.setText(String.valueOf(passagensDaViagemAtual.size()));
 
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Passagem exclu\u00edda com sucesso.");
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Passagem exclu\u00edda com sucesso.");
                     limparTodosOsCamposGUI();
                 } else {
-                    showAlert(AlertType.ERROR, "Erro", "N\u00e3o foi poss\u00edvel excluir a passagem.");
+                    AlertHelper.show(AlertType.ERROR, "Erro", "N\u00e3o foi poss\u00edvel excluir a passagem.");
                 }
             } catch (Exception e) {
-                showAlert(AlertType.ERROR, "Erro", "Erro ao excluir: " + e.getMessage());
+                AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao excluir: " + e.getMessage());
             }
         }
     }
@@ -1648,7 +1628,7 @@ public class VenderPassagemController implements Initializable {
     private void handleImprimirBilhete(ActionEvent event) {
         Passagem selected = tablePassagens.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            showAlert(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem para imprimir o bilhete.");
+            AlertHelper.show(AlertType.WARNING, "Sele\u00e7\u00e3o", "Selecione uma passagem para imprimir o bilhete.");
             return;
         }
 
@@ -2008,7 +1988,7 @@ public class VenderPassagemController implements Initializable {
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     javafx.application.Platform.runLater(() ->
-                        showAlert(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir."));
+                        AlertHelper.show(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir."));
                 }
             });
             printThread.setDaemon(true);
@@ -2016,7 +1996,7 @@ public class VenderPassagemController implements Initializable {
 
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro de Impressao", "Falha ao imprimir: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro de Impressao", "Falha ao imprimir: " + e.getMessage());
         }
     }
 
@@ -2048,7 +2028,7 @@ public class VenderPassagemController implements Initializable {
             stage.show();
         } catch (IOException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao Abrir Tela", "Nao foi possivel carregar a tela: " + fxmlPath);
+            AlertHelper.show(AlertType.ERROR, "Erro ao Abrir Tela", "Nao foi possivel carregar a tela: " + fxmlPath);
         }
     }
 
@@ -2181,22 +2161,5 @@ public class VenderPassagemController implements Initializable {
         if (tablePassagens != null) tablePassagens.setDisable(false);
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(alertType);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
-    }
 
-    private void fecharComboBoxesAbertos() {
-        List<ComboBox<?>> comboBoxes = Arrays.asList(cmbPassageiroAuto, cmbRota, cmbTipoPassagemAux, cmbViagem, cmbSexo, cmbTipoDoc);
-        comboBoxes.forEach(comboBox -> {
-            if (comboBox != null && comboBox.isShowing()) {
-                comboBox.hide();
-            }
-        });
-    }
 }

@@ -1,7 +1,11 @@
 package gui;
 
 import dao.ConexaoBD;
+import dao.FuncionarioDAO;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
+import model.Funcionario;
+import model.PagamentoHistorico;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -31,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -62,7 +67,8 @@ public class GestaoFuncionariosController {
     @FXML private TableColumn<PagamentoHistorico, String> colValorHist;
     
     private Funcionario funcionarioSelecionado;
-    
+    private final FuncionarioDAO funcionarioDAO = new FuncionarioDAO();
+
     private static final Locale BRASIL = new Locale("pt", "BR");
     private static final NumberFormat nf = NumberFormat.getCurrencyInstance(BRASIL);
     private static final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -172,37 +178,10 @@ public class GestaoFuncionariosController {
 
     @FXML
     public void carregarFuncionarios() {
-        ObservableList<Funcionario> lista = FXCollections.observableArrayList();
         boolean mostrarInativos = (chkMostrarInativos != null && chkMostrarInativos.isSelected());
-        String sql = mostrarInativos ? "SELECT * FROM funcionarios ORDER BY nome" : "SELECT * FROM funcionarios WHERE ativo = true ORDER BY nome";
-        
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while(rs.next()) {
-                Funcionario f = new Funcionario();
-                f.setId(rs.getInt("id"));
-                f.setNome(rs.getString("nome"));
-                f.setCargo(rs.getString("cargo"));
-                f.setSalario(rs.getDouble("salario"));
-                if (rs.getDate("data_admissao") != null) f.setDataAdmissao(rs.getDate("data_admissao").toLocalDate());
-                try { if (rs.getDate("data_inicio_calculo") != null) f.setDataInicioCalculo(rs.getDate("data_inicio_calculo").toLocalDate()); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna data_inicio_calculo ausente ou invalida — " + e.getMessage()); }
-                try { f.setRecebe13(rs.getBoolean("recebe_decimo_terceiro")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna recebe_decimo_terceiro indisponivel — " + e.getMessage()); f.setRecebe13(false); }
-
-                try { f.setClt(rs.getBoolean("is_clt")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna is_clt indisponivel — " + e.getMessage()); f.setClt(false); }
-                try { f.setValorInss(rs.getDouble("valor_inss")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna valor_inss indisponivel — " + e.getMessage()); f.setValorInss(0.0); }
-                try { f.setDescontarInss(rs.getBoolean("descontar_inss")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna descontar_inss indisponivel — " + e.getMessage()); f.setDescontarInss(false); }
-
-                try { f.setAtivo(rs.getBoolean("ativo")); } catch (Exception e) { System.err.println("GestaoFuncionariosController.mapResultSet: coluna ativo indisponivel — " + e.getMessage()); f.setAtivo(true); }
-                
-                f.setCpf(rs.getString("cpf")); f.setRg(rs.getString("rg")); f.setCtps(rs.getString("ctps"));
-                f.setTelefone(rs.getString("telefone")); f.setEndereco(rs.getString("endereco"));
-                if (rs.getDate("data_nascimento") != null) f.setDataNascimento(rs.getDate("data_nascimento").toLocalDate());
-                lista.add(f);
-            }
-        } catch (SQLException e) { e.printStackTrace(); javafx.application.Platform.runLater(() -> alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage())); }
-        ObservableList<Funcionario> finalLista = lista;
-        javafx.application.Platform.runLater(() -> listaFuncionarios.setItems(finalLista));
+        List<Funcionario> lista = funcionarioDAO.listarTodos(mostrarInativos);
+        ObservableList<Funcionario> obsLista = FXCollections.observableArrayList(lista);
+        javafx.application.Platform.runLater(() -> listaFuncionarios.setItems(obsLista));
     }
     
     private void selecionarFuncionario(Funcionario f) {
@@ -254,51 +233,44 @@ public class GestaoFuncionariosController {
     @FXML
     public void salvarFuncionario() {
         if (txtNome.getText().isEmpty() || txtCargo.getText().isEmpty() || txtSalario.getText().isEmpty() || dpAdmissao.getValue() == null) {
-            alert("Preencha: Nome, Cargo, Salário e Data de Admissão."); return;
+            AlertHelper.info("Preencha: Nome, Cargo, Salário e Data de Admissão."); return;
         }
-        try (Connection con = ConexaoBD.getConnection()) {
-            String sql; PreparedStatement stmt;
+        try {
+            Funcionario f = (funcionarioSelecionado != null) ? funcionarioSelecionado : new Funcionario();
             double salario = Double.parseDouble(txtSalario.getText().replace(".", "").replace(",", "."));
-            
             double vInss = 0.0;
             if (txtValorInss != null && !txtValorInss.getText().isEmpty()) {
                 vInss = Double.parseDouble(txtValorInss.getText().replace(".", "").replace(",", "."));
             }
-            boolean descInss = (chkDescontarInss != null) && chkDescontarInss.isSelected();
-            boolean isClt = (chkClt != null) && chkClt.isSelected();
-            boolean tem13 = (chkDecimo != null) && chkDecimo.isSelected();
-            
-            if (funcionarioSelecionado == null) {
-                sql = "INSERT INTO funcionarios (nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, data_inicio_calculo, recebe_decimo_terceiro, is_clt, valor_inss, descontar_inss, ativo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, true)";
-                stmt = con.prepareStatement(sql);
+
+            f.setNome(txtNome.getText().toUpperCase());
+            f.setCpf(txtCpf.getText());
+            f.setRg(txtRg.getText());
+            f.setCtps(txtCtps.getText());
+            f.setTelefone(txtTelefone.getText());
+            f.setEndereco(txtEndereco.getText());
+            f.setCargo(txtCargo.getText().toUpperCase());
+            f.setSalario(salario);
+            f.setDataAdmissao(dpAdmissao.getValue());
+            f.setDataNascimento(dpDataNascimento.getValue());
+            f.setDataInicioCalculo(dpInicioCalculo.getValue());
+            f.setRecebe13((chkDecimo != null) && chkDecimo.isSelected());
+            f.setClt((chkClt != null) && chkClt.isSelected());
+            f.setValorInss(vInss);
+            f.setDescontarInss((chkDescontarInss != null) && chkDescontarInss.isSelected());
+
+            boolean sucesso = (funcionarioSelecionado == null) ? funcionarioDAO.inserir(f) : funcionarioDAO.atualizar(f);
+            if (sucesso) {
+                AlertHelper.info("Salvo com sucesso!");
+                int idSelecionado = funcionarioSelecionado != null ? funcionarioSelecionado.getId() : 0;
+                carregarFuncionarios();
+                for (Funcionario item : listaFuncionarios.getItems()) {
+                    if (item.getId() == idSelecionado) { listaFuncionarios.getSelectionModel().select(item); break; }
+                }
             } else {
-                sql = "UPDATE funcionarios SET nome=?, cpf=?, rg=?, ctps=?, telefone=?, endereco=?, cargo=?, salario=?, data_admissao=?, data_nascimento=?, data_inicio_calculo=?, recebe_decimo_terceiro=?, is_clt=?, valor_inss=?, descontar_inss=? WHERE id=?";
-                stmt = con.prepareStatement(sql);
+                AlertHelper.info("Erro ao salvar funcionário.");
             }
-            stmt.setString(1, txtNome.getText().toUpperCase());
-            stmt.setString(2, txtCpf.getText()); stmt.setString(3, txtRg.getText()); 
-            stmt.setString(4, txtCtps.getText()); stmt.setString(5, txtTelefone.getText()); stmt.setString(6, txtEndereco.getText()); 
-            stmt.setString(7, txtCargo.getText().toUpperCase());
-            stmt.setDouble(8, salario);
-            stmt.setDate(9, java.sql.Date.valueOf(dpAdmissao.getValue()));
-            stmt.setDate(10, dpDataNascimento.getValue() != null ? java.sql.Date.valueOf(dpDataNascimento.getValue()) : null);
-            stmt.setDate(11, dpInicioCalculo.getValue() != null ? java.sql.Date.valueOf(dpInicioCalculo.getValue()) : null);
-            stmt.setBoolean(12, tem13);
-            stmt.setBoolean(13, isClt);
-            stmt.setDouble(14, vInss);
-            stmt.setBoolean(15, descInss);
-            
-            if (funcionarioSelecionado != null) stmt.setInt(16, funcionarioSelecionado.getId());
-            stmt.executeUpdate();
-            alert("Salvo com sucesso!");
-            
-            int idSelecionado = funcionarioSelecionado != null ? funcionarioSelecionado.getId() : 0;
-            carregarFuncionarios(); 
-            for(Funcionario f : listaFuncionarios.getItems()) {
-                if(f.setId(= idSelecionado) { listaFuncionarios.getSelectionModel().select(f)); break; }
-            }
-            
-        } catch (Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar: " + e.getMessage()); }
+        } catch (Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); }
     }
 
     /**
@@ -319,7 +291,7 @@ public class GestaoFuncionariosController {
     }
 
     private void calcularFinanceiro(Funcionario f) {
-        if (f.setDataAdmissao(= null) return);
+        if (f.getDataAdmissao() == null) return;
         
         if (f.isRecebe13() && lblProvisaoDecimo != null) {
             // DL036: calcular meses trabalhados no ANO CORRENTE (nao total desde admissao)
@@ -390,7 +362,7 @@ public class GestaoFuncionariosController {
     
     @FXML
     public void registrarDescontoOficial() {
-        if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
+        if (funcionarioSelecionado == null) { AlertHelper.info("Selecione um funcionário."); return; }
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Lançar Desconto Oficial");
         dialog.setHeaderText("Desconto Manual (Extra) - RH");
@@ -409,16 +381,16 @@ public class GestaoFuncionariosController {
                 String descricao = "DESC. " + txtDesc.getText().toUpperCase();
                 double valor = Double.parseDouble(txtVal.getText().replace(".", "").replace(",", "."));
                 lancarEventoContabil(funcionarioSelecionado, "DESCONTO_MANUAL", descricao, valor, LocalDate.now(), funcionarioSelecionado.getDataInicioCalculo());
-                alert("Desconto lançado no prontuário do funcionário!");
+                AlertHelper.info("Desconto lançado no prontuário do funcionário!");
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
-            } catch(Exception e) { alert("Valor inválido."); }
+            } catch(Exception e) { AlertHelper.info("Valor inválido."); }
         }
     }
     
     @FXML
     public void registrarFalta() {
-        if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
+        if (funcionarioSelecionado == null) { AlertHelper.info("Selecione um funcionário."); return; }
         Dialog<LocalDate> dialog = new Dialog<>();
         dialog.setTitle("Registrar Falta");
         dialog.setHeaderText("Lançar Falta no RH");
@@ -433,31 +405,23 @@ public class GestaoFuncionariosController {
             try {
                 LocalDate dataFalta = result.get();
                 // DL061: verificar se ja existe falta para o mesmo dia
-                String sqlCheck = "SELECT COUNT(*) FROM eventos_rh WHERE funcionario_id = ? AND data_referencia = ? AND tipo = 'FALTA'";
-                try (Connection conCheck = dao.ConexaoBD.getConnection();
-                     java.sql.PreparedStatement psCheck = conCheck.prepareStatement(sqlCheck)) {
-                    psCheck.setInt(1, funcionarioSelecionado.getId());
-                    psCheck.setDate(2, java.sql.Date.valueOf(dataFalta));
-                    try (java.sql.ResultSet rsCheck = psCheck.executeQuery()) {
-                        if (rsCheck.next() && rsCheck.getInt(1) > 0) {
-                            alert("Ja existe falta registrada para " + funcionarioSelecionado.getNome() + " em " + dataFalta.format(dtf) + ".");
-                            return;
-                        }
-                    }
+                if (funcionarioDAO.existeFaltaNoDia(funcionarioSelecionado.getId(), dataFalta)) {
+                    AlertHelper.info("Ja existe falta registrada para " + funcionarioSelecionado.getNome() + " em " + dataFalta.format(dtf) + ".");
+                    return;
                 }
                 double valorDesconto = funcionarioSelecionado.getSalario() / 30.0;
                 String descricao = "FALTA - " + funcionarioSelecionado.getNome().toUpperCase() + " - " + dataFalta.format(dtf);
                 lancarEventoContabil(funcionarioSelecionado, "FALTA", descricao, valorDesconto, dataFalta, funcionarioSelecionado.getDataInicioCalculo());
-                alert("Falta registrada no prontuário! Valor: " + nf.format(valorDesconto));
+                AlertHelper.info("Falta registrada no prontuário! Valor: " + nf.format(valorDesconto));
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
-            } catch(Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+            } catch(Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
         }
     }
     
     @FXML
     public void fecharMes() {
-        if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
+        if (funcionarioSelecionado == null) { AlertHelper.info("Selecione um funcionário."); return; }
         
         LocalDate dataInicio = (funcionarioSelecionado.getDataInicioCalculo() != null) ? funcionarioSelecionado.getDataInicioCalculo() : funcionarioSelecionado.getDataAdmissao();
         LocalDate dataHoje = LocalDate.now();
@@ -521,89 +485,38 @@ public class GestaoFuncionariosController {
                 funcionarioSelecionado.setDataInicioCalculo(novaDataInicio);
                 dpInicioCalculo.setValue(novaDataInicio); 
                 
-                alert("Ciclo Fechado! Novo ciclo iniciado em: " + novaDataInicio.format(dtf));
+                AlertHelper.info("Ciclo Fechado! Novo ciclo iniciado em: " + novaDataInicio.format(dtf));
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
                 
-            } catch(Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+            } catch(Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
         }
     }
 
     private void atualizarDataInicioCalculo(int idFunc, LocalDate novaData) {
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("UPDATE funcionarios SET data_inicio_calculo = ? WHERE id = ?")) {
-            stmt.setDate(1, java.sql.Date.valueOf(novaData));
-            stmt.setInt(2, idFunc);
-            stmt.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+        funcionarioDAO.atualizarDataInicioCalculo(idFunc, novaData);
     }
 
     // --- MÉTODOS DE BUSCA SEPARADOS ---
     
-    // #DB014/#DB015: try-with-resources + getBigDecimal para valores financeiros
     private double buscarTotalPagamentosReais(Funcionario f, LocalDate inicio) {
-        String sql = "SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas WHERE funcionario_id = ? AND is_excluido = false AND data_pagamento >= ? AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, f.getId());
-            stmt.setDate(2, java.sql.Date.valueOf(inicio));
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) { java.math.BigDecimal v = rs.getBigDecimal("total"); return v != null ? v.doubleValue() : 0.0; }
-            }
-        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalPagamentosReais: " + e.getMessage()); }
-        return 0.0;
+        return funcionarioDAO.buscarTotalPagamentosReais(f.getId(), inicio);
     }
 
     private double buscarTotalEventosRH(Funcionario f, LocalDate dataReferencia) {
-        String sql = "SELECT COALESCE(SUM(valor), 0) as total FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ?";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, f.getId());
-            stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) { java.math.BigDecimal v = rs.getBigDecimal("total"); return v != null ? v.doubleValue() : 0.0; }
-            }
-        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalEventosRH: " + e.getMessage()); }
-        return 0.0;
+        return funcionarioDAO.buscarTotalEventosRH(f.getId(), dataReferencia);
     }
 
     private double buscarTotalDescontosLegado(Funcionario f, LocalDate inicio) {
-        String sql = "SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas WHERE funcionario_id = ? AND data_pagamento >= ? AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, f.getId());
-            stmt.setDate(2, java.sql.Date.valueOf(inicio));
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) { java.math.BigDecimal v = rs.getBigDecimal("total"); return v != null ? v.doubleValue() : 0.0; }
-            }
-        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.buscarTotalDescontosLegado: " + e.getMessage()); }
-        return 0.0;
+        return funcionarioDAO.buscarTotalDescontosLegado(f.getId(), inicio);
     }
 
     private boolean verificarSeExisteEventoRH(Funcionario f, LocalDate dataReferencia, String tipo) {
-        String sql = "SELECT COUNT(*) FROM eventos_rh WHERE funcionario_id = ? AND data_referencia >= ? AND tipo = ?";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, f.getId());
-            stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
-            stmt.setString(3, tipo);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getInt(1) > 0;
-            }
-        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteEventoRH: " + e.getMessage()); }
-        return false;
+        return funcionarioDAO.existeEventoRH(f.getId(), dataReferencia, tipo);
     }
 
     private boolean verificarSeExisteDescontoLegado(Funcionario f, LocalDate dataReferencia, String termo) {
-        String sql = "SELECT COUNT(*) FROM financeiro_saidas WHERE UPPER(descricao) LIKE ? AND data_pagamento >= ? AND forma_pagamento = 'DESCONTO'";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setString(1, "%" + termo.toUpperCase() + "%");
-            stmt.setDate(2, java.sql.Date.valueOf(dataReferencia));
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return rs.getInt(1) > 0;
-            }
-        } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.verificarSeExisteDescontoLegado: " + e.getMessage()); }
-        return false;
+        return funcionarioDAO.existeDescontoLegado(dataReferencia, termo);
     }
 
     @FXML public void lancarPagamento() {
@@ -611,133 +524,54 @@ public class GestaoFuncionariosController {
          if (funcionarioSelecionado == null) return;
          try {
             double valor = Double.parseDouble(txtValorPagamento.getText().replace(".", "").replace(",", "."));
-            if (txtDescricaoPagamento.getText().isEmpty()) { alert("Digite uma descrição."); return; }
+            if (txtDescricaoPagamento.getText().isEmpty()) { AlertHelper.info("Digite uma descrição."); return; }
             String desc = "PAGTO " + funcionarioSelecionado.getNome().toUpperCase() + " - " + txtDescricaoPagamento.getText().toUpperCase();
             
             lancarDebitoAutomatico(funcionarioSelecionado, desc, valor, LocalDate.now(), "DINHEIRO");
             
             txtValorPagamento.clear(); txtDescricaoPagamento.clear();
             calcularFinanceiro(funcionarioSelecionado); carregarHistoricoFinanceiro(funcionarioSelecionado);
-         } catch(Exception e) { alert("Valor inválido."); }
-    }
-    
-    private int buscarIdCategoriaFuncionarios(Connection con) {
-        int id = 1; 
-        try {
-            String sql = "SELECT id FROM categorias WHERE UPPER(nome) LIKE '%FUNCIONARIO%' OR UPPER(nome) LIKE '%FOLHA%' OR UPPER(nome) LIKE '%RH%' OR UPPER(nome) LIKE '%PAGAMENTO%' LIMIT 1";
-            try (PreparedStatement stmt = con.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    id = rs.getInt("id");
-                }
-            }
-        } catch (Exception e) { e.printStackTrace(); }
-        return id;
+         } catch(Exception e) { AlertHelper.info("Valor inválido."); }
     }
     
     private void lancarDebitoAutomatico(Funcionario f, String descricao, double valor, LocalDate dataRef, String formaPagamento) {
-        try {
-            int idViagem = 1;
-            try (Connection con = ConexaoBD.getConnection();
-                 PreparedStatement psViagem = con.prepareStatement("SELECT id_viagem FROM viagens WHERE is_atual = true LIMIT 1");
-                 ResultSet rs = psViagem.executeQuery()) {
-                if(rs.next()) idViagem = rs.getInt(1);
-            }
-            
-            String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, false)";
-            try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-                stmt.setString(1, descricao.toUpperCase());
-                stmt.setDouble(2, valor); stmt.setDouble(3, valor);
-                stmt.setDate(4, java.sql.Date.valueOf(dataRef)); stmt.setDate(5, java.sql.Date.valueOf(dataRef));
-                stmt.setString(6, "PAGO");
-                stmt.setString(7, formaPagamento);
-
-                int idCategoria = buscarIdCategoriaFuncionarios(con);
-                stmt.setInt(8, idCategoria);
-
-                stmt.setInt(9, idViagem);
-                stmt.setInt(10, f.getId());
-                stmt.executeUpdate();
-            }
-        } catch (Exception e) { e.printStackTrace(); }
+        funcionarioDAO.lancarDebito(f.getId(), descricao, valor, dataRef, formaPagamento);
     }
 
     private void lancarEventoContabil(Funcionario f, String tipo, String descricao, double valor, LocalDate dataEvento, LocalDate dataReferencia) {
-        String sql = "INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia) VALUES (?, ?, ?, ?, ?, ?)";
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, f.getId());
-            stmt.setString(2, tipo); 
-            stmt.setString(3, descricao);
-            stmt.setDouble(4, valor);
-            stmt.setDate(5, java.sql.Date.valueOf(dataEvento));
-            stmt.setDate(6, java.sql.Date.valueOf(dataReferencia != null ? dataReferencia : dataEvento));
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar evento RH: " + e.getMessage());
+        if (!funcionarioDAO.lancarEventoRH(f.getId(), tipo, descricao, valor, dataEvento, dataReferencia)) {
+            AlertHelper.info("Erro ao salvar evento RH.");
         }
     }
     
     private void carregarHistoricoFinanceiro(Funcionario f) {
-        ObservableList<PagamentoHistorico> historico = FXCollections.observableArrayList();
         String selecionado = cbMesAno.getValue();
         int mes = LocalDate.now().getMonthValue();
         int ano = LocalDate.now().getYear();
-        
+
         if (selecionado != null && !selecionado.isEmpty()) {
             try {
                 java.time.temporal.TemporalAccessor ta = dtfMesExtenso.parse(selecionado);
                 mes = ta.get(java.time.temporal.ChronoField.MONTH_OF_YEAR);
                 ano = ta.get(java.time.temporal.ChronoField.YEAR);
-            } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.carregarHistoricoFinanceiro (parse mes/ano): " + e.getMessage()); }
+            } catch (Exception e) { /* use defaults */ }
         }
 
-        String sqlFin = "SELECT data_pagamento, descricao, valor_pago, forma_pagamento FROM financeiro_saidas " +
-                      "WHERE funcionario_id = ? " +
-                      "AND ( (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false ) " +
-                      "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ?";
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sqlFin)) {
-            stmt.setInt(1, f.getId());
-            stmt.setInt(2, mes);
-            stmt.setInt(3, ano);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while(rs.next()) {
-                    String forma = rs.getString("forma_pagamento");
-                    if (forma != null && (forma.equals("DESCONTO") || forma.equals("RETIDO"))) {
-                        historico.add(new PagamentoHistorico(rs.getDate("data_pagamento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor_pago"), "DESCONTO"));
-                    } else {
-                        historico.add(new PagamentoHistorico(rs.getDate("data_pagamento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor_pago"), "DINHEIRO"));
-                    }
-                }
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
+        List<PagamentoHistorico> historico = funcionarioDAO.carregarHistorico(f.getId(), mes, ano);
 
-        String sqlRH = "SELECT data_evento, descricao, valor, tipo FROM eventos_rh " +
-                        "WHERE funcionario_id = ? " +
-                        "AND EXTRACT(MONTH FROM data_evento) = ? AND EXTRACT(YEAR FROM data_evento) = ?";
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sqlRH)) {
-            stmt.setInt(1, f.getId());
-            stmt.setInt(2, mes);
-            stmt.setInt(3, ano);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while(rs.next()) {
-                    historico.add(new PagamentoHistorico(rs.getDate("data_evento").toLocalDate(), rs.getString("descricao"), rs.getDouble("valor"), "DESCONTO"));
-                }
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
-        
         boolean temInssGravado = historico.stream().anyMatch(h -> h.getDescricao().contains("INSS") || h.getDescricao().contains("ENCARGOS"));
-        
+
         if (!temInssGravado && f.isDescontarInss() && f.getValorInss() > 0) {
             LocalDate dataInss = LocalDate.of(ano, mes, 1).plusMonths(1).minusDays(1);
             if (dataInss.isAfter(LocalDate.now())) dataInss = LocalDate.now();
-            
+
             if (f.getDataAdmissao().isBefore(dataInss) || f.getDataAdmissao().isEqual(dataInss)) {
                 historico.add(new PagamentoHistorico(dataInss, "DESC. ENCARGOS (INSS/FOLHA) - PREVISÃO", f.getValorInss(), "DESCONTO"));
             }
         }
-        
+
         historico.sort(Comparator.comparing(PagamentoHistorico::getDataLocal));
-        tabelaHistorico.setItems(historico);
+        tabelaHistorico.setItems(FXCollections.observableArrayList(historico));
     }
     
     @FXML public void imprimirExtrato() { 
@@ -784,7 +618,7 @@ public class GestaoFuncionariosController {
         
         HBox topRow = new HBox();
         topRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblEmpresa = new Label("F/B DEUS DE ALIANÇA V");
+        Label lblEmpresa = new Label(empresaNome);
         lblEmpresa.setTextFill(Color.WHITE);
         lblEmpresa.setFont(Font.font("Segoe UI", FontWeight.BOLD, 11)); 
         
@@ -906,61 +740,19 @@ public class GestaoFuncionariosController {
 
     @FXML public void abrirTelaDemissao() {
         if (!PermissaoService.exigirAdmin("Demissao de Funcionario")) return;
-        if (funcionarioSelecionado == null) { alert("Selecione um funcionário."); return; }
+        if (funcionarioSelecionado == null) { AlertHelper.info("Selecione um funcionário."); return; }
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Demissão");
         confirm.setHeaderText("Deseja realmente demitir " + funcionarioSelecionado.getNome() + "?");
         Optional<ButtonType> res = confirm.showAndWait();
         if (res.isPresent() && res.get() == ButtonType.OK) {
-            try (Connection con = ConexaoBD.getConnection(); 
-                 PreparedStatement stmt = con.prepareStatement("UPDATE funcionarios SET ativo = false WHERE id = ?")) {
-                stmt.setInt(1, funcionarioSelecionado.getId());
-                stmt.executeUpdate();
-                alert("Funcionário demitido com sucesso.");
-                carregarFuncionarios(); 
-            } catch (SQLException e) { alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+            if (funcionarioDAO.demitir(funcionarioSelecionado.getId())) {
+                AlertHelper.info("Funcionário demitido com sucesso.");
+                carregarFuncionarios();
+            } else {
+                AlertHelper.info("Erro ao demitir funcionário.");
+            }
         }
     }
 
-    private void alert(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).show(); }
-    
-    // D019: campos PII como private com getters
-    public static class Funcionario {
-        private int id; private String nome, cpf, rg, ctps, telefone, endereco, cargo;
-        private double salario; private LocalDate dataAdmissao, dataNascimento, dataInicioCalculo;
-        private boolean recebe13; private boolean ativo; private boolean isClt;
-        private double valorInss; private boolean descontarInss;
-        public int getId() { return id; } public void setId(int id) { this.id = id; }
-        public String getNome() { return nome; } public void setNome(String nome) { this.nome = nome; }
-        public String getCpf() { return cpf; } public void setCpf(String cpf) { this.cpf = cpf; }
-        public String getRg() { return rg; } public void setRg(String rg) { this.rg = rg; }
-        public String getCtps() { return ctps; } public void setCtps(String ctps) { this.ctps = ctps; }
-        public String getTelefone() { return telefone; } public void setTelefone(String telefone) { this.telefone = telefone; }
-        public String getEndereco() { return endereco; } public void setEndereco(String endereco) { this.endereco = endereco; }
-        public String getCargo() { return cargo; } public void setCargo(String cargo) { this.cargo = cargo; }
-        public double getSalario() { return salario; } public void setSalario(double salario) { this.salario = salario; }
-        public LocalDate getDataAdmissao() { return dataAdmissao; } public void setDataAdmissao(LocalDate d) { this.dataAdmissao = d; }
-        public LocalDate getDataNascimento() { return dataNascimento; } public void setDataNascimento(LocalDate d) { this.dataNascimento = d; }
-        public LocalDate getDataInicioCalculo() { return dataInicioCalculo; } public void setDataInicioCalculo(LocalDate d) { this.dataInicioCalculo = d; }
-        public boolean isRecebe13() { return recebe13; } public void setRecebe13(boolean v) { this.recebe13 = v; }
-        public boolean isAtivo() { return ativo; } public void setAtivo(boolean v) { this.ativo = v; }
-        public boolean isClt() { return isClt; } public void setClt(boolean v) { this.isClt = v; }
-        public double getValorInss() { return valorInss; } public void setValorInss(double v) { this.valorInss = v; }
-        public boolean isDescontarInss() { return descontarInss; } public void setDescontarInss(boolean v) { this.descontarInss = v; }
-        @Override public String toString() { return nome + (ativo ? "" : " (INATIVO)"); }
-    }
-    
-    public static class PagamentoHistorico {
-        LocalDate data; String descricao; double valor; String tipo;
-        public PagamentoHistorico(LocalDate data, String descricao, double valor, String tipo) { 
-            this.data = data; this.descricao = descricao; this.valor = valor; this.tipo = tipo;
-        }
-        public String getData() { return data.format(dtf); }
-        public LocalDate getDataLocal() { return data; }
-        public String getDescricao() { return descricao; }
-        public String getValorFormatado() { 
-            if (tipo.equals("DESCONTO")) return "(-) " + nf.format(valor);
-            return nf.format(valor); 
-        }
-    }
 }

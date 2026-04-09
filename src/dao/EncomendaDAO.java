@@ -3,10 +3,13 @@ package dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import model.Encomenda;
 
 // DR026: Convencao de retorno de erro neste DAO — metodos que retornam Encomenda retornam
@@ -87,8 +90,9 @@ public class EncomendaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
+                Set<String> cols = getColumnNames(rs);
                 while (rs.next()) {
-                    lista.add(mapearEncomenda(rs));
+                    lista.add(mapearEncomenda(rs, cols));
                 }
             }
         } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
@@ -97,12 +101,13 @@ public class EncomendaDAO {
 
     public List<Encomenda> listarTodos() {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas ORDER BY id_encomenda DESC LIMIT 500"; 
+        String sql = "SELECT * FROM encomendas ORDER BY id_encomenda DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
+            Set<String> cols = getColumnNames(rs);
             while (rs.next()) {
-                lista.add(mapearEncomenda(rs));
+                lista.add(mapearEncomenda(rs, cols));
             }
         } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
@@ -114,8 +119,9 @@ public class EncomendaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
+                Set<String> cols = getColumnNames(rs);
                 if (rs.next()) {
-                    return mapearEncomenda(rs);
+                    return mapearEncomenda(rs, cols);
                 }
             }
         } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
@@ -223,7 +229,20 @@ public class EncomendaDAO {
         return 1;
     }
     
-    private Encomenda mapearEncomenda(ResultSet rs) throws SQLException {
+    /**
+     * DM036: resolve nomes de colunas do ResultSet uma unica vez antes do loop,
+     * evitando try/catch por coluna para detectar presenca de colunas opcionais.
+     */
+    private static Set<String> getColumnNames(ResultSet rs) throws SQLException {
+        ResultSetMetaData meta = rs.getMetaData();
+        Set<String> cols = new HashSet<>();
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            cols.add(meta.getColumnLabel(i).toLowerCase());
+        }
+        return cols;
+    }
+
+    private Encomenda mapearEncomenda(ResultSet rs, Set<String> cols) throws SQLException {
         Encomenda e = new Encomenda();
         e.setId(rs.getLong("id_encomenda"));
         e.setIdViagem(rs.getLong("id_viagem"));
@@ -236,17 +255,15 @@ public class EncomendaDAO {
         e.setValorPago(rs.getBigDecimal("valor_pago"));
         e.setDesconto(rs.getBigDecimal("desconto"));
         e.setStatusPagamento(rs.getString("status_pagamento"));
-        
-        // CORREÇÃO: Leitura segura do booleano
         e.setEntregue(rs.getBoolean("entregue"));
-        
-        // DR119: colunas opcionais — log minimo para diagnostico de schema changes
-        try { e.setFormaPagamento(rs.getString("forma_pagamento")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional forma_pagamento ausente"); }
-        try { e.setLocalPagamento(rs.getString("local_pagamento")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional local_pagamento ausente"); }
-        try { e.setDocRecebedor(rs.getString("doc_recebedor")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional doc_recebedor ausente"); }
-        try { e.setNomeRecebedor(rs.getString("nome_recebedor")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional nome_recebedor ausente"); }
-        try { e.setNomeRota(rs.getString("rota")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional rota ausente"); }
-        try { e.setIdCaixa(rs.getInt("id_caixa")); } catch (Exception ex) { System.err.println("EncomendaDAO: coluna opcional id_caixa ausente"); }
+
+        // DM036: colunas opcionais verificadas via Set<String> — sem try/catch por coluna
+        if (cols.contains("forma_pagamento")) e.setFormaPagamento(rs.getString("forma_pagamento"));
+        if (cols.contains("local_pagamento")) e.setLocalPagamento(rs.getString("local_pagamento"));
+        if (cols.contains("doc_recebedor"))   e.setDocRecebedor(rs.getString("doc_recebedor"));
+        if (cols.contains("nome_recebedor"))  e.setNomeRecebedor(rs.getString("nome_recebedor"));
+        if (cols.contains("rota"))            e.setNomeRota(rs.getString("rota"));
+        if (cols.contains("id_caixa"))        e.setIdCaixa(rs.getInt("id_caixa"));
 
         return e;
     }

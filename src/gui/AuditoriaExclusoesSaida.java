@@ -1,6 +1,8 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.CompanyDataLoader;
+import gui.util.PrintLayoutHelper;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -12,8 +14,6 @@ import javafx.print.PrinterJob;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -21,7 +21,6 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -29,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import model.OpcaoViagem;
 
 public class AuditoriaExclusoesSaida {
 
@@ -327,35 +327,14 @@ public class AuditoriaExclusoesSaida {
     }
 
     private VBox criarCabecalhoImpressao() {
-        VBox cabecalho = new VBox(5);
-        cabecalho.setAlignment(javafx.geometry.Pos.CENTER);
-        String nomeEmpresa = "F/B DEUS DE ALIANÇA V";
-        String pathLogo = null;
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement("SELECT nome_embarcacao, path_logo FROM configuracao_empresa LIMIT 1");
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                nomeEmpresa = rs.getString("nome_embarcacao");
-                pathLogo = rs.getString("path_logo");
-            }
-        } catch (Exception e) { System.err.println("Erro em AuditoriaExclusoesSaida.criarCabecalhoEmpresa (dados empresa): " + e.getMessage()); }
+        CompanyDataLoader cdl = new CompanyDataLoader();
+        VBox cabecalho = PrintLayoutHelper.criarHeaderEmpresaA4(
+                cdl.getNomeEmpresa(), cdl.getCnpj(), cdl.getEndereco(), cdl.getCaminhoLogo());
 
-        if (pathLogo != null && !pathLogo.isEmpty()) {
-            try {
-                File file = new File(pathLogo);
-                if (file.exists()) {
-                    ImageView imgLogo = new ImageView(new Image(file.toURI().toString()));
-                    imgLogo.setFitHeight(50); 
-                    imgLogo.setPreserveRatio(true);
-                    cabecalho.getChildren().add(imgLogo);
-                }
-            } catch (Exception e) { System.err.println("Erro em AuditoriaExclusoesSaida.criarCabecalhoEmpresa (logo): " + e.getMessage()); }
-        }
-        Label lblEmpresa = new Label(nomeEmpresa != null ? nomeEmpresa.toUpperCase() : "EMPRESA");
-        lblEmpresa.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1565c0;"); 
-        Label lblData = new Label("EMITIDO EM: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        Label lblData = new Label("EMITIDO EM: "
+                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
         lblData.setStyle("-fx-font-size: 9px;");
-        cabecalho.getChildren().addAll(lblEmpresa, lblData);
+        cabecalho.getChildren().add(lblData);
         return cabecalho;
     }
 
@@ -422,19 +401,4 @@ public class AuditoriaExclusoesSaida {
         public String getDetalhe() { return detalhe; }
     }
     
-    // Classe auxiliar idêntica ao Controller principal
-    public static class OpcaoViagem {
-        int id; String label;
-        public OpcaoViagem(int id, String label) { this.id = id; this.label = label; }
-        @Override public String toString() { return label; }
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null || getClass() != obj.getClass()) return false;
-            OpcaoViagem that = (OpcaoViagem) obj;
-            return id == that.id;
-        }
-        @Override
-        public int hashCode() { return Integer.hashCode(id); }
-    }
 }

@@ -12,7 +12,7 @@ import model.ReciboAvulso;
 
 public class ReciboAvulsoDAO {
 
-    public void salvar(ReciboAvulso r) throws SQLException {
+    public boolean salvar(ReciboAvulso r) {
         String sql = "INSERT INTO recibos_avulsos (id_viagem, nome_pagador, referente_a, valor, data_emissao, tipo_recibo) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, r.getIdViagem());
@@ -23,19 +23,25 @@ public class ReciboAvulsoDAO {
             stmt.setDate(5, Date.valueOf(r.getDataEmissao()));
             stmt.setString(6, r.getTipoRecibo());
             stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
         }
+        return false;
     }
 
     public List<ReciboAvulso> listarPorViagem(int idViagem) {
         List<ReciboAvulso> lista = new ArrayList<>();
         // Ordena do mais recente para o mais antigo
-        String sql = "SELECT * FROM recibos_avulsos WHERE id_viagem = ? ORDER BY 1 DESC"; 
+        String sql = "SELECT * FROM recibos_avulsos WHERE id_viagem = ? ORDER BY id_recibo DESC"; 
         
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
+                    detectarColunas(rs);
                     lista.add(montarObjeto(rs));
+                    while (rs.next()) lista.add(montarObjeto(rs));
                 }
             }
         } catch (SQLException e) {
@@ -46,12 +52,14 @@ public class ReciboAvulsoDAO {
 
     public List<ReciboAvulso> listarPorData(LocalDate data) {
         List<ReciboAvulso> lista = new ArrayList<>();
-        String sql = "SELECT * FROM recibos_avulsos WHERE data_emissao = ? ORDER BY 1 DESC";
+        String sql = "SELECT * FROM recibos_avulsos WHERE data_emissao = ? ORDER BY id_recibo DESC";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
+                    detectarColunas(rs);
                     lista.add(montarObjeto(rs));
+                    while (rs.next()) lista.add(montarObjeto(rs));
                 }
             }
         } catch (SQLException e) {
@@ -60,26 +68,31 @@ public class ReciboAvulsoDAO {
         return lista;
     }
 
+    private String colId = null;
+    private boolean temTipoRecibo = false;
+
+    /** Detecta colunas uma vez por query (chamado antes do while loop). */
+    private void detectarColunas(ResultSet rs) throws SQLException {
+        java.sql.ResultSetMetaData meta = rs.getMetaData();
+        colId = "id_recibo"; // default
+        temTipoRecibo = false;
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            String col = meta.getColumnName(i).toLowerCase();
+            if (col.equals("id") || col.equals("id_recibo")) colId = meta.getColumnName(i);
+            if (col.equals("tipo_recibo")) temTipoRecibo = true;
+        }
+    }
+
     private ReciboAvulso montarObjeto(ResultSet rs) throws SQLException {
         ReciboAvulso r = new ReciboAvulso();
-        // Determina nome da coluna ID no ResultSet
-        java.sql.ResultSetMetaData meta = rs.getMetaData();
-        for (int i = 1; i <= meta.getColumnCount(); i++) {
-            String col = meta.getColumnName(i);
-            if ("id".equals(col) || "id_recibo".equals(col)) {
-                r.setId(rs.getInt(col));
-                break;
-            }
-        }
-        
+        r.setId(rs.getInt(colId));
         r.setIdViagem(rs.getInt("id_viagem"));
         r.setNomePagador(rs.getString("nome_pagador"));
         r.setReferenteA(rs.getString("referente_a"));
-        // DL063: usar getBigDecimal para valor financeiro
         r.setValor(rs.getBigDecimal("valor"));
         java.sql.Date dtEmissao = rs.getDate("data_emissao");
         r.setDataEmissao(dtEmissao != null ? dtEmissao.toLocalDate() : null);
-        try { r.setTipoRecibo(rs.getString("tipo_recibo")); } catch (Exception e) { r.setTipoRecibo("PADRAO"); }
+        r.setTipoRecibo(temTipoRecibo ? rs.getString("tipo_recibo") : "PADRAO");
         return r;
     }
 }

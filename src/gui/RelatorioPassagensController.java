@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
+import gui.util.AlertHelper;
 
 public class RelatorioPassagensController implements Initializable {
 
@@ -125,11 +126,11 @@ public class RelatorioPassagensController implements Initializable {
 
                 List<String> agentes = new ArrayList<>();
                 agentes.add("Todos");
-                agentes.addAll(auxiliaresDAO.listarAgenteAux());
+                agentes.addAll(auxiliaresDAO.listarAuxiliar("aux_agentes", "nome_agente"));
 
                 List<String> tiposPassagemAux = new ArrayList<>();
                 tiposPassagemAux.add("Todos");
-                tiposPassagemAux.addAll(auxiliaresDAO.listarPassagemAux());
+                tiposPassagemAux.addAll(auxiliaresDAO.listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem"));
 
                 // --- Fase 2: Encontrar a string da viagem ativa no formato do ComboBox ---
                 String viagemAtivaComboStr = null;
@@ -193,7 +194,7 @@ public class RelatorioPassagensController implements Initializable {
                 e.printStackTrace();
                 Platform.runLater(() -> {
                     inicializando = false;
-                    showAlert(AlertType.ERROR, "Erro", "Falha ao carregar dados do relat\u00f3rio: " + e.getMessage());
+                    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao carregar dados do relat\u00f3rio: " + e.getMessage());
                 });
             }
         }).start();
@@ -286,7 +287,7 @@ public class RelatorioPassagensController implements Initializable {
                 Platform.runLater(() -> exibirDados(resultado));
             } catch (SQLException e) {
                 e.printStackTrace();
-                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", "Falha ao filtrar: " + e.getMessage()));
+                Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao filtrar: " + e.getMessage()));
             }
         }).start();
     }
@@ -396,7 +397,7 @@ public class RelatorioPassagensController implements Initializable {
 
     @FXML
     private void handleImprimirRelatorio(ActionEvent event) {
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "A impress\u00e3o ser\u00e1 implementada futuramente.");
+        AlertHelper.show(AlertType.INFORMATION, "Funcionalidade Pendente", "A impress\u00e3o ser\u00e1 implementada futuramente.");
     }
 
     @FXML
@@ -405,11 +406,4 @@ public class RelatorioPassagensController implements Initializable {
         TelaPrincipalController.fecharTelaAtual(source);
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

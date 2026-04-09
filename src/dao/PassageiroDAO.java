@@ -32,13 +32,12 @@ public class PassageiroDAO {
                 passageiros.add(mapResultSetToPassageiro(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao listar todos os passageiros: " + e.getMessage());
             System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return passageiros;
     }
     
-    public Passageiro salvarOuAtualizar(Passageiro passageiro) throws SQLException {
+    public Passageiro salvarOuAtualizar(Passageiro passageiro) {
         if (passageiro == null) {
             return null;
         }
@@ -50,11 +49,11 @@ public class PassageiroDAO {
         }
     }
 
-    public Passageiro inserir(Passageiro passageiro) throws SQLException {
+    public Passageiro inserir(Passageiro passageiro) {
         String sql = "INSERT INTO passageiros (nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            
+
             // Usa campo auxDAO (instanciado uma unica vez)
 
             stmt.setString(1, passageiro.getNome());
@@ -76,12 +75,11 @@ public class PassageiroDAO {
             }
         } catch (SQLException e) {
             System.err.println("Erro ao inserir passageiro: " + e.getMessage());
-            throw e;
         }
         return null;
     }
 
-    public boolean atualizar(Passageiro passageiro) throws SQLException {
+    public boolean atualizar(Passageiro passageiro) {
         String sql = "UPDATE passageiros SET nome_passageiro = ?, numero_documento = ?, id_tipo_doc = ?, data_nascimento = ?, id_sexo = ?, id_nacionalidade = ?, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id_passageiro = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -100,8 +98,8 @@ public class PassageiroDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar passageiro: " + e.getMessage());
-            throw e;
         }
+        return false;
     }
     
     public List<String> listarTodosNomesPassageiros() {
@@ -114,7 +112,6 @@ public class PassageiroDAO {
                 nomes.add(rs.getString("nome_passageiro"));
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao listar nomes de passageiros: " + e.getMessage());
             System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return nomes;
@@ -131,7 +128,6 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar passageiro por nome: " + e.getMessage());
             System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;

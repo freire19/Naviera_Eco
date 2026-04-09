@@ -14,6 +14,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import gui.util.AlertHelper;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -173,7 +174,7 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
         Caixa caixaSelecionado = cmbCaixa.getValue();
 
         if (caixaSelecionado == null) {
-            showAlert(AlertType.WARNING, "Por favor, selecione em qual CAIXA o dinheiro vai entrar.");
+            AlertHelper.warn("Por favor, selecione em qual CAIXA o dinheiro vai entrar.");
             cmbCaixa.requestFocus();
             return;
         }
@@ -275,12 +276,12 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
                 stage.close();
                 
             } else {
-                showAlert(AlertType.ERROR, "Erro ao salvar encomenda no banco de dados.");
+                AlertHelper.error("Erro ao salvar encomenda no banco de dados.");
             }
             
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro interno. Contate o administrador."); System.err.println("Erro técnico: " + e.getMessage());
+            AlertHelper.error("Erro interno. Contate o administrador."); System.err.println("Erro técnico: " + e.getMessage());
         }
     }
 
@@ -299,11 +300,4 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
         }
     }
 
-    private void showAlert(AlertType type, String msg) {
-        Alert alert = new Alert(type);
-        alert.setTitle(type == AlertType.ERROR ? "Erro" : "Sucesso");
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.showAndWait();
-    }
 }

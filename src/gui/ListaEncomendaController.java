@@ -1,11 +1,7 @@
 package gui;
 
-import java.io.File;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -16,7 +12,6 @@ import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
 import dao.CaixaDAO;
-import dao.ConexaoBD;
 import dao.EncomendaDAO;
 import dao.EncomendaItemDAO;
 import dao.RotaDAO;
@@ -56,8 +51,8 @@ import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import gui.util.CompanyDataLoader;
+import gui.util.PrintLayoutHelper;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -435,43 +430,6 @@ public class ListaEncomendaController implements Initializable {
         }
     }
 
-    private void carregarCombos() {
-        try {
-            List<Viagem> listaViagens = new ArrayList<>();
-            Viagem todas = new Viagem();
-            todas.setId(null);
-            todas.setDescricao("TODAS");
-            listaViagens.add(todas);
-
-            listaViagens.addAll(viagemDAO.listarTodasViagensResumido());
-            obsListaViagens.setAll(listaViagens);
-
-            if (cmbViagem != null) {
-                cmbViagem.setItems(obsListaViagens);
-                if (obsListaViagens.size() > 1) {
-                    Viagem viagemAtual = obsListaViagens.get(1);
-                    cmbViagem.setValue(viagemAtual);
-                    carregarEncomendasDaViagem(viagemAtual);
-                } else {
-                    cmbViagem.getSelectionModel().selectFirst();
-                    carregarEncomendasDaViagem(todas);
-                }
-            }
-
-            obsListaRotas.setAll(rotaDAO.listarTodasAsRotasComoObjects());
-            if (cmbFiltroRota != null) {
-                cmbFiltroRota.setItems(obsListaRotas);
-            }
-
-            obsListaCaixas.setAll(caixaDAO.listarTodos());
-            if (cmbFiltroCaixa != null) {
-                cmbFiltroCaixa.setItems(obsListaCaixas);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     private void carregarEncomendasDaViagem(Viagem viagem) {
         try {
             List<Encomenda> lista;
@@ -550,7 +508,8 @@ public class ListaEncomendaController implements Initializable {
             return matchNome && matchNumero && matchCaixa && matchRota && matchPagamento && matchEntrega && matchItem;
         }).collect(Collectors.toList());
 
-        tabelaEncomendas.setItems(FXCollections.observableArrayList(filtrados));
+        // DP031: reutiliza ObservableList existente em vez de recriar (evita re-render completo)
+        tabelaEncomendas.getItems().setAll(filtrados);
         calcularTotais(filtrados);
     }
 
@@ -932,42 +891,14 @@ public class ListaEncomendaController implements Initializable {
     }
 
     private VBox criarCabecalhoRelatorio(double width) {
-        VBox contentBox = new VBox(4);
-        contentBox.setAlignment(Pos.CENTER);
+        CompanyDataLoader cdl = new CompanyDataLoader();
+        VBox contentBox = PrintLayoutHelper.criarHeaderEmpresaA4(
+                cdl.getNomeEmpresa(), cdl.getCnpj(), cdl.getEndereco(), cdl.getCaminhoLogo());
         contentBox.setPrefWidth(width);
         contentBox.setMinWidth(width);
-        contentBox.setStyle("-fx-border-width: 0 0 1 0; -fx-border-color: black;");
-        contentBox.setPadding(new Insets(0, 0, 5, 0));
-
-        String sql = "SELECT path_logo, nome_embarcacao FROM configuracao_empresa LIMIT 1";
-
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                String path = rs.getString("path_logo");
-                String emb = rs.getString("nome_embarcacao");
-
-                if (path != null && !path.isEmpty()) {
-                    File file = new File(path);
-                    if (file.exists()) {
-                        Image img = new Image(file.toURI().toString());
-                        ImageView imgView = new ImageView(img);
-                        imgView.setFitHeight(60);
-                        imgView.setPreserveRatio(true);
-                        contentBox.getChildren().add(imgView);
-                    }
-                }
-
-                Label lblEmb = new Label(emb != null ? emb : "EMBARCAÇÃO");
-                lblEmb.setStyle(
-                        "-fx-font-weight: bold; -fx-font-size: 18px; -fx-text-fill: black;");
-                contentBox.getChildren().add(lblEmb);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // Mantém borda inferior preta para separacao visual (estilo original)
+        contentBox.setStyle(contentBox.getStyle()
+                + " -fx-border-width: 0 0 1 0; -fx-border-color: black;");
 
         Label lblTitulo = new Label("RELATÓRIO DE ENCOMENDAS");
         lblTitulo.setStyle(

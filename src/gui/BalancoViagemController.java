@@ -1,5 +1,6 @@
 package gui;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -71,15 +72,15 @@ public class BalancoViagemController {
     private DadosBalancoViagem dadosAtuais;
     private int idViagemAtual;
     private String textoViagemSelecionada = "Nenhuma Viagem Selecionada";
-    private double totalPendenteGlobal = 0.0;
+    private BigDecimal totalPendenteGlobal = BigDecimal.ZERO;
     
     // Listas internas para impressão
     private List<String> dadosPassagensPrint = new ArrayList<>();
     private List<String> dadosCargasPrint = new ArrayList<>();
     
-    private String empresaNome = "F/B DEUS DE ALIANÇA V";
-    private String empresaCnpj = "00.000.000/0000-00";
-    private String empresaEndereco = "Porto de Manaus/AM";
+    private String empresaNome = "";
+    private String empresaCnpj = "";
+    private String empresaEndereco = "";
     private String empresaTelefone = "";
     private String empresaLogoPath = "";
 
@@ -128,7 +129,6 @@ public class BalancoViagemController {
                         alert.showAndWait();
                     }
                     preencherAbaSimplificada();
-                    // carregarDetalhamentoTab2 opens its own connections internally
                     carregarDetalhamentoTab2Fx(id);
                     carregarGraficos();
                 });
@@ -163,70 +163,11 @@ public class BalancoViagemController {
         lblTotalGeralEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
         lblTotalGeralSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
         lblSaldoFinal.setText(formatar(dadosAtuais.getLucroLiquido()));
-        lblSaldoFinal.setStyle(dadosAtuais.getLucroLiquido()>=0 ? "-fx-text-fill:#2e7d32;" : "-fx-text-fill:#c62828;");
+        lblSaldoFinal.setStyle(dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO) >= 0 ? "-fx-text-fill:#2e7d32;" : "-fx-text-fill:#c62828;");
     }
 
     // --- ABA 2 (VISUAL NA TELA) ---
-    // Versao legada mantida para chamadas de impressao que fornecem uma Connection externa
-    private void carregarDetalhamentoTab2(Connection con, int idViagem) {
-        vboxReceitasDetalhadasTela.getChildren().clear();
-        vboxDespesasDetalhadasTela.getChildren().clear();
-        dadosPassagensPrint.clear();
-        dadosCargasPrint.clear();
-
-        // 1. Receitas - PASSAGENS (CORRIGIDO: USA TABELA ROTAS)
-        String sqlP = "SELECT r.origem, r.destino, COUNT(*), SUM(p.valor_total) " +
-                      "FROM passagens p " +
-                      "LEFT JOIN rotas r ON p.id_rota = r.id " +
-                      "WHERE p.id_viagem=? GROUP BY r.origem, r.destino ORDER BY r.origem";
-        try (PreparedStatement s = con.prepareStatement(sqlP)) {
-            s.setInt(1, idViagem); ResultSet rs = s.executeQuery();
-            while(rs.next()) {
-                String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
-                String dest = rs.getString(2) == null ? "DESTINO" : rs.getString(2).toUpperCase();
-                String txt = String.format("%02d Passagens %s/%s = %s", rs.getInt(3), orig, dest, formatar(rs.getDouble(4)));
-                dadosPassagensPrint.add(txt);
-                adicionarLinhaReceitaTela(txt);
-            }
-        } catch(Exception e) { e.printStackTrace(); }
-
-        // 2. Receitas - CARGAS
-        try (PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? GROUP BY rota_temp")) {
-            s.setInt(1,idViagem); s.setInt(2,idViagem); ResultSet rs = s.executeQuery();
-            while(rs.next()) {
-                String tipo = rs.getString(1);
-                String rota = rs.getString(2) == null ? "N/D" : rs.getString(2).toUpperCase();
-                String txt = String.format("%02d %ss %s = %s", rs.getInt(3), tipo, rota, formatar(rs.getDouble(4)));
-                dadosCargasPrint.add(txt);
-                adicionarLinhaReceitaTela(txt);
-            }
-        } catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDetalhamentoTab2 (receitas cargas): " + e.getMessage()); }
-
-        // 3. Despesas Agrupadas
-        Map<String, List<LinhaDespesaDetalhada>> despesasMap = new TreeMap<>();
-        carregarDespesasAgrupadas(despesasMap);
-        renderizarDespesasTela(despesasMap);
-
-        // 4. Cards e Pendentes
-        lblCardEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
-        lblCardSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
-        lblCardSaldo.setText(formatar(dadosAtuais.getLucroLiquido()));
-        lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido()>=0?"-fx-text-fill:#1565C0;":"-fx-text-fill:#c62828;");
-
-        // DL048: incluir passagens pendentes no calculo de totalPendenteGlobal
-        totalPendenteGlobal = 0.0;
-        try (PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND valor_devedor > 0.01");
-             PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND status_pagamento != 'PAGO'");
-             PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND status_frete != 'PAGO'")) {
-            st0.setInt(1,idViagem); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) totalPendenteGlobal+=r0.getDouble(1); }
-            st1.setInt(1,idViagem); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) totalPendenteGlobal+=r1.getDouble(1); }
-            st2.setInt(1,idViagem); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) totalPendenteGlobal+=r2.getDouble(1); }
-        } catch(Exception e){ System.err.println("Erro em BalancoViagemController (pendentes): " + e.getMessage()); }
-        lblCardPendente.setText(formatar(totalPendenteGlobal));
-        lblCardRecebido.setText("Caixa: "+formatar(Math.max(0, dadosAtuais.getTotalEntradas()-totalPendenteGlobal)));
-    }
-
-    // DR117: versao que abre suas proprias conexoes (para uso apos bg thread)
+    // DR117: abre suas proprias conexoes (para uso apos bg thread)
     private void carregarDetalhamentoTab2Fx(int idViagem) {
         vboxReceitasDetalhadasTela.getChildren().clear();
         vboxDespesasDetalhadasTela.getChildren().clear();
@@ -238,27 +179,32 @@ public class BalancoViagemController {
                       "FROM passagens p " +
                       "LEFT JOIN rotas r ON p.id_rota = r.id " +
                       "WHERE p.id_viagem=? GROUP BY r.origem, r.destino ORDER BY r.origem";
+        // DP020: ResultSet em try-with-resources
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement s = con.prepareStatement(sqlP)) {
-            s.setInt(1, idViagem); ResultSet rs = s.executeQuery();
-            while(rs.next()) {
-                String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
-                String dest = rs.getString(2) == null ? "DESTINO" : rs.getString(2).toUpperCase();
-                String txt = String.format("%02d Passagens %s/%s = %s", rs.getInt(3), orig, dest, formatar(rs.getDouble(4)));
-                dadosPassagensPrint.add(txt);
-                adicionarLinhaReceitaTela(txt);
+            s.setInt(1, idViagem);
+            try (ResultSet rs = s.executeQuery()) {
+                while(rs.next()) {
+                    String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
+                    String dest = rs.getString(2) == null ? "DESTINO" : rs.getString(2).toUpperCase();
+                    String txt = String.format("%02d Passagens %s/%s = %s", rs.getInt(3), orig, dest, formatar(rs.getBigDecimal(4)));
+                    dadosPassagensPrint.add(txt);
+                    adicionarLinhaReceitaTela(txt);
+                }
             }
         } catch(Exception e) { e.printStackTrace(); }
 
         // 2. Receitas - CARGAS
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? GROUP BY rota_temp")) {
-            s.setInt(1,idViagem); s.setInt(2,idViagem); ResultSet rs = s.executeQuery();
-            while(rs.next()) {
-                String tipo = rs.getString(1);
-                String rota = rs.getString(2) == null ? "N/D" : rs.getString(2).toUpperCase();
-                String txt = String.format("%02d %ss %s = %s", rs.getInt(3), tipo, rota, formatar(rs.getDouble(4)));
-                dadosCargasPrint.add(txt);
-                adicionarLinhaReceitaTela(txt);
+            s.setInt(1,idViagem); s.setInt(2,idViagem);
+            try (ResultSet rs = s.executeQuery()) {
+                while(rs.next()) {
+                    String tipo = rs.getString(1);
+                    String rota = rs.getString(2) == null ? "N/D" : rs.getString(2).toUpperCase();
+                    String txt = String.format("%02d %ss %s = %s", rs.getInt(3), tipo, rota, formatar(rs.getBigDecimal(4)));
+                    dadosCargasPrint.add(txt);
+                    adicionarLinhaReceitaTela(txt);
+                }
             }
         } catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDetalhamentoTab2Fx (cargas): " + e.getMessage()); }
 
@@ -271,25 +217,26 @@ public class BalancoViagemController {
         lblCardEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
         lblCardSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
         lblCardSaldo.setText(formatar(dadosAtuais.getLucroLiquido()));
-        lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido()>=0?"-fx-text-fill:#1565C0;":"-fx-text-fill:#c62828;");
+        lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO) >= 0?"-fx-text-fill:#1565C0;":"-fx-text-fill:#c62828;");
 
-        totalPendenteGlobal = 0.0;
+        totalPendenteGlobal = BigDecimal.ZERO;
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND valor_devedor > 0.01");
              PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND status_pagamento != 'PAGO'");
              PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND status_frete != 'PAGO'")) {
-            st0.setInt(1,idViagem); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) totalPendenteGlobal+=r0.getDouble(1); }
-            st1.setInt(1,idViagem); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) totalPendenteGlobal+=r1.getDouble(1); }
-            st2.setInt(1,idViagem); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) totalPendenteGlobal+=r2.getDouble(1); }
+            st0.setInt(1,idViagem); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) { BigDecimal v0=r0.getBigDecimal(1); if(v0!=null) totalPendenteGlobal=totalPendenteGlobal.add(v0); } }
+            st1.setInt(1,idViagem); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) { BigDecimal v1=r1.getBigDecimal(1); if(v1!=null) totalPendenteGlobal=totalPendenteGlobal.add(v1); } }
+            st2.setInt(1,idViagem); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) { BigDecimal v2=r2.getBigDecimal(1); if(v2!=null) totalPendenteGlobal=totalPendenteGlobal.add(v2); } }
         } catch(Exception e){ System.err.println("Erro em BalancoViagemController (pendentes Fx): " + e.getMessage()); }
         lblCardPendente.setText(formatar(totalPendenteGlobal));
-        lblCardRecebido.setText("Caixa: "+formatar(Math.max(0, dadosAtuais.getTotalEntradas()-totalPendenteGlobal)));
+        BigDecimal recebido = dadosAtuais.getTotalEntradas().subtract(totalPendenteGlobal);
+        lblCardRecebido.setText("Caixa: "+formatar(recebido.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : recebido));
     }
 
     private void renderizarDespesasTela(Map<String, List<LinhaDespesaDetalhada>> despesasMap) {
         for (Map.Entry<String, List<LinhaDespesaDetalhada>> entry : despesasMap.entrySet()) {
             String cat = entry.getKey();
-            double sub = entry.getValue().stream().mapToDouble(LinhaDespesaDetalhada::getValor).sum();
+            BigDecimal sub = entry.getValue().stream().map(LinhaDespesaDetalhada::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
             Label lCat = new Label("CATEGORIA: " + cat);
             lCat.setStyle("-fx-font-weight:bold; -fx-text-fill:#1565C0; -fx-font-size:12px; -fx-padding: 10 0 2 0;");
             vboxDespesasDetalhadasTela.getChildren().add(lCat);
@@ -383,7 +330,7 @@ public class BalancoViagemController {
             for(Map.Entry<String, List<LinhaDespesaDetalhada>> entry : despesasMap.entrySet()) {
                 String cat = entry.getKey();
                 List<LinhaDespesaDetalhada> itens = entry.getValue();
-                double sub = itens.stream().mapToDouble(LinhaDespesaDetalhada::getValor).sum();
+                BigDecimal sub = itens.stream().map(LinhaDespesaDetalhada::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 if(y + 40 > PAGE_HEIGHT) { paginas.add(pagAtual); pagAtual=novaPagina(); y=HEADER_HEIGHT; addCabecalho(pagAtual, detalhado); }
                 
@@ -453,7 +400,7 @@ public class BalancoViagemController {
     private void carregarDespesasAgrupadas(Map<String, List<LinhaDespesaDetalhada>> map) {
         String sql = "SELECT s.descricao, c.nome, s.valor_total FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE s.id_viagem=? ORDER BY c.nome, s.descricao";
         try(Connection c=ConexaoBD.getConnection(); PreparedStatement s=c.prepareStatement(sql)){ s.setInt(1,idViagemAtual); ResultSet rs=s.executeQuery();
-            while(rs.next()){ String cat=rs.getString(2)==null?"OUTROS":rs.getString(2); map.computeIfAbsent(cat,k->new ArrayList<>()).add(new LinhaDespesaDetalhada("-",rs.getString(1),cat,rs.getDouble(3))); }
+            while(rs.next()){ String cat=rs.getString(2)==null?"OUTROS":rs.getString(2); map.computeIfAbsent(cat,k->new ArrayList<>()).add(new LinhaDespesaDetalhada("-",rs.getString(1),cat,rs.getBigDecimal(3))); }
         }catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDespesasAgrupadas: " + e.getMessage()); }
     }
 
@@ -463,7 +410,7 @@ public class BalancoViagemController {
     
     private void addCabecalho(VBox p, boolean det) {
         VBox h = new VBox(5); h.setAlignment(Pos.CENTER);
-        if(empresaLogoPath!=null && !empresaLogoPath.isEmpty()) { try{ImageView iv=new ImageView(new Image("file:"+empresaLogoPath)); iv.setFitHeight(50); iv.setPreserveRatio(true); h.getChildren().add(iv);}catch(Exception e){} }
+        if(empresaLogoPath!=null && !empresaLogoPath.isEmpty()) { try{ImageView iv=new ImageView(gui.util.ImageCache.get(empresaLogoPath)); iv.setFitHeight(50); iv.setPreserveRatio(true); h.getChildren().add(iv);}catch(Exception e){} }
         else { try{ImageView iv=new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/logo_login.png"))); iv.setFitHeight(50); iv.setPreserveRatio(true); h.getChildren().add(iv);}catch(Exception e){} }
         Text t1 = new Text(empresaNome.toUpperCase()); t1.setFont(Font.font("Arial",FontWeight.BOLD,20)); t1.setFill(Color.web("#1565C0")); // Azul
         h.getChildren().addAll(t1, new Text(empresaEndereco){{setFont(Font.font("Arial",10));}}, new Text("CNPJ: "+empresaCnpj){{setFont(Font.font("Arial",10));}});
@@ -529,8 +476,22 @@ public class BalancoViagemController {
         h.getChildren().addAll(s, tVal); return h; 
     }
 
-    private String formatar(double v) { return NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(v); }
-    private void carregarDadosEmpresa() { String sql = "SELECT nome_embarcacao, cnpj, endereco, telefone, path_logo FROM configuracao_empresa LIMIT 1"; try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) { if (rs.next()) { if (rs.getString(1) != null) this.empresaNome = rs.getString(1); if (rs.getString(2) != null) this.empresaCnpj = rs.getString(2); if (rs.getString(3) != null) this.empresaEndereco = rs.getString(3); if (rs.getString(4) != null) this.empresaTelefone = rs.getString(4); if (rs.getString(5) != null) this.empresaLogoPath = rs.getString(5); } } catch (Exception e) { System.err.println("Erro em BalancoViagemController.carregarDadosEmpresa: " + e.getMessage()); } }
+    // DP026: static final evita instanciar NumberFormat a cada chamada
+    private static final NumberFormat FMT_MOEDA = NumberFormat.getCurrencyInstance(new Locale("pt","BR"));
+    private String formatar(double v) { return FMT_MOEDA.format(v); }
+    // DP030: usa EmpresaDAO com cache em vez de SQL direto
+    private void carregarDadosEmpresa() {
+        try {
+            model.Empresa emp = new dao.EmpresaDAO().buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            if (emp != null) {
+                if (emp.getEmbarcacao() != null) this.empresaNome = emp.getEmbarcacao();
+                if (emp.getCnpj() != null) this.empresaCnpj = emp.getCnpj();
+                if (emp.getEndereco() != null) this.empresaEndereco = emp.getEndereco();
+                if (emp.getTelefone() != null) this.empresaTelefone = emp.getTelefone();
+                if (emp.getCaminhoFoto() != null) this.empresaLogoPath = emp.getCaminhoFoto();
+            }
+        } catch (Exception e) { System.err.println("Erro em BalancoViagemController.carregarDadosEmpresa: " + e.getMessage()); }
+    }
     
     // DR117: versao FX-only chamada do Platform.runLater (faz DB em bg)
     private void carregarComboViagensFx() {
@@ -564,12 +525,7 @@ public class BalancoViagemController {
         bg.start();
     }
 
-    // Mantida para compatibilidade com chamadas externas
-    private void carregarComboViagens() {
-        carregarComboViagensFx();
-    }
-
     @FXML private void handleFiltrarViagem(ActionEvent event) { String sel = cmbViagens.getValue(); if (sel != null) { try { int id = Integer.parseInt(sel.substring(sel.lastIndexOf("(ID: ") + 5, sel.lastIndexOf(")"))); this.idViagemAtual = id; this.textoViagemSelecionada = sel; carregarRelatorio(id); } catch (Exception e) { System.err.println("Erro em BalancoViagemController.handleFiltrarViagem: " + e.getMessage()); } } }
     
-    public static class LinhaDespesaDetalhada { private final String data; private final String descricao; private final String categoria; private final double valor; public LinhaDespesaDetalhada(String d, String de, String c, double v) { this.data=d; this.descricao=de; this.categoria=c; this.valor=v; } public String getData() { return data; } public String getDescricao() { return descricao; } public String getCategoria() { return categoria; } public double getValor() { return valor; } }
+    public static class LinhaDespesaDetalhada { private final String data; private final String descricao; private final String categoria; private final BigDecimal valor; public LinhaDespesaDetalhada(String d, String de, String c, BigDecimal v) { this.data=d; this.descricao=de; this.categoria=c; this.valor=v!=null?v:BigDecimal.ZERO; } public String getData() { return data; } public String getDescricao() { return descricao; } public String getCategoria() { return categoria; } public BigDecimal getValor() { return valor; } }
 }

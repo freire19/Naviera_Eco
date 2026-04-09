@@ -55,4 +55,15 @@ public class Passageiro {
         if (numeroDoc == null || numeroDoc.length() < 4) return "****";
         return "***" + numeroDoc.substring(numeroDoc.length() - 4);
     }
+
+    // DP033: equals/hashCode para collection performance
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Passageiro that = (Passageiro) o;
+        return java.util.Objects.equals(id, that.id);
+    }
+    @Override
+    public int hashCode() { return java.util.Objects.hashCode(id); }
 }

@@ -42,7 +42,6 @@ public class UsuarioDAO {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao gerar próximo ID para usuário: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return 0;
@@ -72,7 +71,6 @@ public class UsuarioDAO {
             }
             return false;
         } catch (SQLException e) {
-            System.err.println("Erro ao inserir usuário: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
@@ -107,7 +105,6 @@ public class UsuarioDAO {
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            System.err.println("Erro ao atualizar usuário: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
@@ -121,7 +118,6 @@ public class UsuarioDAO {
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            System.err.println("Erro ao excluir usuário: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
@@ -138,7 +134,6 @@ public class UsuarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar usuário por ID: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
@@ -155,7 +150,6 @@ public class UsuarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar usuário por login: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
@@ -177,7 +171,6 @@ public class UsuarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar usuário por login e senha: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
@@ -193,7 +186,6 @@ public class UsuarioDAO {
                 lista.add(extrairUsuarioDoResultSet(rs, false));
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao listar todos os usuários: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return lista;
@@ -210,10 +202,25 @@ public class UsuarioDAO {
                 nomesUsuarios.add(rs.getString("login_usuario"));
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao listar nomes de usuários para ComboBox: " + e.getMessage());
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return nomesUsuarios;
+    }
+
+    /** Retorna apenas os logins de usuarios ativos (para combo de login). */
+    public List<String> listarLoginsAtivos() {
+        List<String> logins = new ArrayList<>();
+        String sql = "SELECT login_usuario FROM usuarios WHERE ativo = true ORDER BY login_usuario";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                logins.add(rs.getString("login_usuario"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em UsuarioDAO.listarLoginsAtivos: " + e.getMessage());
+        }
+        return logins;
     }
     
     private Usuario extrairUsuarioDoResultSet(ResultSet rs, boolean incluirSenhaHashNoObjeto) throws SQLException {

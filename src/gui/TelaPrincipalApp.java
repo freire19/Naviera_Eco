@@ -9,6 +9,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.layout.BorderPane; 
 import javafx.stage.Stage;
 import java.net.URL;
+import gui.util.AlertHelper;
 
 public class TelaPrincipalApp extends Application {
 
@@ -68,7 +69,7 @@ public class TelaPrincipalApp extends Application {
                 // getClass().getResource("TelaPrincipal.fxml") deve funcionar.
                 System.err.println("Erro Crítico: Arquivo TelaPrincipal.fxml não encontrado no caminho esperado (gui/TelaPrincipal.fxml).");
                 System.err.println("Verifique se o FXML está no pacote 'gui'.");
-                showAlert(Alert.AlertType.ERROR, "Erro Crítico", "Não foi possível encontrar o arquivo de interface principal (TelaPrincipal.fxml).");
+                AlertHelper.show(Alert.AlertType.ERROR, "Erro Crítico", "Não foi possível encontrar o arquivo de interface principal (TelaPrincipal.fxml).");
                 return; // Encerra se não encontrar o FXML
             }
             FXMLLoader loader = new FXMLLoader(fxmlLocation);
@@ -94,18 +95,11 @@ public class TelaPrincipalApp extends Application {
         } catch (Exception e) {
             System.err.println("Erro ao carregar a tela principal:");
             e.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Erro Crítico de Inicialização", 
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro Crítico de Inicialização", 
                       "Não foi possível iniciar a aplicação devido a um erro interno.\nDetalhes: " + e.getMessage());
         }
     }
     
-    private void showAlert(Alert.AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 
     public static void main(String[] args) {
         launch(args);

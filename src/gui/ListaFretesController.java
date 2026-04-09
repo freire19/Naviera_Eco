@@ -11,8 +11,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -33,16 +31,12 @@ import javafx.print.PrinterJob;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 
-import dao.ConexaoBD;
 import dao.FreteDAO;
 import dao.ViagemDAO;
 import model.Frete;
 import model.Viagem;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -53,6 +47,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import gui.util.AlertHelper;
+import gui.util.CompanyDataLoader;
+import gui.util.PrintLayoutHelper;
 
 public class ListaFretesController {
 
@@ -112,7 +109,7 @@ public class ListaFretesController {
                 });
             } catch (Exception e) {
                 e.printStackTrace();
-                javafx.application.Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", "Falha ao carregar dados iniciais."));
+                javafx.application.Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao carregar dados iniciais."));
             }
         });
         bg.setDaemon(true);
@@ -169,23 +166,6 @@ public class ListaFretesController {
         });
     }
     
-    private void configurarFiltrosIniciais() {
-        List<Viagem> todasAsViagens = viagemDAO.listarTodasViagensResumido();
-        cbViagemFiltro.getItems().clear();
-        cbViagemFiltro.getItems().add(new ViagemFiltroWrapper(0L, "Todas as Viagens"));
-        Viagem viagemAtiva = null;
-        for (Viagem v : todasAsViagens) {
-            String textoFormatado = formatarTextoViagem(v);
-            cbViagemFiltro.getItems().add(new ViagemFiltroWrapper(v.getId(), textoFormatado));
-            if (v.getIsAtual()) viagemAtiva = v;
-        }
-        if (viagemAtiva != null) {
-            for (ViagemFiltroWrapper wrapper : cbViagemFiltro.getItems()) {
-                if (wrapper.getId().equals(viagemAtiva.getId())) { cbViagemFiltro.getSelectionModel().select(wrapper); break; }
-            }
-        } else { cbViagemFiltro.getSelectionModel().selectFirst(); }
-    }
-    
     private String formatarTextoViagem(Viagem v) {
         if (v == null) return "";
         String inicio = (v.getDataViagem() != null) ? v.getDataViagem().format(dateFormatter) : "??";
@@ -235,7 +215,7 @@ public class ListaFretesController {
             recarregarDadosDoBanco();
         } catch (IOException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro", "Erro ao abrir tela de frete: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao abrir tela de frete: " + e.getMessage());
         }
     }
 
@@ -245,7 +225,7 @@ public class ListaFretesController {
     @FXML
     public void handleImprimirLista(ActionEvent event) {
         if (listaFretesVisivel.isEmpty()) {
-            showAlert(AlertType.WARNING, "Aviso", "A lista está vazia. Nada para imprimir.");
+            AlertHelper.show(AlertType.WARNING, "Aviso", "A lista está vazia. Nada para imprimir.");
             return;
         }
 
@@ -307,7 +287,7 @@ public class ListaFretesController {
             for (VBox p : paginas) {
                 boolean sucesso = job.printPage(pageLayout, p);
                 if (!sucesso) {
-                    showAlert(AlertType.ERROR, "Erro", "Falha ao enviar página para impressora.");
+                    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao enviar página para impressora.");
                     break;
                 }
             }
@@ -322,37 +302,24 @@ public class ListaFretesController {
         p.setMaxSize(w, h);
         p.setStyle("-fx-background-color: white;");
 
+        CompanyDataLoader cdl = new CompanyDataLoader();
+        VBox headerEmpresa = PrintLayoutHelper.criarHeaderEmpresaA4(
+                cdl.getNomeEmpresa(), cdl.getCnpj(), cdl.getEndereco(), cdl.getCaminhoLogo());
+
+        // Adiciona titulo do relatorio e linha de filtro abaixo do header da empresa
+        Label lTitulo = new Label("RELATÓRIO DE FRETES");
+        lTitulo.setFont(Font.font("Arial", FontWeight.BLACK, 14));
+        lTitulo.setTextFill(Color.web("#0d47a1"));
+        Label lFiltro = new Label("Filtro: " + filtroViagem + " | Emissão: "
+                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        lFiltro.setFont(Font.font("Arial", 10));
+        headerEmpresa.getChildren().addAll(lTitulo, lFiltro);
+
         HBox header = new HBox(15);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPrefWidth(w);
         header.setStyle("-fx-border-color: #ccc; -fx-border-width: 0 0 1 0; -fx-padding: 0 0 10 0;");
-
-        try (Connection conn = ConexaoBD.getConnection(); 
-             PreparedStatement stmt = conn.prepareStatement("SELECT path_logo, nome_embarcacao, cnpj, telefone FROM configuracao_empresa LIMIT 1");
-             ResultSet rs = stmt.executeQuery()) {
-
-            if (rs.next()) {
-                String caminhoFoto = rs.getString("path_logo");
-                if (caminhoFoto != null && !caminhoFoto.isEmpty()) {
-                    ImageView logo = new ImageView(new Image("file:" + caminhoFoto));
-                    logo.setFitHeight(60); logo.setPreserveRatio(true);
-                    header.getChildren().add(logo);
-                }
-                
-                VBox infoEmpresa = new VBox(2);
-                Label lNome = new Label(rs.getString("nome_embarcacao")); lNome.setFont(Font.font("Arial", FontWeight.BOLD, 18));
-                Label lDados = new Label("CNPJ: " + rs.getString("cnpj") + "  |  Tel: " + rs.getString("telefone")); 
-                lDados.setFont(Font.font("Arial", 10));
-                Label lTitulo = new Label("RELATÓRIO DE FRETES");
-                lTitulo.setFont(Font.font("Arial", FontWeight.BLACK, 14));
-                lTitulo.setTextFill(Color.web("#0d47a1"));
-                Label lFiltro = new Label("Filtro: " + filtroViagem + " | Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-                lFiltro.setFont(Font.font("Arial", 10));
-
-                infoEmpresa.getChildren().addAll(lNome, lDados, lTitulo, lFiltro);
-                header.getChildren().add(infoEmpresa);
-            }
-        } catch (Exception e) { e.printStackTrace(); }
+        header.getChildren().add(headerEmpresa);
 
         p.getChildren().add(header);
         return p;
@@ -526,9 +493,6 @@ public class ListaFretesController {
         } catch (NumberFormatException e) { return 0.0; }
     }
 
-    private void showAlert(Alert.AlertType aT, String t, String m) {
-        Alert a = new Alert(aT); a.setTitle(t); a.setHeaderText(null); a.setContentText(m); a.showAndWait();
-    }
 
     private static class ViagemFiltroWrapper {
         private final Long id;

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 import dao.AuxiliaresDAO;
+import gui.util.AlertHelper;
 // A classe AuxiliarItem agora é importada implicitamente pois está no mesmo pacote "gui"
 // e definida em seu próprio arquivo AuxiliarItem.java
 
@@ -150,10 +151,10 @@ public class TabelasAuxiliaresController implements Initializable {
     private void carregarDadosSexo() {
         try {
             listaSexo.clear();
-            List<String> nomes = auxDao.listarSexo();
+            List<String> nomes = auxDao.listarAuxiliar("aux_sexo", "nome_sexo");
             for (String nome : nomes) { listaSexo.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar os dados de Sexo: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar os dados de Sexo: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -165,31 +166,31 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleSalvarSexo(ActionEvent event) {
         String nome = txtSexoNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Vazio", "O nome para Sexo não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Vazio", "O nome para Sexo não pode ser vazio.");
             return;
         }
         AuxiliarItem sel = tableSexo.getSelectionModel().getSelectedItem();
         try {
             if (sel != null) { // Atualizar
-                Integer idOld = auxDao.buscarIdSexoPorNome(sel.getNome()); // Retorna Integer
-                if (idOld != null && idOld != -1) { // Verifica se não é nulo e não é -1
-                    if (auxDao.atualizarSexo(idOld, nome.trim())) { // atualizarSexo espera int
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Sexo atualizado com sucesso!");
+                Integer idOld = auxDao.obterIdAuxiliar("aux_sexo", "nome_sexo", "id_sexo", sel.getNome());
+                if (idOld != null && idOld != -1) {
+                    if (auxDao.atualizarAuxiliar("aux_sexo", "nome_sexo", "id_sexo", idOld, nome.trim())) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Sexo atualizado com sucesso!");
                     } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Sexo. Verifique se o novo nome já existe ou se há restrições no banco.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Sexo. Verifique se o novo nome já existe ou se há restrições no banco.");
                     }
                 } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Não foi possível encontrar o ID do Sexo selecionado para atualização.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Não foi possível encontrar o ID do Sexo selecionado para atualização.");
                 }
             } else { // Inserir
-                if (auxDao.inserirSexo(nome.trim())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Sexo salvo com sucesso!");
+                if (auxDao.inserirAuxiliar("aux_sexo", "nome_sexo", nome.trim())) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Sexo salvo com sucesso!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Sexo. Verifique se o nome já existe.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Sexo. Verifique se o nome já existe.");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Ocorreu um erro ao salvar/atualizar Sexo: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Ocorreu um erro ao salvar/atualizar Sexo: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosSexo();
@@ -199,22 +200,22 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleExcluirSexo(ActionEvent event) {
         AuxiliarItem sel = tableSexo.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Por favor, selecione um item de Sexo para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Por favor, selecione um item de Sexo para excluir.");
             return;
         }
         try {
-            Integer id = auxDao.buscarIdSexoPorNome(sel.getNome()); // Retorna Integer
-            if (id != null && id != -1) { // Verifica se não é nulo e não é -1
-                if (auxDao.excluirSexo(id)) { // excluirSexo espera int
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Sexo excluído!");
+            Integer id = auxDao.obterIdAuxiliar("aux_sexo", "nome_sexo", "id_sexo", sel.getNome());
+            if (id != null && id != -1) {
+                if (auxDao.excluirAuxiliar("aux_sexo", "id_sexo", id)) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Sexo excluído!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Sexo.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Sexo.");
                 }
             } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "ID do Sexo não encontrado.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "ID do Sexo não encontrado.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Ocorreu um erro ao excluir Sexo: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Ocorreu um erro ao excluir Sexo: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosSexo();
@@ -226,10 +227,10 @@ public class TabelasAuxiliaresController implements Initializable {
     private void carregarDadosTipoDoc() {
         try {
             listaTipoDoc.clear();
-            List<String> nomes = auxDao.listarTipoDoc();
+            List<String> nomes = auxDao.listarAuxiliar("aux_tipos_documento", "nome_tipo_doc");
             for (String nome : nomes) { listaTipoDoc.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar os Tipos de Documento: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar os Tipos de Documento: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -241,31 +242,31 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleSalvarTipoDoc(ActionEvent event) {
         String nome = txtTipoDocNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Vazio", "O nome para Tipo de Documento não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Vazio", "O nome para Tipo de Documento não pode ser vazio.");
             return;
         }
         AuxiliarItem sel = tableTipoDoc.getSelectionModel().getSelectedItem();
         try {
             if (sel != null) { // Atualizar
-                Integer idOld = auxDao.buscarIdTipoDocPorNome(sel.getNome());
+                Integer idOld = auxDao.obterIdAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", sel.getNome());
                 if (idOld != null && idOld != -1) {
-                    if (auxDao.atualizarTipoDoc(idOld, nome.trim())) {
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Documento atualizado!");
+                    if (auxDao.atualizarAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", idOld, nome.trim())) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Documento atualizado!");
                     } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Tipo de Documento.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Tipo de Documento.");
                     }
                 } else {
-                    showAlert(AlertType.ERROR, "Erro na Atualização", "ID do Tipo de Documento não encontrado.");
+                    AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "ID do Tipo de Documento não encontrado.");
                 }
             } else { // Inserir
-                if (auxDao.inserirTipoDoc(nome.trim())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Documento salvo!");
+                if (auxDao.inserirAuxiliar("aux_tipos_documento", "nome_tipo_doc", nome.trim())) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Documento salvo!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Tipo de Documento.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Tipo de Documento.");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Tipo de Documento: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Tipo de Documento: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosTipoDoc();
@@ -275,22 +276,22 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleExcluirTipoDoc(ActionEvent event) {
         AuxiliarItem sel = tableTipoDoc.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Selecione um Tipo de Documento para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Selecione um Tipo de Documento para excluir.");
             return;
         }
         try {
-            Integer id = auxDao.buscarIdTipoDocPorNome(sel.getNome());
+            Integer id = auxDao.obterIdAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", sel.getNome());
             if (id != null && id != -1) {
-                if (auxDao.excluirTipoDoc(id)) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Documento excluído!");
+                if (auxDao.excluirAuxiliar("aux_tipos_documento", "id_tipo_doc", id)) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Documento excluído!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Tipo de Documento.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Tipo de Documento.");
                 }
             } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "ID do Tipo de Documento não encontrado.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "ID do Tipo de Documento não encontrado.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Tipo de Documento: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Tipo de Documento: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosTipoDoc();
@@ -302,10 +303,10 @@ public class TabelasAuxiliaresController implements Initializable {
     private void carregarDadosNacionalidade() {
         try {
             listaNacionalidade.clear();
-            List<String> nomes = auxDao.listarNacionalidade();
+            List<String> nomes = auxDao.listarAuxiliar("aux_nacionalidades", "nome_nacionalidade");
             for (String nome : nomes) { listaNacionalidade.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar as Nacionalidades: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar as Nacionalidades: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -317,31 +318,31 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleSalvarNacionalidade(ActionEvent event) {
         String nome = txtNacionalidadeNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Vazio", "O nome para Nacionalidade não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Vazio", "O nome para Nacionalidade não pode ser vazio.");
             return;
         }
         AuxiliarItem sel = tableNacionalidade.getSelectionModel().getSelectedItem();
         try {
             if (sel != null) { // Atualizar
-                Integer idOld = auxDao.buscarIdNacionalidadePorNome(sel.getNome());
+                Integer idOld = auxDao.obterIdAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", sel.getNome());
                 if (idOld != null && idOld != -1) {
-                    if (auxDao.atualizarNacionalidade(idOld, nome.trim())) {
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Nacionalidade atualizada!");
+                    if (auxDao.atualizarAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", idOld, nome.trim())) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Nacionalidade atualizada!");
                     } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Nacionalidade.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Nacionalidade.");
                     }
                 } else {
-                    showAlert(AlertType.ERROR, "Erro na Atualização", "ID da Nacionalidade não encontrado.");
+                    AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "ID da Nacionalidade não encontrado.");
                 }
             } else { // Inserir
-                if (auxDao.inserirNacionalidade(nome.trim())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Nacionalidade salva!");
+                if (auxDao.inserirAuxiliar("aux_nacionalidades", "nome_nacionalidade", nome.trim())) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Nacionalidade salva!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Nacionalidade.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Nacionalidade.");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Nacionalidade: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Nacionalidade: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosNacionalidade();
@@ -351,22 +352,22 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleExcluirNacionalidade(ActionEvent event) {
         AuxiliarItem sel = tableNacionalidade.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Selecione uma Nacionalidade para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Selecione uma Nacionalidade para excluir.");
             return;
         }
         try {
-            Integer id = auxDao.buscarIdNacionalidadePorNome(sel.getNome());
+            Integer id = auxDao.obterIdAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", sel.getNome());
             if (id != null && id != -1) {
-                if (auxDao.excluirNacionalidade(id)) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Nacionalidade excluída!");
+                if (auxDao.excluirAuxiliar("aux_nacionalidades", "id_nacionalidade", id)) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Nacionalidade excluída!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Nacionalidade.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Nacionalidade.");
                 }
             } else {
-                showAlert(AlertType.ERROR, "Erro ao Excluir", "ID da Nacionalidade não encontrado.");
+                AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "ID da Nacionalidade não encontrado.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Nacionalidade: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Nacionalidade: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosNacionalidade();
@@ -378,10 +379,10 @@ public class TabelasAuxiliaresController implements Initializable {
     private void carregarDadosPassagemAux() {
         try {
             listaPassagemAux.clear();
-            List<String> nomes = auxDao.listarPassagemAux(); // Este método foi mantido com este nome no DAO
+            List<String> nomes = auxDao.listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem");
             for (String nome : nomes) { listaPassagemAux.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Tipos de Passagem: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Tipos de Passagem: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -393,31 +394,31 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleSalvarPassagemAux(ActionEvent event) {
         String nome = txtPassagemAuxNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Vazio", "O nome para Tipo de Passagem não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Vazio", "O nome para Tipo de Passagem não pode ser vazio.");
             return;
         }
         AuxiliarItem sel = tablePassagemAux.getSelectionModel().getSelectedItem();
         try {
             if (sel != null) { // Atualizar
-                Integer idOld = auxDao.buscarIdTipoPassagemPorNome(sel.getNome());
+                Integer idOld = auxDao.obterIdAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", sel.getNome());
                 if (idOld != null && idOld != -1) {
-                    if (auxDao.atualizarTipoPassagem(idOld, nome.trim())) {
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Passagem atualizado!");
+                    if (auxDao.atualizarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", idOld, nome.trim())) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Passagem atualizado!");
                     } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Tipo de Passagem.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Tipo de Passagem.");
                     }
                 } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "ID do Tipo de Passagem não encontrado.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "ID do Tipo de Passagem não encontrado.");
                 }
             } else { // Inserir
-                if (auxDao.inserirTipoPassagem(nome.trim())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Passagem salvo!");
+                if (auxDao.inserirAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", nome.trim())) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Passagem salvo!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Tipo de Passagem.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Tipo de Passagem.");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Tipo de Passagem: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Tipo de Passagem: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosPassagemAux();
@@ -427,22 +428,22 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleExcluirPassagemAux(ActionEvent event) {
         AuxiliarItem sel = tablePassagemAux.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Selecione um Tipo de Passagem para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Selecione um Tipo de Passagem para excluir.");
             return;
         }
         try {
-            Integer id = auxDao.buscarIdTipoPassagemPorNome(sel.getNome());
+            Integer id = auxDao.obterIdAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", sel.getNome());
             if (id != null && id != -1) {
-                if (auxDao.excluirTipoPassagem(id)) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Passagem excluído!");
+                if (auxDao.excluirAuxiliar("aux_tipos_passagem", "id_tipo_passagem", id)) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Passagem excluído!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Tipo de Passagem.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Tipo de Passagem.");
                 }
             } else {
-                showAlert(AlertType.ERROR, "Erro ao Excluir", "ID do Tipo de Passagem não encontrado.");
+                AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "ID do Tipo de Passagem não encontrado.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Tipo de Passagem: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Tipo de Passagem: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosPassagemAux();
@@ -454,10 +455,10 @@ public class TabelasAuxiliaresController implements Initializable {
     private void carregarDadosAgenteAux() {
         try {
             listaAgenteAux.clear();
-            List<String> nomes = auxDao.listarAgenteAux();
+            List<String> nomes = auxDao.listarAuxiliar("aux_agentes", "nome_agente");
             for (String nome : nomes) { listaAgenteAux.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Agentes: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Agentes: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -469,31 +470,31 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleSalvarAgenteAux(ActionEvent event) {
         String nome = txtAgenteAuxNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Vazio", "O nome para Agente não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Vazio", "O nome para Agente não pode ser vazio.");
             return;
         }
         AuxiliarItem sel = tableAgenteAux.getSelectionModel().getSelectedItem();
         try {
             if (sel != null) { // Atualizar
-                Integer idOld = auxDao.buscarIdAgenteAuxPorNome(sel.getNome());
+                Integer idOld = auxDao.obterIdAuxiliar("aux_agentes", "nome_agente", "id_agente", sel.getNome());
                 if (idOld != null && idOld != -1) {
-                    if (auxDao.atualizarAgenteAux(idOld, nome.trim())) {
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Agente atualizado!");
+                    if (auxDao.atualizarAuxiliar("aux_agentes", "nome_agente", "id_agente", idOld, nome.trim())) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Agente atualizado!");
                     } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Agente.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Agente.");
                     }
                 } else {
-                    showAlert(AlertType.ERROR, "Erro na Atualização", "ID do Agente não encontrado.");
+                    AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "ID do Agente não encontrado.");
                 }
             } else { // Inserir
-                if (auxDao.inserirAgenteAux(nome.trim())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Agente salvo!");
+                if (auxDao.inserirAuxiliar("aux_agentes", "nome_agente", nome.trim())) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Agente salvo!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Agente.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Agente.");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Agente: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Agente: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosAgenteAux();
@@ -503,22 +504,22 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleExcluirAgenteAux(ActionEvent event) {
         AuxiliarItem sel = tableAgenteAux.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Selecione um Agente para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Selecione um Agente para excluir.");
             return;
         }
         try {
-            Integer id = auxDao.buscarIdAgenteAuxPorNome(sel.getNome());
+            Integer id = auxDao.obterIdAuxiliar("aux_agentes", "nome_agente", "id_agente", sel.getNome());
             if (id != null && id != -1) {
-                if (auxDao.excluirAgenteAux(id)) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Agente excluído!");
+                if (auxDao.excluirAuxiliar("aux_agentes", "id_agente", id)) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Agente excluído!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Agente.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Agente.");
                 }
             } else {
-                showAlert(AlertType.ERROR, "Erro ao Excluir", "ID do Agente não encontrado.");
+                AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "ID do Agente não encontrado.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Agente: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Agente: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosAgenteAux();
@@ -530,10 +531,10 @@ public class TabelasAuxiliaresController implements Initializable {
     private void carregarDadosHorarioSaida() {
         try {
             listaHorarioSaida.clear();
-            List<String> nomes = auxDao.listarHorarioSaida();
+            List<String> nomes = auxDao.listarAuxiliar("aux_horarios_saida", "descricao_horario_saida");
             for (String nome : nomes) { listaHorarioSaida.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Horários de Saída: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Horários de Saída: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -543,34 +544,33 @@ public class TabelasAuxiliaresController implements Initializable {
         tableHorarioSaida.getSelectionModel().clearSelection();
     }
     @FXML private void handleSalvarHorarioSaida(ActionEvent event) {
-        String nome = txtHorarioSaidaNome.getText(); // Assumindo que o horário é um texto simples
+        String nome = txtHorarioSaidaNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Vazio", "O Horário de Saída não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Vazio", "O Horário de Saída não pode ser vazio.");
             return;
         }
         AuxiliarItem sel = tableHorarioSaida.getSelectionModel().getSelectedItem();
         try {
             if (sel != null) { // Atualizar
-                // auxDao.obterIdHorarioSaidaPorNome retorna Integer. A atualizarHorarioSaida espera int.
-                Integer idOld = auxDao.obterIdHorarioSaidaPorNome(sel.getNome()); // CORRIGIDO: nome do método
+                Integer idOld = auxDao.obterIdAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", sel.getNome());
                 if (idOld != null && idOld != -1) {
-                    if (auxDao.atualizarHorarioSaida(idOld, nome.trim())) { // atualizarHorarioSaida espera int
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Horário de Saída atualizado!");
+                    if (auxDao.atualizarAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", idOld, nome.trim())) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Horário de Saída atualizado!");
                     } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Horário de Saída.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Horário de Saída.");
                     }
                 } else {
-                    showAlert(AlertType.ERROR, "Erro na Atualização", "ID do Horário de Saída não encontrado.");
+                    AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "ID do Horário de Saída não encontrado.");
                 }
             } else { // Inserir
-                if (auxDao.inserirHorarioSaida(nome.trim())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Horário de Saída salvo!");
+                if (auxDao.inserirAuxiliar("aux_horarios_saida", "descricao_horario_saida", nome.trim())) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Horário de Saída salvo!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Horário de Saída.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Horário de Saída.");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Horário de Saída: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Horário de Saída: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosHorarioSaida();
@@ -580,23 +580,22 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleExcluirHorarioSaida(ActionEvent event) {
         AuxiliarItem sel = tableHorarioSaida.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Selecione um Horário de Saída para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Selecione um Horário de Saída para excluir.");
             return;
         }
         try {
-            // auxDao.obterIdHorarioSaidaPorNome retorna Integer. A excluirHorarioSaida espera int.
-            Integer id = auxDao.obterIdHorarioSaidaPorNome(sel.getNome()); // CORRIGIDO: nome do método
+            Integer id = auxDao.obterIdAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", sel.getNome());
             if (id != null && id != -1) {
-                if (auxDao.excluirHorarioSaida(id)) { // excluirHorarioSaida espera int
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Horário de Saída excluído!");
+                if (auxDao.excluirAuxiliar("aux_horarios_saida", "id_horario_saida", id)) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Horário de Saída excluído!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Horário de Saída.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Horário de Saída.");
                 }
             } else {
-                showAlert(AlertType.ERROR, "Erro ao Excluir", "ID do Horário de Saída não encontrado.");
+                AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "ID do Horário de Saída não encontrado.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Horário de Saída: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Horário de Saída: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosHorarioSaida();
@@ -608,10 +607,10 @@ public class TabelasAuxiliaresController implements Initializable {
     private void carregarDadosAcomodacao() {
         try {
             listaAcomodacao.clear();
-            List<String> nomes = auxDao.listarAcomodacao();
+            List<String> nomes = auxDao.listarAuxiliar("aux_acomodacoes", "nome_acomodacao");
             for (String nome : nomes) { listaAcomodacao.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Acomodações: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Acomodações: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -623,31 +622,31 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleSalvarAcomodacao(ActionEvent event) {
         String nome = txtAcomodacaoNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Vazio", "O nome para Acomodação não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Vazio", "O nome para Acomodação não pode ser vazio.");
             return;
         }
         AuxiliarItem sel = tableAcomodacao.getSelectionModel().getSelectedItem();
         try {
             if (sel != null) { // Atualizar
-                Integer idOld = auxDao.buscarIdAcomodacaoPorNome(sel.getNome());
+                Integer idOld = auxDao.obterIdAuxiliar("aux_acomodacoes", "nome_acomodacao", "id_acomodacao", sel.getNome());
                 if (idOld != null && idOld != -1) {
-                    if (auxDao.atualizarAcomodacao(idOld, nome.trim())) {
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Acomodação atualizada!");
+                    if (auxDao.atualizarAuxiliar("aux_acomodacoes", "nome_acomodacao", "id_acomodacao", idOld, nome.trim())) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Acomodação atualizada!");
                     } else {
-                        showAlert(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Acomodação.");
+                        AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "Falha ao atualizar Acomodação.");
                     }
                 } else {
-                    showAlert(AlertType.ERROR, "Erro na Atualização", "ID da Acomodação não encontrado.");
+                    AlertHelper.show(AlertType.ERROR, "Erro na Atualização", "ID da Acomodação não encontrado.");
                 }
             } else { // Inserir
-                if (auxDao.inserirAcomodacao(nome.trim())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Acomodação salva!");
+                if (auxDao.inserirAuxiliar("aux_acomodacoes", "nome_acomodacao", nome.trim())) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Acomodação salva!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Acomodação.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Salvar", "Falha ao salvar Acomodação.");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Acomodação: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Acomodação: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosAcomodacao();
@@ -657,22 +656,22 @@ public class TabelasAuxiliaresController implements Initializable {
     @FXML private void handleExcluirAcomodacao(ActionEvent event) {
         AuxiliarItem sel = tableAcomodacao.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Selecione uma Acomodação para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Selecione uma Acomodação para excluir.");
             return;
         }
         try {
-            Integer id = auxDao.buscarIdAcomodacaoPorNome(sel.getNome());
+            Integer id = auxDao.obterIdAuxiliar("aux_acomodacoes", "nome_acomodacao", "id_acomodacao", sel.getNome());
             if (id != null && id != -1) {
-                if (auxDao.excluirAcomodacao(id)) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Acomodação excluída!");
+                if (auxDao.excluirAuxiliar("aux_acomodacoes", "id_acomodacao", id)) {
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Acomodação excluída!");
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Acomodação.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir Acomodação.");
                 }
             } else {
-                showAlert(AlertType.ERROR, "Erro ao Excluir", "ID da Acomodação não encontrado.");
+                AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "ID da Acomodação não encontrado.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Acomodação: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Acomodação: " + e.getMessage());
             e.printStackTrace();
         }
         carregarDadosAcomodacao();
@@ -681,11 +680,4 @@ public class TabelasAuxiliaresController implements Initializable {
     }
     
     // --- Método Auxiliar para Alertas ---
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null); // Para não mostrar um cabeçalho extra
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

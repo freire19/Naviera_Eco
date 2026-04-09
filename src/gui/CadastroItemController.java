@@ -8,7 +8,7 @@ import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 
 import java.math.BigDecimal; // Nova importação
-import java.sql.SQLException; // Nova importação
+import gui.util.AlertHelper;
 
 public class CadastroItemController {
     @FXML private TextField txtDescricaoItem; // Este será o "nome_item"
@@ -26,7 +26,7 @@ public class CadastroItemController {
         if (nomeItemForm.isEmpty() || valorNormalStr.isEmpty()) {
             // O valor com desconto pode ser opcional, dependendo da sua regra.
             // Se for obrigatório, adicione: || valorDescontoStr.isEmpty()
-            showAlert("Erro de Validação", "O nome do item e o valor normal devem ser preenchidos.");
+            AlertHelper.error("Erro de Validação: O nome do item e o valor normal devem ser preenchidos.");
             return;
         }
 
@@ -48,19 +48,19 @@ public class CadastroItemController {
             novoItem.setPrecoUnitarioDesconto(precoComDesconto); // Pode ser null se não informado
             novoItem.setAtivo(true); // Por padrão, um novo item é ativo
 
-            itemFreteDAO.inserir(novoItem); // Chamada ao novo método do DAO
-            showAlert("Sucesso", "Item cadastrado com sucesso! ID: " + novoItem.getIdItemFrete());
-
-            limparCampos(); // Opcional: limpar campos após salvar
-            // fecharJanela(); // Se quiser fechar após salvar
+            boolean salvo = itemFreteDAO.inserir(novoItem);
+            if (salvo) {
+                AlertHelper.info("Item cadastrado com sucesso! ID: " + novoItem.getIdItemFrete());
+                limparCampos(); // Opcional: limpar campos após salvar
+                // fecharJanela(); // Se quiser fechar após salvar
+            } else {
+                AlertHelper.error("Não foi possível salvar o item. Verifique o log para detalhes.");
+            }
 
         } catch (NumberFormatException e) {
-            showAlert("Erro de Formato", "Os valores de preço devem ser numéricos válidos (ex: 10.50).");
-        } catch (SQLException e) {
-            showAlert("Erro de Banco de Dados", "Não foi possível salvar o item: " + e.getMessage());
-            e.printStackTrace(); // Importante para depuração no console
+            AlertHelper.error("Erro de Formato: Os valores de preço devem ser numéricos válidos (ex: 10.50).");
         } catch (Exception e) { // Captura genérica para outros erros inesperados
-            showAlert("Erro Inesperado", "Ocorreu um erro: " + e.getMessage());
+            AlertHelper.error("Ocorreu um erro: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -84,22 +84,4 @@ public class CadastroItemController {
         }
     }
 
-    private void showAlert(String titulo, String mensagem) {
-        Alert alerta = new Alert(Alert.AlertType.NONE); // Tipo será definido abaixo
-
-        if (titulo.toLowerCase().contains("erro") || titulo.toLowerCase().contains("falha")) {
-            alerta.setAlertType(Alert.AlertType.ERROR);
-        } else if (titulo.toLowerCase().contains("sucesso")) {
-            alerta.setAlertType(Alert.AlertType.INFORMATION);
-        } else if (titulo.toLowerCase().contains("aviso")) {
-            alerta.setAlertType(Alert.AlertType.WARNING);
-        } else {
-            alerta.setAlertType(Alert.AlertType.INFORMATION); // Padrão
-        }
-        
-        alerta.setTitle(titulo);
-        alerta.setHeaderText(null);
-        alerta.setContentText(mensagem);
-        alerta.showAndWait();
-    }
 }

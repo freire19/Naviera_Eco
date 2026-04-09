@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import gui.util.AlertHelper;
 
 public class CadastroViagemController implements Initializable {
 
@@ -181,15 +182,15 @@ public class CadastroViagemController implements Initializable {
     private void carregarHorariosSaidaNoComboBox() {
         if (cmbHorarioSaida == null) return;
         try {
-            List<String> horarios = auxiliaresDAO.listarHorarioSaida();
+            List<String> horarios = auxiliaresDAO.listarAuxiliar("aux_horarios_saida", "descricao_horario_saida");
             if (horarios != null && !horarios.isEmpty()) {
                 cmbHorarioSaida.setItems(FXCollections.observableArrayList(horarios));
             } else {
                 cmbHorarioSaida.getItems().clear();
-                showAlert(Alert.AlertType.INFORMATION, "Aviso", "Não há horários de saída cadastrados. Cadastre-os em 'Outros Cadastros Auxiliares'.");
+                AlertHelper.show(Alert.AlertType.INFORMATION, "Aviso", "Não há horários de saída cadastrados. Cadastre-os em 'Outros Cadastros Auxiliares'.");
             }
         } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "Erro de Carregamento", "Falha ao carregar horários de saída: " + e.getMessage());
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro de Carregamento", "Falha ao carregar horários de saída: " + e.getMessage());
             e.printStackTrace();
             cmbHorarioSaida.getItems().clear();
         }
@@ -201,7 +202,7 @@ public class CadastroViagemController implements Initializable {
         if (viagensDoBanco != null) {
             listaObservableViagens.setAll(viagensDoBanco);
         } else {
-            showAlert(Alert.AlertType.ERROR, "Erro", "Não foi possível carregar a lista de viagens.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro", "Não foi possível carregar a lista de viagens.");
             listaObservableViagens.clear();
         }
         tabelaViagens.refresh();
@@ -229,7 +230,7 @@ public class CadastroViagemController implements Initializable {
             }
             if (!found) {
                 cmbEmbarcacao.setValue(null);
-                showAlert(Alert.AlertType.WARNING, "Embarcação Ausente", "A embarcação associada a esta viagem não foi encontrada na lista. Pode ter sido excluída.");
+                AlertHelper.show(Alert.AlertType.WARNING, "Embarcação Ausente", "A embarcação associada a esta viagem não foi encontrada na lista. Pode ter sido excluída.");
             }
         } else {
             cmbEmbarcacao.setValue(null);
@@ -246,7 +247,7 @@ public class CadastroViagemController implements Initializable {
             }
             if (!found) {
                 cmbRotaViagem.setValue(null);
-                showAlert(Alert.AlertType.WARNING, "Rota Ausente", "A rota associada a esta viagem não foi encontrada na lista. Pode ter sido excluída.");
+                AlertHelper.show(Alert.AlertType.WARNING, "Rota Ausente", "A rota associada a esta viagem não foi encontrada na lista. Pode ter sido excluída.");
             }
         } else {
             cmbRotaViagem.setValue(null);
@@ -276,7 +277,7 @@ public class CadastroViagemController implements Initializable {
             txtIdViagem.setText(String.valueOf(proximoId));
         } else {
             txtIdViagem.clear();
-            showAlert(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID para a viagem. Verifique a sequence 'seq_viagem' no banco de dados.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID para a viagem. Verifique a sequence 'seq_viagem' no banco de dados.");
             return;
         }
         
@@ -297,42 +298,42 @@ public class CadastroViagemController implements Initializable {
 
         // Validação dos campos obrigatórios
         if (idStr == null || idStr.trim().isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "ID é obrigatório. Clique em 'Nova Viagem' para gerar um novo ID.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Campos Obrigatórios", "ID é obrigatório. Clique em 'Nova Viagem' para gerar um novo ID.");
             return;
         }
         
         if (dataPartida == null) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Data de Viagem é obrigatória.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Campos Obrigatórios", "Data de Viagem é obrigatória.");
             dpDataViagem.requestFocus();
             return;
         }
         
         if (dataChegada == null) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Data de Chegada é obrigatória.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Campos Obrigatórios", "Data de Chegada é obrigatória.");
             dpDataChegada.requestFocus();
             return;
         }
         
         if (embarcacaoSelecionada == null) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Embarcação é obrigatória.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Campos Obrigatórios", "Embarcação é obrigatória.");
             cmbEmbarcacao.requestFocus();
             return;
         }
         
         if (rotaSelecionada == null) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Rota é obrigatória.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Campos Obrigatórios", "Rota é obrigatória.");
             cmbRotaViagem.requestFocus();
             return;
         }
         
         if (horarioSaidaSelecionado == null || horarioSaidaSelecionado.trim().isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Horário de Saída é obrigatório.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Campos Obrigatórios", "Horário de Saída é obrigatório.");
             cmbHorarioSaida.requestFocus();
             return;
         }
         
         if (dataChegada.isBefore(dataPartida)) {
-            showAlert(Alert.AlertType.WARNING, "Data Inválida", "A Data de Chegada não pode ser anterior à Data de Viagem.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Data Inválida", "A Data de Chegada não pode ser anterior à Data de Viagem.");
             dpDataChegada.requestFocus();
             return;
         }
@@ -341,7 +342,7 @@ public class CadastroViagemController implements Initializable {
         try {
             idViagemLong = Long.parseLong(idStr.trim());
         } catch (NumberFormatException e) {
-            showAlert(Alert.AlertType.ERROR, "Erro de ID", "ID da viagem inválido. Use apenas números.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro de ID", "ID da viagem inválido. Use apenas números.");
             return;
         }
 
@@ -350,11 +351,11 @@ public class CadastroViagemController implements Initializable {
             Integer idAux = auxiliaresDAO.obterIdHorarioSaidaPorNome(horarioSaidaSelecionado);
             idHorarioSaidaDB = (idAux != null) ? idAux.longValue() : null; // CORRIGIDO AQUI
             if (idHorarioSaidaDB == null || idHorarioSaidaDB == -1L) {
-                showAlert(Alert.AlertType.ERROR, "Erro de Horário", "Não foi possível encontrar o ID para o horário de saída selecionado. Verifique os cadastros auxiliares.");
+                AlertHelper.show(Alert.AlertType.ERROR, "Erro de Horário", "Não foi possível encontrar o ID para o horário de saída selecionado. Verifique os cadastros auxiliares.");
                 return;
             }
         } catch (SQLException e) {
-            showAlert(Alert.AlertType.ERROR, "Erro de Banco de Dados", "Falha ao obter ID do horário de saída: " + e.getMessage());
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro de Banco de Dados", "Falha ao obter ID do horário de saída: " + e.getMessage());
             e.printStackTrace();
             return;
         }
@@ -368,7 +369,7 @@ public class CadastroViagemController implements Initializable {
         } else {
             v = viagemSelecionada;
             if (!Objects.equals(v.getId(), idViagemLong)) {
-                showAlert(Alert.AlertType.ERROR, "Erro de ID", "O ID da viagem foi alterado. Selecione na tabela para editar ou clique em Nova Viagem.");
+                AlertHelper.show(Alert.AlertType.ERROR, "Erro de ID", "O ID da viagem foi alterado. Selecione na tabela para editar ou clique em Nova Viagem.");
                 return;
             }
         }
@@ -397,15 +398,15 @@ public class CadastroViagemController implements Initializable {
             // DL043: definirViagemAtiva com tratamento de falha explicito
             if (ativa) {
                 if (!viagemDAO.definirViagemAtiva(v.getId())) {
-                    showAlert(Alert.AlertType.WARNING, "Aviso",
+                    AlertHelper.show(Alert.AlertType.WARNING, "Aviso",
                         "Viagem salva, mas houve falha ao defini-la como ativa. Tente ativa-la manualmente.");
                 }
             }
-            showAlert(Alert.AlertType.INFORMATION, "Sucesso", mensagem);
+            AlertHelper.show(Alert.AlertType.INFORMATION, "Sucesso", mensagem);
             carregarViagensNaTabela();
             handleNovaViagem(null);
         } else {
-            showAlert(Alert.AlertType.ERROR, "Erro", "Falha ao salvar viagem no banco de dados.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro", "Falha ao salvar viagem no banco de dados.");
         }
     }
 
@@ -413,7 +414,7 @@ public class CadastroViagemController implements Initializable {
     private void handleExcluirViagem(ActionEvent event) {
         viagemSelecionada = tabelaViagens.getSelectionModel().getSelectedItem();
         if (viagemSelecionada == null) {
-            showAlert(Alert.AlertType.WARNING, "Atenção", "Nenhuma viagem selecionada para excluir.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Atenção", "Nenhuma viagem selecionada para excluir.");
             return;
         }
 
@@ -434,19 +435,19 @@ public class CadastroViagemController implements Initializable {
                     java.util.List<model.Viagem> restantes = viagemDAO.listarTodasViagensResumido();
                     if (!restantes.isEmpty()) {
                         viagemDAO.definirViagemAtiva(restantes.get(0).getId());
-                        showAlert(Alert.AlertType.INFORMATION, "Sucesso",
+                        AlertHelper.show(Alert.AlertType.INFORMATION, "Sucesso",
                             "Viagem excluída. A viagem ID " + restantes.get(0).getId() + " foi ativada automaticamente.");
                     } else {
-                        showAlert(Alert.AlertType.WARNING, "Aviso",
+                        AlertHelper.show(Alert.AlertType.WARNING, "Aviso",
                             "Viagem excluída. Não há outras viagens cadastradas.");
                     }
                 } else {
-                    showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Viagem excluída com sucesso!");
+                    AlertHelper.show(Alert.AlertType.INFORMATION, "Sucesso", "Viagem excluída com sucesso!");
                 }
                 carregarViagensNaTabela();
                 handleNovaViagem(null);
             } else {
-                showAlert(Alert.AlertType.ERROR, "Erro", "Falha ao excluir viagem. Verifique se há dados dependentes (passagens, encomendas, etc).");
+                AlertHelper.show(Alert.AlertType.ERROR, "Erro", "Falha ao excluir viagem. Verifique se há dados dependentes (passagens, encomendas, etc).");
             }
         }
     }
@@ -455,7 +456,7 @@ public class CadastroViagemController implements Initializable {
     private void handleEditarViagem(ActionEvent event) {
         viagemSelecionada = tabelaViagens.getSelectionModel().getSelectedItem();
         if (viagemSelecionada == null) {
-            showAlert(Alert.AlertType.WARNING, "Atenção", "Nenhuma viagem selecionada para edição.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Atenção", "Nenhuma viagem selecionada para edição.");
             return;
         }
         preencherCamposComViagem(viagemSelecionada);
@@ -493,11 +494,4 @@ public class CadastroViagemController implements Initializable {
         viagemSelecionada = null;
     }
 
-    private void showAlert(Alert.AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

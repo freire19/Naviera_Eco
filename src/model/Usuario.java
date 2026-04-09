@@ -105,4 +105,15 @@ public class Usuario {
     public String toString() {
         return nomeCompleto != null ? nomeCompleto : (loginUsuario != null ? loginUsuario : "ID: " + id) ;
     }
+
+    // DP033: equals/hashCode para collection performance
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Usuario that = (Usuario) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
 }

@@ -68,6 +68,7 @@ public enum StatusPagamento {
         }
     }
 
+    // TODO: DM048 — mover para gui/util quando refatorar views
     /**
      * Retorna a cor CSS para uso em estilos JavaFX.
      */
@@ -82,6 +83,7 @@ public enum StatusPagamento {
         }
     }
 
+    // TODO: DM048 — mover para gui/util quando refatorar views
     /**
      * Retorna o estilo CSS completo para celulas de tabela.
      */

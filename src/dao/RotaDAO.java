@@ -24,7 +24,6 @@ public class RotaDAO {
                 rotas.add(rota);
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao listar todas as rotas como objetos: " + e.getMessage());
             System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return rotas;
@@ -45,7 +44,6 @@ public class RotaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar rota por ID: " + e.getMessage());
             System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return null;
@@ -61,7 +59,6 @@ public class RotaDAO {
                 return rs.getLong(1);
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao gerar próximo ID de rota: " + e.getMessage());
             System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
         }
         return -1;
@@ -76,7 +73,6 @@ public class RotaDAO {
             stmt.setString(3, rota.getDestino());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro ao inserir rota: " + e.getMessage());
             System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
@@ -91,7 +87,6 @@ public class RotaDAO {
             stmt.setObject(3, rota.getId()); // ID é Long
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro ao atualizar rota: " + e.getMessage());
             System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }

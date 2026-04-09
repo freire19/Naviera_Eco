@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 public class ItemFreteDAO {
 
     // Método para inserir um novo ItemFrete
-    public boolean inserir(ItemFrete item) throws SQLException {
+    public boolean inserir(ItemFrete item) {
         String sql = "INSERT INTO itens_frete_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, preco_unitario_desconto, ativo) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -33,12 +33,14 @@ public class ItemFreteDAO {
                 }
                 return true;
             }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
         return false;
     }
 
     // Método para atualizar um ItemFrete existente
-    public boolean atualizar(ItemFrete item) throws SQLException {
+    public boolean atualizar(ItemFrete item) {
         String sql = "UPDATE itens_frete_padrao SET nome_item = ?, descricao = ?, unidade_medida = ?, preco_unitario_padrao = ?, preco_unitario_desconto = ?, ativo = ? WHERE id_item_frete = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -52,24 +54,30 @@ public class ItemFreteDAO {
 
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
+        return false;
     }
 
     // Método para excluir um ItemFrete por ID
-    public boolean excluir(int id) throws SQLException {
+    public boolean excluir(int id) {
         String sql = "DELETE FROM itens_frete_padrao WHERE id_item_frete = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
+        return false;
     }
 
     // Método para listar ItemFrete:
     // se incluirInativos for TRUE, retorna todos (ativos e inativos).
     // se incluirInativos for FALSE, retorna APENAS os ativos.
-    public List<ItemFrete> listarTodos(boolean incluirInativos) throws SQLException {
+    public List<ItemFrete> listarTodos(boolean incluirInativos) {
         List<ItemFrete> itens = new ArrayList<>();
         String sql = "SELECT id_item_frete, nome_item, descricao, unidade_medida, preco_unitario_padrao, preco_unitario_desconto, ativo FROM itens_frete_padrao";
         if (!incluirInativos) { // Se não é para incluir inativos, filtra por ativo = TRUE
@@ -91,13 +99,15 @@ public class ItemFreteDAO {
                 item.setAtivo(rs.getBoolean("ativo"));
                 itens.add(item);
             }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
         return itens;
     }
-    
+
     // Método para listar TODOS os ItemFrete (ativos e inativos), pode ser útil para outras partes do sistema.
     // Mantenho este como uma sobrecarga se você precisar de uma forma de listar todos sem especificar um boolean.
-    public List<ItemFrete> listarTodos() throws SQLException {
+    public List<ItemFrete> listarTodos() {
         return listarTodos(true); // Chama o método com true para incluir inativos por padrão (listar todos)
     }
 }

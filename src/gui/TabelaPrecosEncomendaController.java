@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.ResourceBundle;
 
 import dao.ItemEncomendaPadraoDAO;
+import gui.util.CompanyDataLoader;
+import gui.util.PrintLayoutHelper;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -427,22 +429,14 @@ public class TabelaPrecosEncomendaController implements Initializable {
             printRoot.setStyle("-fx-background-color: white;");   // <<< FUNDO BRANCO
 
             // ---------- CABEÇALHO ----------
-            Label lblTitulo = new Label("Tabela de Preços de Encomenda");
-            lblTitulo.setStyle(
-                    "-fx-font-size: 18px; " +
-                    "-fx-font-weight: bold; " +
-                    "-fx-text-fill: #1F3A56;");
-            lblTitulo.setMaxWidth(Double.MAX_VALUE);
-
-            Label lblEmbarcacao = new Label("F/B DEUS DE ALIANÇA V");
-            lblEmbarcacao.setStyle(
-                    "-fx-font-size: 14px; " +
-                    "-fx-font-weight: bold; " +
-                    "-fx-text-fill: #1F3A56;");
-            lblEmbarcacao.setMaxWidth(Double.MAX_VALUE);
-
-            VBox headerBox = new VBox(3, lblTitulo, lblEmbarcacao);
+            CompanyDataLoader cdl = new CompanyDataLoader();
+            VBox headerBox = PrintLayoutHelper.criarHeaderEmpresaA4(
+                    cdl.getNomeEmpresa(), cdl.getCnpj(), cdl.getEndereco(), cdl.getCaminhoLogo());
             headerBox.setAlignment(Pos.TOP_LEFT);
+
+            Label lblTitulo = PrintLayoutHelper.criarTitulo("Tabela de Preços de Encomenda");
+            lblTitulo.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1F3A56;");
+            headerBox.getChildren().add(lblTitulo);
 
             Separator sep = new Separator();
             sep.setPadding(new Insets(10, 0, 10, 0));

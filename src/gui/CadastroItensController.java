@@ -20,7 +20,6 @@ import model.ItemFrete;
 
 import java.math.BigDecimal;
 import java.net.URL;
-import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
@@ -28,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import gui.util.AlertHelper;
 
 public class CadastroItensController implements Initializable {
 
@@ -146,7 +146,7 @@ public class CadastroItensController implements Initializable {
                     double value = parseValorMonetario(txtValorNormal.getText());
                     txtValorNormal.setText(df.format(value));
                 } catch (ParseException e) {
-                    showAlert(AlertType.ERROR, "Erro de Formato", "Valor Normal inválido.");
+                    AlertHelper.show(AlertType.ERROR, "Erro de Formato", "Valor Normal inválido.");
                     txtValorNormal.setText("0,00"); // Ou limpar ou manter o último válido
                 }
             }
@@ -158,7 +158,7 @@ public class CadastroItensController implements Initializable {
                     double value = parseValorMonetario(txtValorDesconto.getText());
                     txtValorDesconto.setText(df.format(value));
                 } catch (ParseException e) {
-                    showAlert(AlertType.ERROR, "Erro de Formato", "Valor com Desconto inválido.");
+                    AlertHelper.show(AlertType.ERROR, "Erro de Formato", "Valor com Desconto inválido.");
                     txtValorDesconto.setText("0,00"); // Ou limpar ou manter o último válido
                 }
             }
@@ -167,13 +167,8 @@ public class CadastroItensController implements Initializable {
 
     private void carregarItensFrete() {
         ItemFreteDAO dao = new ItemFreteDAO();
-        try {
-            // Passar true para listarTodos para trazer todos os itens (ativos e inativos)
-            listaItensFrete.setAll(dao.listarTodos(true)); 
-        } catch (SQLException e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro de Banco de Dados", "Falha ao carregar itens de frete: " + e.getMessage());
-        }
+        // Passar true para listarTodos para trazer todos os itens (ativos e inativos)
+        listaItensFrete.setAll(dao.listarTodos(true));
     }
 
     private void preencherCamposComItem(ItemFrete item) {
@@ -274,7 +269,7 @@ public class CadastroItensController implements Initializable {
     @FXML
     private void handleEditarFrete(ActionEvent event) {
         if (itemSelecionadoParaEdicao == null) {
-            showAlert(AlertType.WARNING, "Edição", "Por favor, selecione um item para editar.");
+            AlertHelper.show(AlertType.WARNING, "Edição", "Por favor, selecione um item para editar.");
             return;
         }
         atualizarEstadoUI(EstadoUI.EDITANDO_ITEM);
@@ -283,7 +278,7 @@ public class CadastroItensController implements Initializable {
     @FXML
     private void handleExcluirFrete(ActionEvent event) {
         if (itemSelecionadoParaEdicao == null) {
-            showAlert(AlertType.WARNING, "Exclusão", "Por favor, selecione um item para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Exclusão", "Por favor, selecione um item para excluir.");
             return;
         }
 
@@ -295,14 +290,13 @@ public class CadastroItensController implements Initializable {
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             ItemFreteDAO dao = new ItemFreteDAO();
-            try {
-                dao.excluir(itemSelecionadoParaEdicao.getIdItemFrete());
-                showAlert(AlertType.INFORMATION, "Sucesso", "Item excluído com sucesso!");
+            boolean excluido = dao.excluir(itemSelecionadoParaEdicao.getIdItemFrete());
+            if (excluido) {
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item excluído com sucesso!");
                 carregarItensFrete(); // Recarrega a tabela
                 atualizarEstadoUI(EstadoUI.VISUALIZACAO);
-            } catch (SQLException e) {
-                e.printStackTrace();
-                showAlert(AlertType.ERROR, "Erro no Banco de Dados", "Não foi possível excluir o item: " + e.getMessage());
+            } else {
+                AlertHelper.show(AlertType.ERROR, "Erro no Banco de Dados", "Não foi possível excluir o item.");
             }
         }
     }
@@ -315,7 +309,7 @@ public class CadastroItensController implements Initializable {
         boolean ativo = chkAtivo.isSelected();
 
         if (nome.isEmpty() || valorNormalStr.isEmpty() || valorDescontoStr.isEmpty()) {
-            showAlert(AlertType.WARNING, "Campos Obrigatórios", "Nome do item, Valor Normal e Valor com Desconto são obrigatórios.");
+            AlertHelper.show(AlertType.WARNING, "Campos Obrigatórios", "Nome do item, Valor Normal e Valor com Desconto são obrigatórios.");
             return;
         }
 
@@ -325,36 +319,36 @@ public class CadastroItensController implements Initializable {
             precoPadrao = BigDecimal.valueOf(parseValorMonetario(valorNormalStr));
             precoDesconto = BigDecimal.valueOf(parseValorMonetario(valorDescontoStr));
         } catch (ParseException e) {
-            showAlert(AlertType.ERROR, "Formato Inválido", "Valores monetários inválidos.");
+            AlertHelper.show(AlertType.ERROR, "Formato Inválido", "Valores monetários inválidos.");
             return;
         }
 
         ItemFreteDAO dao = new ItemFreteDAO();
-        try {
-            if (itemSelecionadoParaEdicao == null) { // Novo item
-                // idItemFrete 0 para um novo item, o banco de dados deve gerar o ID real
-                ItemFrete novoItem = new ItemFrete(0, nome, "", "", precoPadrao, precoDesconto, ativo); 
-                dao.inserir(novoItem);
-                showAlert(AlertType.INFORMATION, "Sucesso", "Item '" + nome + "' cadastrado com sucesso!");
-            } else { // Editar item existente
-                itemSelecionadoParaEdicao.setNomeItem(nome);
-                itemSelecionadoParaEdicao.setPrecoUnitarioPadrao(precoPadrao);
-                itemSelecionadoParaEdicao.setPrecoUnitarioDesconto(precoDesconto);
-                itemSelecionadoParaEdicao.setAtivo(ativo);
-                
-                // Mantenha descrição e unidade de medida vazias se não houver campos para elas
-                itemSelecionadoParaEdicao.setDescricao(""); 
-                itemSelecionadoParaEdicao.setUnidadeMedida("");
+        boolean sucesso;
+        if (itemSelecionadoParaEdicao == null) { // Novo item
+            // idItemFrete 0 para um novo item, o banco de dados deve gerar o ID real
+            ItemFrete novoItem = new ItemFrete(0, nome, "", "", precoPadrao, precoDesconto, ativo);
+            sucesso = dao.inserir(novoItem);
+            if (sucesso) AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item '" + nome + "' cadastrado com sucesso!");
+        } else { // Editar item existente
+            itemSelecionadoParaEdicao.setNomeItem(nome);
+            itemSelecionadoParaEdicao.setPrecoUnitarioPadrao(precoPadrao);
+            itemSelecionadoParaEdicao.setPrecoUnitarioDesconto(precoDesconto);
+            itemSelecionadoParaEdicao.setAtivo(ativo);
 
-                dao.atualizar(itemSelecionadoParaEdicao); // Este método precisa existir no seu DAO
-                showAlert(AlertType.INFORMATION, "Sucesso", "Item '" + nome + "' atualizado com sucesso!");
-            }
-            carregarItensFrete(); // Recarrega a tabela para mostrar as mudanças
-            atualizarEstadoUI(EstadoUI.VISUALIZACAO); // Volta ao estado de visualização
-        } catch (SQLException e) {
-            e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro no Banco de Dados", "Não foi possível salvar o item: " + e.getMessage());
+            // Mantenha descrição e unidade de medida vazias se não houver campos para elas
+            itemSelecionadoParaEdicao.setDescricao("");
+            itemSelecionadoParaEdicao.setUnidadeMedida("");
+
+            sucesso = dao.atualizar(itemSelecionadoParaEdicao);
+            if (sucesso) AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item '" + nome + "' atualizado com sucesso!");
         }
+        if (!sucesso) {
+            AlertHelper.show(AlertType.ERROR, "Erro no Banco de Dados", "Não foi possível salvar o item.");
+            return;
+        }
+        carregarItensFrete(); // Recarrega a tabela para mostrar as mudanças
+        atualizarEstadoUI(EstadoUI.VISUALIZACAO); // Volta ao estado de visualização
     }
 
     @FXML
@@ -384,11 +378,4 @@ public class CadastroItensController implements Initializable {
         }
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

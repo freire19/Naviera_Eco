@@ -1,6 +1,5 @@
 package gui;
 
-import dao.ConexaoBD;
 import dao.PassageiroDAO;
 import dao.PassagemDAO;
 import dao.ReciboQuitacaoPassageiroDAO;
@@ -23,9 +22,6 @@ import javafx.stage.Stage;
 import javafx.scene.Node;
 
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -109,14 +105,14 @@ public class ExtratoPassageiroController implements Initializable {
 
     // #034: carregamento sincrono — evita race condition com impressao
     private void carregarDadosEmpresa() {
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao, cnpj, telefone, path_logo FROM configuracao_empresa LIMIT 1");
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                if (rs.getString("nome_embarcacao") != null) empNome = rs.getString("nome_embarcacao");
-                if (rs.getString("cnpj") != null) empCnpj = rs.getString("cnpj");
-                if (rs.getString("telefone") != null) empTelefone = rs.getString("telefone");
-                if (rs.getString("path_logo") != null) empPathLogo = rs.getString("path_logo");
+        try {
+            dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
+            model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            if (empresa != null) {
+                if (empresa.getEmbarcacao() != null) empNome = empresa.getEmbarcacao();
+                if (empresa.getCnpj() != null) empCnpj = empresa.getCnpj();
+                if (empresa.getTelefone() != null) empTelefone = empresa.getTelefone();
+                if (empresa.getCaminhoFoto() != null) empPathLogo = empresa.getCaminhoFoto();
             }
         } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.carregarDadosEmpresa: " + e.getMessage()); }
     }
@@ -747,7 +743,7 @@ public class ExtratoPassageiroController implements Initializable {
                     g2d.drawLine(marginX, y, (int)width - marginX, y);
                     g2d.setColor(Color.BLACK);
                     g2d.setFont(new Font("Arial", Font.ITALIC, 8));
-                    g2d.drawString("Naviera - Navegação Fluvial - Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), marginX, y + 15);
+                    g2d.drawString(empNome + " - Emissão: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), marginX, y + 15);
                     g2d.drawString("Página 1", (int)width - marginX - 30, y + 15);
 
                     return PAGE_EXISTS;

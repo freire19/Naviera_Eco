@@ -17,6 +17,7 @@ import javafx.stage.Stage;
 import java.math.BigDecimal;
 // import java.sql.SQLException; // Não é mais necessário importar explicitamente se não for lançado
 import java.util.List;
+import gui.util.AlertHelper;
 
 public class CadastroProdutoController {
 
@@ -113,7 +114,7 @@ public class CadastroProdutoController {
             if (itens != null) listaFrete.addAll(itens);
         } catch (Exception ex) { // CORREÇÃO: Mudado de SQLException para Exception
             ex.printStackTrace();
-            showAlert(Alert.AlertType.WARNING, "Erro ao carregar Itens de Frete:\n" + ex.getMessage());
+            AlertHelper.warn("Erro ao carregar Itens de Frete:\n" + ex.getMessage());
         }
     }
 
@@ -124,7 +125,7 @@ public class CadastroProdutoController {
             if (itens != null) listaEncomenda.addAll(itens);
         } catch (Exception ex) { // CORREÇÃO: Mudado de SQLException para Exception
             ex.printStackTrace();
-            showAlert(Alert.AlertType.WARNING, "Erro ao carregar Itens de Encomenda:\n" + ex.getMessage());
+            AlertHelper.warn("Erro ao carregar Itens de Encomenda:\n" + ex.getMessage());
         }
     }
 
@@ -147,12 +148,12 @@ public class CadastroProdutoController {
             it.setAtivo(true);
 
             new ItemFreteDAO().inserir(it);
-            showAlert(Alert.AlertType.INFORMATION, "Item de Frete cadastrado com sucesso!");
+            AlertHelper.info("Item de Frete cadastrado com sucesso!");
             limparCamposFrete();
             carregarFrete();
         } catch (Exception ex) {
             ex.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Erro ao salvar Frete:\n" + ex.getMessage());
+            AlertHelper.error("Erro ao salvar Frete:\n" + ex.getMessage());
         }
     }
 
@@ -172,12 +173,12 @@ public class CadastroProdutoController {
 
             new ItemEncomendaPadraoDAO().inserir(it);
             
-            showAlert(Alert.AlertType.INFORMATION, "Item de Encomenda cadastrado com sucesso!");
+            AlertHelper.info("Item de Encomenda cadastrado com sucesso!");
             limparCamposEncomenda();
             carregarEncomenda();
         } catch (Exception ex) {
             ex.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Erro ao salvar Encomenda:\n" + ex.getMessage());
+            AlertHelper.error("Erro ao salvar Encomenda:\n" + ex.getMessage());
         }
     }
 
@@ -202,9 +203,4 @@ public class CadastroProdutoController {
         stage.close();
     }
 
-    private void showAlert(Alert.AlertType tipo, String msg) {
-        Alert a = new Alert(tipo, msg, ButtonType.OK);
-        a.setHeaderText(null);
-        a.showAndWait();
-    }
 }

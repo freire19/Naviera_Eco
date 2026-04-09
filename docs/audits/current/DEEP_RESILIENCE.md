@@ -635,8 +635,8 @@ private int buscarOuCriarCategoria(String nome) throws SQLException {
 > **Comparacao V3.0 → V4.0:**
 > - V3.0 tinha 15 issues ativas (13 pendentes + 2 parciais)
 > - 30 issues novas encontradas nesta versao
-> - 2 issues anteriores resolvidas (#028 V1.1, #035 V1.1)
-> - **Total ativo V4.0: 41 issues** (10 pendentes anteriores + 1 parcial + 30 novas)
+> - **39 issues corrigidas nesta sessao** (5 CRITICAS + 11 ALTAS + 13 MEDIAS + 8 BAIXAS + 2 anteriores)
+> - **Total ativo V4.0: 2 issues** (#DR025 PGPASSWORD — limitacao pg_dump, #DR028 zero testes — requer 4h+)
 >
 > **Destaques desta versao:**
 > - **5 issues CRITICAS novas**: 2 connection leaks (FinanceiroPassagens, CadastroBoleto.buscarOuCriarCategoria) + 3 violacoes de thread JavaFX (FinanceiroPassagens, ListaFretes, CadastroBoleto)

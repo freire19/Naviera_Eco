@@ -25,24 +25,24 @@ public class EmpresaDAO {
         if (existente == null) {
             // INSERT se não existe
             sql = "INSERT INTO configuracao_empresa (id_config, companhia, nome_embarcacao, comandante, proprietario, " +
-                  "origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, path_logo) " +
-                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                  "origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, path_logo, recomendacoes_bilhete) " +
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         } else {
             // UPDATE se já existe
             sql = "UPDATE configuracao_empresa SET companhia=?, nome_embarcacao=?, comandante=?, proprietario=?, " +
                   "origem_padrao=?, gerente=?, linha_rio_padrao=?, cnpj=?, ie=?, endereco=?, cep=?, telefone=?, " +
-                  "frase_relatorio=?, path_logo=? WHERE id_config=?";
+                  "frase_relatorio=?, path_logo=?, recomendacoes_bilhete=? WHERE id_config=?";
         }
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             int paramIndex = 1;
-            if (existente == null) { 
-                ps.setInt(paramIndex++, 1); 
+            if (existente == null) {
+                ps.setInt(paramIndex++, ID_EMPRESA_PRINCIPAL);
             }
             ps.setString(paramIndex++, empresa.getCompanhia());
-            ps.setString(paramIndex++, empresa.getEmbarcacao()); 
+            ps.setString(paramIndex++, empresa.getEmbarcacao());
             ps.setString(paramIndex++, empresa.getComandante());
             ps.setString(paramIndex++, empresa.getProprietario());
             ps.setString(paramIndex++, empresa.getOrigem());
@@ -55,9 +55,10 @@ public class EmpresaDAO {
             ps.setString(paramIndex++, empresa.getTelefone());
             ps.setString(paramIndex++, empresa.getFrase());
             ps.setString(paramIndex++, empresa.getCaminhoFoto());
+            ps.setString(paramIndex++, empresa.getRecomendacoesBilhete());
 
-            if (existente != null) { 
-                ps.setInt(paramIndex++, 1); 
+            if (existente != null) {
+                ps.setInt(paramIndex++, ID_EMPRESA_PRINCIPAL);
             }
 
             int affectedRows = ps.executeUpdate();
@@ -65,7 +66,6 @@ public class EmpresaDAO {
             return affectedRows > 0;
 
         } catch (SQLException e) {
-            System.err.println("Erro ao salvar/atualizar dados da empresa: " + e.getMessage());
             System.err.println("Erro SQL em EmpresaDAO: " + e.getMessage());
             return false;
         }
@@ -100,13 +100,12 @@ public class EmpresaDAO {
                     e.setTelefone(rs.getString("telefone"));
                     e.setFrase(rs.getString("frase_relatorio"));
                     e.setCaminhoFoto(rs.getString("path_logo"));
-                    try { e.setRecomendacoesBilhete(rs.getString("recomendacoes_bilhete")); } catch (Exception ex) { /* coluna opcional */ }
+                    e.setRecomendacoesBilhete(rs.getString("recomendacoes_bilhete"));
                     if (id == ID_EMPRESA_PRINCIPAL) cacheEmpresa = e;
                     return e;
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar dados da empresa por ID: " + e.getMessage());
             System.err.println("Erro SQL em EmpresaDAO: " + e.getMessage());
         }
         return null;

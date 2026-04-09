@@ -5,6 +5,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 public class Viagem {
+    // DP032: static final evita instanciar DTF em cada chamada toString()/getter
+    private static final DateTimeFormatter DTF_DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     private Long id;
     private LocalDate dataViagem;
     private Long idHorarioSaida;
@@ -75,11 +78,11 @@ public class Viagem {
     }
 
     public String getDataViagemStr() {
-        return dataViagem != null ? dataViagem.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "";
+        return dataViagem != null ? dataViagem.format(DTF_DATA) : "";
     }
 
     public String getDataChegadaStr() {
-        return dataChegada != null ? dataChegada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "";
+        return dataChegada != null ? dataChegada.format(DTF_DATA) : "";
     }
 
     @Override

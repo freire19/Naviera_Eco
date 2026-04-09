@@ -288,58 +288,7 @@ public class AuxiliaresDAO {
         return null;
     }
 
-    // ==================== METODOS LEGADOS (delegam para genericos) ====================
-    // DM006: Mantidos temporariamente — usar os 5 genericos acima em novos codigos.
-    // Caller unico: TabelasAuxiliaresController.
-
-    // --- TipoDoc ---
-    public boolean inserirTipoDoc(String nome) throws SQLException { return inserirAuxiliar("aux_tipos_documento", "nome_tipo_doc", nome); }
-    public List<String> listarTipoDoc() throws SQLException { return listarAuxiliar("aux_tipos_documento", "nome_tipo_doc"); }
-    public boolean atualizarTipoDoc(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", id, novoNome); }
-    public boolean excluirTipoDoc(int id) throws SQLException { return excluirAuxiliar("aux_tipos_documento", "id_tipo_doc", id); }
-    public Integer buscarIdTipoDocPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", nome); }
-
-    // --- Sexo ---
-    public boolean inserirSexo(String nome) throws SQLException { return inserirAuxiliar("aux_sexo", "nome_sexo", nome); }
-    public List<String> listarSexo() throws SQLException { return listarAuxiliar("aux_sexo", "nome_sexo"); }
-    public boolean atualizarSexo(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_sexo", "nome_sexo", "id_sexo", id, novoNome); }
-    public boolean excluirSexo(int id) throws SQLException { return excluirAuxiliar("aux_sexo", "id_sexo", id); }
-    public Integer buscarIdSexoPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_sexo", "nome_sexo", "id_sexo", nome); }
-
-    // --- Nacionalidade ---
-    public boolean inserirNacionalidade(String nome) throws SQLException { return inserirAuxiliar("aux_nacionalidades", "nome_nacionalidade", nome); }
-    public List<String> listarNacionalidade() throws SQLException { return listarAuxiliar("aux_nacionalidades", "nome_nacionalidade"); }
-    public boolean atualizarNacionalidade(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", id, novoNome); }
-    public boolean excluirNacionalidade(int id) throws SQLException { return excluirAuxiliar("aux_nacionalidades", "id_nacionalidade", id); }
-    public Integer buscarIdNacionalidadePorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", nome); }
-
-    // --- TipoPassagem ---
-    public boolean inserirTipoPassagem(String nome) throws SQLException { return inserirAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", nome); }
-    public List<String> listarPassagemAux() throws SQLException { return listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem"); }
-    public boolean atualizarTipoPassagem(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", id, novoNome); }
-    public boolean excluirTipoPassagem(int id) throws SQLException { return excluirAuxiliar("aux_tipos_passagem", "id_tipo_passagem", id); }
-    public Integer buscarIdTipoPassagemPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_tipos_passagem", "nome_tipo_passagem", "id_tipo_passagem", nome); }
-
-    // --- AgenteAux ---
-    public boolean inserirAgenteAux(String nome) throws SQLException { return inserirAuxiliar("aux_agentes", "nome_agente", nome); }
-    public List<String> listarAgenteAux() throws SQLException { return listarAuxiliar("aux_agentes", "nome_agente"); }
-    public boolean atualizarAgenteAux(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_agentes", "nome_agente", "id_agente", id, novoNome); }
-    public boolean excluirAgenteAux(int id) throws SQLException { return excluirAuxiliar("aux_agentes", "id_agente", id); }
-    public Integer buscarIdAgenteAuxPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_agentes", "nome_agente", "id_agente", nome); }
-
-    // --- HorarioSaida ---
-    public boolean inserirHorarioSaida(String descricao) throws SQLException { return inserirAuxiliar("aux_horarios_saida", "descricao_horario_saida", descricao); }
-    public List<String> listarHorarioSaida() throws SQLException { return listarAuxiliar("aux_horarios_saida", "descricao_horario_saida"); }
-    public boolean atualizarHorarioSaida(int id, String novaDescricao) throws SQLException { return atualizarAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", id, novaDescricao); }
-    public boolean excluirHorarioSaida(int id) throws SQLException { return excluirAuxiliar("aux_horarios_saida", "id_horario_saida", id); }
-    public Integer obterIdHorarioSaidaPorNome(String descricao) throws SQLException { return obterIdAuxiliar("aux_horarios_saida", "descricao_horario_saida", "id_horario_saida", descricao); }
-
-    // --- Acomodacao ---
-    public boolean inserirAcomodacao(String nome) throws SQLException { return inserirAuxiliar("aux_acomodacoes", "nome_acomodacao", nome); }
-    public List<String> listarAcomodacao() throws SQLException { return listarAuxiliar("aux_acomodacoes", "nome_acomodacao"); }
-    public boolean atualizarAcomodacao(int id, String novoNome) throws SQLException { return atualizarAuxiliar("aux_acomodacoes", "nome_acomodacao", "id_acomodacao", id, novoNome); }
-    public boolean excluirAcomodacao(int id) throws SQLException { return excluirAuxiliar("aux_acomodacoes", "id_acomodacao", id); }
-    public Integer buscarIdAcomodacaoPorNome(String nome) throws SQLException { return obterIdAuxiliar("aux_acomodacoes", "nome_acomodacao", "id_acomodacao", nome); }
+    // ==================== METODOS DE CONVENIENCIA (somente leitura) ====================
 
     // --- FormasPagamento / Caixas (somente leitura) ---
     public List<String> listarTiposPagamento() throws SQLException { return listarAuxiliar("aux_formas_pagamento", "nome_forma_pagamento"); }

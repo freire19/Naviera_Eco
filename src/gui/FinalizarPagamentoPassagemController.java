@@ -18,6 +18,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 import model.Passagem;
+import gui.util.AlertHelper;
 
 public class FinalizarPagamentoPassagemController implements Initializable {
 
@@ -136,14 +137,14 @@ public class FinalizarPagamentoPassagemController implements Initializable {
     
     private boolean isInputValido() {
         if (cmbCaixa.getValue() == null) {
-            showAlert(AlertType.ERROR, "Campo Obrigatório", "Selecione o Caixa", "É necessário informar em qual caixa o valor será lançado.");
+            AlertHelper.show(AlertType.ERROR, "Campo Obrigatório", "Selecione o Caixa: É necessário informar em qual caixa o valor será lançado.");
             return false;
         }
         BigDecimal totalInformado = parseBigDecimal(txtDinheiro.getText())
                 .add(parseBigDecimal(txtPix.getText()))
                 .add(parseBigDecimal(txtCartao.getText()));
         if (totalInformado.compareTo(BigDecimal.ZERO) <= 0) {
-            showAlert(AlertType.ERROR, "Valor Inválido", "Pagamento zerado", "O valor total pago deve ser maior que zero.");
+            AlertHelper.show(AlertType.ERROR, "Valor Inválido", "Pagamento zerado: O valor total pago deve ser maior que zero.");
             return false;
         }
         return true;
@@ -203,11 +204,4 @@ public class FinalizarPagamentoPassagemController implements Initializable {
         }
     }
     
-    private void showAlert(AlertType alertType, String title, String header, String content) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(header);
-        alert.setContentText(content);
-        alert.showAndWait();
-    }
 }

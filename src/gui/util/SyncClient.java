@@ -13,12 +13,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Cliente de sincronização para comunicação com a API do servidor.
- * Gerencia upload/download de dados entre o desktop e a nuvem.
- * 
- * @author Naviera
- * @version 1.0.0
+ * Cliente de sincronizacao bidirecional.
+ *
+ * AVISO: Esta classe esta incompleta — receberDadosDoServidor() e
+ * processarRegistroRecebido (UPDATE/INSERT) NAO estao implementados.
+ * Apenas envio e DELETE funcionam. Use com cautela.
+ *
+ * @deprecated Funcionalidade incompleta. Considerar reimplementar com biblioteca HTTP/JSON adequada.
  */
+@Deprecated
 public class SyncClient {
 
     // Configurações - altere para seu servidor
@@ -387,9 +390,11 @@ public class SyncClient {
                         }
                     }
                 } else if (rs.next()) {
+                    // TODO: DM051 — implementar recebimento de registros (UPDATE/INSERT)
                     // UPDATE - atualizar registro existente
                     // Implementar lógica de atualização específica por tabela
                 } else {
+                    // TODO: DM051 — implementar recebimento de registros (UPDATE/INSERT)
                     // INSERT - criar novo registro
                     // Implementar lógica de inserção específica por tabela
                 }

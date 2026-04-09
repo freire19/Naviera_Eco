@@ -62,6 +62,7 @@ import model.Encomenda;
 import model.EncomendaItem;
 import model.Rota;
 import model.Viagem;
+import gui.util.AlertHelper;
 
 public class RelatorioEncomendaGeralController implements Initializable {
 
@@ -156,13 +157,6 @@ public class RelatorioEncomendaGeralController implements Initializable {
         if (!obsListaViagens.isEmpty()) cmbViagem.getSelectionModel().selectFirst();
     }
 
-    private void carregarViagens() {
-        try {
-            List<Viagem> viagens = viagemDAO.listarTodasViagensResumido();
-            Platform.runLater(() -> carregarViagensComDados(viagens));
-        } catch (Exception e) { e.printStackTrace(); }
-    }
-
     // DR117: aceita dados pre-carregados para ser chamado do Platform.runLater
     private void carregarRotasComDados(List<Rota> rotas) {
         Rota todas = new Rota(); todas.setId(null); todas.setOrigem("TODAS"); todas.setDestino("AS ROTAS");
@@ -170,13 +164,6 @@ public class RelatorioEncomendaGeralController implements Initializable {
         obsListaRotas.addAll(rotas);
         cmbRota.setItems(obsListaRotas);
         cmbRota.getSelectionModel().selectFirst();
-    }
-
-    private void carregarRotas() {
-        try {
-            List<Rota> rotas = rotaDAO.listarTodasAsRotasComoObjects();
-            Platform.runLater(() -> carregarRotasComDados(rotas));
-        } catch (Exception e) { e.printStackTrace(); }
     }
 
     @FXML
@@ -187,7 +174,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         }
 
         Viagem viagemSelecionada = cmbViagem.getValue();
-        if (viagemSelecionada == null) { showAlert(AlertType.WARNING, "Selecione uma Viagem."); return; }
+        if (viagemSelecionada == null) { AlertHelper.warn("Selecione uma Viagem."); return; }
 
         if (rbCompleto.isSelected()) {
             executarRelatorioCompleto(viagemSelecionada);
@@ -239,7 +226,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         List<Encomenda> listaOriginal = encomendaDAO.listarPorViagem(viagem.getId());
         List<Encomenda> listaFiltrada = filtrarLista(listaOriginal, rotaFiltro, tipoFiltro);
 
-        if (listaFiltrada.isEmpty()) { showAlert(AlertType.INFORMATION, "Nada encontrado."); return; }
+        if (listaFiltrada.isEmpty()) { AlertHelper.info("Nada encontrado."); return; }
         
         listaFiltrada.sort(Comparator.comparingInt(e -> { try { return Integer.parseInt(e.getNumeroEncomenda()); } catch (Exception ex) { return 0; } }));
 
@@ -305,7 +292,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         List<Encomenda> listaOriginal = encomendaDAO.listarPorViagem(viagem.getId());
         List<Encomenda> listaFiltrada = filtrarLista(listaOriginal, cmbRota.getValue(), 0);
 
-        if (listaFiltrada.isEmpty()) { showAlert(AlertType.INFORMATION, "Nada encontrado."); return; }
+        if (listaFiltrada.isEmpty()) { AlertHelper.info("Nada encontrado."); return; }
         listaFiltrada.sort(Comparator.comparingInt(e -> { try { return Integer.parseInt(e.getNumeroEncomenda()); } catch (Exception ex) { return 0; } }));
 
         PrinterJob job = PrinterJob.createPrinterJob();
@@ -369,7 +356,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         List<Encomenda> listaOriginal = encomendaDAO.listarPorViagem(viagem.getId());
         List<Encomenda> listaFiltrada = filtrarLista(listaOriginal, cmbRota.getValue(), 0);
 
-        if (listaFiltrada.isEmpty()) { showAlert(AlertType.INFORMATION, "Nada encontrado."); return; }
+        if (listaFiltrada.isEmpty()) { AlertHelper.info("Nada encontrado."); return; }
         listaFiltrada.sort(Comparator.comparingInt(e -> { try { return Integer.parseInt(e.getNumeroEncomenda()); } catch (Exception ex) { return 0; } }));
 
         BigDecimal tTotal = BigDecimal.ZERO, tDesc = BigDecimal.ZERO, tPago = BigDecimal.ZERO, tFalta = BigDecimal.ZERO;
@@ -489,12 +476,12 @@ public class RelatorioEncomendaGeralController implements Initializable {
                 ResultSet rs = stmt.executeQuery();
                 while(rs.next()) itens.add(new PrecoItem(rs.getString("nome_item"), "UN", rs.getBigDecimal("preco_unitario_padrao")));
             } catch(Exception ex2) {
-                showAlert(AlertType.ERROR, "Erro ao buscar na tabela 'itens_encomenda_padrao'.");
+                AlertHelper.error("Erro ao buscar na tabela 'itens_encomenda_padrao'.");
                 return;
             }
         }
 
-        if (itens.isEmpty()) { showAlert(AlertType.INFORMATION, "Tabela de preços está vazia."); return; }
+        if (itens.isEmpty()) { AlertHelper.info("Tabela de preços está vazia."); return; }
 
         PrinterJob job = PrinterJob.createPrinterJob();
         if (job != null && job.showPrintDialog(rootPane.getScene().getWindow())) {
@@ -512,11 +499,12 @@ public class RelatorioEncomendaGeralController implements Initializable {
             pagina.setStyle("-fx-background-color: white;");
             
             String nomeEmp = "SISTEMA DE ENCOMENDAS";
-            try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao FROM configuracao_empresa LIMIT 1")) {
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) nomeEmp = rs.getString("nome_embarcacao");
+            try {
+                dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
+                model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+                if (empresa != null && empresa.getEmbarcacao() != null) nomeEmp = empresa.getEmbarcacao();
             } catch(Exception e) { System.err.println("Erro ao carregar nome empresa: " + e.getMessage()); }
-            
+
             Label lEmp = new Label(nomeEmp.toUpperCase()); lEmp.setFont(FONT_EMPRESA); lEmp.setAlignment(Pos.CENTER); lEmp.setMaxWidth(Double.MAX_VALUE);
             Label lTit = new Label("TABELA DE PREÇOS DE ENCOMENDA"); lTit.setFont(Font.font("Arial", FontWeight.BLACK, 14)); lTit.setAlignment(Pos.CENTER); lTit.setMaxWidth(Double.MAX_VALUE);
             
@@ -595,9 +583,10 @@ public class RelatorioEncomendaGeralController implements Initializable {
         
         if (isPrimeiraPagina) {
             String nomeEmp = "SISTEMA DE ENCOMENDAS";
-            try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao FROM configuracao_empresa LIMIT 1")) {
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) nomeEmp = rs.getString("nome_embarcacao");
+            try {
+                dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
+                model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+                if (empresa != null && empresa.getEmbarcacao() != null) nomeEmp = empresa.getEmbarcacao();
             } catch(Exception e) { System.err.println("Erro ao carregar nome empresa: " + e.getMessage()); }
             Label lEmp = new Label(nomeEmp.toUpperCase()); lEmp.setFont(FONT_EMPRESA);
             
@@ -745,6 +734,5 @@ public class RelatorioEncomendaGeralController implements Initializable {
     }
 
     private String fmtMoeda(BigDecimal v) { return "R$ " + String.format("%,.2f", v != null ? v : BigDecimal.ZERO); }
-    private void showAlert(AlertType t, String m) { new Alert(t, m).showAndWait(); }
     @FXML void handleSair(ActionEvent event) { TelaPrincipalController.fecharTelaAtual(rootPane); }
 }

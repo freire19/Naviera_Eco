@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import gui.util.AlertHelper;
 
 public class RelatorioFretesController implements Initializable {
 
@@ -61,14 +62,14 @@ public class RelatorioFretesController implements Initializable {
     @FXML private ComboBox<String> cmbCliente;
     @FXML private ComboBox<String> cmbDevedores;
     
-    @FXML private TableView<FreteItem> tabelaFretes;
-    @FXML private TableColumn<FreteItem, String> colCodFrete;
-    @FXML private TableColumn<FreteItem, String> colDataViagem;
-    @FXML private TableColumn<FreteItem, String> colRemetente;
-    @FXML private TableColumn<FreteItem, String> colItem;
-    @FXML private TableColumn<FreteItem, String> colQuant;
-    @FXML private TableColumn<FreteItem, String> colPreco;
-    @FXML private TableColumn<FreteItem, String> colTotal;
+    @FXML private TableView<FreteItemRelatorio> tabelaFretes;
+    @FXML private TableColumn<FreteItemRelatorio, String> colCodFrete;
+    @FXML private TableColumn<FreteItemRelatorio, String> colDataViagem;
+    @FXML private TableColumn<FreteItemRelatorio, String> colRemetente;
+    @FXML private TableColumn<FreteItemRelatorio, String> colItem;
+    @FXML private TableColumn<FreteItemRelatorio, String> colQuant;
+    @FXML private TableColumn<FreteItemRelatorio, String> colPreco;
+    @FXML private TableColumn<FreteItemRelatorio, String> colTotal;
     
     @FXML private TableView<FreteDevedor> tabelaDevedores;
     @FXML private TableColumn<FreteDevedor, String> colDevTotal;
@@ -81,7 +82,7 @@ public class RelatorioFretesController implements Initializable {
     
     private ViagemDAO viagemDAO = new ViagemDAO();
     private RotaDAO rotaDAO = new RotaDAO();
-    private ObservableList<FreteItem> listaFreteItens = FXCollections.observableArrayList();
+    private ObservableList<FreteItemRelatorio> listaFreteItens = FXCollections.observableArrayList();
     private ObservableList<FreteDevedor> listaDevedores = FXCollections.observableArrayList();
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -304,7 +305,7 @@ public class RelatorioFretesController implements Initializable {
                 double preco = rs.getDouble("preco_unitario");
                 double total = rs.getDouble("total_item");
                 
-                listaFreteItens.add(new FreteItem(codFrete, dataStr, remetente, item, quantidade, preco, total));
+                listaFreteItens.add(new FreteItemRelatorio(codFrete, dataStr, remetente, item, quantidade, preco, total));
                 totalItens += total;
             }
         } catch (Exception e) {
@@ -363,11 +364,11 @@ public class RelatorioFretesController implements Initializable {
             String cliente = cmbCliente.getValue();
             
             if (viagem == null) {
-                showAlert("Selecione uma viagem.");
+                AlertHelper.warn("Selecione uma viagem.");
                 return;
             }
             if (cliente == null || cliente.equals("Todos os Clientes")) {
-                showAlert("Selecione um cliente especÃ­fico para imprimir o relatÃ³rio.");
+                AlertHelper.warn("Selecione um cliente especÃ­fico para imprimir o relatÃ³rio.");
                 return;
             }
             
@@ -385,11 +386,11 @@ public class RelatorioFretesController implements Initializable {
             String cliente = cmbCliente.getValue();
             
             if (viagem == null) {
-                showAlert("Selecione uma viagem.");
+                AlertHelper.warn("Selecione uma viagem.");
                 return;
             }
             if (cliente == null || cliente.equals("Todos os Clientes")) {
-                showAlert("Selecione um cliente especÃ­fico para imprimir a cobranÃ§a.");
+                AlertHelper.warn("Selecione um cliente especÃ­fico para imprimir a cobranÃ§a.");
                 return;
             }
             
@@ -402,10 +403,10 @@ public class RelatorioFretesController implements Initializable {
     private void imprimirRelatorioTermico(Viagem viagem, String cliente, boolean comValores) {
         // Usar impressora tÃ©rmica configurada
         Printer printer = RelatorioUtil.getImpressoraTermica();
-        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
+        if (printer == null) { AlertHelper.warn("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) {
-            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            AlertHelper.warn("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
             return;
         }
         
@@ -434,7 +435,7 @@ public class RelatorioFretesController implements Initializable {
         if (empresa != null) {
             if (empresa.getCaminhoFoto() != null && !empresa.getCaminhoFoto().isEmpty()) {
                 try {
-                    ImageView logo = new ImageView(new Image("file:" + empresa.getCaminhoFoto()));
+                    ImageView logo = new ImageView(gui.util.ImageCache.get(empresa.getCaminhoFoto()));
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
@@ -625,7 +626,7 @@ public class RelatorioFretesController implements Initializable {
         }
         
         if (job.printPage(root)) job.endJob();
-        else showAlert("Falha na impressÃ£o.");
+        else AlertHelper.warn("Falha na impressÃ£o.");
     }
     
     private String buscarNumeroFrete(Viagem viagem, String cliente) {
@@ -687,7 +688,7 @@ public class RelatorioFretesController implements Initializable {
         try {
             Viagem viagem = cmbViagem.getValue();
             if (viagem == null) {
-                showAlert("Selecione uma viagem.");
+                AlertHelper.warn("Selecione uma viagem.");
                 return;
             }
             
@@ -722,11 +723,11 @@ public class RelatorioFretesController implements Initializable {
 
         // Usar impressora A4 configurada
         Printer printer = RelatorioUtil.getImpressoraA4();
-        if (printer == null) { showAlert("Nenhuma impressora A4 selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
+        if (printer == null) { AlertHelper.warn("Nenhuma impressora A4 selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) {
-            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            AlertHelper.warn("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
             return;
         }
         if (!job.showPrintDialog(rootPane.getScene().getWindow())) return;
@@ -786,7 +787,7 @@ public class RelatorioFretesController implements Initializable {
             else { listaFiltrada.add(f); }
         }
         
-        if (listaFiltrada.isEmpty()) { showAlert("Nenhum frete encontrado com os filtros selecionados."); return; }
+        if (listaFiltrada.isEmpty()) { AlertHelper.warn("Nenhum frete encontrado com os filtros selecionados."); return; }
         
         // Calcular totais
         double tTotal = 0, tPago = 0, tDevedor = 0;
@@ -1082,11 +1083,11 @@ public class RelatorioFretesController implements Initializable {
             String cliente = cmbCliente.getValue();
             
             if (viagem == null) {
-                showAlert("Selecione uma viagem.");
+                AlertHelper.warn("Selecione uma viagem.");
                 return;
             }
             if (cliente == null || cliente.equals("Todos os Clientes")) {
-                showAlert("Selecione um cliente especÃ­fico para imprimir o resumido.");
+                AlertHelper.warn("Selecione um cliente especÃ­fico para imprimir o resumido.");
                 return;
             }
             
@@ -1099,10 +1100,10 @@ public class RelatorioFretesController implements Initializable {
     private void imprimirResumidoPorRemetente(Viagem viagem, String cliente) {
         // Usar impressora tÃ©rmica configurada
         Printer printer = RelatorioUtil.getImpressoraTermica();
-        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
+        if (printer == null) { AlertHelper.warn("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) {
-            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            AlertHelper.warn("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
             return;
         }
         
@@ -1131,7 +1132,7 @@ public class RelatorioFretesController implements Initializable {
         if (empresa != null) {
             if (empresa.getCaminhoFoto() != null && !empresa.getCaminhoFoto().isEmpty()) {
                 try {
-                    ImageView logo = new ImageView(new Image("file:" + empresa.getCaminhoFoto()));
+                    ImageView logo = new ImageView(gui.util.ImageCache.get(empresa.getCaminhoFoto()));
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
@@ -1301,7 +1302,7 @@ public class RelatorioFretesController implements Initializable {
         }
         
         if (job.printPage(root)) job.endJob();
-        else showAlert("Falha na impressÃ£o.");
+        else AlertHelper.warn("Falha na impressÃ£o.");
     }
 
     @FXML
@@ -1310,7 +1311,7 @@ public class RelatorioFretesController implements Initializable {
         try {
             Viagem viagem = cmbViagem.getValue();
             if (viagem == null) {
-                showAlert("Selecione uma viagem.");
+                AlertHelper.warn("Selecione uma viagem.");
                 return;
             }
             
@@ -1328,11 +1329,11 @@ public class RelatorioFretesController implements Initializable {
         
         // Usar impressora A4 configurada
         Printer printer = RelatorioUtil.getImpressoraA4();
-        if (printer == null) { showAlert("Nenhuma impressora A4 selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
+        if (printer == null) { AlertHelper.warn("Nenhuma impressora A4 selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) {
-            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            AlertHelper.warn("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
             return;
         }
         if (!job.showPrintDialog(rootPane.getScene().getWindow())) return;
@@ -1384,7 +1385,7 @@ public class RelatorioFretesController implements Initializable {
             throw new RuntimeException("Erro ao buscar fretes para conferência no banco de dados: " + e.getMessage(), e);
         }
         
-        if (fretesMap.isEmpty()) { showAlert("Nenhum frete encontrado para esta viagem."); return; }
+        if (fretesMap.isEmpty()) { AlertHelper.warn("Nenhum frete encontrado para esta viagem."); return; }
         
         // Calcular totais
         double tTotal = 0, tPago = 0, tDevedor = 0;
@@ -1445,17 +1446,13 @@ public class RelatorioFretesController implements Initializable {
     }
 
     private String obterNomeEmpresa() {
-        String nome = "SISTEMA DE FRETES";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement("SELECT nome_embarcacao FROM configuracao_empresa LIMIT 1")) {
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                nome = rs.getString("nome_embarcacao");
-            }
+        try {
+            model.Empresa empresa = new EmpresaDAO().buscarPorId(EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            if (empresa != null && empresa.getEmbarcacao() != null) return empresa.getEmbarcacao();
         } catch (Exception e) {
-            // Usar nome padrÃ£o
+            // Usar nome padrão
         }
-        return nome;
+        return "SISTEMA DE FRETES";
     }
 
     @FXML
@@ -1466,11 +1463,11 @@ public class RelatorioFretesController implements Initializable {
             String cliente = cmbCliente.getValue();
             
             if (viagem == null) {
-                showAlert("Selecione uma viagem.");
+                AlertHelper.warn("Selecione uma viagem.");
                 return;
             }
             if (cliente == null || cliente.equals("Todos os Clientes")) {
-                showAlert("Selecione um cliente especÃ­fico para imprimir o extrato.");
+                AlertHelper.warn("Selecione um cliente especÃ­fico para imprimir o extrato.");
                 return;
             }
             
@@ -1483,10 +1480,10 @@ public class RelatorioFretesController implements Initializable {
     private void imprimirExtratoCliente(Viagem viagem, String cliente) {
         // Usar impressora tÃ©rmica configurada
         Printer printer = RelatorioUtil.getImpressoraTermica();
-        if (printer == null) { showAlert("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
+        if (printer == null) { AlertHelper.warn("Nenhuma impressora térmica selecionada.\n\nVá em Configurações > Impressoras para configurar."); return; }
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) {
-            showAlert("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
+            AlertHelper.warn("Não foi possível criar o trabalho de impressão.\n\nVerifique se a impressora '" + printer.getName() + "' está conectada e funcionando.");
             return;
         }
         
@@ -1515,7 +1512,7 @@ public class RelatorioFretesController implements Initializable {
         if (empresa != null) {
             if (empresa.getCaminhoFoto() != null && !empresa.getCaminhoFoto().isEmpty()) {
                 try {
-                    ImageView logo = new ImageView(new Image("file:" + empresa.getCaminhoFoto()));
+                    ImageView logo = new ImageView(gui.util.ImageCache.get(empresa.getCaminhoFoto()));
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
@@ -1673,7 +1670,7 @@ public class RelatorioFretesController implements Initializable {
         }
         
         if (job.printPage(root)) job.endJob();
-        else showAlert("Falha na impressÃ£o.");
+        else AlertHelper.warn("Falha na impressÃ£o.");
     }
 
     @FXML
@@ -1681,9 +1678,6 @@ public class RelatorioFretesController implements Initializable {
         TelaPrincipalController.fecharTelaAtual(rootPane);
     }
 
-    private void showAlert(String msg) {
-        new Alert(Alert.AlertType.WARNING, msg).showAndWait();
-    }
 
     /**
      * Exibe alerta detalhado com informações da exceção para facilitar diagnóstico.
@@ -1736,10 +1730,10 @@ public class RelatorioFretesController implements Initializable {
     // CLASSES INTERNAS
     // ============================================================================
 
-    public static class FreteItem {
+    public static class FreteItemRelatorio {
         private String codFrete, dataViagem, remetente, item, quantidade, preco, total;
 
-        public FreteItem(String codFrete, String dataViagem, String remetente, String item, double quantidade, double preco, double total) {
+        public FreteItemRelatorio(String codFrete, String dataViagem, String remetente, String item, double quantidade, double preco, double total) {
             this.codFrete = codFrete;
             this.dataViagem = dataViagem;
             this.remetente = remetente != null ? remetente : "";

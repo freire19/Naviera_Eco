@@ -1,6 +1,8 @@
 package gui;
 
 import dao.ConexaoBD;
+import dao.ViagemDAO;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -19,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Optional;
+import model.OpcaoViagem;
 
 public class FinanceiroEncomendasController {
 
@@ -84,7 +87,7 @@ public class FinanceiroEncomendasController {
             stage.showAndWait();
         } catch(Exception e) { 
             e.printStackTrace(); 
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
         }
     }
 
@@ -124,30 +127,19 @@ public class FinanceiroEncomendasController {
     private void carregarComboViagens() {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        
-        String sql = "SELECT id_viagem, descricao, data_viagem, data_chegada FROM viagens ORDER BY id_viagem DESC LIMIT 20";
-        
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            
-            lista.add(new OpcaoViagem(0, "Todas as Viagens"));
 
-            while (rs.next()) {
-                String label = rs.getString("descricao");
-                java.sql.Date dtSaida = rs.getDate("data_viagem");
-                java.sql.Date dtChegada = rs.getDate("data_chegada");
-                
-                if (dtSaida != null) {
-                    label += " (" + sdf.format(dtSaida);
-                    if (dtChegada != null) label += " - " + sdf.format(dtChegada);
-                    label += ")";
-                }
-                lista.add(new OpcaoViagem(rs.getInt("id_viagem"), label));
+        lista.add(new OpcaoViagem(0, "Todas as Viagens"));
+        for (model.Viagem v : new ViagemDAO().listarViagensRecentes(20)) {
+            String label = v.getDescricao() != null ? v.getDescricao() : "";
+            if (v.getDataViagem() != null) {
+                label += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem()));
+                if (v.getDataChegada() != null) label += " - " + sdf.format(java.sql.Date.valueOf(v.getDataChegada()));
+                label += ")";
             }
-            ObservableList<OpcaoViagem> finalLista = lista;
-            javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
-        } catch (Exception e) { e.printStackTrace(); }
+            lista.add(new OpcaoViagem(v.getId().intValue(), label));
+        }
+        ObservableList<OpcaoViagem> finalLista = lista;
+        javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
     }
 
     @FXML
@@ -220,11 +212,11 @@ public class FinanceiroEncomendasController {
     public void darBaixa() {
         EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
-            alert("Selecione uma encomenda na tabela para dar baixa.");
+            AlertHelper.info("Selecione uma encomenda na tabela para dar baixa.");
             return;
         }
         if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
-            alert("Esta encomenda já está quitada!");
+            AlertHelper.info("Esta encomenda já está quitada!");
             return;
         }
 
@@ -252,7 +244,7 @@ public class FinanceiroEncomendasController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
         }
     }
     
@@ -289,7 +281,7 @@ public class FinanceiroEncomendasController {
                 }
 
                 con.commit();
-                alert("Pagamento registrado com sucesso!");
+                AlertHelper.info("Pagamento registrado com sucesso!");
                 carregarDados();
 
             } catch (SQLException ex) {
@@ -297,7 +289,7 @@ public class FinanceiroEncomendasController {
                 throw ex;
             }
         } catch (SQLException e) {
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
         }
     }
     
@@ -305,9 +297,9 @@ public class FinanceiroEncomendasController {
     @FXML
     public void estornarPagamento() {
         EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
-        if (selecionada == null) { alert("Selecione um item para estornar."); return; }
+        if (selecionada == null) { AlertHelper.info("Selecione um item para estornar."); return; }
         
-        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { alert("Este item não tem pagamento para estornar."); return; }
+        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { AlertHelper.info("Este item não tem pagamento para estornar."); return; }
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/EstornoPagamento.fxml"));
@@ -356,17 +348,17 @@ public class FinanceiroEncomendasController {
                     }
 
                     con.commit();
-                    alert("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
+                    AlertHelper.info("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
                     carregarDados();
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    alert("Erro ao gravar estorno: " + ex.getMessage());
+                    AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
                 }
             }
         } catch (Exception e) { 
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
         }
     }
 
@@ -402,20 +394,10 @@ public class FinanceiroEncomendasController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir extrato: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir extrato: " + e.getMessage());
         }
     }
 
-    /** @deprecated Usar gui.util.AlertHelper.info() */
-    private void alert(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
-    }
-
-    public static class OpcaoViagem {
-        int id; String label;
-        public OpcaoViagem(int id, String label) { this.id = id; this.label = label; }
-        @Override public String toString() { return label; }
-    }
 
     public static class EncomendaFinanceiro {
         private int id;

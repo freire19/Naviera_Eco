@@ -62,4 +62,15 @@ public class Frete {
 
     public int getTotalVolumes() { return totalVolumes; }
     public void setTotalVolumes(int totalVolumes) { this.totalVolumes = totalVolumes; }
+
+    // DP033: equals/hashCode para collection performance
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Frete that = (Frete) o;
+        return idFrete == that.idFrete;
+    }
+    @Override
+    public int hashCode() { return Long.hashCode(idFrete); }
 }

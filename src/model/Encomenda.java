@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 
 public class Encomenda {
 
+    // DP021: static final evita instanciar DTF em cada chamada de setter
+    private static final java.time.format.DateTimeFormatter DTF_DATA = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     private Long id;
     private Long idViagem;
     private String numeroEncomenda;
@@ -93,7 +96,7 @@ public class Encomenda {
     public void setDataLancamentoDate(java.time.LocalDate dataLancamentoDate) {
         this.dataLancamentoDate = dataLancamentoDate;
         this.dataLancamento = (dataLancamentoDate != null)
-            ? dataLancamentoDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+            ? dataLancamentoDate.format(DTF_DATA)
             : null;
     }
     
@@ -108,4 +111,15 @@ public class Encomenda {
     
     public String getNomeRota() { return nomeRota; }
     public void setNomeRota(String nomeRota) { this.nomeRota = nomeRota; }
+
+    // DP033: equals/hashCode para collection performance
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Encomenda that = (Encomenda) o;
+        return java.util.Objects.equals(id, that.id);
+    }
+    @Override
+    public int hashCode() { return java.util.Objects.hashCode(id); }
 }

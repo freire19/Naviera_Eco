@@ -81,6 +81,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
+import javafx.animation.PauseTransition;
 import javafx.scene.transform.Scale;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
@@ -88,6 +89,7 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.Pair;
 import javafx.util.StringConverter;
+import gui.util.AlertHelper;
 
 public class InserirEncomendaController implements Initializable {
 
@@ -165,6 +167,11 @@ public class InserirEncomendaController implements Initializable {
     private int indexDestinatarioSelecionado = -1;
     private int indexRotaSelecionado = -1;
     private int indexProdutoSelecionado = -1;
+
+    // DP028: debounce para autocomplete (evita stream filter a cada keystroke)
+    private PauseTransition debounceClientes;
+    private PauseTransition debounceRotas;
+    private PauseTransition debounceProdutos;
     
     private boolean isSelecionandoViaEnter = false;
 
@@ -197,7 +204,6 @@ public class InserirEncomendaController implements Initializable {
         configurarAutoCompleteRota(cmbRota);
         configurarAutocompleteProdutosNoTextField();
 
-        configurarNavegacaoEnterCampos();
         aplicarEstiloBotoes();
 
         // Carrega dados do banco em background (DR010)
@@ -254,10 +260,21 @@ public class InserirEncomendaController implements Initializable {
         
         btnSalvar.setDefaultButton(false);
         
-        rootPane.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            if (event.getCode() == KeyCode.F2) { handleIniciar(null); event.consume(); }
-            if (event.getCode() == KeyCode.F3) { if (!btnSalvar.isDisabled()) handleSalvar(null); event.consume(); }
-            if (event.getCode() == KeyCode.ESCAPE) { handleSair(null); event.consume(); }
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+                    switch (event.getCode()) {
+                        case F2:
+                            handleIniciar(null); event.consume(); break;
+                        case F3:
+                            if (!btnSalvar.isDisabled()) handleSalvar(null);
+                            event.consume(); break;
+                        case ESCAPE:
+                            handleSair(null); event.consume(); break;
+                        default: break;
+                    }
+                });
+            }
         });
         
         Platform.runLater(() -> {
@@ -277,7 +294,7 @@ public class InserirEncomendaController implements Initializable {
         if (file != null) {
             gui.util.OcrAudioService.executarOCRAsync(file,
                 resultado -> interpretarTextoEPreencher(resultado),
-                e -> Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro OCR", "Erro: " + e.getMessage()))
+                e -> Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro OCR", "Erro: " + e.getMessage()))
             );
         }
     }
@@ -296,7 +313,7 @@ public class InserirEncomendaController implements Initializable {
                 });
             },
             e -> Platform.runLater(() -> {
-                showAlert(AlertType.ERROR, "Erro Audio", "Erro: " + e.getMessage());
+                AlertHelper.show(AlertType.ERROR, "Erro Audio", "Erro: " + e.getMessage());
                 btnAudioInput.setText("Microfone");
                 btnAudioInput.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
             })
@@ -305,7 +322,7 @@ public class InserirEncomendaController implements Initializable {
 
     private void interpretarTextoEPreencher(String texto) {
         if (texto == null || texto.isEmpty()) {
-            Platform.runLater(() -> showAlert(AlertType.WARNING, "Aviso", "Nenhum texto identificado."));
+            Platform.runLater(() -> AlertHelper.show(AlertType.WARNING, "Aviso", "Nenhum texto identificado."));
             return;
         }
         String[] linhas = texto.split("\n");
@@ -732,7 +749,7 @@ public class InserirEncomendaController implements Initializable {
     @FXML
     public void handleEntregar(ActionEvent event) {
         if (encomendaEmEdicao == null || encomendaEmEdicao.getId() == null) {
-            showAlert(AlertType.WARNING, "Operação Não Permitida", "A encomenda não foi localizada corretamente.\nTente salvar (F3) ou recarregar a tela antes de entregar.");
+            AlertHelper.show(AlertType.WARNING, "Operação Não Permitida", "A encomenda não foi localizada corretamente.\nTente salvar (F3) ou recarregar a tela antes de entregar.");
             return;
         }
         // DL051: impedir re-entrega que sobrescreveria dados do recebedor original
@@ -763,7 +780,7 @@ public class InserirEncomendaController implements Initializable {
                     // finalizarSalvamento limpou - recarregar manualmente
                     encomendaEmEdicao = encomendaDAO.buscarPorId(idEncomenda);
                     if (encomendaEmEdicao == null) {
-                        showAlert(AlertType.ERROR, "Erro", "Não foi possível recarregar a encomenda após o pagamento.");
+                        AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível recarregar a encomenda após o pagamento.");
                         return;
                     }
                 }
@@ -789,7 +806,7 @@ public class InserirEncomendaController implements Initializable {
                     imprimirCupomTermico(encomendaEmEdicao);
                     handleSair(event);
                 } else {
-                    showAlert(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");
+                    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");
                 }
                 return;
             }
@@ -831,13 +848,13 @@ public class InserirEncomendaController implements Initializable {
                 String nome = dadosRecebedor.getKey().trim();
                 String doc = dadosRecebedor.getValue().trim();
                 if (nome.isEmpty()) {
-                    showAlert(AlertType.WARNING, "Atenção", "O Nome do recebedor é obrigatório para finalizar.");
+                    AlertHelper.show(AlertType.WARNING, "Atenção", "O Nome do recebedor é obrigatório para finalizar.");
                     return;
                 }
                 // Usar encomendaRef que foi salva antes, ou recarregar do banco
                 Encomenda enc = (encomendaEmEdicao != null) ? encomendaEmEdicao : encomendaDAO.buscarPorId(idEncomenda);
                 if (enc == null) {
-                    showAlert(AlertType.ERROR, "Erro", "Não foi possível localizar a encomenda.");
+                    AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível localizar a encomenda.");
                     return;
                 }
                 BigDecimal valorPagoAtualizado = (enc.getValorPago() != null) ? enc.getValorPago() : BigDecimal.ZERO;
@@ -854,18 +871,18 @@ public class InserirEncomendaController implements Initializable {
                     imprimirCupomTermico(enc);
                     handleSair(event);
                 } else {
-                    showAlert(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");
+                    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao registrar entrega no banco de dados.");
                 }
             });
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro Crítico", "Erro ao processar entrega: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro Crítico", "Erro ao processar entrega: " + e.getMessage());
         }
     }
 
     private void imprimirCupomTermico(Encomenda encomenda) {
         Printer printer = Printer.getDefaultPrinter();
-        if (printer == null) { showAlert(AlertType.ERROR, "Erro", "Nenhuma impressora encontrada."); return; }
+        if (printer == null) { AlertHelper.show(AlertType.ERROR, "Erro", "Nenhuma impressora encontrada."); return; }
         PrinterJob job = PrinterJob.createPrinterJob();
         if (job == null) return;
         javafx.print.PageLayout pageLayout = printer.createPageLayout(printer.getDefaultPageLayout().getPaper(), javafx.print.PageOrientation.PORTRAIT, Printer.MarginType.HARDWARE_MINIMUM);
@@ -881,7 +898,7 @@ public class InserirEncomendaController implements Initializable {
         if (empresa != null) {
             if (empresa.getCaminhoFoto() != null && !empresa.getCaminhoFoto().isEmpty()) {
                 try {
-                    ImageView logo = new ImageView(new Image("file:" + empresa.getCaminhoFoto()));
+                    ImageView logo = new ImageView(gui.util.ImageCache.get(empresa.getCaminhoFoto()));
                     logo.setFitWidth(50); logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
                 } catch (Exception e) { /* logo opcional */ }
@@ -977,7 +994,7 @@ public class InserirEncomendaController implements Initializable {
             root.getTransforms().add(new Scale(sc,sc)); 
         }
         if(job.printPage(root)) job.endJob();
-        else showAlert(AlertType.ERROR, "Erro", "Falha na impressão.");
+        else AlertHelper.show(AlertType.ERROR, "Erro", "Falha na impressão.");
     }
 
     private ContextMenu criarMenuConfigurado() {
@@ -1006,20 +1023,26 @@ public class InserirEncomendaController implements Initializable {
               else if (event.getCode() == KeyCode.UP) { navegarMenu(menu, -1, tipo); event.consume(); }
               else if (event.getCode() == KeyCode.ESCAPE) { menu.hide(); }
          });
+         // DP028: debounce 250ms para evitar stream filter a cada keystroke
+         if (debounceClientes == null) debounceClientes = new PauseTransition(Duration.millis(250));
+         final PauseTransition db = debounceClientes;
          cmb.getEditor().setOnKeyReleased(e -> {
              if(isNavegacaoKey(e.getCode())) return;
-             String txt = cmb.getEditor().getText().toUpperCase();
-             List<String> achados = listaMestraClientes.stream().filter(c -> c.contains(txt)).collect(Collectors.toList());
-             if(!achados.isEmpty()) {
-                 menu.getItems().clear();
-                 if(tipo.equals("R")) sugestoesRemetenteAtuais = achados; else sugestoesDestinatarioAtuais = achados;
-                 for(String s : achados) {
-                     MenuItem mi = new MenuItem(s);
-                     mi.setOnAction(ev -> { cmb.setValue(s); menu.hide(); });
-                     menu.getItems().add(mi);
-                 }
-                 menu.show(cmb, Side.BOTTOM, 0,0);
-             } else menu.hide();
+             db.setOnFinished(ev -> {
+                 String txt = cmb.getEditor().getText().toUpperCase();
+                 List<String> achados = listaMestraClientes.stream().filter(c -> c.contains(txt)).collect(Collectors.toList());
+                 if(!achados.isEmpty()) {
+                     menu.getItems().clear();
+                     if(tipo.equals("R")) sugestoesRemetenteAtuais = achados; else sugestoesDestinatarioAtuais = achados;
+                     for(String s : achados) {
+                         MenuItem mi = new MenuItem(s);
+                         mi.setOnAction(ev2 -> { cmb.setValue(s); menu.hide(); });
+                         menu.getItems().add(mi);
+                     }
+                     menu.show(cmb, Side.BOTTOM, 0,0);
+                 } else menu.hide();
+             });
+             db.playFromStart();
          });
     }
 
@@ -1041,20 +1064,25 @@ public class InserirEncomendaController implements Initializable {
               else if (event.getCode() == KeyCode.UP) { navegarMenu(menuSugestoesRota, -1, "ROTA"); event.consume(); }
               else if (event.getCode() == KeyCode.ESCAPE) { menuSugestoesRota.hide(); }
          });
+         // DP028: debounce 250ms para rotas
+         if (debounceRotas == null) debounceRotas = new PauseTransition(Duration.millis(250));
          cmb.getEditor().setOnKeyReleased(e -> {
              if(isNavegacaoKey(e.getCode())) return;
-             String txt = cmb.getEditor().getText().toUpperCase();
-             List<Rota> achados = obsListaRotas.stream().filter(r -> r.toString().toUpperCase().contains(txt)).collect(Collectors.toList());
-             if(!achados.isEmpty()) {
-                 menuSugestoesRota.getItems().clear();
-                 sugestoesRotaAtuais = achados;
-                 for(Rota r : achados) {
-                     MenuItem mi = new MenuItem(r.toString());
-                     mi.setOnAction(ev -> { cmb.setValue(r); menuSugestoesRota.hide(); txtQuantidade.requestFocus(); });
-                     menuSugestoesRota.getItems().add(mi);
-                 }
-                 menuSugestoesRota.show(cmb, Side.BOTTOM, 0,0);
-             } else menuSugestoesRota.hide();
+             debounceRotas.setOnFinished(ev -> {
+                 String txt = cmb.getEditor().getText().toUpperCase();
+                 List<Rota> achados = obsListaRotas.stream().filter(r -> r.toString().toUpperCase().contains(txt)).collect(Collectors.toList());
+                 if(!achados.isEmpty()) {
+                     menuSugestoesRota.getItems().clear();
+                     sugestoesRotaAtuais = achados;
+                     for(Rota r : achados) {
+                         MenuItem mi = new MenuItem(r.toString());
+                         mi.setOnAction(ev2 -> { cmb.setValue(r); menuSugestoesRota.hide(); txtQuantidade.requestFocus(); });
+                         menuSugestoesRota.getItems().add(mi);
+                     }
+                     menuSugestoesRota.show(cmb, Side.BOTTOM, 0,0);
+                 } else menuSugestoesRota.hide();
+             });
+             debounceRotas.playFromStart();
          });
     }
     
@@ -1108,26 +1136,31 @@ public class InserirEncomendaController implements Initializable {
               else if (event.getCode() == KeyCode.UP) { navegarMenu(menuSugestoesProdutos, -1, "PROD"); event.consume(); }
               else if (event.getCode() == KeyCode.ESCAPE) { menuSugestoesProdutos.hide(); }
         });
+         // DP028: debounce 250ms para produtos
+         if (debounceProdutos == null) debounceProdutos = new PauseTransition(Duration.millis(250));
          cmbDescricao.getEditor().setOnKeyReleased(e -> {
              if(isNavegacaoKey(e.getCode())) return;
-             String txt = cmbDescricao.getEditor().getText().toUpperCase();
-             if(txt.isEmpty()) { menuSugestoesProdutos.hide(); return; }
-             List<ItemEncomendaPadrao> achados = listaMestraProdutosObjetos.stream().filter(p -> p.getNomeItem().contains(txt)).collect(Collectors.toList());
-             if(!achados.isEmpty()) {
-                 menuSugestoesProdutos.getItems().clear();
-                 sugestoesProdutoAtuais = achados;
-                 for(ItemEncomendaPadrao p : achados) {
-                     MenuItem mi = new MenuItem(p.getNomeItem() + " - " + p.getPrecoUnit());
-                     mi.setOnAction(ev -> { 
-                         cmbDescricao.getEditor().setText(p.getNomeItem()); 
-                         txtValorUnit.setText(p.getPrecoUnit().toString().replace(".", ","));
-                         menuSugestoesProdutos.hide();
-                         txtValorUnit.requestFocus();
-                     });
-                     menuSugestoesProdutos.getItems().add(mi);
-                 }
-                 menuSugestoesProdutos.show(cmbDescricao, Side.BOTTOM, 0,0);
-             } else menuSugestoesProdutos.hide();
+             debounceProdutos.setOnFinished(ev -> {
+                 String txt = cmbDescricao.getEditor().getText().toUpperCase();
+                 if(txt.isEmpty()) { menuSugestoesProdutos.hide(); return; }
+                 List<ItemEncomendaPadrao> achados = listaMestraProdutosObjetos.stream().filter(p -> p.getNomeItem().contains(txt)).collect(Collectors.toList());
+                 if(!achados.isEmpty()) {
+                     menuSugestoesProdutos.getItems().clear();
+                     sugestoesProdutoAtuais = achados;
+                     for(ItemEncomendaPadrao p : achados) {
+                         MenuItem mi = new MenuItem(p.getNomeItem() + " - " + p.getPrecoUnit());
+                         mi.setOnAction(ev2 -> {
+                             cmbDescricao.getEditor().setText(p.getNomeItem());
+                             txtValorUnit.setText(p.getPrecoUnit().toString().replace(".", ","));
+                             menuSugestoesProdutos.hide();
+                             txtValorUnit.requestFocus();
+                         });
+                         menuSugestoesProdutos.getItems().add(mi);
+                     }
+                     menuSugestoesProdutos.show(cmbDescricao, Side.BOTTOM, 0,0);
+                 } else menuSugestoesProdutos.hide();
+             });
+             debounceProdutos.playFromStart();
          });
          
          // Listener para quando selecionar item do ComboBox
@@ -1212,11 +1245,6 @@ public class InserirEncomendaController implements Initializable {
             stage.setMaximized(true);
             stage.show();
         } catch (IOException e) { e.printStackTrace(); }
-    }
-
-    private void configurarNavegacaoEnterCampos() {
-        txtQuantidade.setOnKeyPressed(event -> { if (event.getCode() == KeyCode.ENTER) { cmbDescricao.requestFocus(); event.consume(); } });
-        txtValorUnit.setOnKeyPressed(event -> { if (event.getCode() == KeyCode.ENTER) { btnAdicionarItem.fire(); event.consume(); } });
     }
 
     private void carregarCatalogoProdutos() {
@@ -1322,7 +1350,7 @@ public class InserirEncomendaController implements Initializable {
                     !txtValorUnit.getText().isEmpty()) {
                     handleAdicionarItem(null);
                 } else {
-                    showAlert(AlertType.WARNING, "Atenção", "Preencha todos os campos do item antes de adicionar.");
+                    AlertHelper.show(AlertType.WARNING, "Atenção", "Preencha todos os campos do item antes de adicionar.");
                 }
                 event.consume();
             } else if (event.getCode() == KeyCode.TAB && !event.isShiftDown()) {
@@ -1370,7 +1398,7 @@ public class InserirEncomendaController implements Initializable {
     @FXML
     public void handleAdicionarItem(ActionEvent event) {
         if (txtQuantidade.getText().isEmpty() || cmbDescricao.getEditor().getText().isEmpty() || txtValorUnit.getText().isEmpty()) {
-            showAlert(AlertType.WARNING, "Atenção", "Preencha Quantidade, Descrição e Valor Unitário.");
+            AlertHelper.show(AlertType.WARNING, "Atenção", "Preencha Quantidade, Descrição e Valor Unitário.");
             return;
         }
         String descricao = cmbDescricao.getEditor().getText().toUpperCase().trim();
@@ -1391,7 +1419,7 @@ public class InserirEncomendaController implements Initializable {
             if (qtd <= 0) throw new NumberFormatException("Quantidade deve ser positiva");
             item.setQuantidade(qtd);
         } catch (NumberFormatException e) {
-            showAlert(AlertType.WARNING, "Quantidade Invalida", "A quantidade informada nao e um numero valido. Verifique e tente novamente.");
+            AlertHelper.show(AlertType.WARNING, "Quantidade Invalida", "A quantidade informada nao e um numero valido. Verifique e tente novamente.");
             txtQuantidade.requestFocus();
             return;
         }
@@ -1454,9 +1482,9 @@ public class InserirEncomendaController implements Initializable {
 
     @FXML
     public void handleSalvar(ActionEvent event) {
-        if (viagemAtiva == null) { showAlert(AlertType.WARNING, "Aviso", "Não há viagem ativa."); return; }
+        if (viagemAtiva == null) { AlertHelper.show(AlertType.WARNING, "Aviso", "Não há viagem ativa."); return; }
         if (cmbDestinatario.getEditor().getText().trim().isEmpty() || obsListaItens.isEmpty()) {
-            showAlert(AlertType.WARNING, "Atenção", "Preencha o Destinatário e adicione itens.");
+            AlertHelper.show(AlertType.WARNING, "Atenção", "Preencha o Destinatário e adicione itens.");
             return;
         }
         abrirTelaPagamento();
@@ -1512,7 +1540,7 @@ public class InserirEncomendaController implements Initializable {
             }
 
             // Mostrar mensagem de sucesso
-            showAlert(AlertType.INFORMATION, "Sucesso", "Encomenda #" + encomendaFinal.getNumeroEncomenda() + " salva com sucesso!");
+            AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Encomenda #" + encomendaFinal.getNumeroEncomenda() + " salva com sucesso!");
             
             // LIMPAR CAMPOS AUTOMATICAMENTE para facilitar lançamento rápido
             Platform.runLater(() -> {
@@ -1730,12 +1758,12 @@ public class InserirEncomendaController implements Initializable {
                 
                 // Mostrar confirmação rápida
                 Platform.runLater(() -> {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Item '" + descricao + "' cadastrado com sucesso!");
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item '" + descricao + "' cadastrado com sucesso!");
                 });
                 
                 return true;
             } catch (Exception e) {
-                showAlert(AlertType.ERROR, "Erro", "Erro ao cadastrar item: " + e.getMessage());
+                AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao cadastrar item: " + e.getMessage());
                 e.printStackTrace();
                 return false;
             }
@@ -1794,13 +1822,6 @@ public class InserirEncomendaController implements Initializable {
         catch (Exception e) { return BigDecimal.ZERO; }
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 
     @FXML
     public void handleImprimir(ActionEvent event) {
@@ -1810,7 +1831,7 @@ public class InserirEncomendaController implements Initializable {
     @FXML public void handleExcluir(ActionEvent event) {
         if (encomendaEmEdicao == null) return;
         if (encomendaDAO.excluir(encomendaEmEdicao.getId())) {
-            showAlert(AlertType.INFORMATION, "Sucesso", "Excluída.");
+            AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Excluída.");
             handleSair(event);
         }
     }

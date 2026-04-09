@@ -1,9 +1,5 @@
 package gui.util;
 
-import dao.ConexaoBD;
-import dao.EmpresaDAO;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableSet;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.print.PageLayout;
@@ -12,9 +8,7 @@ import javafx.print.Paper;
 import javafx.print.Printer;
 import javafx.print.PrinterJob;
 import javafx.scene.Node;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.image.Image;
+import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -24,44 +18,38 @@ import javafx.scene.text.TextAlignment;
 import javafx.scene.transform.Scale;
 import model.Empresa;
 
-import java.io.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.Properties;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 /**
  * ============================================================================
  * CLASSE UTILITÁRIA PARA RELATÓRIOS - PADRÃO DO SISTEMA
  * ============================================================================
- * 
- * Esta classe centraliza todos os estilos, layouts e configurações de 
- * impressão do sistema. Use esta classe para criar qualquer novo relatório.
- * 
+ *
+ * Esta classe é um construtor puro de nós JavaFX para relatórios e recibos.
+ * Não acessa banco de dados nem o sistema de arquivos de configuração.
+ *
+ * - Configuração de impressoras: {@link PrinterConfig}
+ * - Carregamento de dados da empresa: {@link CompanyDataLoader}
+ *
  * COMO USAR:
  * ----------
- * 
+ *
  * 1. RELATÓRIO TÉRMICO:
  *    RelatorioUtil util = new RelatorioUtil();
  *    VBox recibo = util.criarReciboTermico("RECIBO DE FRETE", "Nº 123");
  *    // Adicionar conteúdo...
  *    util.imprimirTermico(recibo);
- * 
+ *
  * 2. RELATÓRIO A4:
  *    RelatorioUtil util = new RelatorioUtil();
  *    List<VBox> paginas = new ArrayList<>();
  *    VBox pagina = util.criarPaginaA4("RELATÓRIO GERAL", "MANAUS - JUTAÍ", viagem, true);
  *    // Adicionar conteúdo...
  *    util.imprimirA4(paginas);
- * 
+ *
  * ============================================================================
  */
 public class RelatorioUtil {
@@ -69,18 +57,18 @@ public class RelatorioUtil {
     // ========================================================================
     // CONFIGURAÇÕES GLOBAIS - ALTERE AQUI PARA MUDAR TODO O SISTEMA
     // ========================================================================
-    
+
     // CORES
     public static final String COR_AZUL_ESCURO = "#0d47a1";
     public static final String COR_VERDE_ESCURO = "#2e7d32";
     public static final String COR_VERMELHO = "#c62828";
     public static final String COR_CINZA_CLARO = "#f5f5f5";
     public static final String COR_CINZA_MEDIO = "#e0e0e0";
-    
+
     public static final Color COLOR_AZUL = Color.web(COR_AZUL_ESCURO);
     public static final Color COLOR_VERDE = Color.web(COR_VERDE_ESCURO);
     public static final Color COLOR_VERMELHO = Color.web(COR_VERMELHO);
-    
+
     // FONTES - A4
     public static final Font FONT_EMPRESA_A4 = Font.font("Arial", FontWeight.BLACK, 16);
     public static final Font FONT_ROTA_A4 = Font.font("Arial", FontWeight.BLACK, 14);
@@ -91,7 +79,7 @@ public class RelatorioUtil {
     public static final Font FONT_HEADER_TABELA_A4 = Font.font("Arial", FontWeight.BOLD, 9);
     public static final Font FONT_TOTAIS_TITULO_A4 = Font.font("Arial", FontWeight.BOLD, 12);
     public static final Font FONT_TOTAIS_VALOR_A4 = Font.font("Arial", FontWeight.BOLD, 13);
-    
+
     // FONTES - TÉRMICO
     public static final String FONT_FAMILY_TERMICO = "Courier New";
     public static final int FONT_SIZE_EMPRESA_TERMICO = 13;
@@ -102,301 +90,64 @@ public class RelatorioUtil {
     public static final int FONT_SIZE_TOTAL_TERMICO = 13;
     public static final int FONT_SIZE_STATUS_TERMICO = 11;
     public static final int FONT_SIZE_RODAPE_TERMICO = 9;
-    
+
     // LARGURAS - TÉRMICO
     public static final double LARGURA_TERMICA = 270;
     public static final double LARGURA_LOGO_TERMICO = 50;
-    
+
     // ESTILOS CSS - TÉRMICO (para reutilização)
     public static final String STYLE_HEADER_CELL = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; -fx-font-weight: 900; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 1 1 1 0;";
     public static final String STYLE_HEADER_CELL_FIRST = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; -fx-font-weight: 900; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 1 1 1 1;";
     public static final String STYLE_DATA_CELL = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; -fx-font-weight: bold; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 0 1 1 0;";
     public static final String STYLE_DATA_CELL_FIRST = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; -fx-font-weight: bold; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 0 1 1 1;";
-    
+
     // FORMATADORES DE DATA
     public static final DateTimeFormatter FMT_DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     public static final DateTimeFormatter FMT_DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    
-    // ARQUIVO DE CONFIGURAÇÃO DE IMPRESSORAS
-    private static final String CONFIG_FILE = "impressoras.config";
-    private static final String KEY_IMPRESSORA_TERMICA = "impressora.termica";
-    private static final String KEY_IMPRESSORA_A4 = "impressora.a4";
-    
-    // Impressoras salvas (cache em memória)
-    // DR124: volatile para visibilidade entre threads (impressoes podem ser disparadas de bg)
-    private static volatile String nomeImpressoraTermica = null;
-    private static volatile String nomeImpressoraA4 = null;
-    private static volatile boolean configCarregada = false;
-    
+
     // ========================================================================
-    // DADOS DA EMPRESA - CARREGADOS AUTOMATICAMENTE
+    // DADOS DA EMPRESA - CARREGADOS VIA CompanyDataLoader
     // ========================================================================
-    
-    private Empresa empresa;
-    private String nomeEmpresa;
-    private String cnpj;
-    private String telefone;
-    private String endereco;
-    private String caminhoLogo;
-    
+
+    private final String nomeEmpresa;
+    private final String cnpj;
+    private final String telefone;
+    private final String endereco;
+    private final String caminhoLogo;
+    private final Empresa empresa;
+
     /**
-     * Construtor - Carrega automaticamente os dados da empresa
+     * Construtor — carrega dados da empresa via {@link CompanyDataLoader}.
+     * Não acessa banco de dados nem arquivos de configuração diretamente.
      */
     public RelatorioUtil() {
-        carregarDadosEmpresa();
-        carregarConfigImpressoras();
-    }
-    
-    private void carregarDadosEmpresa() {
-        try {
-            EmpresaDAO empresaDAO = new EmpresaDAO();
-            empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
-            
-            if (empresa != null) {
-                nomeEmpresa = empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "SISTEMA";
-                cnpj = empresa.getCnpj();
-                telefone = empresa.getTelefone();
-                endereco = empresa.getEndereco();
-                caminhoLogo = empresa.getCaminhoFoto();
-            } else {
-                // Tentar buscar direto da tabela de configuração
-                try (Connection con = ConexaoBD.getConnection();
-                     PreparedStatement stmt = con.prepareStatement(
-                         "SELECT nome_embarcacao, cnpj, telefone, endereco, path_logo FROM configuracao_empresa LIMIT 1")) {
-                    ResultSet rs = stmt.executeQuery();
-                    if (rs.next()) {
-                        nomeEmpresa = rs.getString("nome_embarcacao");
-                        cnpj = rs.getString("cnpj");
-                        telefone = rs.getString("telefone");
-                        endereco = rs.getString("endereco");
-                        caminhoLogo = rs.getString("path_logo");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            nomeEmpresa = "SISTEMA";
-        }
-        
-        if (nomeEmpresa == null || nomeEmpresa.isEmpty()) {
-            nomeEmpresa = "SISTEMA";
-        }
-    }
-    
-    // ========================================================================
-    // GERENCIAMENTO DE IMPRESSORAS
-    // ========================================================================
-    
-    /**
-     * Carrega as configurações de impressoras do arquivo
-     */
-    // DR124: synchronized para evitar race em carregamento concorrente
-    private static synchronized void carregarConfigImpressoras() {
-        if (configCarregada) return;
-        
-        File configFile = new File(CONFIG_FILE);
-        if (configFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(configFile)) {
-                Properties props = new Properties();
-                props.load(fis);
-                nomeImpressoraTermica = props.getProperty(KEY_IMPRESSORA_TERMICA);
-                nomeImpressoraA4 = props.getProperty(KEY_IMPRESSORA_A4);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        configCarregada = true;
-    }
-    
-    /**
-     * Salva as configurações de impressoras no arquivo
-     */
-    private static void salvarConfigImpressoras() {
-        try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE)) {
-            Properties props = new Properties();
-            if (nomeImpressoraTermica != null) props.setProperty(KEY_IMPRESSORA_TERMICA, nomeImpressoraTermica);
-            if (nomeImpressoraA4 != null) props.setProperty(KEY_IMPRESSORA_A4, nomeImpressoraA4);
-            props.store(fos, "Configuração de Impressoras do Sistema");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Busca uma impressora pelo nome
-     */
-    public static Printer buscarImpressoraPorNome(String nome) {
-        if (nome == null || nome.isEmpty()) return null;
-        
-        ObservableSet<Printer> impressoras = Printer.getAllPrinters();
-        for (Printer p : impressoras) {
-            if (p.getName().equalsIgnoreCase(nome)) {
-                return p;
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Obtém a impressora térmica configurada.
-     * Se não houver configuração, abre diálogo para seleção.
-     */
-    public static Printer getImpressoraTermica() {
-        carregarConfigImpressoras();
-        
-        // Tentar usar a impressora salva
-        if (nomeImpressoraTermica != null) {
-            Printer p = buscarImpressoraPorNome(nomeImpressoraTermica);
-            if (p != null) return p;
-        }
-        
-        // Se não encontrou, pedir para o usuário selecionar
-        return selecionarImpressora("TÉRMICA (Cupom/Recibo)", true);
-    }
-    
-    /**
-     * Obtém a impressora A4 configurada.
-     * Se não houver configuração, abre diálogo para seleção.
-     */
-    public static Printer getImpressoraA4() {
-        carregarConfigImpressoras();
-        
-        // Tentar usar a impressora salva
-        if (nomeImpressoraA4 != null) {
-            Printer p = buscarImpressoraPorNome(nomeImpressoraA4);
-            if (p != null) return p;
-        }
-        
-        // Se não encontrou, pedir para o usuário selecionar
-        return selecionarImpressora("A4 (Relatórios)", false);
-    }
-    
-    /**
-     * Abre diálogo para selecionar uma impressora
-     */
-    public static Printer selecionarImpressora(String tipo, boolean isTermica) {
-        try {
-            ObservableSet<Printer> impressoras = Printer.getAllPrinters();
-
-            if (impressoras == null || impressoras.isEmpty()) {
-                mostrarAlertaNoTopo(Alert.AlertType.ERROR, "Erro",
-                    "Nenhuma impressora encontrada!", "Por favor, instale uma impressora no sistema.");
-                return null;
-            }
-
-            // Criar diálogo de seleção
-            Printer defaultPrinter = Printer.getDefaultPrinter();
-            ChoiceDialog<Printer> dialog = new ChoiceDialog<>(defaultPrinter, impressoras);
-            dialog.setTitle("Selecionar Impressora");
-            dialog.setHeaderText("Selecione a impressora " + tipo);
-            dialog.setContentText("Impressora:");
-            dialog.initModality(Modality.APPLICATION_MODAL);
-            dialog.setOnShowing(e -> {
-                Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
-                stage.setAlwaysOnTop(true);
-                stage.toFront();
-            });
-
-            Optional<Printer> result = dialog.showAndWait();
-            if (result.isPresent()) {
-                Printer selecionada = result.get();
-
-                // Salvar a escolha
-                if (isTermica) {
-                    nomeImpressoraTermica = selecionada.getName();
-                } else {
-                    nomeImpressoraA4 = selecionada.getName();
-                }
-                salvarConfigImpressoras();
-
-                return selecionada;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            mostrarAlertaNoTopo(Alert.AlertType.ERROR, "Erro",
-                "Erro ao buscar impressoras", "Detalhes: " + e.getMessage());
-        }
-
-        return null;
+        CompanyDataLoader loader = new CompanyDataLoader();
+        this.empresa = loader.getEmpresa();
+        this.nomeEmpresa = loader.getNomeEmpresa();
+        this.cnpj = loader.getCnpj();
+        this.telefone = loader.getTelefone();
+        this.endereco = loader.getEndereco();
+        this.caminhoLogo = loader.getCaminhoLogo();
     }
 
-    /**
-     * Mostra um alerta que SEMPRE fica na frente de todas as janelas
-     */
-    public static void mostrarAlertaNoTopo(Alert.AlertType tipo, String titulo, String header, String conteudo) {
-        Alert alert = new Alert(tipo);
-        alert.setTitle(titulo);
-        alert.setHeaderText(header);
-        alert.setContentText(conteudo);
-        alert.initModality(Modality.APPLICATION_MODAL);
-        alert.setOnShowing(e -> {
-            Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
-            stage.setAlwaysOnTop(true);
-            stage.toFront();
-        });
-        alert.showAndWait();
-    }
-    
-    /**
-     * Força a reconfiguração das impressoras (abre diálogo para ambas)
-     */
-    public static void configurarImpressoras() {
-        mostrarAlertaNoTopo(Alert.AlertType.INFORMATION, "Configurar Impressoras",
-            "Você irá configurar as impressoras do sistema.",
-            "Primeiro selecione a impressora TÉRMICA (para cupons/recibos),\ndepois selecione a impressora A4 (para relatórios).");
-        
-        // Resetar configurações
-        nomeImpressoraTermica = null;
-        nomeImpressoraA4 = null;
-        
-        // Selecionar impressora térmica
-        Printer termica = selecionarImpressora("TÉRMICA (Cupom/Recibo)", true);
-        if (termica != null) {
-            mostrarAlertaNoTopo(Alert.AlertType.INFORMATION, "Sucesso",
-                "Impressora térmica configurada!", "Impressora: " + termica.getName());
-        }
-
-        // Selecionar impressora A4
-        Printer a4 = selecionarImpressora("A4 (Relatórios)", false);
-        if (a4 != null) {
-            mostrarAlertaNoTopo(Alert.AlertType.INFORMATION, "Sucesso",
-                "Impressora A4 configurada!", "Impressora: " + a4.getName());
-        }
-    }
-    
-    /**
-     * Retorna o nome da impressora térmica configurada
-     */
-    public static String getNomeImpressoraTermica() {
-        carregarConfigImpressoras();
-        return nomeImpressoraTermica;
-    }
-    
-    /**
-     * Retorna o nome da impressora A4 configurada
-     */
-    public static String getNomeImpressoraA4() {
-        carregarConfigImpressoras();
-        return nomeImpressoraA4;
-    }
-    
     // ========================================================================
     // GETTERS - DADOS DA EMPRESA
     // ========================================================================
-    
+
     public String getNomeEmpresa() { return nomeEmpresa; }
     public String getCnpj() { return cnpj; }
     public String getTelefone() { return telefone; }
     public String getEndereco() { return endereco; }
     public String getCaminhoLogo() { return caminhoLogo; }
     public Empresa getEmpresa() { return empresa; }
-    
+
     // ========================================================================
     // MÉTODOS PARA IMPRESSÃO TÉRMICA
     // ========================================================================
-    
+
     /**
-     * Cria um recibo térmico completo com cabeçalho padrão
-     * 
+     * Cria um recibo térmico completo com cabeçalho padrão.
+     *
      * @param titulo Ex: "RECIBO DE FRETE", "RECIBO DE ENCOMENDA"
      * @param numero Ex: "Nº 123" (pode ser null para não exibir)
      * @return VBox com o cabeçalho pronto para adicionar conteúdo
@@ -407,34 +158,31 @@ public class RelatorioUtil {
         root.setPrefWidth(LARGURA_TERMICA);
         root.setMaxWidth(LARGURA_TERMICA);
         root.setAlignment(Pos.TOP_LEFT);
-        
-        // Adicionar cabeçalho da empresa
+
         root.getChildren().add(criarCabecalhoTermico());
-        
-        // Adicionar título e número
         root.getChildren().add(criarTituloTermico(titulo, numero));
-        
+
         return root;
     }
-    
+
     /**
-     * Cria o cabeçalho com logo e dados da empresa para impressão térmica
+     * Cria o cabeçalho com logo e dados da empresa para impressão térmica.
      */
     public VBox criarCabecalhoTermico() {
         VBox headerBox = new VBox(2);
         headerBox.setAlignment(Pos.CENTER);
         headerBox.setPrefWidth(LARGURA_TERMICA);
-        
+
         // Logo
         if (caminhoLogo != null && !caminhoLogo.isEmpty()) {
             try {
-                ImageView logo = new ImageView(new Image("file:" + caminhoLogo));
+                ImageView logo = new ImageView(ImageCache.get(caminhoLogo));
                 logo.setFitWidth(LARGURA_LOGO_TERMICO);
                 logo.setPreserveRatio(true);
                 headerBox.getChildren().add(logo);
             } catch (Exception e) { /* Logo não encontrada */ }
         }
-        
+
         // Nome da empresa
         Label lblEmpresa = new Label(nomeEmpresa);
         lblEmpresa.setStyle(String.format(
@@ -442,13 +190,13 @@ public class RelatorioUtil {
             FONT_SIZE_EMPRESA_TERMICO, FONT_FAMILY_TERMICO
         ));
         headerBox.getChildren().add(lblEmpresa);
-        
+
         // Dados (CNPJ, Telefone, Endereço)
         StringBuilder dados = new StringBuilder();
         if (cnpj != null && !cnpj.isEmpty()) dados.append("CNPJ: ").append(cnpj).append("\n");
         if (telefone != null && !telefone.isEmpty()) dados.append("Tel: ").append(telefone).append("\n");
         if (endereco != null && !endereco.isEmpty()) dados.append(endereco);
-        
+
         if (dados.length() > 0) {
             Label lblDados = new Label(dados.toString().trim());
             lblDados.setStyle(String.format(
@@ -459,25 +207,25 @@ public class RelatorioUtil {
             lblDados.setWrapText(true);
             headerBox.getChildren().add(lblDados);
         }
-        
+
         return headerBox;
     }
-    
+
     /**
-     * Cria o bloco de título e número para impressão térmica
+     * Cria o bloco de título e número para impressão térmica.
      */
     public VBox criarTituloTermico(String titulo, String numero) {
         VBox infoBox = new VBox(5);
         infoBox.setAlignment(Pos.CENTER);
         infoBox.setPadding(new Insets(10, 0, 5, 0));
-        
+
         Label lblTitulo = new Label(titulo);
         lblTitulo.setStyle(String.format(
             "-fx-font-weight: bold; -fx-font-size: %dpx; -fx-text-fill: black;",
             FONT_SIZE_TITULO_TERMICO
         ));
         infoBox.getChildren().add(lblTitulo);
-        
+
         if (numero != null && !numero.isEmpty()) {
             Label lblNum = new Label(numero);
             lblNum.setStyle(String.format(
@@ -486,18 +234,18 @@ public class RelatorioUtil {
             ));
             infoBox.getChildren().add(lblNum);
         }
-        
+
         return infoBox;
     }
-    
+
     /**
-     * Cria um bloco de informações (Remetente, Destinatário, Rota)
+     * Cria um bloco de informações (Remetente, Destinatário, Rota).
      */
     public VBox criarBlocoDadosTermico(String remetente, String destinatario, String rota) {
         VBox box = new VBox(2);
         box.setAlignment(Pos.CENTER_LEFT);
         box.setPadding(new Insets(5, 0, 5, 0));
-        
+
         if (remetente != null && !remetente.isEmpty()) {
             Label lbl = new Label("REM: " + remetente);
             lbl.setStyle(String.format(
@@ -507,7 +255,7 @@ public class RelatorioUtil {
             lbl.setWrapText(true);
             box.getChildren().add(lbl);
         }
-        
+
         if (destinatario != null && !destinatario.isEmpty()) {
             Label lbl = new Label("DEST: " + destinatario);
             lbl.setStyle(String.format(
@@ -517,7 +265,7 @@ public class RelatorioUtil {
             lbl.setWrapText(true);
             box.getChildren().add(lbl);
         }
-        
+
         if (rota != null && !rota.isEmpty()) {
             Label lbl = new Label("ROTA: " + rota);
             lbl.setStyle(String.format(
@@ -526,13 +274,13 @@ public class RelatorioUtil {
             ));
             box.getChildren().add(lbl);
         }
-        
+
         return box;
     }
-    
+
     /**
-     * Cria uma tabela com bordas para impressão térmica
-     * 
+     * Cria uma tabela com bordas para impressão térmica.
+     *
      * @param headers Array com os títulos das colunas
      * @param larguras Array com as larguras das colunas
      * @return GridPane configurado para adicionar linhas
@@ -541,7 +289,7 @@ public class RelatorioUtil {
         GridPane grid = new GridPane();
         grid.setHgap(0);
         grid.setVgap(0);
-        
+
         for (int i = 0; i < headers.length; i++) {
             Label h = new Label(headers[i]);
             h.setStyle(i == 0 ? STYLE_HEADER_CELL_FIRST : STYLE_HEADER_CELL);
@@ -549,12 +297,12 @@ public class RelatorioUtil {
             h.setAlignment(i == 0 ? Pos.CENTER : (i == headers.length - 1 ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT));
             grid.add(h, i, 0);
         }
-        
+
         return grid;
     }
-    
+
     /**
-     * Adiciona uma linha de dados à tabela térmica
+     * Adiciona uma linha de dados à tabela térmica.
      */
     public void adicionarLinhaTabela(GridPane grid, int linha, String[] valores, double[] larguras) {
         for (int i = 0; i < valores.length; i++) {
@@ -566,29 +314,29 @@ public class RelatorioUtil {
             grid.add(cell, i, linha);
         }
     }
-    
+
     /**
-     * Cria o bloco de valores (Total, Pago, Status) para impressão térmica
+     * Cria o bloco de valores (Total, Pago, Status) para impressão térmica.
      */
     public VBox criarBlocoValoresTermico(double total, double pago, String status) {
         VBox box = new VBox(3);
         box.setAlignment(Pos.CENTER_RIGHT);
         box.setPadding(new Insets(10, 5, 0, 0));
-        
+
         Label lblTotal = new Label("TOTAL: R$ " + String.format("%,.2f", total));
         lblTotal.setStyle(String.format(
             "-fx-font-size: %dpx; -fx-font-weight: 900; -fx-text-fill: black;",
             FONT_SIZE_TOTAL_TERMICO
         ));
         box.getChildren().add(lblTotal);
-        
+
         Label lblPago = new Label("PAGO: R$ " + String.format("%,.2f", pago));
         lblPago.setStyle(String.format(
             "-fx-font-weight: bold; -fx-font-size: %dpx; -fx-text-fill: black;",
             FONT_SIZE_STATUS_TERMICO
         ));
         box.getChildren().add(lblPago);
-        
+
         if (status != null) {
             Label lblStatus = new Label("STATUS: " + status);
             lblStatus.setStyle(String.format(
@@ -597,74 +345,72 @@ public class RelatorioUtil {
             ));
             box.getChildren().add(lblStatus);
         }
-        
+
         return box;
     }
-    
+
     /**
-     * Cria o rodapé com data/hora e assinatura para impressão térmica
+     * Cria o rodapé com data/hora e assinatura para impressão térmica.
      */
     public VBox criarRodapeTermico() {
         String dataHora = LocalDateTime.now().format(FMT_DATA_HORA);
         Label lblData = new Label("\nEmitido em: " + dataHora + "\n\n__________________________\nAssinatura");
         lblData.setStyle(String.format("-fx-font-size: %dpx; -fx-text-fill: black;", FONT_SIZE_RODAPE_TERMICO));
         lblData.setTextAlignment(TextAlignment.CENTER);
-        
+
         VBox footer = new VBox(lblData);
         footer.setAlignment(Pos.CENTER);
         return footer;
     }
-    
+
     /**
-     * Imprime um recibo térmico usando a impressora térmica configurada
+     * Imprime um recibo térmico usando a impressora térmica configurada.
      */
     public boolean imprimirTermico(VBox conteudo) {
-        // Usar a impressora térmica configurada
-        Printer printer = getImpressoraTermica();
+        Printer printer = PrinterConfig.getImpressoraTermica();
         if (printer == null) {
-            mostrarAlertaNoTopo(Alert.AlertType.WARNING, "Impressão Cancelada",
+            PrinterConfig.mostrarAlertaNoTopo(javafx.scene.control.Alert.AlertType.WARNING, "Impressão Cancelada",
                 "Nenhuma impressora térmica selecionada.", "A impressão foi cancelada.");
             return false;
         }
-        
+
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) return false;
-        
+
         PageLayout pageLayout = printer.createPageLayout(
             printer.getDefaultPageLayout().getPaper(),
             PageOrientation.PORTRAIT,
             Printer.MarginType.HARDWARE_MINIMUM
         );
         job.getJobSettings().setPageLayout(pageLayout);
-        
-        // Ajustar escala se necessário
+
         double largImp = pageLayout.getPrintableWidth();
         if (largImp > 0 && largImp < LARGURA_TERMICA) {
             double sc = largImp / LARGURA_TERMICA;
             conteudo.getTransforms().add(new Scale(sc, sc));
         }
-        
+
         // DR116: sempre chamar endJob() para liberar o PrinterJob
         boolean sucesso = job.printPage(conteudo);
         job.endJob();
         return sucesso;
     }
-    
+
     // ========================================================================
     // MÉTODOS PARA IMPRESSÃO A4
     // ========================================================================
-    
+
     /**
-     * Cria uma página A4 com cabeçalho padrão
-     * 
-     * @param titulo Ex: "RELATÓRIO GERAL", "CONFERÊNCIA DE VIAGEM"
-     * @param rota Ex: "MANAUS - JUTAÍ"
-     * @param dataSaida Data de saída da viagem
-     * @param dataChegada Data de chegada (pode ser null)
+     * Cria uma página A4 com cabeçalho padrão.
+     *
+     * @param titulo          Ex: "RELATÓRIO GERAL", "CONFERÊNCIA DE VIAGEM"
+     * @param rota            Ex: "MANAUS - JUTAÍ"
+     * @param dataSaida       Data de saída da viagem
+     * @param dataChegada     Data de chegada (pode ser null)
      * @param isPrimeiraPagina true para primeira página com cabeçalho completo
-     * @param numPagina Número da página
-     * @param largura Largura útil da página
-     * @param altura Altura útil da página
+     * @param numPagina       Número da página
+     * @param largura         Largura útil da página
+     * @param altura          Altura útil da página
      * @return VBox com o cabeçalho pronto
      */
     public VBox criarPaginaA4(String titulo, String rota, LocalDate dataSaida, LocalDate dataChegada,
@@ -674,34 +420,30 @@ public class RelatorioUtil {
         p.setPrefSize(largura, altura);
         p.setMaxWidth(largura);
         p.setStyle("-fx-background-color: white;");
-        
+
         VBox header = new VBox(5);
         header.setAlignment(Pos.CENTER);
         header.setPrefWidth(largura);
         header.setStyle("-fx-border-color: #ccc; -fx-border-width: 0 0 1 0; -fx-padding: 0 0 10 0;");
-        
+
         if (isPrimeiraPagina) {
-            // Nome da empresa
             Label lEmp = new Label(nomeEmpresa.toUpperCase());
             lEmp.setFont(FONT_EMPRESA_A4);
             header.getChildren().add(lEmp);
-            
-            // Rota com destaque
+
             if (rota != null && !rota.isEmpty()) {
                 Label lRota = new Label("ROTA: " + rota);
                 lRota.setFont(FONT_ROTA_A4);
                 lRota.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 3 10 3 10; -fx-background-radius: 3;");
                 header.getChildren().add(lRota);
             }
-            
-            // Datas
+
             String dSaida = dataSaida != null ? dataSaida.format(FMT_DATA) : "N/D";
             String dChegada = dataChegada != null ? dataChegada.format(FMT_DATA) : "EM ABERTO";
             Label lDatas = new Label("SAÍDA: " + dSaida + "  |  PREV. CHEGADA: " + dChegada);
             lDatas.setFont(FONT_DATAS_A4);
             header.getChildren().add(lDatas);
-            
-            // Título do relatório
+
             Label lTit = new Label(titulo);
             lTit.setFont(FONT_NORMAL_A4);
             lTit.setTextFill(Color.DARKGRAY);
@@ -711,13 +453,13 @@ public class RelatorioUtil {
             lSimples.setFont(FONT_NEGRITO_A4);
             header.getChildren().add(lSimples);
         }
-        
+
         p.getChildren().add(header);
         return p;
     }
-    
+
     /**
-     * Cria o cabeçalho de um bloco (ex: FRETE 1, ENC. 1)
+     * Cria o cabeçalho de um bloco (ex: FRETE 1, ENC. 1).
      */
     public HBox criarHeaderBlocoA4(String numero, String linha1, String linha2, String status, double largura) {
         HBox header = new HBox(10);
@@ -725,18 +467,16 @@ public class RelatorioUtil {
         header.setPadding(new Insets(3, 5, 3, 5));
         header.setStyle("-fx-background-color: " + COR_AZUL_ESCURO + ";");
         header.setPrefWidth(largura);
-        
-        // Número
+
         Label lNum = new Label(numero);
         lNum.setFont(FONT_TITULO_BLOCO_A4);
         lNum.setTextFill(Color.WHITE);
         lNum.setMinWidth(80);
         header.getChildren().add(lNum);
-        
-        // Linhas de informação
+
         VBox boxInfo = new VBox(2);
         boxInfo.setAlignment(Pos.CENTER_LEFT);
-        
+
         if (linha1 != null) {
             Label l1 = new Label(linha1);
             l1.setFont(FONT_NEGRITO_A4);
@@ -750,25 +490,23 @@ public class RelatorioUtil {
             boxInfo.getChildren().add(l2);
         }
         header.getChildren().add(boxInfo);
-        
-        // Espaçador
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         header.getChildren().add(spacer);
-        
-        // Status
+
         if (status != null) {
             Label lSt = new Label(status);
             lSt.setFont(FONT_NEGRITO_A4);
             lSt.setTextFill(status.contains("PAGO") ? Color.LIGHTGREEN : Color.ORANGE);
             header.getChildren().add(lSt);
         }
-        
+
         return header;
     }
-    
+
     /**
-     * Cria um grid de itens para A4
+     * Cria um grid de itens para A4.
      */
     public GridPane criarGridItensA4(double largura) {
         GridPane grid = new GridPane();
@@ -776,72 +514,69 @@ public class RelatorioUtil {
         grid.setHgap(10);
         grid.setVgap(8);
         grid.setPrefWidth(largura);
-        
+
         ColumnConstraints c1 = new ColumnConstraints(); c1.setPercentWidth(8);
         ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(57);
         ColumnConstraints c3 = new ColumnConstraints(); c3.setPercentWidth(17);
         ColumnConstraints c4 = new ColumnConstraints(); c4.setPercentWidth(18);
         grid.getColumnConstraints().addAll(c1, c2, c3, c4);
-        
-        // Headers
+
         Label hQtd = new Label("QTD"); hQtd.setFont(FONT_HEADER_TABELA_A4); hQtd.setTextFill(Color.DARKGRAY);
         Label hDesc = new Label("DESCRIÇÃO"); hDesc.setFont(FONT_HEADER_TABELA_A4); hDesc.setTextFill(Color.DARKGRAY);
-        Label hUnit = new Label("VL UNIT"); hUnit.setFont(FONT_HEADER_TABELA_A4); hUnit.setTextFill(Color.DARKGRAY); 
+        Label hUnit = new Label("VL UNIT"); hUnit.setFont(FONT_HEADER_TABELA_A4); hUnit.setTextFill(Color.DARKGRAY);
         hUnit.setMaxWidth(Double.MAX_VALUE); hUnit.setAlignment(Pos.CENTER_RIGHT);
-        Label hTotal = new Label("VL TOTAL"); hTotal.setFont(FONT_HEADER_TABELA_A4); hTotal.setTextFill(Color.DARKGRAY); 
+        Label hTotal = new Label("VL TOTAL"); hTotal.setFont(FONT_HEADER_TABELA_A4); hTotal.setTextFill(Color.DARKGRAY);
         hTotal.setMaxWidth(Double.MAX_VALUE); hTotal.setAlignment(Pos.CENTER_RIGHT);
-        
+
         grid.add(hQtd, 0, 0); grid.add(hDesc, 1, 0); grid.add(hUnit, 2, 0); grid.add(hTotal, 3, 0);
-        
+
         return grid;
     }
-    
+
     /**
-     * Adiciona uma linha de item ao grid A4
+     * Adiciona uma linha de item ao grid A4.
      */
     public void adicionarItemGridA4(GridPane grid, int linha, String qtd, String desc, String valorUnit, String valorTotal) {
         Label q = new Label(qtd); q.setFont(FONT_NORMAL_A4);
         Label d = new Label(desc); d.setFont(FONT_NORMAL_A4); d.setWrapText(true);
         Label u = new Label(valorUnit); u.setFont(FONT_NORMAL_A4); u.setAlignment(Pos.CENTER_RIGHT); u.setMaxWidth(Double.MAX_VALUE);
         Label t = new Label(valorTotal); t.setFont(FONT_NORMAL_A4); t.setAlignment(Pos.CENTER_RIGHT); t.setMaxWidth(Double.MAX_VALUE);
-        
+
         grid.add(q, 0, linha); grid.add(d, 1, linha); grid.add(u, 2, linha); grid.add(t, 3, linha);
     }
-    
+
     /**
-     * Cria o rodapé de um bloco com assinatura e valores
+     * Cria o rodapé de um bloco com assinatura e valores.
      */
     public HBox criarRodapeBlocoA4(double total, double pago, double devedor) {
         HBox footer = new HBox(15);
         footer.setAlignment(Pos.CENTER_RIGHT);
         footer.setPadding(new Insets(5, 5, 5, 5));
         footer.setStyle("-fx-background-color: " + COR_CINZA_CLARO + ";");
-        
-        // Assinatura
+
         Label lAss = new Label("Assinatura: __________________________");
         lAss.setFont(FONT_NORMAL_A4);
         footer.getChildren().add(lAss);
-        
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         footer.getChildren().add(spacer);
-        
-        // Valores
+
         VBox boxValores = new VBox(2);
         boxValores.setAlignment(Pos.CENTER_RIGHT);
-        
+
         if (devedor > 0.01) {
             Label lTot = new Label("Total: " + formatarMoeda(total));
             lTot.setFont(FONT_NEGRITO_A4);
             boxValores.getChildren().add(lTot);
-            
+
             if (pago > 0.01) {
                 Label lPago = new Label("Pago: " + formatarMoeda(pago));
                 lPago.setFont(FONT_NEGRITO_A4);
                 lPago.setTextFill(Color.FORESTGREEN);
                 boxValores.getChildren().add(lPago);
             }
-            
+
             Label lFalta = new Label("A Pagar: " + formatarMoeda(devedor));
             lFalta.setFont(FONT_NEGRITO_A4);
             lFalta.setTextFill(Color.RED);
@@ -852,13 +587,13 @@ public class RelatorioUtil {
             lTot.setTextFill(Color.FORESTGREEN);
             boxValores.getChildren().add(lTot);
         }
-        
+
         footer.getChildren().add(boxValores);
         return footer;
     }
-    
+
     /**
-     * Cria o bloco de totais gerais
+     * Cria o bloco de totais gerais.
      */
     public VBox criarBlocoTotaisA4(double total, double pago, double devedor, double largura) {
         VBox box = new VBox(8);
@@ -867,42 +602,42 @@ public class RelatorioUtil {
         box.setPadding(new Insets(0, 5, 0, 0));
         box.setStyle("-fx-background-color: white;");
         VBox.setMargin(box, new Insets(40, 0, 10, 0));
-        
+
         Label lblTit = new Label("RESUMO FINANCEIRO GERAL");
         lblTit.setFont(FONT_TITULO_BLOCO_A4);
         box.getChildren().add(lblTit);
-        
+
         box.getChildren().add(criarLinhaTotalA4("TOTAL LANÇADO:", total, COLOR_AZUL));
         box.getChildren().add(criarLinhaTotalA4("TOTAL RECEBIDO (PAGO):", pago, COLOR_VERDE));
         box.getChildren().add(criarLinhaTotalA4("TOTAL A RECEBER (FIADO):", devedor, devedor > 0.01 ? COLOR_VERMELHO : Color.BLACK));
-        
+
         return box;
     }
-    
+
     private HBox criarLinhaTotalA4(String titulo, double valor, Color cor) {
         HBox linha = new HBox(10);
         linha.setAlignment(Pos.CENTER_RIGHT);
-        
+
         Label lTit = new Label(titulo);
         lTit.setFont(FONT_TOTAIS_TITULO_A4);
         if (cor.equals(COLOR_VERMELHO)) lTit.setTextFill(COLOR_VERMELHO);
-        
+
         Label lVal = new Label(formatarMoeda(valor));
         lVal.setFont(FONT_TOTAIS_VALOR_A4);
         lVal.setTextFill(cor);
-        
+
         linha.getChildren().addAll(lTit, lVal);
         return linha;
     }
-    
+
     /**
-     * Adiciona rodapé à página A4
+     * Adiciona rodapé à página A4.
      */
     public void adicionarRodapeA4(VBox pagina, double largura) {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         pagina.getChildren().add(spacer);
-        
+
         Label l = new Label("Impresso em: " + LocalDateTime.now().format(FMT_DATA_HORA));
         l.setFont(FONT_NORMAL_A4);
         l.setAlignment(Pos.CENTER_RIGHT);
@@ -910,82 +645,82 @@ public class RelatorioUtil {
         l.setStyle("-fx-border-color: #ccc; -fx-border-width: 1 0 0 0;");
         pagina.getChildren().add(l);
     }
-    
+
     /**
-     * Imprime páginas A4 usando a impressora A4 configurada
+     * Imprime páginas A4 usando a impressora A4 configurada.
+     *
      * @param showDialog Se true, mostra diálogo para confirmar impressora
      */
     public boolean imprimirA4(List<VBox> paginas, Node parent, boolean showDialog) {
-        Printer printer = getImpressoraA4();
+        Printer printer = PrinterConfig.getImpressoraA4();
         if (printer == null) {
-            mostrarAlertaNoTopo(Alert.AlertType.WARNING, "Impressão Cancelada",
+            PrinterConfig.mostrarAlertaNoTopo(javafx.scene.control.Alert.AlertType.WARNING, "Impressão Cancelada",
                 "Nenhuma impressora A4 selecionada.", "A impressão foi cancelada.");
             return false;
         }
-        
+
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) return false;
-        
-        // Mostrar diálogo apenas se solicitado
+
         if (showDialog && !job.showPrintDialog(parent.getScene().getWindow())) {
             return false;
         }
-        
+
         PageLayout pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
-        
+
         for (VBox p : paginas) {
             job.printPage(pageLayout, p);
         }
         job.endJob();
         return true;
     }
-    
+
     /**
-     * Imprime páginas A4 (com diálogo de confirmação)
+     * Imprime páginas A4 com diálogo de confirmação.
      */
     public boolean imprimirA4(List<VBox> paginas, Node parent) {
         return imprimirA4(paginas, parent, true);
     }
-    
+
     /**
-     * Imprime páginas A4 diretamente (sem diálogo)
+     * Imprime páginas A4 diretamente (sem diálogo).
      */
     public boolean imprimirA4Direto(List<VBox> paginas) {
-        Printer printer = getImpressoraA4();
+        Printer printer = PrinterConfig.getImpressoraA4();
         if (printer == null) return false;
-        
+
         PrinterJob job = PrinterJob.createPrinterJob(printer);
         if (job == null) return false;
-        
+
         PageLayout pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
-        
+
         for (VBox p : paginas) {
             job.printPage(pageLayout, p);
         }
         job.endJob();
         return true;
     }
-    
+
     /**
-     * Obtém as dimensões úteis de uma página A4
+     * Obtém as dimensões úteis de uma página A4.
      */
     public double[] getDimensoesA4() {
-        Printer printer = getImpressoraA4();
+        Printer printer = PrinterConfig.getImpressoraA4();
         if (printer == null) {
             printer = Printer.getDefaultPrinter();
         }
         if (printer == null) return new double[]{500, 700};
-        
+
         PageLayout pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
         return new double[]{pageLayout.getPrintableWidth() - 40, pageLayout.getPrintableHeight()};
     }
-    
+
     // ========================================================================
-    // UTILITÁRIOS
+    // UTILITÁRIOS ESTÁTICOS
     // ========================================================================
-    
+
     /**
-     * Formata valor para moeda brasileira
+     * Formata valor para moeda brasileira.
      */
     public static String formatarMoeda(double valor) {
         return "R$ " + String.format("%,.2f", valor);
@@ -994,23 +729,23 @@ public class RelatorioUtil {
     public static String formatarMoeda(java.math.BigDecimal valor) {
         return "R$ " + String.format("%,.2f", valor != null ? valor : java.math.BigDecimal.ZERO);
     }
-    
+
     /**
-     * Formata data
+     * Formata data.
      */
     public static String formatarData(LocalDate data) {
         return data != null ? data.format(FMT_DATA) : "N/D";
     }
-    
+
     /**
-     * Formata data e hora
+     * Formata data e hora.
      */
     public static String formatarDataHora(LocalDateTime dataHora) {
         return dataHora != null ? dataHora.format(FMT_DATA_HORA) : "N/D";
     }
-    
+
     /**
-     * Retorna o status baseado no valor devedor
+     * Retorna o status baseado no valor devedor.
      */
     public static String getStatus(double devedor) {
         return devedor <= 0.01 ? model.StatusPagamento.QUITADO.name() : model.StatusPagamento.PENDENTE.name();
@@ -1022,7 +757,7 @@ public class RelatorioUtil {
     }
 
     /**
-     * Retorna a cor do status
+     * Retorna a cor do status.
      */
     public static Color getCorStatus(double devedor) {
         return devedor <= 0.01 ? COLOR_VERDE : COLOR_VERMELHO;
@@ -1031,5 +766,40 @@ public class RelatorioUtil {
     public static Color getCorStatus(java.math.BigDecimal devedor) {
         return (devedor == null || devedor.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0)
             ? COLOR_VERDE : COLOR_VERMELHO;
+    }
+
+    // ========================================================================
+    // DELEGAÇÃO PARA PrinterConfig (compatibilidade de callers estáticos)
+    // ========================================================================
+
+    /** @see PrinterConfig#getImpressoraTermica() */
+    public static Printer getImpressoraTermica() {
+        return PrinterConfig.getImpressoraTermica();
+    }
+
+    /** @see PrinterConfig#getImpressoraA4() */
+    public static Printer getImpressoraA4() {
+        return PrinterConfig.getImpressoraA4();
+    }
+
+    /** @see PrinterConfig#configurarImpressoras() */
+    public static void configurarImpressoras() {
+        PrinterConfig.configurarImpressoras();
+    }
+
+    /** @see PrinterConfig#mostrarAlertaNoTopo(javafx.scene.control.Alert.AlertType, String, String, String) */
+    public static void mostrarAlertaNoTopo(javafx.scene.control.Alert.AlertType tipo, String titulo,
+                                            String header, String conteudo) {
+        PrinterConfig.mostrarAlertaNoTopo(tipo, titulo, header, conteudo);
+    }
+
+    /** @see PrinterConfig#getNomeImpressoraTermica() */
+    public static String getNomeImpressoraTermica() {
+        return PrinterConfig.getNomeImpressoraTermica();
+    }
+
+    /** @see PrinterConfig#getNomeImpressoraA4() */
+    public static String getNomeImpressoraA4() {
+        return PrinterConfig.getNomeImpressoraA4();
     }
 }

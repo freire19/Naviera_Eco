@@ -17,6 +17,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
 import model.ClienteEncomenda;
+import gui.util.AlertHelper;
 
 public class CadastroClientesEncomendaController implements Initializable {
 
@@ -86,7 +87,7 @@ public class CadastroClientesEncomendaController implements Initializable {
     private void handleSalvar(ActionEvent event) {
         String nome = txtNomeCliente.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Obrigatório", "O nome do cliente não pode estar vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "O nome do cliente não pode estar vazio.");
             return;
         }
 
@@ -96,21 +97,21 @@ public class CadastroClientesEncomendaController implements Initializable {
             
             ClienteEncomenda clienteSalvo = clienteDAO.salvar(novoCliente);
             if (clienteSalvo != null) {
-                showAlert(AlertType.INFORMATION, "Sucesso", "Novo cliente salvo com sucesso!");
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Novo cliente salvo com sucesso!");
                 carregarClientes();
                 limparSelecao();
             } else {
-                showAlert(AlertType.ERROR, "Erro", "Não foi possível salvar o novo cliente. O nome pode já existir.");
+                AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível salvar o novo cliente. O nome pode já existir.");
             }
             
         } else { // Atualizando um cliente existente
             clienteSelecionado.setNomeCliente(nome.trim().toUpperCase());
             if (clienteDAO.atualizar(clienteSelecionado)) {
-                showAlert(AlertType.INFORMATION, "Sucesso", "Cliente atualizado com sucesso!");
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Cliente atualizado com sucesso!");
                 carregarClientes();
                 limparSelecao();
             } else {
-                showAlert(AlertType.ERROR, "Erro", "Não foi possível atualizar o cliente.");
+                AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível atualizar o cliente.");
             }
         }
     }
@@ -118,7 +119,7 @@ public class CadastroClientesEncomendaController implements Initializable {
     @FXML
     private void handleExcluir(ActionEvent event) {
         if (clienteSelecionado == null) {
-            showAlert(AlertType.WARNING, "Nenhuma Seleção", "Por favor, selecione um cliente na lista para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Nenhuma Seleção", "Por favor, selecione um cliente na lista para excluir.");
             return;
         }
         
@@ -130,20 +131,13 @@ public class CadastroClientesEncomendaController implements Initializable {
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             if (clienteDAO.excluir(clienteSelecionado.getIdCliente())) {
-                showAlert(AlertType.INFORMATION, "Sucesso", "Cliente excluído com sucesso!");
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Cliente excluído com sucesso!");
                 carregarClientes();
                 limparSelecao();
             } else {
-                showAlert(AlertType.ERROR, "Erro", "Não foi possível excluir o cliente.");
+                AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível excluir o cliente.");
             }
         }
     }
     
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

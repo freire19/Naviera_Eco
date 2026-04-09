@@ -1,6 +1,9 @@
 package gui;
 
 import dao.ConexaoBD;
+import dao.DespesaDAO;
+import dao.ViagemDAO;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
 import gui.util.SessaoUsuario; 
 import javafx.application.Platform;
@@ -41,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import model.OpcaoViagem;
 
 public class FinanceiroSaidaController {
 
@@ -67,7 +71,10 @@ public class FinanceiroSaidaController {
     @FXML private TableColumn<Despesa, String> colStatus;
 
     private static final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
-    
+
+    private final DespesaDAO despesaDAO = new DespesaDAO();
+    private final ViagemDAO viagemDAO = new ViagemDAO();
+
     private ObservableList<String> listaCategoriasOriginal = FXCollections.observableArrayList();
     private boolean ignoreFilter = false;
 
@@ -114,35 +121,25 @@ public class FinanceiroSaidaController {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         OpcaoViagem opcaoTodas = new OpcaoViagem(0, "TODAS AS VIAGENS");
         lista.add(opcaoTodas);
-        
+
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        
-        // Mantemos a ordem visual Decrescente (Data Futura -> Passada)
-        String sql = "SELECT id_viagem, descricao, data_viagem, is_atual FROM viagens ORDER BY data_viagem DESC LIMIT 50";
-        
+
         OpcaoViagem opcaoAtivaEncontrada = null;
 
-        try (Connection con = ConexaoBD.getConnection();
-             ResultSet rs = con.prepareStatement(sql).executeQuery()) {
-             
-            while(rs.next()) {
-                int id = rs.getInt("id_viagem");
-                String desc = rs.getString("descricao");
-                java.sql.Date dt = rs.getDate("data_viagem");
-                boolean isAtual = rs.getBoolean("is_atual"); 
-                
-                if(dt != null) {
-                    desc += " (" + sdf.format(dt) + ")";
+        try {
+            java.util.List<model.Viagem> viagens = viagemDAO.listarViagensRecentes(50);
+            for (model.Viagem v : viagens) {
+                int id = Long.valueOf(v.getId()).intValue();
+                String desc = v.getDescricao() != null ? v.getDescricao() : "";
+                if (v.getDataViagem() != null) {
+                    desc += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem())) + ")";
                 }
-                
+                boolean isAtual = v.getIsAtual();
                 if (isAtual) {
                     desc += " (ATUAL)";
                 }
-                
                 OpcaoViagem op = new OpcaoViagem(id, desc);
                 lista.add(op);
-                
-                // Se esta for a viagem atual, guardamos a referência dela
                 if (isAtual) {
                     opcaoAtivaEncontrada = op;
                 }
@@ -164,7 +161,8 @@ public class FinanceiroSaidaController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            javafx.application.Platform.runLater(() -> alert("Erro interno. Contate o administrador."); System.err.println("Erro ao carregar viagens: " + e.getMessage()));
+            javafx.application.Platform.runLater(() -> AlertHelper.info("Erro interno. Contate o administrador."));
+            System.err.println("Erro ao carregar viagens: " + e.getMessage());
         }
     }
 
@@ -172,66 +170,38 @@ public class FinanceiroSaidaController {
     public void filtrar() {
         // Se o combo estiver nulo (ainda carregando), não faz nada
         if(cmbFiltroViagem.getValue() == null) return;
-        
+
         int idFiltro = cmbFiltroViagem.getValue().id;
         ObservableList<Despesa> lista = FXCollections.observableArrayList();
         java.math.BigDecimal total = java.math.BigDecimal.ZERO;
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        StringBuilder sql = new StringBuilder();
-        
-        sql.append("SELECT s.*, c.nome as cat_nome FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE 1=1 ");
 
-        java.util.List<Object> params = new java.util.ArrayList<>();
+        String categoriaFiltro = cmbFiltroCategoria.getValue();
+        String formaFiltro = cmbFiltroPagamento.getValue();
+        java.time.LocalDate dataFiltro = dpFiltroData.getValue();
 
-        if(idFiltro > 0) {
-            sql.append(" AND s.id_viagem = ?");
-            params.add(idFiltro);
-        }
+        java.util.List<java.util.Map<String, Object>> rows = despesaDAO.buscarDespesas(
+                idFiltro, categoriaFiltro, formaFiltro, dataFiltro, true);
 
-        // Exibe apenas PAGOS ou NÃO BOLETOS nesta tela
-        sql.append(" AND (s.forma_pagamento != 'BOLETO' OR s.status = 'PAGO') ");
-
-        if (dpFiltroData.getValue() != null) {
-            sql.append(" AND s.data_vencimento = ?");
-            params.add(java.sql.Date.valueOf(dpFiltroData.getValue()));
-        }
-        if (cmbFiltroCategoria.getValue() != null && !cmbFiltroCategoria.getValue().equals("Todas") && !cmbFiltroCategoria.getValue().equals("Todas as Categorias")) {
-            sql.append(" AND c.nome = ?");
-            params.add(cmbFiltroCategoria.getValue());
-        }
-        if (cmbFiltroPagamento.getValue() != null && !cmbFiltroPagamento.getValue().equals("Todas")) {
-            sql.append(" AND s.forma_pagamento = ?");
-            params.add(cmbFiltroPagamento.getValue());
-        }
-        sql.append(" ORDER BY s.data_vencimento DESC");
-
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                Object p = params.get(i);
-                if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
-                else if (p instanceof java.sql.Date) stmt.setDate(i + 1, (java.sql.Date) p);
-                else stmt.setString(i + 1, p.toString());
+        for (java.util.Map<String, Object> row : rows) {
+            java.sql.Date dtVenc = (java.sql.Date) row.get("data_vencimento");
+            Despesa d = new Despesa(
+                (int) row.get("id"),
+                dtVenc != null ? sdf.format(dtVenc) : "",
+                (String) row.get("descricao"),
+                (String) row.get("cat_nome"),
+                (String) row.get("forma_pagamento"),
+                (java.math.BigDecimal) row.get("valor_total"),
+                (String) row.get("status"),
+                (boolean) row.get("is_excluido")
+            );
+            lista.add(d);
+            if (!d.isExcluido() && d.getValor() != null) {
+                total = total.add(d.getValor());
             }
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()) {
-                Despesa d = new Despesa(
-                    rs.getInt("id"), 
-                    sdf.format(rs.getDate("data_vencimento")), 
-                    rs.getString("descricao"), 
-                    rs.getString("cat_nome"), 
-                    rs.getString("forma_pagamento"), 
-                    rs.getBigDecimal("valor_total"),
-                    rs.getString("status"),
-                    rs.getBoolean("is_excluido") 
-                );
-                lista.add(d);
-                if (!d.isExcluido() && d.getValor() != null) {
-                    total = total.add(d.getValor());
-                }
-            }
-            tabela.setItems(lista);
-            lblTotalGasto.setText(nf.format(total));
-        } catch (Exception e) { e.printStackTrace(); }
+        }
+        tabela.setItems(lista);
+        lblTotalGasto.setText(nf.format(total));
     }
     
     @FXML
@@ -256,7 +226,7 @@ public class FinanceiroSaidaController {
         } catch (Exception e) {
             System.err.println("FinanceiroSaidaController.abrirGestaoFuncionarios: erro ao abrir tela — " + e.getMessage());
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador.");
+            AlertHelper.info("Erro interno. Contate o administrador.");
         }
     }
 
@@ -292,11 +262,11 @@ public class FinanceiroSaidaController {
     @FXML
     public void salvarLancamento() {
         if (txtDescricao.getText().isEmpty() || txtValor.getText().isEmpty() || cmbCategoria.getValue() == null) {
-            alert("Preencha os campos obrigatórios."); return;
+            AlertHelper.info("Preencha os campos obrigatórios."); return;
         }
         
         if (dpDataPrimeiroPagamento.getValue() == null) {
-            alert("Por favor, informe a Data do 1º Pagamento.");
+            AlertHelper.info("Por favor, informe a Data do 1º Pagamento.");
             return;
         }
         
@@ -307,14 +277,14 @@ public class FinanceiroSaidaController {
         } 
 
         if (idParaSalvar == 0) {
-            alert("ERRO CRÍTICO: Não foi possível identificar a viagem selecionada.\nVerifique o filtro de viagens no topo da tela.");
+            AlertHelper.info("ERRO CRÍTICO: Não foi possível identificar a viagem selecionada.\nVerifique o filtro de viagens no topo da tela.");
             return;
         }
 
         try {
             String valorTexto = txtValor.getText().replace(",", ".");
             java.math.BigDecimal valor = new java.math.BigDecimal(valorTexto);
-            if (valor.signum() <= 0) { alert("O valor deve ser maior que zero."); return; }
+            if (valor.signum() <= 0) { AlertHelper.info("O valor deve ser maior que zero."); return; }
 
             String forma = cmbFormaPagamento.getValue();
             String status = forma.equals("BOLETO") ? "PENDENTE" : "PAGO";
@@ -340,7 +310,7 @@ public class FinanceiroSaidaController {
                 stmt.setInt(9, idParaSalvar);
                 
                 stmt.executeUpdate();
-                alert("Despesa salva com sucesso!");
+                AlertHelper.info("Despesa salva com sucesso!");
                 
                 txtDescricao.clear();
                 txtValor.clear();
@@ -355,7 +325,7 @@ public class FinanceiroSaidaController {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar: " + e.getMessage());
         }
     }
 
@@ -365,7 +335,7 @@ public class FinanceiroSaidaController {
         if (sel == null) return;
         
         if (sel.isExcluido()) {
-            alert("Este item já está excluído.");
+            AlertHelper.info("Este item já está excluído.");
             return;
         }
 
@@ -421,13 +391,13 @@ public class FinanceiroSaidaController {
             String reason = dados.getValue();
             
             if (reason.isEmpty()) {
-                alert("É obrigatório informar o motivo da exclusão.");
+                AlertHelper.info("É obrigatório informar o motivo da exclusão.");
                 return;
             }
 
             String nomeAdmin = validarPermissaoGerente(pass);
             if (nomeAdmin == null) {
-                alert("Senha incorreta ou usuário sem permissão de Gerente/Administrador.");
+                AlertHelper.info("Senha incorreta ou usuário sem permissão de Gerente/Administrador.");
                 return;
             }
 
@@ -456,12 +426,12 @@ public class FinanceiroSaidaController {
                 }
                 
                 con.commit();
-                alert("Registro marcado como excluído com sucesso!");
+                AlertHelper.info("Registro marcado como excluído com sucesso!");
                 filtrar();
 
             } catch (Exception e) {
                 e.printStackTrace();
-                alert("Erro interno. Contate o administrador."); System.err.println("Erro ao excluir: " + e.getMessage());
+                AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao excluir: " + e.getMessage());
             }
         });
     }
@@ -755,7 +725,7 @@ public class FinanceiroSaidaController {
         } catch (Exception e) {
             System.err.println("FinanceiroSaidaController.abrirBoletos: erro ao abrir tela de boletos — " + e.getMessage());
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador.");
+            AlertHelper.info("Erro interno. Contate o administrador.");
         }
     }
     
@@ -771,7 +741,7 @@ public class FinanceiroSaidaController {
                 stmt.setString(1, res.get().toUpperCase());
                 stmt.executeUpdate();
                 carregarCategorias(); 
-            } catch(Exception e) { alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+            } catch(Exception e) { AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
         }
     }
     
@@ -788,7 +758,7 @@ public class FinanceiroSaidaController {
     @FXML
     public void abrirAuditoria() {
         if (cmbFiltroViagem.getValue() == null || cmbFiltroViagem.getValue().id == 0) {
-            alert("Selecione uma viagem específica no filtro para ver a auditoria.\nO sistema precisa saber de qual viagem você quer ver o histórico.");
+            AlertHelper.info("Selecione uma viagem específica no filtro para ver a auditoria.\nO sistema precisa saber de qual viagem você quer ver o histórico.");
             return;
         }
         
@@ -854,7 +824,6 @@ public class FinanceiroSaidaController {
     }
     private void configurarTabela() { configuringTabela(); }
 
-    private void alert(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).show(); }
 
     private static class DadosEmpresa {
         String nome;
@@ -863,16 +832,15 @@ public class FinanceiroSaidaController {
 
     private DadosEmpresa buscarDadosEmpresa() {
         DadosEmpresa d = new DadosEmpresa();
-        String sql = "SELECT nome_embarcacao, path_logo FROM configuracao_empresa LIMIT 1";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                d.nome = rs.getString("nome_embarcacao");
-                d.pathLogo = rs.getString("path_logo");
+        try {
+            dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
+            model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            if (empresa != null) {
+                d.nome = empresa.getEmbarcacao();
+                d.pathLogo = empresa.getCaminhoFoto();
             }
         } catch (Exception e) {
-            System.err.println("FinanceiroSaidaController.buscarDadosEmpresa: erro ao consultar configuracao_empresa — " + e.getMessage());
+            System.err.println("FinanceiroSaidaController.buscarDadosEmpresa: erro ao buscar dados empresa — " + e.getMessage());
             e.printStackTrace();
         }
         return d;
@@ -900,22 +868,4 @@ public class FinanceiroSaidaController {
         public String getValorFormatado() { return nf.format(valor); }
     }
     
-    public static class OpcaoViagem {
-        int id; String label;
-        public OpcaoViagem(int id, String label) { this.id = id; this.label = label; }
-        @Override public String toString() { return label; }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null || getClass() != obj.getClass()) return false;
-            OpcaoViagem that = (OpcaoViagem) obj;
-            return id == that.id;
-        }
-        
-        @Override
-        public int hashCode() {
-            return Integer.hashCode(id);
-        }
-    }
 }

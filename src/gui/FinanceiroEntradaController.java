@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import dao.ViagemDAO;
 import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -25,6 +26,7 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import model.OpcaoViagem;
 
 public class FinanceiroEntradaController {
 
@@ -106,56 +108,34 @@ public class FinanceiroEntradaController {
     private void carregarComboViagens() {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         lista.add(new OpcaoViagem(0, "Todas as Viagens"));
-        
+
         OpcaoViagem viagemAtiva = null;
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
-        String sql = "SELECT id_viagem, descricao, data_viagem, data_chegada, is_atual FROM viagens ORDER BY id_viagem DESC LIMIT 20";
-        
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                int id = rs.getInt("id_viagem");
-                String desc = rs.getString("descricao");
-                java.sql.Date dtSaida = rs.getDate("data_viagem");
-                java.sql.Date dtChegada = rs.getDate("data_chegada");
-                boolean isAtual = rs.getBoolean("is_atual");
-                
-                StringBuilder labelBuilder = new StringBuilder(desc);
-                if (dtSaida != null) {
-                    labelBuilder.append(" (").append(sdf.format(dtSaida));
-                    if (dtChegada != null) {
-                        labelBuilder.append(" - ").append(sdf.format(dtChegada));
-                    }
-                    labelBuilder.append(")");
-                }
-
-                OpcaoViagem op = new OpcaoViagem(id, labelBuilder.toString());
-                lista.add(op);
-
-                if (isAtual) {
-                    viagemAtiva = op;
-                }
+        for (model.Viagem v : new ViagemDAO().listarViagensRecentes(20)) {
+            String desc = v.getDescricao() != null ? v.getDescricao() : "";
+            if (v.getDataViagem() != null) {
+                desc += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem()));
+                if (v.getDataChegada() != null) desc += " - " + sdf.format(java.sql.Date.valueOf(v.getDataChegada()));
+                desc += ")";
             }
-            
-            OpcaoViagem finalViagemAtiva = viagemAtiva;
-            ObservableList<OpcaoViagem> finalLista = lista;
-            javafx.application.Platform.runLater(() -> {
-                cmbFiltroViagem.setItems(finalLista);
-                if (finalViagemAtiva != null) {
-                    cmbFiltroViagem.setValue(finalViagemAtiva);
-                } else if (finalLista.size() > 1) {
-                    cmbFiltroViagem.getSelectionModel().select(1);
-                } else {
-                    cmbFiltroViagem.getSelectionModel().selectFirst();
-                }
-            });
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+            OpcaoViagem op = new OpcaoViagem(v.getId().intValue(), desc);
+            lista.add(op);
+            if (v.getIsAtual()) viagemAtiva = op;
         }
+
+        OpcaoViagem finalViagemAtiva = viagemAtiva;
+        ObservableList<OpcaoViagem> finalLista = lista;
+        javafx.application.Platform.runLater(() -> {
+            cmbFiltroViagem.setItems(finalLista);
+            if (finalViagemAtiva != null) {
+                cmbFiltroViagem.setValue(finalViagemAtiva);
+            } else if (finalLista.size() > 1) {
+                cmbFiltroViagem.getSelectionModel().select(1);
+            } else {
+                cmbFiltroViagem.getSelectionModel().selectFirst();
+            }
+        });
     }
 
     @FXML
@@ -338,10 +318,4 @@ public class FinanceiroEntradaController {
         }
     }
 
-    public static class OpcaoViagem {
-        int id;
-        String label;
-        public OpcaoViagem(int id, String label) { this.id = id; this.label = label; }
-        @Override public String toString() { return label; }
-    }
 }

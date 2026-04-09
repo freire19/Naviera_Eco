@@ -101,7 +101,6 @@ public class FreteDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL ao buscar fretes com filtros: " + e.getMessage());
             System.err.println("Erro SQL em FreteDAO: " + e.getMessage());
         }
         return fretes;
@@ -114,5 +113,42 @@ public class FreteDAO {
      */
     public List<Frete> listarPorViagem(long idViagem) {
         return buscarFretes(idViagem, null, null, null);
+    }
+
+    /**
+     * Exclui um frete e seus itens em transação.
+     * @param idFrete o id_frete a excluir
+     * @return true se excluído com sucesso
+     */
+    public boolean excluir(long idFrete) {
+        Connection conn = null;
+        try {
+            conn = ConexaoBD.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement pstItems = conn.prepareStatement(
+                    "DELETE FROM frete_itens WHERE id_frete = ?")) {
+                pstItems.setLong(1, idFrete);
+                pstItems.executeUpdate();
+            }
+
+            boolean ok;
+            try (PreparedStatement pstFrete = conn.prepareStatement(
+                    "DELETE FROM fretes WHERE id_frete = ?")) {
+                pstFrete.setLong(1, idFrete);
+                ok = pstFrete.executeUpdate() > 0;
+            }
+
+            conn.commit();
+            return ok;
+        } catch (SQLException e) {
+            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { /* ignorado */ } }
+            System.err.println("Erro SQL em FreteDAO.excluir: " + e.getMessage());
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { /* ignorado */ }
+            }
+        }
     }
 }

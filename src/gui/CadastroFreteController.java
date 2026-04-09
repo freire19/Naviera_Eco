@@ -67,6 +67,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import gui.util.AlertHelper;
 
 /**
  * Controller da tela CadastroFrete.fxml.
@@ -120,11 +121,11 @@ public class CadastroFreteController implements Initializable {
     @FXML private Button btnImprimirEtiqueta;
     @FXML private Button btnListaDeFrete;
     @FXML private Button btnImprimirRecibo;
-    @FXML private TableView<FreteItem> tabelaItens;
-    @FXML private TableColumn<FreteItem, Integer> colQuantidade;
-    @FXML private TableColumn<FreteItem, String> colItem;
-    @FXML private TableColumn<FreteItem, Double> colPreco;
-    @FXML private TableColumn<FreteItem, String> colTotal;
+    @FXML private TableView<FreteItemCadastro> tabelaItens;
+    @FXML private TableColumn<FreteItemCadastro, Integer> colQuantidade;
+    @FXML private TableColumn<FreteItemCadastro, String> colItem;
+    @FXML private TableColumn<FreteItemCadastro, Double> colPreco;
+    @FXML private TableColumn<FreteItemCadastro, String> colTotal;
     @FXML private ToggleGroup notaFiscalToggleGroup;
     @FXML private ToggleGroup precoToggleGroup;
     //</editor-fold>
@@ -135,7 +136,7 @@ public class CadastroFreteController implements Initializable {
     private ObservableList<String> listaConferentesOriginal = FXCollections.observableArrayList();
     private ObservableList<ItemFrete> listaItensDisplayOriginal = FXCollections.observableArrayList();
 
-    private ObservableList<FreteItem> listaTabelaItensFrete = FXCollections.observableArrayList();
+    private ObservableList<FreteItemCadastro> listaTabelaItensFrete = FXCollections.observableArrayList();
     private Map<String, ItemFrete> mapItensCadastrados = new HashMap<>();
     private final DecimalFormat df = new DecimalFormat("'R$ '#,##0.00", new DecimalFormatSymbols(new Locale("pt","BR")));
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -199,16 +200,32 @@ public class CadastroFreteController implements Initializable {
         configurarComboboxParaAbrirAoFocar(cbRota);
         configurarComboboxParaAbrirAoFocar(cbConferente);
 
-        Platform.runLater(() -> {
-            if (rootPane != null && rootPane.getScene() != null) {
-                rootPane.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                    if (event.getCode() == KeyCode.F1) { if(btnNovo != null && !btnNovo.isDisabled()) handleNovoFrete(null); event.consume(); }
-                    if (event.getCode() == KeyCode.F2) { if(btnAlterar != null && !btnAlterar.isDisabled()) handleAlterarFrete(null); event.consume(); }
-                    if (event.getCode() == KeyCode.F3) { if(btnSalvar != null && !btnSalvar.isDisabled()) handleSalvarFrete(null); event.consume(); }
-                    if (event.getCode() == KeyCode.F4) { if(btnExcluir != null && !btnExcluir.isDisabled()) handleExcluirFrete(null); event.consume(); }
-                    if (event.getCode() == KeyCode.F5) { if(btnListaDeFrete != null && !btnListaDeFrete.isDisabled()) abrirListaFretes(null); event.consume(); }
-                    if (event.getCode() == KeyCode.F6) { if(BtnImprimirNota != null && !BtnImprimirNota.isDisabled()) imprimirNotaFretePersonalizada(null); event.consume(); }
-                    if (event.getCode() == KeyCode.ESCAPE) { handleSair(null); event.consume(); }
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+                    switch (event.getCode()) {
+                        case F1:
+                            if (btnNovo != null && !btnNovo.isDisabled()) handleNovoFrete(null);
+                            event.consume(); break;
+                        case F2:
+                            if (btnAlterar != null && !btnAlterar.isDisabled()) handleAlterarFrete(null);
+                            event.consume(); break;
+                        case F3:
+                            if (btnSalvar != null && !btnSalvar.isDisabled()) handleSalvarFrete(null);
+                            event.consume(); break;
+                        case F4:
+                            if (btnExcluir != null && !btnExcluir.isDisabled()) handleExcluirFrete(null);
+                            event.consume(); break;
+                        case F5:
+                            if (btnListaDeFrete != null && !btnListaDeFrete.isDisabled()) abrirListaFretes(null);
+                            event.consume(); break;
+                        case F6:
+                            if (BtnImprimirNota != null && !BtnImprimirNota.isDisabled()) imprimirNotaFretePersonalizada(null);
+                            event.consume(); break;
+                        case ESCAPE:
+                            handleSair(null); event.consume(); break;
+                        default: break;
+                    }
                 });
             }
         });
@@ -677,7 +694,7 @@ public class CadastroFreteController implements Initializable {
             if (btnNovo != null) btnNovo.setDisable(false);
             if (btnSalvar != null) btnSalvar.setDisable(false);
         } else {
-            showAlert(AlertType.INFORMATION, "Nenhuma Viagem Ativa",
+            AlertHelper.show(AlertType.INFORMATION, "Nenhuma Viagem Ativa",
                     "NÃ£o hÃ¡ nenhuma viagem ativa no sistema. Por favor, ative uma viagem na tela principal para lanÃ§ar um novo frete.");
             if (btnNovo != null) btnNovo.setDisable(true);
             if (btnSalvar != null) btnSalvar.setDisable(true);
@@ -700,7 +717,7 @@ public class CadastroFreteController implements Initializable {
         try {
             numeroFreteLong = Long.parseLong(numFrete);
         } catch (NumberFormatException e) {
-            showAlert(AlertType.ERROR, "Erro de Dados", "O nÃºmero do frete '" + numFrete + "' Ã© invÃ¡lido.");
+            AlertHelper.show(AlertType.ERROR, "Erro de Dados", "O nÃºmero do frete '" + numFrete + "' Ã© invÃ¡lido.");
             return;
         }
 
@@ -712,7 +729,7 @@ public class CadastroFreteController implements Initializable {
                     if (rs.next()) {
                         preencherCamposDoFrete(rs, numFrete);
                     } else {
-                        showAlert(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com numero: " + numFrete);
+                        AlertHelper.show(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com numero: " + numFrete);
                         return;
                     }
                 }
@@ -727,7 +744,7 @@ public class CadastroFreteController implements Initializable {
                         String descricaoItem = rs2.getString("nome_item_ou_id_produto");
                         int qtd = rs2.getInt("quantidade");
                         double precoUnit = rs2.getDouble("preco_unitario");
-                        FreteItem item = new FreteItem(qtd, descricaoItem, precoUnit);
+                        FreteItemCadastro item = new FreteItemCadastro(qtd, descricaoItem, precoUnit);
                         listaTabelaItensFrete.add(item);
                     }
                 }
@@ -752,7 +769,7 @@ public class CadastroFreteController implements Initializable {
 
         } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao Carregar Frete", "NÃ£o foi possÃ­vel carregar o frete:\n" + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Frete", "NÃ£o foi possÃ­vel carregar o frete:\n" + e.getMessage());
             configurarParaNovoFrete();
         }
     }
@@ -829,8 +846,9 @@ public class CadastroFreteController implements Initializable {
     }
 
     private void carregarDadosIniciaisComboBoxes() {
+        // DP014: carregar contatos 1x e copiar para ambas as listas (mesma query)
         carregarContatosParaComboBoxes("Remetente", listaRemetentesOriginal);
-        carregarContatosParaComboBoxes("Cliente", listaClientesOriginal);
+        listaClientesOriginal.setAll(listaRemetentesOriginal);
         carregarRotas();
         carregarConferentesDoBanco();
         carregarItensCadastradosParaComboBox();
@@ -849,12 +867,12 @@ public class CadastroFreteController implements Initializable {
         }
     }
 
-    public static class FreteItem {
+    public static class FreteItemCadastro {
         private final SimpleIntegerProperty quantidade;
         private final SimpleStringProperty item;
         private final SimpleDoubleProperty preco;
 
-        public FreteItem(int qtd, String it, double pr) {
+        public FreteItemCadastro(int qtd, String it, double pr) {
             this.quantidade = new SimpleIntegerProperty(qtd);
             this.item = new SimpleStringProperty(it);
             this.preco = new SimpleDoubleProperty(pr);
@@ -890,7 +908,7 @@ public class CadastroFreteController implements Initializable {
             colQuantidade.setCellValueFactory(cd -> cd.getValue().quantidadeProperty().asObject());
             colQuantidade.setCellFactory(TextFieldTableCell.forTableColumn(new IntegerStringConverter()));
             colQuantidade.setOnEditCommit(e -> {
-                FreteItem it = e.getRowValue();
+                FreteItemCadastro it = e.getRowValue();
                 Integer nV = e.getNewValue();
                 Integer oV = e.getOldValue();
                 if (nV != null && nV > 0) {
@@ -907,7 +925,7 @@ public class CadastroFreteController implements Initializable {
             colItem.setCellValueFactory(cd -> cd.getValue().itemProperty());
             colItem.setCellFactory(TextFieldTableCell.forTableColumn());
             colItem.setOnEditCommit(e -> {
-                FreteItem it = e.getRowValue();
+                FreteItemCadastro it = e.getRowValue();
                 String nV = e.getNewValue();
                 if (nV != null && !nV.trim().isEmpty()) {
                     it.setItem(nV.trim());
@@ -936,7 +954,7 @@ public class CadastroFreteController implements Initializable {
                 }
             }));
             colPreco.setOnEditCommit(event -> {
-                FreteItem itemEditado = event.getRowValue();
+                FreteItemCadastro itemEditado = event.getRowValue();
                 Double novoValor = event.getNewValue();
                 Double valorAntigo = event.getOldValue();
                 if (novoValor != null && novoValor >= 0) {
@@ -1068,7 +1086,7 @@ public class CadastroFreteController implements Initializable {
         }
 
         if (listaTabelaItensFrete != null) {
-            listaTabelaItensFrete.addListener((ListChangeListener<FreteItem>) c -> {
+            listaTabelaItensFrete.addListener((ListChangeListener<FreteItemCadastro>) c -> {
                 if (programmaticamenteAtualizando) return;
                 atualizarTotaisAgregados();
                 boolean itensPresentes = !listaTabelaItensFrete.isEmpty();
@@ -1344,20 +1362,16 @@ public class CadastroFreteController implements Initializable {
         listaItensDisplayOriginal.clear();
         mapItensCadastrados.clear();
 
-        try {
-            ItemFreteDAO dao = new ItemFreteDAO();
-            List<ItemFrete> todosAtivos = dao.listarTodos(false);
-            for (ItemFrete item : todosAtivos) {
-                if (item != null && item.getNomeItem() != null) {
-                    String desc = item.getNomeItem().toLowerCase();
-                    if (!listaItensDisplayOriginal.contains(item)) {
-                        listaItensDisplayOriginal.add(item);
-                    }
-                    mapItensCadastrados.put(desc, item);
+        ItemFreteDAO dao = new ItemFreteDAO();
+        List<ItemFrete> todosAtivos = dao.listarTodos(false);
+        for (ItemFrete item : todosAtivos) {
+            if (item != null && item.getNomeItem() != null) {
+                String desc = item.getNomeItem().toLowerCase();
+                if (!listaItensDisplayOriginal.contains(item)) {
+                    listaItensDisplayOriginal.add(item);
                 }
+                mapItensCadastrados.put(desc, item);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
@@ -1447,7 +1461,7 @@ public class CadastroFreteController implements Initializable {
 
     @FXML private void handleAlterarFrete(ActionEvent event) {
         if (freteAtualId == -1) {
-            showAlert(AlertType.WARNING, "Aviso", "NÃ£o hÃ¡ frete selecionado para alteraÃ§Ã£o.");
+            AlertHelper.show(AlertType.WARNING, "Aviso", "NÃ£o hÃ¡ frete selecionado para alteraÃ§Ã£o.");
             return;
         }
         habilitarCamposParaEdicao(true);
@@ -1459,29 +1473,29 @@ public class CadastroFreteController implements Initializable {
 
     private void salvarOuAlterarFrete() {
         if (cbRemetente == null || cbRemetente.getValue() == null || cbRemetente.getValue().trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo ObrigatÃ³rio", "Remetente deve ser informado.");
+            AlertHelper.show(AlertType.WARNING, "Campo ObrigatÃ³rio", "Remetente deve ser informado.");
             if (cbRemetente != null) cbRemetente.requestFocus();
             return;
         }
         if (cbCliente == null || cbCliente.getValue() == null || cbCliente.getValue().trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo ObrigatÃ³rio", "Cliente (DestinatÃ¡rio) deve ser informado.");
+            AlertHelper.show(AlertType.WARNING, "Campo ObrigatÃ³rio", "Cliente (DestinatÃ¡rio) deve ser informado.");
             if (cbCliente != null) cbCliente.requestFocus();
             return;
         }
         if (cbRota == null || cbRota.getValue() == null || cbRota.getValue().trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo ObrigatÃ³rio", "Rota deve ser informada.");
+            AlertHelper.show(AlertType.WARNING, "Campo ObrigatÃ³rio", "Rota deve ser informada.");
             if (cbRota != null) cbRota.requestFocus();
             return;
         }
         if (listaTabelaItensFrete == null || listaTabelaItensFrete.isEmpty()) {
-            showAlert(AlertType.WARNING, "Nenhum Item na Nota", "Ã‰ necessÃ¡rio adicionar pelo menos um item ao frete.");
+            AlertHelper.show(AlertType.WARNING, "Nenhum Item na Nota", "Ã‰ necessÃ¡rio adicionar pelo menos um item ao frete.");
             if (txtquantidade != null) txtquantidade.requestFocus();
             return;
         }
 
         boolean isNewFrete = (freteAtualId == -1);
         if (isNewFrete && this.viagemAtiva == null) {
-            showAlert(AlertType.ERROR, "Erro CrÃ­tico", "NÃ£o Ã© possÃ­vel salvar um novo frete sem uma Viagem Ativa definida no sistema. Por favor, ative uma viagem na tela principal.");
+            AlertHelper.show(AlertType.ERROR, "Erro CrÃ­tico", "NÃ£o Ã© possÃ­vel salvar um novo frete sem uma Viagem Ativa definida no sistema. Por favor, ative uma viagem na tela principal.");
             return;
         }
 
@@ -1604,7 +1618,7 @@ public class CadastroFreteController implements Initializable {
 
             String sqlItem = "INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES (?,?,?,?,?)";
             try (PreparedStatement pstItem = conn.prepareStatement(sqlItem)) {
-                for (FreteItem it : listaTabelaItensFrete) {
+                for (FreteItemCadastro it : listaTabelaItensFrete) {
                     pstItem.setLong(1, numeroFreteParaOperacao);
                     pstItem.setString(2, it.getItem());
                     pstItem.setInt(3, it.getQuantidade());
@@ -1632,7 +1646,7 @@ public class CadastroFreteController implements Initializable {
             } else {
                 mensagemSucesso = "Frete numero " + numeroFreteParaOperacao + " alterado com sucesso!";
             }
-            showAlert(AlertType.INFORMATION, "Sucesso", mensagemSucesso);
+            AlertHelper.show(AlertType.INFORMATION, "Sucesso", mensagemSucesso);
 
             if (isNewFrete) {
                 configurarParaNovoFrete();
@@ -1652,10 +1666,10 @@ public class CadastroFreteController implements Initializable {
         } catch (SQLException e) {
             try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro na OperaÃ§Ã£o do Frete", "Ocorreu um erro no banco de dados:\n" + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro na OperaÃ§Ã£o do Frete", "Ocorreu um erro no banco de dados:\n" + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro geral na operaÃ§Ã£o:\n" + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro geral na operaÃ§Ã£o:\n" + e.getMessage());
         } finally {
             try {
                 if (conn != null) {
@@ -1716,7 +1730,7 @@ public class CadastroFreteController implements Initializable {
         // DL065: preservar case original (toUpperCase para documentos fiscais)
         String nomeItemFinal = itemNomeOuDescricao.trim().toUpperCase();
         if (listaTabelaItensFrete != null) {
-            listaTabelaItensFrete.add(new FreteItem(quantidade, nomeItemFinal, precoUnitario));
+            listaTabelaItensFrete.add(new FreteItemCadastro(quantidade, nomeItemFinal, precoUnitario));
         }
         limparCamposItem();
         if (txtquantidade != null && txtquantidade.isFocusTraversable()) {
@@ -1726,7 +1740,7 @@ public class CadastroFreteController implements Initializable {
 
     @FXML private void handleExcluirFrete(ActionEvent event) {
         if (freteAtualId == -1) {
-            showAlert(AlertType.WARNING, "Aviso", "NÃ£o hÃ¡ frete selecionado para exclusÃ£o.");
+            AlertHelper.show(AlertType.WARNING, "Aviso", "NÃ£o hÃ¡ frete selecionado para exclusÃ£o.");
             return;
         }
 
@@ -1754,7 +1768,7 @@ public class CadastroFreteController implements Initializable {
                 }
 
                 conn.commit();
-                showAlert(AlertType.INFORMATION, "Sucesso", "Frete " + txtNumFrete.getText() + " excluÃ­do com sucesso!");
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Frete " + txtNumFrete.getText() + " excluÃ­do com sucesso!");
                 limparCamposFrete();
                 habilitarCamposParaVisualizacao(false);
                 if (btnNovo != null) btnNovo.setDisable(false);
@@ -1764,7 +1778,7 @@ public class CadastroFreteController implements Initializable {
                 freteAtualId = -1;
             } catch (SQLException e) {
                 try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-                showAlert(AlertType.ERROR, "Erro ao Excluir Frete", "NÃ£o foi possÃ­vel excluir o frete:\n" + e.getMessage());
+                AlertHelper.show(AlertType.ERROR, "Erro ao Excluir Frete", "NÃ£o foi possÃ­vel excluir o frete:\n" + e.getMessage());
             } finally {
                 try {
                     if (conn != null) {
@@ -1792,11 +1806,11 @@ public class CadastroFreteController implements Initializable {
 
                 gui.util.OcrAudioService.executarOCRAsync(file,
                     resultado -> interpretarTextoFreteEPreencher(resultado),
-                    e -> Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro OCR", "Erro ao ler imagem: " + e.getMessage()))
+                    e -> Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro OCR", "Erro ao ler imagem: " + e.getMessage()))
                 );
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro", "Erro ao abrir seletor de foto:\n" + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao abrir seletor de foto:\n" + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1820,7 +1834,7 @@ public class CadastroFreteController implements Initializable {
                 });
             },
             e -> Platform.runLater(() -> {
-                showAlert(AlertType.ERROR, "Erro Audio", "Erro no microfone ou modelo: " + e.getMessage());
+                AlertHelper.show(AlertType.ERROR, "Erro Audio", "Erro no microfone ou modelo: " + e.getMessage());
                 btnAudio.setText("Voz");
                 btnAudio.setStyle("-fx-background-color: #0d47a1; -fx-text-fill: white;");
             })
@@ -1829,7 +1843,7 @@ public class CadastroFreteController implements Initializable {
 
     private void interpretarTextoFreteEPreencher(String texto) {
         if (texto == null || texto.isEmpty()) {
-            Platform.runLater(() -> showAlert(AlertType.WARNING, "IA", "Nenhum texto identificado."));
+            Platform.runLater(() -> AlertHelper.show(AlertType.WARNING, "IA", "Nenhum texto identificado."));
             return;
         }
 
@@ -1895,7 +1909,7 @@ public class CadastroFreteController implements Initializable {
                                 }
 
                                 if(listaTabelaItensFrete != null) {
-                                    listaTabelaItensFrete.add(new FreteItem(qtd, descLida, precoEncontrado));
+                                    listaTabelaItensFrete.add(new FreteItemCadastro(qtd, descLida, precoEncontrado));
                                 }
                             }
                         }
@@ -1939,17 +1953,17 @@ public class CadastroFreteController implements Initializable {
 
     @FXML private void imprimirNotaFretePersonalizada(ActionEvent event) {
         if (freteAtualId == -1) {
-            showAlert(AlertType.WARNING, "Aviso", "Ã‰ necessÃ¡rio ter um frete salvo ou carregado para imprimir a nota.");
+            AlertHelper.show(AlertType.WARNING, "Aviso", "Ã‰ necessÃ¡rio ter um frete salvo ou carregado para imprimir a nota.");
             return;
         }
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Nota Fiscal do Frete - NÃ£o implementado.");
+        AlertHelper.show(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Nota Fiscal do Frete - NÃ£o implementado.");
     }
     @FXML private void imprimirReciboPersonalizado(ActionEvent event) {
         if (freteAtualId == -1) {
-            showAlert(AlertType.WARNING, "Aviso", "Ã‰ necessÃ¡rio ter um frete salvo ou carregado para imprimir o recibo.");
+            AlertHelper.show(AlertType.WARNING, "Aviso", "Ã‰ necessÃ¡rio ter um frete salvo ou carregado para imprimir o recibo.");
             return;
         }
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Recibo do Frete - NÃ£o implementado.");
+        AlertHelper.show(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Recibo do Frete - NÃ£o implementado.");
     }
 
     @FXML private void abrirListaFretes(ActionEvent event) {
@@ -1985,13 +1999,13 @@ public class CadastroFreteController implements Initializable {
                 if (!pesoNota.isEmpty() && txtPesoNota != null) txtPesoNota.setText(pesoNota);
 
                 if (numNota.isEmpty() && valorNota.isEmpty()) {
-                    showAlert(AlertType.WARNING, "Aviso", "Não foi possível extrair dados da nota fiscal do XML.\nVerifique se o arquivo é uma NF-e válida.");
+                    AlertHelper.show(AlertType.WARNING, "Aviso", "Não foi possível extrair dados da nota fiscal do XML.\nVerifique se o arquivo é uma NF-e válida.");
                 } else {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Dados da NF-e importados do XML com sucesso!");
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Dados da NF-e importados do XML com sucesso!");
                 }
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro XML", "Erro ao processar o arquivo XML:\n" + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro XML", "Erro ao processar o arquivo XML:\n" + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -2013,10 +2027,10 @@ public class CadastroFreteController implements Initializable {
     
     @FXML private void handleImprimirEtiqueta(ActionEvent event) {
         if (freteAtualId == -1) {
-            showAlert(AlertType.WARNING, "Aviso", "Ã‰ necessÃ¡rio ter um frete salvo ou carregado para imprimir etiquetas.");
+            AlertHelper.show(AlertType.WARNING, "Aviso", "Ã‰ necessÃ¡rio ter um frete salvo ou carregado para imprimir etiquetas.");
             return;
         }
-        showAlert(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Etiqueta(s) - NÃ£o implementado.");
+        AlertHelper.show(AlertType.INFORMATION, "Funcionalidade Pendente", "Imprimir Etiqueta(s) - NÃ£o implementado.");
     }
 
     private void habilitarCamposDaNotaFiscal(boolean formularioHabilitado) {
@@ -2161,7 +2175,7 @@ public class CadastroFreteController implements Initializable {
         // #DB022: BigDecimal para soma de valores financeiros
         java.math.BigDecimal valorTotalAgregado = java.math.BigDecimal.ZERO;
         if (listaTabelaItensFrete != null) {
-            for (FreteItem item : listaTabelaItensFrete) {
+            for (FreteItemCadastro item : listaTabelaItensFrete) {
                 totalDeVolumes += item.getQuantidade();
                 valorTotalAgregado = valorTotalAgregado.add(item.getTotalBD());
             }
@@ -2252,20 +2266,13 @@ public class CadastroFreteController implements Initializable {
         }
     }
 
-    private void showAlert(AlertType aT, String t, String m) {
-        Alert a = new Alert(aT);
-        a.setTitle(t);
-        a.setHeaderText(null);
-        a.setContentText(m);
-        a.showAndWait();
-    }
 
     private void abrirJanelaGenerica(String fxmlFileRelative, String title, boolean resizable, Modality modality) {
         try {
             String fxmlPath = fxmlFileRelative.startsWith("/") ? fxmlFileRelative : "/gui/" + fxmlFileRelative;
             URL fxmlLocation = getClass().getResource(fxmlPath);
             if (fxmlLocation == null) {
-                showAlert(AlertType.ERROR, "Erro ao Abrir Tela", "Arquivo FXML nÃ£o pÃ´de ser localizado: " + fxmlPath);
+                AlertHelper.show(AlertType.ERROR, "Erro ao Abrir Tela", "Arquivo FXML nÃ£o pÃ´de ser localizado: " + fxmlPath);
                 return;
             }
             FXMLLoader loader = new FXMLLoader(fxmlLocation);
@@ -2282,10 +2289,10 @@ public class CadastroFreteController implements Initializable {
             }
         } catch (IOException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao Abrir Tela", "NÃ£o foi possÃ­vel carregar a tela: " + fxmlFileRelative + "\nDetalhes: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Abrir Tela", "NÃ£o foi possÃ­vel carregar a tela: " + fxmlFileRelative + "\nDetalhes: " + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro CrÃ­tico", "Ocorreu um erro inesperado ao tentar abrir a tela '" + title + "'.");
+            AlertHelper.show(AlertType.ERROR, "Erro CrÃ­tico", "Ocorreu um erro inesperado ao tentar abrir a tela '" + title + "'.");
         }
     }
 

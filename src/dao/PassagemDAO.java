@@ -167,6 +167,17 @@ public class PassagemDAO {
                "LEFT JOIN aux_nacionalidades an ON pa.id_nacionalidade = an.id_nacionalidade ";
     }
 
+    private boolean detectarTemDataChegada(ResultSet rs) throws SQLException {
+        java.sql.ResultSetMetaData meta = rs.getMetaData();
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            if ("data_chegada".equalsIgnoreCase(meta.getColumnName(i))) return true;
+        }
+        return false;
+    }
+
+    /** Campo de instancia setado uma vez por query, antes do loop. */
+    private boolean temDataChegada = false;
+
     private Passagem mapResultSetToPassagem(ResultSet rs) throws SQLException {
         Passagem p = new Passagem();
         p.setId(rs.getLong("id_passagem"));
@@ -209,14 +220,11 @@ public class PassagemDAO {
         p.setNacionalidade(rs.getString("nome_nacionalidade"));
         if(rs.getDate("data_viagem") != null) p.setDataViagem(rs.getDate("data_viagem").toLocalDate());
         
-        try {
-            if(rs.getDate("data_chegada") != null) {
-                String chegada = rs.getDate("data_chegada").toString();
-                p.setStrViagem(p.getStrViagem() + "||" + chegada);
+        // data_chegada e opcional (presente apenas em queries com JOIN viagens)
+        if (temDataChegada) {
+            if (rs.getDate("data_chegada") != null) {
+                p.setStrViagem(p.getStrViagem() + "||" + rs.getDate("data_chegada").toString());
             }
-        } catch (Exception e) {
-            // DR120: log minimo para coluna opcional
-            System.err.println("PassagemDAO: coluna data_chegada ausente nesta query");
         }
 
         p.setDescricaoHorarioSaida(rs.getString("descricao_horario_saida"));
@@ -239,6 +247,7 @@ public class PassagemDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
+            temDataChegada = detectarTemDataChegada(rs);
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
         } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
@@ -252,7 +261,8 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
+                temDataChegada = detectarTemDataChegada(rs);
+            while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
         } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
@@ -294,7 +304,8 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sqlBuilder.toString())) {
             for (int i = 0; i < params.size(); i++) stmt.setObject(i + 1, params.get(i));
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
+                temDataChegada = detectarTemDataChegada(rs);
+            while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
         }
 
@@ -340,6 +351,7 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
             stmt.setString(1, "%" + nomePassageiro + "%");
             try (ResultSet rs = stmt.executeQuery()) {
+                temDataChegada = detectarTemDataChegada(rs);
                 while (rs.next()) lista.add(mapResultSetToPassagem(rs));
             }
         } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }

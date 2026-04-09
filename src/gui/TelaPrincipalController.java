@@ -62,6 +62,7 @@ import javafx.scene.control.TabPane;
 
 import java.util.Collections;
 import java.util.Map;
+import gui.util.AlertHelper;
 
 public class TelaPrincipalController implements Initializable {
 
@@ -553,7 +554,7 @@ public class TelaPrincipalController implements Initializable {
             String freq = cmbFrequencia.getValue();
 
             if (barcoNome == null || rotaNome == null || inicio == null || fim == null) {
-                showAlert(AlertType.WARNING, "Dados Incompletos", "Preencha todos os campos.");
+                AlertHelper.show(AlertType.WARNING, "Dados Incompletos", "Preencha todos os campos.");
                 return;
             }
 
@@ -578,7 +579,7 @@ public class TelaPrincipalController implements Initializable {
             if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
         } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao carregar lista", 
+            AlertHelper.show(AlertType.ERROR, "Erro ao carregar lista", 
                 "Não foi possível carregar os dados. Verifique o banco.\nErro: " + e.getMessage());
         }
     }
@@ -602,11 +603,11 @@ public class TelaPrincipalController implements Initializable {
                 dataAtual = dataAtual.plusDays(intervalo);
                 contador++;
             }
-            showAlert(AlertType.INFORMATION, "Sucesso", contador + " lembretes de saída agendados!");
+            AlertHelper.show(AlertType.INFORMATION, "Sucesso", contador + " lembretes de saída agendados!");
             
         } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro SQL", e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro SQL", e.getMessage());
         }
     }
 
@@ -684,7 +685,7 @@ public class TelaPrincipalController implements Initializable {
                     else if (!cmbViagemAtiva.getItems().isEmpty()) cmbViagemAtiva.getSelectionModel().selectFirst();
                 });
             } catch (Exception e) {
-                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", e.getMessage()));
+                Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()));
             }
         });
         bgViagens.setDaemon(true);
@@ -707,21 +708,21 @@ public class TelaPrincipalController implements Initializable {
     @FXML private void handleCarregarDadosDaViagem(ActionEvent event) {
         String selecionada = cmbViagemAtiva.getValue();
         if (selecionada == null || selecionada.isEmpty()) { 
-            showAlert(AlertType.WARNING, "Atenção", "Selecione uma viagem."); 
+            AlertHelper.show(AlertType.WARNING, "Atenção", "Selecione uma viagem."); 
             return; 
         }
         try {
             Long idViagem = viagemDAO.obterIdViagemPelaString(selecionada);
             
             if (idViagem != null && salvarViagemAtivaNoBanco(idViagem)) {
-                showAlert(AlertType.INFORMATION, "Sucesso", "Viagem definida como ativa no sistema!");
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Viagem definida como ativa no sistema!");
                 atualizarDashboard(); 
                 construirCalendario();
             } else { 
-                showAlert(AlertType.ERROR, "Erro", "Não foi possível definir a viagem como ativa."); 
+                AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível definir a viagem como ativa."); 
             }
         } catch (SQLException e) { 
-            showAlert(AlertType.ERROR, "Erro", e.getMessage()); 
+            AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); 
         }
     }
 
@@ -731,7 +732,7 @@ public class TelaPrincipalController implements Initializable {
     private void abrirTelaModal(String fxml, String titulo, boolean max) {
         try {
             URL url = getClass().getResource(fxml);
-            if (url == null) { showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
+            if (url == null) { AlertHelper.show(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
             Parent pane = new FXMLLoader(url).load();
             Stage stage = new Stage(); stage.setTitle(titulo); 
             Scene scene = new Scene(pane);
@@ -744,7 +745,7 @@ public class TelaPrincipalController implements Initializable {
             stage.showAndWait();
             
             atualizarDashboard(); construirCalendario();
-        } catch (IOException e) { e.printStackTrace(); showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+        } catch (IOException e) { e.printStackTrace(); AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); }
     }
 
     // 2. Abertura em ABA (Sistema de abas dentro da janela principal)
@@ -773,7 +774,7 @@ public class TelaPrincipalController implements Initializable {
                 if (url == null) {
                     Platform.runLater(() -> {
                         tabPanePrincipal.getTabs().remove(novaAba);
-                        showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml);
+                        AlertHelper.show(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml);
                     });
                     return;
                 }
@@ -794,7 +795,7 @@ public class TelaPrincipalController implements Initializable {
                 e.printStackTrace();
                 Platform.runLater(() -> {
                     tabPanePrincipal.getTabs().remove(novaAba);
-                    showAlert(AlertType.ERROR, "Erro", e.getMessage());
+                    AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage());
                 });
             }
         });
@@ -846,7 +847,7 @@ public class TelaPrincipalController implements Initializable {
     private void abrirTelaJanelaSeparada(String fxml, String titulo) {
         try {
             URL url = getClass().getResource(fxml);
-            if (url == null) { showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
+            if (url == null) { AlertHelper.show(AlertType.ERROR, "Erro", "Arquivo não encontrado: " + fxml); return; }
             Parent pane = new FXMLLoader(url).load();
             Stage stage = new Stage(); stage.setTitle(titulo); 
             Scene scene = new Scene(pane);
@@ -864,7 +865,7 @@ public class TelaPrincipalController implements Initializable {
             stage.setMaximized(true); 
             stage.show(); 
             
-        } catch (IOException e) { e.printStackTrace(); showAlert(AlertType.ERROR, "Erro", e.getMessage()); }
+        } catch (IOException e) { e.printStackTrace(); AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); }
     }
     
     // Método específico para telas que precisam da viagem ativa (Venda de passagem, encomenda...)
@@ -874,7 +875,7 @@ public class TelaPrincipalController implements Initializable {
              Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
              Platform.runLater(() -> {
                  if (viagemAtiva == null) {
-                     showAlert(AlertType.WARNING, "Atenção", "Ative uma viagem.");
+                     AlertHelper.show(AlertType.WARNING, "Atenção", "Ative uma viagem.");
                      return;
                  }
                  abrirTelaLivre(fxml, titulo);
@@ -892,7 +893,7 @@ public class TelaPrincipalController implements Initializable {
         Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
         
         if (viagemAtiva == null) {
-            showAlert(AlertType.WARNING, "Atenção", "Nenhuma viagem ativa encontrada.\nSelecione e ative uma viagem no painel superior.");
+            AlertHelper.show(AlertType.WARNING, "Atenção", "Nenhuma viagem ativa encontrada.\nSelecione e ative uma viagem no painel superior.");
             return;
         }
 
@@ -929,7 +930,7 @@ public class TelaPrincipalController implements Initializable {
 
         } catch (IOException ex) {
             ex.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao abrir Relatório", "Não foi possível carregar a tela de Balanço.\nErro: " + ex.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao abrir Relatório", "Não foi possível carregar a tela de Balanço.\nErro: " + ex.getMessage());
         }
     }
     
@@ -1129,7 +1130,7 @@ public class TelaPrincipalController implements Initializable {
             
         } catch (Exception ex) {
             LogService.registrarErro("Erro ao iniciar backup", ex);
-            showAlert(AlertType.ERROR, "Erro", "Erro ao iniciar o backup: " + ex.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao iniciar o backup: " + ex.getMessage());
         }
     }
     
@@ -1185,7 +1186,7 @@ public class TelaPrincipalController implements Initializable {
                 if (result.get() == btnAbrir) {
                     boolean abriu = LogService.abrirArquivoLog();
                     if (!abriu) {
-                        showAlert(AlertType.WARNING, "Aviso", "Não foi possível abrir o arquivo de log.");
+                        AlertHelper.show(AlertType.WARNING, "Aviso", "Não foi possível abrir o arquivo de log.");
                     }
                 } else if (result.get() == btnLimpar) {
                     // Confirmar limpeza
@@ -1198,7 +1199,7 @@ public class TelaPrincipalController implements Initializable {
                     
                     if (confirma.showAndWait().orElse(ButtonType.NO) == ButtonType.YES) {
                         LogService.limparLog();
-                        showAlert(AlertType.INFORMATION, "Sucesso", "Log de erros limpo com sucesso!");
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Log de erros limpo com sucesso!");
                     }
                 }
             }
@@ -1320,13 +1321,13 @@ public class TelaPrincipalController implements Initializable {
                     syncClient.sincronizarTudo();
                     Platform.runLater(() -> {
                         alert.close();
-                        showAlert(AlertType.INFORMATION, "Sincronização Concluída", 
+                        AlertHelper.show(AlertType.INFORMATION, "Sincronização Concluída", 
                             "Dados sincronizados com sucesso!");
                     });
                 } catch (Exception e) {
                     Platform.runLater(() -> {
                         alert.close();
-                        showAlert(AlertType.ERROR, "Erro na Sincronização", 
+                        AlertHelper.show(AlertType.ERROR, "Erro na Sincronização", 
                             "Não foi possível sincronizar os dados:\n" + e.getMessage());
                     });
                     LogService.registrarErro("Erro ao sincronizar", e);
@@ -1336,7 +1337,7 @@ public class TelaPrincipalController implements Initializable {
             syncThread.start();
             
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro", "Erro ao iniciar sincronização: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao iniciar sincronização: " + e.getMessage());
             LogService.registrarErro("Erro ao iniciar sincronização", e);
         }
     }
@@ -1350,7 +1351,7 @@ public class TelaPrincipalController implements Initializable {
         try {
             URL url = getClass().getResource("/gui/ConfigurarSincronizacao.fxml");
             if (url == null) { 
-                showAlert(AlertType.ERROR, "Erro", "Arquivo não encontrado: /gui/ConfigurarSincronizacao.fxml"); 
+                AlertHelper.show(AlertType.ERROR, "Erro", "Arquivo não encontrado: /gui/ConfigurarSincronizacao.fxml"); 
                 return; 
             }
             
@@ -1388,7 +1389,7 @@ public class TelaPrincipalController implements Initializable {
             
         } catch (Exception e) { 
             e.printStackTrace(); 
-            showAlert(AlertType.ERROR, "Erro", "Erro ao abrir tela: " + e.getMessage()); 
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao abrir tela: " + e.getMessage()); 
         }
     }
     
@@ -1406,7 +1407,7 @@ public class TelaPrincipalController implements Initializable {
             alert.showAndWait();
             
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro", "Erro ao obter status: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao obter status: " + e.getMessage());
             LogService.registrarErro("Erro ao obter status de sincronização", e);
         }
     }
@@ -1447,12 +1448,4 @@ public class TelaPrincipalController implements Initializable {
         }
     }
 
-    private void showAlert(AlertType type, String title, String msg) {
-        Alert alert = new Alert(type); alert.setTitle(title); alert.setHeaderText(null); alert.setContentText(msg); 
-        if (isModoEscuro) {
-            DialogPane dialogPane = alert.getDialogPane();
-            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
-        }
-        alert.showAndWait();
-    }
 }

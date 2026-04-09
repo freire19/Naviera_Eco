@@ -17,6 +17,7 @@ import model.Caixa; // Importar a classe model.Caixa
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import gui.util.AlertHelper;
 // import dao.CaixaDAO; // Descomente se for usar o DAO
 
 public class CadastroCaixaController implements Initializable {
@@ -101,7 +102,7 @@ public class CadastroCaixaController implements Initializable {
     private void salvarCaixa(ActionEvent event) {
         String nome = txtNome.getText();
         if (nome == null || nome.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Obrigatório", "O nome do Tipo de Caixa não pode ser vazio.");
+            AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "O nome do Tipo de Caixa não pode ser vazio.");
             txtNome.requestFocus();
             return;
         }
@@ -117,30 +118,30 @@ public class CadastroCaixaController implements Initializable {
                 // caixaParaAtualizar.setNome(nome.trim());
                 // boolean sucesso = caixaDAO.atualizar(caixaParaAtualizar); // Se existisse caixaDAO.atualizar(Caixa c)
                 // if (sucesso) {
-                //    showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Caixa atualizado com sucesso!");
+                //    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Caixa atualizado com sucesso!");
                 // } else {
-                //    showAlert(AlertType.ERROR, "Erro", "Falha ao atualizar o Tipo de Caixa.");
+                //    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao atualizar o Tipo de Caixa.");
                 // }
                 System.out.println("Tentando ATUALIZAR Caixa ID: " + idAtual + " para Nome: " + nome.trim());
-                showAlert(AlertType.INFORMATION, "Operação (Placeholder)", "Atualizar Caixa ID: " + idAtual + " com nome: " + nome.trim());
+                AlertHelper.show(AlertType.INFORMATION, "Operação (Placeholder)", "Atualizar Caixa ID: " + idAtual + " com nome: " + nome.trim());
             } else { // Inserir novo
                 // Caixa novoCaixa = new Caixa();
                 // novoCaixa.setNome(nome.trim()); 
                 // boolean sucesso = caixaDAO.inserir(novoCaixa); // Se existisse caixaDAO.inserir(Caixa c)
                 // if (sucesso) {
-                //    showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Caixa salvo com sucesso!");
+                //    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Caixa salvo com sucesso!");
                 //    txtId.setText(String.valueOf(novoCaixa.getId())); // Atualiza ID na tela se o DAO retornar
                 // } else {
-                //    showAlert(AlertType.ERROR, "Erro", "Falha ao salvar o Tipo de Caixa.");
+                //    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao salvar o Tipo de Caixa.");
                 // }
                  System.out.println("Tentando INSERIR Caixa com Nome: " + nome.trim());
-                 showAlert(AlertType.INFORMATION, "Operação (Placeholder)", "Inserir Caixa com nome: " + nome.trim());
+                 AlertHelper.show(AlertType.INFORMATION, "Operação (Placeholder)", "Inserir Caixa com nome: " + nome.trim());
             }
             carregarDadosCaixa(); // Recarrega dados na tabela
             limparCampos();
             tabela.getSelectionModel().clearSelection();
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -149,29 +150,22 @@ public class CadastroCaixaController implements Initializable {
     private void excluirCaixa(ActionEvent event) {
         Caixa selecionado = tabela.getSelectionModel().getSelectedItem();
         if (selecionado == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Por favor, selecione um Tipo de Caixa para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Por favor, selecione um Tipo de Caixa para excluir.");
             return;
         }
 
         // boolean sucesso = caixaDAO.excluir(selecionado.getId()); // Se existisse caixaDAO.excluir(int id)
         // if (sucesso) {
-        //    showAlert(AlertType.INFORMATION, "Sucesso", "Tipo de Caixa excluído com sucesso!");
+        //    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tipo de Caixa excluído com sucesso!");
         // } else {
-        //    showAlert(AlertType.ERROR, "Erro", "Falha ao excluir o Tipo de Caixa. Verifique se não está em uso.");
+        //    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao excluir o Tipo de Caixa. Verifique se não está em uso.");
         // }
         System.out.println("Tentando EXCLUIR Caixa ID: " + selecionado.getId());
-        showAlert(AlertType.INFORMATION, "Operação (Placeholder)", "Excluir Caixa ID: " + selecionado.getId());
+        AlertHelper.show(AlertType.INFORMATION, "Operação (Placeholder)", "Excluir Caixa ID: " + selecionado.getId());
         
         carregarDadosCaixa(); // Recarrega dados
         limparCampos();
         tabela.getSelectionModel().clearSelection();
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 }

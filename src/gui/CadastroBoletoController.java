@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
 import gui.util.SessaoUsuario;
 import javafx.collections.FXCollections;
@@ -138,7 +139,7 @@ public class CadastroBoletoController {
     @FXML
     public void salvar() {
         if(txtDescricao.getText().isEmpty() || txtValor.getText().isEmpty()) {
-            alert("Preencha descrição e valor."); return;
+            AlertHelper.info("Preencha descrição e valor."); return;
         }
         
         try {
@@ -186,7 +187,7 @@ public class CadastroBoletoController {
 
                     con.commit();
 
-                    alert("Boletos gerados e adicionados à Agenda!");
+                    AlertHelper.info("Boletos gerados e adicionados à Agenda!");
                     txtDescricao.clear();
                     txtValor.clear();
                     filtrar();
@@ -197,7 +198,7 @@ public class CadastroBoletoController {
                 }
             }
             
-        } catch (Exception e) { e.printStackTrace(); alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+        } catch (Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
     }
     
     private int buscarOuCriarCategoria(String nome) throws SQLException {
@@ -286,8 +287,8 @@ public class CadastroBoletoController {
     @FXML
     public void darBaixa() {
         Boleto sel = tabela.getSelectionModel().getSelectedItem();
-        if(sel == null) { alert("Selecione um boleto."); return; }
-        if(sel.getStatus().equals("PAGO")) { alert("Já está pago."); return; }
+        if(sel == null) { AlertHelper.info("Selecione um boleto."); return; }
+        if(sel.getStatus().equals("PAGO")) { AlertHelper.info("Já está pago."); return; }
         
         ChoiceDialog<String> dialog = new ChoiceDialog<>("DINHEIRO", "DINHEIRO", "PIX", "CARTAO", "TRANSFERENCIA");
         dialog.setTitle("Pagar Boleto");
@@ -333,7 +334,7 @@ public class CadastroBoletoController {
         }
     }
 
-    private void alert(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).show(); }
+
 
     public static class Boleto {
         private int id;

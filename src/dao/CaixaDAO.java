@@ -13,8 +13,7 @@ public class CaixaDAO {
     // LISTAR (Lê os dados da tabela 'caixas')
     public List<Caixa> listarTodos() {
         List<Caixa> lista = new ArrayList<>();
-        // Ajustado para sua tabela 'caixas'
-        String sql = "SELECT * FROM caixas ORDER BY id_caixa"; 
+        String sql = "SELECT * FROM caixas ORDER BY id_caixa";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -22,13 +21,11 @@ public class CaixaDAO {
 
             while (rs.next()) {
                 Caixa c = new Caixa();
-                // Mapeando as colunas da sua foto: id_caixa e nome_caixa
-                c.setId(rs.getInt("id_caixa")); 
+                c.setId(rs.getInt("id_caixa"));
                 c.setNome(rs.getString("nome_caixa"));
                 lista.add(c);
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao listar caixas: " + e.getMessage());
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
         }
         return lista;
@@ -44,7 +41,6 @@ public class CaixaDAO {
             return stmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Erro ao inserir caixa: " + e.getMessage());
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
@@ -60,7 +56,6 @@ public class CaixaDAO {
             return stmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Erro ao alterar caixa: " + e.getMessage());
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
@@ -76,7 +71,6 @@ public class CaixaDAO {
             return stmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Erro ao excluir caixa: " + e.getMessage());
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }

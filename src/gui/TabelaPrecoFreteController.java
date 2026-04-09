@@ -48,7 +48,10 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-import model.ItemFrete; 
+import model.ItemFrete;
+import gui.util.AlertHelper;
+import gui.util.CompanyDataLoader;
+import gui.util.PrintLayoutHelper;
 
 public class TabelaPrecoFreteController implements Initializable {
 
@@ -158,7 +161,7 @@ public class TabelaPrecoFreteController implements Initializable {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro ao carregar", "Falha ao buscar itens: \n" + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao carregar", "Falha ao buscar itens: \n" + e.getMessage());
         }
     }
 
@@ -180,7 +183,7 @@ public class TabelaPrecoFreteController implements Initializable {
     @FXML
     void handleSalvar(ActionEvent event) {
         if (txtDescricao.getText().trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Aviso", "Informe a descrição do item.");
+            AlertHelper.show(AlertType.WARNING, "Aviso", "Informe a descrição do item.");
             txtDescricao.requestFocus();
             return;
         }
@@ -207,7 +210,7 @@ public class TabelaPrecoFreteController implements Initializable {
             }
             
         } catch (ParseException e) {
-            showAlert(AlertType.ERROR, "Valor Inválido", "Verifique os preços digitados.");
+            AlertHelper.show(AlertType.ERROR, "Valor Inválido", "Verifique os preços digitados.");
         }
     }
 
@@ -219,10 +222,10 @@ public class TabelaPrecoFreteController implements Initializable {
             stmt.setBigDecimal(3, normal);
             stmt.setBigDecimal(4, desconto);
             stmt.executeUpdate();
-            showAlert(AlertType.INFORMATION, "Sucesso", "Item adicionado com sucesso!");
+            AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item adicionado com sucesso!");
         } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro", "Erro ao inserir: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao inserir: " + e.getMessage());
         }
     }
 
@@ -235,10 +238,10 @@ public class TabelaPrecoFreteController implements Initializable {
             stmt.setBigDecimal(4, desconto);
             stmt.setInt(5, id);
             stmt.executeUpdate();
-            showAlert(AlertType.INFORMATION, "Sucesso", "Item editado com sucesso!");
+            AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item editado com sucesso!");
         } catch (SQLException e) {
             e.printStackTrace();
-            showAlert(AlertType.ERROR, "Erro", "Erro ao atualizar: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao atualizar: " + e.getMessage());
         }
     }
 
@@ -256,12 +259,12 @@ public class TabelaPrecoFreteController implements Initializable {
             try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, itemSelecionado.getIdItemFrete());
                 stmt.executeUpdate();
-                showAlert(AlertType.INFORMATION, "Sucesso", "Item excluído.");
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item excluído.");
                 limparCampos();
                 carregarDados();
             } catch (SQLException e) {
                 e.printStackTrace();
-                showAlert(AlertType.ERROR, "Erro", "Não foi possível excluir.\n" + e.getMessage());
+                AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível excluir.\n" + e.getMessage());
             }
         }
     }
@@ -269,7 +272,7 @@ public class TabelaPrecoFreteController implements Initializable {
     @FXML
     void handleImprimirRelatorio(ActionEvent event) {
         if (listaItens.isEmpty()) {
-            showAlert(AlertType.WARNING, "Vazio", "Não há itens para imprimir.");
+            AlertHelper.show(AlertType.WARNING, "Vazio", "Não há itens para imprimir.");
             return;
         }
 
@@ -306,19 +309,16 @@ public class TabelaPrecoFreteController implements Initializable {
             pagina.setPrefSize(w, h);
             pagina.setStyle("-fx-background-color: white;");
 
-            String nomeEmp = "SISTEMA DE FRETE";
-            try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_embarcacao FROM configuracao_empresa LIMIT 1")) {
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) nomeEmp = rs.getString("nome_embarcacao");
-            } catch(Exception e) { System.err.println("Erro em TabelaPrecoFreteController.imprimirTabela (empresa): " + e.getMessage()); }
+            CompanyDataLoader cdl = new CompanyDataLoader();
+            VBox headerEmpresa = PrintLayoutHelper.criarHeaderEmpresaA4(
+                    cdl.getNomeEmpresa(), cdl.getCnpj(), cdl.getEndereco(), cdl.getCaminhoLogo());
 
-            Label lEmp = new Label(nomeEmp.toUpperCase()); 
-            lEmp.setFont(Font.font("Arial", FontWeight.BLACK, 16)); lEmp.setAlignment(Pos.CENTER); lEmp.setMaxWidth(Double.MAX_VALUE);
-            
-            Label lTit = new Label("TABELA DE PREÇOS DE FRETE"); 
-            lTit.setFont(Font.font("Arial", FontWeight.BOLD, 14)); lTit.setAlignment(Pos.CENTER); lTit.setMaxWidth(Double.MAX_VALUE);
+            Label lTit = new Label("TABELA DE PREÇOS DE FRETE");
+            lTit.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+            lTit.setAlignment(Pos.CENTER);
+            lTit.setMaxWidth(Double.MAX_VALUE);
 
-            pagina.getChildren().addAll(lEmp, lTit);
+            pagina.getChildren().addAll(headerEmpresa, lTit);
 
             double wDescricao, wPreco;
             
@@ -422,13 +422,6 @@ public class TabelaPrecoFreteController implements Initializable {
         txtDescricao.requestFocus();
     }
 
-    private void showAlert(AlertType type, String title, String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
-    }
 
     private BigDecimal parseMoeda(String valor) throws ParseException {
         if (valor == null || valor.trim().isEmpty()) return BigDecimal.ZERO;

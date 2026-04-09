@@ -41,12 +41,45 @@ public class ViagemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar viagens do mês: " + e.getMessage());
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return viagens;
     }
     // -------------------------------------
+
+    /**
+     * Lista as N viagens mais recentes (por id_viagem DESC) com id, descricao,
+     * data_viagem, data_chegada e is_atual.
+     * Substitui a query inline duplicada em 6+ controllers financeiros.
+     *
+     * @param limit número máximo de viagens a retornar
+     * @return lista de Viagem com campos básicos preenchidos
+     */
+    public List<Viagem> listarViagensRecentes(int limit) {
+        List<Viagem> viagens = new ArrayList<>();
+        String sql = "SELECT id_viagem, descricao, data_viagem, data_chegada, is_atual " +
+                     "FROM viagens ORDER BY id_viagem DESC LIMIT ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Viagem v = new Viagem();
+                    v.setId(rs.getLong("id_viagem"));
+                    v.setDescricao(rs.getString("descricao"));
+                    java.sql.Date dtViagem = rs.getDate("data_viagem");
+                    if (dtViagem != null) v.setDataViagem(dtViagem.toLocalDate());
+                    java.sql.Date dtChegada = rs.getDate("data_chegada");
+                    if (dtChegada != null) v.setDataChegada(dtChegada.toLocalDate());
+                    try { v.setIsAtual(rs.getBoolean("is_atual")); } catch (Exception e) { /* opcional */ }
+                    viagens.add(v);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em ViagemDAO.listarViagensRecentes: " + e.getMessage());
+        }
+        return viagens;
+    }
 
     public List<String> listarViagensParaComboBox() {
         List<String> listaFormatada = new ArrayList<>();
@@ -119,13 +152,12 @@ public class ViagemDAO {
 
     public Viagem buscarViagemAtiva() {
         if (cacheViagemAtiva != null) return cacheViagemAtiva;
-        // CORREÇÃO: Usando is_atual em vez de ativa, conforme seu banco de dados
         String sql = "SELECT v.*, e.nome as nome_embarcacao, r.origem as nome_rota_origem, r.destino as nome_rota_destino, ahs.descricao_horario_saida " +
                      "FROM viagens v " +
                      "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
                      "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
-                     "WHERE v.is_atual = TRUE " + // Mudado de ativa para is_atual
+                     "WHERE v.is_atual = TRUE " +
                      "ORDER BY v.data_viagem DESC, ahs.descricao_horario_saida DESC LIMIT 1";
 
         try (Connection conn = ConexaoBD.getConnection();
@@ -139,31 +171,12 @@ public class ViagemDAO {
         } catch (SQLException e) {
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
-
-        // Se não achou por is_atual, tenta buscar pela última cadastrada (fallback)
-        cacheViagemAtiva = buscarViagemMarcadaComoAtual();
-        return cacheViagemAtiva; 
-    }
-    
-    // --- Novo Método de Suporte ---
-    public Viagem buscarViagemMarcadaComoAtual() {
-        String sql = "SELECT v.*, e.nome as nome_embarcacao, r.origem as nome_rota_origem, r.destino as nome_rota_destino, ahs.descricao_horario_saida " +
-                     "FROM viagens v " +
-                     "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
-                     "LEFT JOIN rotas r ON v.id_rota = r.id " +
-                     "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
-                     "WHERE v.is_atual = TRUE LIMIT 1";
-
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                return mapResultSetToViagem(rs);
-            }
-        } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
-        }
         return null;
+    }
+
+    /** Delega para buscarViagemAtiva() — mantido para compatibilidade de chamadores existentes. */
+    public Viagem buscarViagemMarcadaComoAtual() {
+        return buscarViagemAtiva();
     }
 
     private Viagem mapResultSetToViagem(ResultSet rs) throws SQLException {
@@ -294,18 +307,13 @@ public class ViagemDAO {
                 return rs.getLong(1);
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao gerar próximo ID de viagem: " + e.getMessage());
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return null;
     }
 
     public boolean inserir(Viagem v) {
-        // DL024: impede criacao de viagem com data de partida no passado
-        if (v.getDataViagem() != null && v.getDataViagem().isBefore(LocalDate.now())) {
-            System.err.println("ViagemDAO.inserir: data da viagem no passado (" + v.getDataViagem() + ")");
-            return false;
-        }
+        // Validacao de data de partida removida do DAO — responsabilidade do controller.
         String sql = "INSERT INTO viagens (id_viagem, data_viagem, id_horario_saida, data_chegada, descricao, ativa, is_atual, id_embarcacao, id_rota) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -342,7 +350,9 @@ public class ViagemDAO {
     }
 
     public boolean excluir(long id) {
-        // Exclui registros filhos antes da viagem (DL005)
+        // Exclui registros filhos antes da viagem porque o schema nao define ON DELETE CASCADE
+        // nas FK que referenciam viagens. Enquanto o schema nao for alterado para adicionar
+        // CASCADE, esta exclusao manual em transacao e necessaria para manter integridade.
         String[] sqlFilhos = {
             "DELETE FROM encomenda_itens WHERE id_encomenda IN (SELECT id_encomenda FROM encomendas WHERE id_viagem = ?)",
             "DELETE FROM passagens WHERE id_viagem = ?",

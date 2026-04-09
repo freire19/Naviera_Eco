@@ -1,7 +1,10 @@
 package gui;
 
 import dao.ConexaoBD;
+import dao.ViagemDAO;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -17,6 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import model.OpcaoViagem;
 
 public class FinanceiroFretesController {
 
@@ -78,7 +82,7 @@ public class FinanceiroFretesController {
             stage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Histórico de estornos de fretes ainda não implementado.");
+            AlertHelper.info("Histórico de estornos de fretes ainda não implementado.");
         }
     }
 
@@ -121,31 +125,18 @@ public class FinanceiroFretesController {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
-        String sql = "SELECT id_viagem, descricao, data_viagem, data_chegada FROM viagens ORDER BY id_viagem DESC LIMIT 20";
-
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            lista.add(new OpcaoViagem(0, "Todas as Viagens"));
-
-            while (rs.next()) {
-                String label = rs.getString("descricao");
-                java.sql.Date dtSaida = rs.getDate("data_viagem");
-                java.sql.Date dtChegada = rs.getDate("data_chegada");
-
-                if (dtSaida != null) {
-                    label += " (" + sdf.format(dtSaida);
-                    if (dtChegada != null) label += " - " + sdf.format(dtChegada);
-                    label += ")";
-                }
-                lista.add(new OpcaoViagem(rs.getInt("id_viagem"), label));
+        lista.add(new OpcaoViagem(0, "Todas as Viagens"));
+        for (model.Viagem v : new ViagemDAO().listarViagensRecentes(20)) {
+            String label = v.getDescricao() != null ? v.getDescricao() : "";
+            if (v.getDataViagem() != null) {
+                label += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem()));
+                if (v.getDataChegada() != null) label += " - " + sdf.format(java.sql.Date.valueOf(v.getDataChegada()));
+                label += ")";
             }
-            ObservableList<OpcaoViagem> finalLista = lista;
-            javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
-        } catch (Exception e) {
-            e.printStackTrace();
+            lista.add(new OpcaoViagem(v.getId().intValue(), label));
         }
+        ObservableList<OpcaoViagem> finalLista = lista;
+        Platform.runLater(() -> cmbViagem.setItems(finalLista));
     }
 
     @FXML
@@ -227,11 +218,11 @@ public class FinanceiroFretesController {
     public void darBaixa() {
         FreteFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
-            alert("Selecione um frete na tabela para dar baixa.");
+            AlertHelper.info("Selecione um frete na tabela para dar baixa.");
             return;
         }
         if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
-            alert("Este frete já está quitado!");
+            AlertHelper.info("Este frete já está quitado!");
             return;
         }
 
@@ -259,7 +250,7 @@ public class FinanceiroFretesController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
         }
     }
 
@@ -296,14 +287,14 @@ public class FinanceiroFretesController {
                 }
 
                 con.commit();
-                alert("Pagamento registrado com sucesso!");
+                AlertHelper.info("Pagamento registrado com sucesso!");
                 carregarDados();
             } catch (SQLException ex) {
                 con.rollback();
                 throw ex;
             }
         } catch (SQLException e) {
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
         }
     }
 
@@ -311,12 +302,12 @@ public class FinanceiroFretesController {
     public void estornarPagamento() {
         FreteFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
-            alert("Selecione um frete para estornar.");
+            AlertHelper.info("Selecione um frete para estornar.");
             return;
         }
 
         if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
-            alert("Este frete não tem pagamento para estornar.");
+            AlertHelper.info("Este frete não tem pagamento para estornar.");
             return;
         }
 
@@ -371,18 +362,18 @@ public class FinanceiroFretesController {
                         }
 
                         con.commit();
-                        alert("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
+                        AlertHelper.info("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
                         carregarDados();
                     } catch (Exception ex) {
                         try { con.rollback(); } catch (Exception re) { re.printStackTrace(); }
                         ex.printStackTrace();
-                        alert("Erro ao gravar estorno: " + ex.getMessage());
+                        AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
                     }
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
         }
     }
 
@@ -390,7 +381,7 @@ public class FinanceiroFretesController {
     public void abrirNotaFrete() {
         FreteFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
-            alert("Selecione um frete para visualizar a nota.");
+            AlertHelper.info("Selecione um frete para visualizar a nota.");
             return;
         }
 
@@ -462,28 +453,10 @@ public class FinanceiroFretesController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir nota do frete: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir nota do frete: " + e.getMessage());
         }
     }
 
-    private void alert(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
-    }
-
-    public static class OpcaoViagem {
-        int id;
-        String label;
-
-        public OpcaoViagem(int id, String label) {
-            this.id = id;
-            this.label = label;
-        }
-
-        @Override
-        public String toString() {
-            return label;
-        }
-    }
 
     public static class FreteFinanceiro {
         private long id;

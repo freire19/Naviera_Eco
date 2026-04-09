@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.sql.SQLException;
 import java.util.Objects;
 import javafx.application.Platform;
+import gui.util.AlertHelper;
 
 public class CadastroTarifaController implements Initializable {
 
@@ -75,7 +76,7 @@ public class CadastroTarifaController implements Initializable {
         // DR117: background thread para nao bloquear FX thread
         Thread bg = new Thread(() -> {
             try {
-                List<String> tiposPassageiroNomes = auxDao.listarPassagemAux();
+                List<String> tiposPassageiroNomes = auxDao.listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem");
                 List<Rota> rotas = rotaDAO.listarTodasAsRotasComoObjects();
                 List<Tarifa> tarifas = tarifaDAO.listarTodos();
                 Platform.runLater(() -> {
@@ -123,7 +124,7 @@ public class CadastroTarifaController implements Initializable {
             List<Tarifa> tarifas = tarifaDAO.listarTodos();
             observableListTarifas.setAll(tarifas);
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Tarifas", "Não foi possível carregar os dados das tarifas: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Tarifas", "Não foi possível carregar os dados das tarifas: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -131,16 +132,16 @@ public class CadastroTarifaController implements Initializable {
     private void popularComboBoxes() {
         // Popular cmbTipoPassageiro
         try {
-            List<String> tiposPassageiroNomes = auxDao.listarPassagemAux(); // Chamada para AuxiliaresDAO
+            List<String> tiposPassageiroNomes = auxDao.listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem");
 
             if (tiposPassageiroNomes != null && !tiposPassageiroNomes.isEmpty()) {
                 observableListTiposPassageiro.setAll(tiposPassageiroNomes);
                 cmbTipoPassageiro.setItems(observableListTiposPassageiro);
             } else {
-                showAlert(AlertType.WARNING, "Aviso: Tipos de Passageiro", "Nenhum tipo de passageiro encontrado para carregar no ComboBox.");
+                AlertHelper.show(AlertType.WARNING, "Aviso: Tipos de Passageiro", "Nenhum tipo de passageiro encontrado para carregar no ComboBox.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Tipos de Passageiro", "Falha: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Tipos de Passageiro", "Falha: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -151,10 +152,10 @@ public class CadastroTarifaController implements Initializable {
                 observableListRotas.setAll(rotas);
                 cmbRota.setItems(observableListRotas);
             } else {
-                showAlert(AlertType.WARNING, "Aviso: Rotas", "Nenhuma rota encontrada para carregar no ComboBox.");
+                AlertHelper.show(AlertType.WARNING, "Aviso: Rotas", "Nenhuma rota encontrada para carregar no ComboBox.");
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Carregar Rotas", "Falha: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Rotas", "Falha: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -210,12 +211,12 @@ public class CadastroTarifaController implements Initializable {
         String tipoPassageiroSelecionadoStr = cmbTipoPassageiro.getValue();
 
         if (rotaSelecionada == null) {
-            showAlert(AlertType.WARNING, "Campo Obrigatório", "Por favor, selecione uma Rota.");
+            AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "Por favor, selecione uma Rota.");
             if (cmbRota != null) cmbRota.requestFocus();
             return;
         }
         if (tipoPassageiroSelecionadoStr == null || tipoPassageiroSelecionadoStr.trim().isEmpty()) {
-            showAlert(AlertType.WARNING, "Campo Obrigatório", "Por favor, selecione um Tipo de Passageiro.");
+            AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "Por favor, selecione um Tipo de Passageiro.");
             if (cmbTipoPassageiro != null) cmbTipoPassageiro.requestFocus();
             return;
         }
@@ -226,11 +227,11 @@ public class CadastroTarifaController implements Initializable {
         try {
             tipoPassageiroId = auxDao.buscarIdTipoPassagemPorNome(tipoPassageiroSelecionadoStr);
             if (tipoPassageiroId == null || tipoPassageiroId == -1) {
-                showAlert(AlertType.ERROR, "Erro de Seleção", "Tipo de Passageiro '" + tipoPassageiroSelecionadoStr + "' não encontrado ou ID não pôde ser obtido. Verifique o cadastro de Tipos de Passageiro.");
+                AlertHelper.show(AlertType.ERROR, "Erro de Seleção", "Tipo de Passageiro '" + tipoPassageiroSelecionadoStr + "' não encontrado ou ID não pôde ser obtido. Verifique o cadastro de Tipos de Passageiro.");
                 return;
             }
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro ao Buscar ID", "Erro ao buscar ID para o tipo de passageiro '" + tipoPassageiroSelecionadoStr + "': " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro ao Buscar ID", "Erro ao buscar ID para o tipo de passageiro '" + tipoPassageiroSelecionadoStr + "': " + e.getMessage());
             e.printStackTrace();
             return;
         }
@@ -245,7 +246,7 @@ public class CadastroTarifaController implements Initializable {
             tarifa.setValorCargas(parseBigDecimal(txtCargas.getText()));
             tarifa.setValorDesconto(parseBigDecimal(txtDesconto.getText()));
         } catch (NumberFormatException e) {
-            showAlert(AlertType.ERROR, "Erro de Formato", "Os valores de Transporte, Alimentação, Cargas e Desconto devem ser números válidos (ex: 123.45). Use '.' como separador decimal.");
+            AlertHelper.show(AlertType.ERROR, "Erro de Formato", "Os valores de Transporte, Alimentação, Cargas e Desconto devem ser números válidos (ex: 123.45). Use '.' como separador decimal.");
             return;
         }
 
@@ -256,7 +257,7 @@ public class CadastroTarifaController implements Initializable {
             if (txtId.getText() == null || txtId.getText().isEmpty()) {
                 Tarifa existente = tarifaDAO.buscarTarifaPorRotaETipo(rotaId, tipoPassageiroId);
                 if (existente != null) {
-                    showAlert(AlertType.ERROR, "Tarifa Duplicada", "Já existe uma tarifa cadastrada para esta Rota e Tipo de Passageiro (ID da tarifa existente: " + existente.getId() + ").");
+                    AlertHelper.show(AlertType.ERROR, "Tarifa Duplicada", "Já existe uma tarifa cadastrada para esta Rota e Tipo de Passageiro (ID da tarifa existente: " + existente.getId() + ").");
                     return;
                 }
                 sucesso = tarifaDAO.inserir(tarifa);
@@ -265,7 +266,7 @@ public class CadastroTarifaController implements Initializable {
                 tarifa.setId(Integer.parseInt(txtId.getText()));
                 Tarifa existenteParaNovaCombinacao = tarifaDAO.buscarTarifaPorRotaETipo(rotaId, tipoPassageiroId);
                 if (existenteParaNovaCombinacao != null && !Objects.equals(existenteParaNovaCombinacao.getId(), tarifa.getId())) {
-                    showAlert(AlertType.ERROR, "Conflito de Tarifa", "A combinação de Rota e Tipo de Passageiro selecionada já pertence a outra tarifa (ID: " + existenteParaNovaCombinacao.getId() + "). Não é possível atualizar para esta combinação.");
+                    AlertHelper.show(AlertType.ERROR, "Conflito de Tarifa", "A combinação de Rota e Tipo de Passageiro selecionada já pertence a outra tarifa (ID: " + existenteParaNovaCombinacao.getId() + "). Não é possível atualizar para esta combinação.");
                     return;
                 }
                 sucesso = tarifaDAO.atualizar(tarifa);
@@ -273,17 +274,17 @@ public class CadastroTarifaController implements Initializable {
             }
 
             if (sucesso) {
-                showAlert(AlertType.INFORMATION, "Sucesso", "Tarifa " + operacaoMensagem + " com sucesso!");
+                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tarifa " + operacaoMensagem + " com sucesso!");
                 carregarDadosTabela();
                 limparCampos();
                 tableTarifas.getSelectionModel().clearSelection();
             } else {
-                showAlert(AlertType.ERROR, "Erro na Operação", "Falha ao " + (operacaoMensagem.equals("salva") ? "salvar" : "atualizar") + " a tarifa. Verifique o console para mais detalhes e se os dados são válidos.");
+                AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Falha ao " + (operacaoMensagem.equals("salva") ? "salvar" : "atualizar") + " a tarifa. Verifique o console para mais detalhes e se os dados são válidos.");
             }
         } catch (NumberFormatException e) {
-            showAlert(AlertType.ERROR, "Erro de ID", "ID da tarifa inválido para atualização.");
+            AlertHelper.show(AlertType.ERROR, "Erro de ID", "ID da tarifa inválido para atualização.");
         } catch (Exception e) {
-            showAlert(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro inesperado ao salvar a tarifa: " + e.getMessage());
+            AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro inesperado ao salvar a tarifa: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -292,7 +293,7 @@ public class CadastroTarifaController implements Initializable {
     private void handleExcluir(ActionEvent event) {
         Tarifa selecionada = tableTarifas.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
-            showAlert(AlertType.WARNING, "Seleção Necessária", "Selecione uma tarifa para excluir.");
+            AlertHelper.show(AlertType.WARNING, "Seleção Necessária", "Selecione uma tarifa para excluir.");
             return;
         }
 
@@ -305,14 +306,14 @@ public class CadastroTarifaController implements Initializable {
         if (resultado.isPresent() && resultado.get() == ButtonType.OK) {
             try {
                 if (tarifaDAO.excluir(selecionada.getId())) {
-                    showAlert(AlertType.INFORMATION, "Sucesso", "Tarifa excluída com sucesso!");
+                    AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Tarifa excluída com sucesso!");
                     carregarDadosTabela();
                     limparCampos();
                 } else {
-                    showAlert(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir a tarifa. Verifique se ela não está sendo usada em outros cadastros ou se há restrições no banco de dados.");
+                    AlertHelper.show(AlertType.ERROR, "Erro ao Excluir", "Falha ao excluir a tarifa. Verifique se ela não está sendo usada em outros cadastros ou se há restrições no banco de dados.");
                 }
             } catch (Exception e) {
-                showAlert(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro inesperado ao excluir a tarifa: " + e.getMessage());
+                AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro inesperado ao excluir a tarifa: " + e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -325,13 +326,6 @@ public class CadastroTarifaController implements Initializable {
         stage.close();
     }
 
-    private void showAlert(AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 
     // Método auxiliar para parsear BigDecimal (duplicação de VenderPassagemController, pode ser movido para utilitário)
     private BigDecimal parseBigDecimal(String text) {

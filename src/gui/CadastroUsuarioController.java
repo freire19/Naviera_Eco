@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
+import gui.util.AlertHelper;
 
 public class CadastroUsuarioController implements Initializable {
 
@@ -78,7 +79,7 @@ public class CadastroUsuarioController implements Initializable {
                     if (dados != null) {
                         listaObservableUsuarios.setAll(dados);
                     } else {
-                        showAlert(Alert.AlertType.ERROR, "Erro de Carregamento", "Não foi possível carregar a lista de usuários do banco de dados.");
+                        AlertHelper.show(Alert.AlertType.ERROR, "Erro de Carregamento", "Não foi possível carregar a lista de usuários do banco de dados.");
                         listaObservableUsuarios.clear();
                     }
                     tabelaUsuarios.refresh();
@@ -128,7 +129,7 @@ public class CadastroUsuarioController implements Initializable {
         if (usuariosDoBanco != null) {
             listaObservableUsuarios.setAll(usuariosDoBanco);
         } else {
-            showAlert(Alert.AlertType.ERROR, "Erro de Carregamento", "Não foi possível carregar a lista de usuários do banco de dados.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro de Carregamento", "Não foi possível carregar a lista de usuários do banco de dados.");
             listaObservableUsuarios.clear();
         }
         tabelaUsuarios.refresh(); // Garante que a tabela seja redesenhada
@@ -160,7 +161,7 @@ public class CadastroUsuarioController implements Initializable {
             lblMensagem.setText("Preencha os dados para um novo usuário. O ID é para referência.");
         } else {
             txtId.clear(); 
-            showAlert(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID. Verifique a sequence 'usuarios_id_usuario_seq'.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID. Verifique a sequence 'usuarios_id_usuario_seq'.");
             lblMensagem.setText("Erro ao gerar ID. Verifique o console.");
         }
         txtNomeCompleto.requestFocus();
@@ -178,19 +179,19 @@ public class CadastroUsuarioController implements Initializable {
         boolean ativo = chkAtivo.isSelected();
 
         if (nome.isEmpty() || login.isEmpty() || funcao == null || permissao == null) {
-            showAlert(Alert.AlertType.WARNING, "Campos Obrigatórios", "Nome Completo, Login de Usuário, Função e Permissão são obrigatórios!");
+            AlertHelper.show(Alert.AlertType.WARNING, "Campos Obrigatórios", "Nome Completo, Login de Usuário, Função e Permissão são obrigatórios!");
             return;
         }
 
         boolean isInsert = (usuarioSelecionado == null || txtId.getText().isEmpty() || txtId.getText().equals("0"));
 
         if (isInsert && senha.isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Senha Obrigatória", "Para novos usuários, a senha é obrigatória.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Senha Obrigatória", "Para novos usuários, a senha é obrigatória.");
             return;
         }
 
         if (!senha.isEmpty() && !senha.equals(confirmarSenha)) {
-            showAlert(Alert.AlertType.WARNING, "Senhas Divergentes", "A senha e a confirmação de senha não correspondem.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Senhas Divergentes", "A senha e a confirmação de senha não correspondem.");
             return;
         }
 
@@ -198,7 +199,7 @@ public class CadastroUsuarioController implements Initializable {
         Usuario usuarioExistenteComLogin = usuarioDAO.buscarPorLogin(login);
         if (usuarioExistenteComLogin != null) {
             if (isInsert || (usuarioSelecionado != null && usuarioExistenteComLogin.getId() != usuarioSelecionado.getId())) {
-                showAlert(Alert.AlertType.ERROR, "Login em Uso", "O Login de Usuário '" + login + "' já está em uso.");
+                AlertHelper.show(Alert.AlertType.ERROR, "Login em Uso", "O Login de Usuário '" + login + "' já está em uso.");
                 return;
             }
         }
@@ -207,7 +208,7 @@ public class CadastroUsuarioController implements Initializable {
             Usuario usuarioExistenteComEmail = null; // Você precisaria de um usuarioDAO.buscarPorEmail(email);
             // Se implementar buscarPorEmail:
             // if (usuarioExistenteComEmail != null && (isInsert || (usuarioSelecionado != null && usuarioExistenteComEmail.getId() != usuarioSelecionado.getId()))) {
-            //     showAlert(Alert.AlertType.ERROR, "Email em Uso", "O Email '" + email + "' já está em uso.");
+            //     AlertHelper.show(Alert.AlertType.ERROR, "Email em Uso", "O Email '" + email + "' já está em uso.");
             //     return;
             // }
         }
@@ -249,11 +250,11 @@ public class CadastroUsuarioController implements Initializable {
         }
 
         if (sucesso) {
-            showAlert(Alert.AlertType.INFORMATION, "Sucesso", mensagemSucesso);
+            AlertHelper.show(Alert.AlertType.INFORMATION, "Sucesso", mensagemSucesso);
             carregarUsuariosNaTabela();
             handleNovo(null); 
         } else {
-            showAlert(Alert.AlertType.ERROR, "Erro", "Falha ao salvar usuário. Verifique o console para mais detalhes.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro", "Falha ao salvar usuário. Verifique o console para mais detalhes.");
         }
     }
     
@@ -261,7 +262,7 @@ public class CadastroUsuarioController implements Initializable {
     void handleExcluir(ActionEvent event) {
         usuarioSelecionado = tabelaUsuarios.getSelectionModel().getSelectedItem(); // Garante que temos o último selecionado
         if (usuarioSelecionado == null) { // Verifica se txtId está vazio também se não usar tabela
-            showAlert(Alert.AlertType.WARNING, "Atenção", "Nenhum usuário selecionado para exclusão.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Atenção", "Nenhum usuário selecionado para exclusão.");
             return;
         }
 
@@ -274,11 +275,11 @@ public class CadastroUsuarioController implements Initializable {
         Optional<ButtonType> resultado = confirmacao.showAndWait();
         if (resultado.isPresent() && resultado.get() == ButtonType.YES) {
             if (usuarioDAO.excluir(usuarioSelecionado.getId())) {
-                showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Usuário excluído com sucesso!");
+                AlertHelper.show(Alert.AlertType.INFORMATION, "Sucesso", "Usuário excluído com sucesso!");
                 carregarUsuariosNaTabela();
                 handleNovo(null);
             } else {
-                showAlert(Alert.AlertType.ERROR, "Erro", "Falha ao excluir usuário.");
+                AlertHelper.show(Alert.AlertType.ERROR, "Erro", "Falha ao excluir usuário.");
             }
         }
     }
@@ -308,13 +309,6 @@ public class CadastroUsuarioController implements Initializable {
         lblMensagem.setText("");
     }
 
-    private void showAlert(Alert.AlertType alertType, String titulo, String mensagem) {
-        Alert alerta = new Alert(alertType);
-        alerta.setTitle(titulo);
-        alerta.setHeaderText(null);
-        alerta.setContentText(mensagem);
-        alerta.showAndWait();
-    }
     
     private void carregarIcones() {
         adicionarIcone(btnNovo, "/gui/icons/novo.png");

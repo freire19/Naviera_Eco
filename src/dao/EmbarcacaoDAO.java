@@ -110,7 +110,6 @@ public class EmbarcacaoDAO {
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            System.err.println("Erro ao atualizar embarcação: " + e.getMessage());
             System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return false;

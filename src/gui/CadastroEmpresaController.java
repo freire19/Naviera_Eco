@@ -16,6 +16,7 @@ import java.net.URL;
 import java.io.File;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
+import gui.util.AlertHelper;
 
 public class CadastroEmpresaController implements Initializable {
 
@@ -145,7 +146,7 @@ public class CadastroEmpresaController implements Initializable {
     @FXML
     private void handleSalvar(ActionEvent event) {
         if (txtCompanhia.getText().isEmpty() || txtEmbarcacao.getText().isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Atenção", "Nome da Companhia e Embarcação são obrigatórios.");
+            AlertHelper.show(Alert.AlertType.WARNING, "Atenção", "Nome da Companhia e Embarcação são obrigatórios.");
             return;
         }
 
@@ -184,13 +185,13 @@ public class CadastroEmpresaController implements Initializable {
                 embarcacaoDAO.inserirOuBuscar(embPrincipal); 
             }
             
-            showAlert(Alert.AlertType.INFORMATION, "Sucesso", "Configurações atualizadas!");
+            AlertHelper.show(Alert.AlertType.INFORMATION, "Sucesso", "Configurações atualizadas!");
             
             // >>> MUDANÇA AQUI: NÃO LIMPA MAIS OS CAMPOS, APENAS RECARREGA PARA CONFIRMAR
             carregarEmpresa(1); 
             
         } else {
-            showAlert(Alert.AlertType.ERROR, "Erro", "Falha ao salvar no banco de dados.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro", "Falha ao salvar no banco de dados.");
         }
     }
 
@@ -232,11 +233,4 @@ public class CadastroEmpresaController implements Initializable {
         lblMensagem.setText("");
     }
 
-    private void showAlert(Alert.AlertType alertType, String titulo, String msg) {
-        Alert a = new Alert(alertType);
-        a.setTitle(titulo);
-        a.setHeaderText(null);
-        a.setContentText(msg);
-        a.showAndWait();
-    }
 }

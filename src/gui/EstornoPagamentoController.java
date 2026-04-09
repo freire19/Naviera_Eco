@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.AlertHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -87,17 +88,17 @@ public class EstornoPagamentoController {
         BigDecimal v = getValorEstorno();
         BigDecimal limiteMaximo = pagoOriginal.add(model.StatusPagamento.TOLERANCIA_PAGAMENTO);
         if (v.compareTo(new BigDecimal("0.001")) <= 0 || v.compareTo(limiteMaximo) > 0) {
-            alertErro("Valor inválido! O valor deve ser maior que zero e não pode ultrapassar o valor pago.");
+            AlertHelper.error("Valor inválido! O valor deve ser maior que zero e não pode ultrapassar o valor pago.");
             return;
         }
         if (txtMotivo.getText().trim().isEmpty() || txtMotivo.getText().length() < 3) {
-            alertErro("O motivo do estorno é obrigatório.");
+            AlertHelper.error("O motivo do estorno é obrigatório.");
             return;
         }
         
         String senhaDigitada = txtSenhaAutorizador.getText();
         if (senhaDigitada.isEmpty()) {
-            alertErro("A senha do autorizador é obrigatória para realizar estornos.");
+            AlertHelper.error("A senha do autorizador é obrigatória para realizar estornos.");
             return;
         }
 
@@ -106,7 +107,7 @@ public class EstornoPagamentoController {
             confirmado = true;
             ((Stage) btnConfirmar.getScene().getWindow()).close();
         } else {
-            alertErro("Senha inválida ou usuário sem permissão de Gerente.");
+            AlertHelper.error("Senha inválida ou usuário sem permissão de Gerente.");
             txtSenhaAutorizador.clear();
         }
     }
@@ -148,18 +149,11 @@ public class EstornoPagamentoController {
             
         } catch (SQLException e) {
             e.printStackTrace();
-            alertErro("Erro ao conectar no banco para validar senha: " + e.getMessage());
+            AlertHelper.error("Erro ao conectar no banco para validar senha: " + e.getMessage());
         }
         return false; // Nenhuma senha bateu
     }
 
     @FXML void cancelar() { ((Stage) btnConfirmar.getScene().getWindow()).close(); }
     
-    private void alertErro(String msg) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Erro de Validação");
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.showAndWait();
-    }
 }

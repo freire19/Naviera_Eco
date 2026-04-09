@@ -1,6 +1,8 @@
 package gui;
 
 import dao.ConexaoBD;
+import dao.ViagemDAO;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
 import dao.PassagemDAO;
 import dao.AuxiliaresDAO;
@@ -23,6 +25,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import model.OpcaoViagem;
 
 public class FinanceiroPassagensController {
 
@@ -80,7 +83,7 @@ public class FinanceiroPassagensController {
             stage.showAndWait();
         } catch(Exception e) { 
             e.printStackTrace(); 
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
         }
     }
 
@@ -120,38 +123,35 @@ public class FinanceiroPassagensController {
     private void carregarComboViagens() {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        
-        String sql = "SELECT id_viagem, descricao, data_viagem FROM viagens ORDER BY id_viagem DESC LIMIT 30";
-        
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            
-            lista.add(new OpcaoViagem(0, "Todas as Viagens"));
 
-            while (rs.next()) {
-                String label = rs.getString("descricao");
-                java.sql.Date dtSaida = rs.getDate("data_viagem");
-                
-                if (label == null || label.trim().isEmpty()) {
-                    label = "Viagem";
-                }
-
-                if (dtSaida != null) {
-                    label += " (" + sdf.format(dtSaida) + ")";
-                }
-                lista.add(new OpcaoViagem(rs.getInt("id_viagem"), label));
-            }
-            ObservableList<OpcaoViagem> finalLista = lista;
-            javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
-        } catch (Exception e) { e.printStackTrace(); }
+        lista.add(new OpcaoViagem(0, "Todas as Viagens"));
+        for (model.Viagem v : new ViagemDAO().listarViagensRecentes(30)) {
+            String label = v.getDescricao();
+            if (label == null || label.trim().isEmpty()) label = "Viagem";
+            if (v.getDataViagem() != null) label += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem())) + ")";
+            lista.add(new OpcaoViagem(v.getId().intValue(), label));
+        }
+        ObservableList<OpcaoViagem> finalLista = lista;
+        javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
     }
 
-    @FXML
-    public void carregarDados() {
-        if (cmbViagem.getValue() == null) return;
-        int idViagem = cmbViagem.getValue().id;
-        
+    /**
+     * Resultado da query de passagens financeiras.
+     */
+    private static class ResultadoQueryPassagens {
+        final ObservableList<PassagemFinanceiro> lista;
+        final java.math.BigDecimal somaPendente;
+        ResultadoQueryPassagens(ObservableList<PassagemFinanceiro> lista, java.math.BigDecimal somaPendente) {
+            this.lista = lista;
+            this.somaPendente = somaPendente;
+        }
+    }
+
+    /**
+     * Executa a query de passagens financeiras com os filtros informados.
+     * Pode ser chamado de qualquer thread (nao acessa UI).
+     */
+    private ResultadoQueryPassagens buscarPassagensFinanceiro(int idViagem, boolean apenasDevedores, String busca) throws SQLException {
         ObservableList<PassagemFinanceiro> lista = FXCollections.observableArrayList();
         java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
 
@@ -166,36 +166,26 @@ public class FinanceiroPassagensController {
         sql.append("LEFT JOIN rotas r ON p.id_rota = r.id ");
         sql.append("WHERE 1=1 ");
 
-        // D003: parametriza idViagem
         java.util.List<Object> params = new java.util.ArrayList<>();
         if (idViagem > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagem); }
-
-        if (chkApenasDevedores.isSelected()) {
-            sql.append(" AND (p.valor_devedor > 0 OR p.valor_pago < p.valor_total) ");
-        }
-
-        String busca = txtBusca.getText().toLowerCase();
-        if (!busca.isEmpty()) {
+        if (apenasDevedores) { sql.append(" AND (p.valor_devedor > 0 OR p.valor_pago < p.valor_total) "); }
+        if (busca != null && !busca.isEmpty()) {
             String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
             sql.append(" AND (LOWER(pas.nome_passageiro) LIKE ? ESCAPE '\\' OR CAST(p.numero_bilhete AS TEXT) LIKE ? ESCAPE '\\') ");
             params.add("%" + buscaEscapada + "%");
             params.add("%" + buscaEscapada + "%");
         }
-
         sql.append(" ORDER BY p.id_passagem DESC");
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-
             for (int i = 0; i < params.size(); i++) {
                 Object p = params.get(i);
                 if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
                 else stmt.setString(i + 1, p.toString());
             }
-
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-            
             while (rs.next()) {
                 java.math.BigDecimal total = rs.getBigDecimal("valor_total");
                 java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
@@ -204,109 +194,62 @@ public class FinanceiroPassagensController {
                 java.math.BigDecimal devendo = total.subtract(pago);
 
                 String dataFmt = "";
-                if(rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
+                if (rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
 
                 String statusBD = rs.getString("status_passagem");
                 if (statusBD == null) statusBD = "PENDENTE";
 
                 lista.add(new PassagemFinanceiro(
-                    rs.getInt("id_passagem"),
-                    rs.getString("numero_bilhete"),
-                    dataFmt,
-                    rs.getString("nome_passageiro"),
-                    rs.getString("destino_nome"),
-                    total, pago, statusBD
+                    rs.getInt("id_passagem"), rs.getString("numero_bilhete"), dataFmt,
+                    rs.getString("nome_passageiro"), rs.getString("destino_nome"), total, pago, statusBD
                 ));
 
-                if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
+                if (devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
             }
-            tabela.setItems(lista);
-            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
+        }
+        return new ResultadoQueryPassagens(lista, somaPendente);
+    }
 
-        } catch (SQLException e) { 
-            e.printStackTrace(); 
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao buscar dados: " + e.getMessage());
+    @FXML
+    public void carregarDados() {
+        if (cmbViagem.getValue() == null) return;
+        int idViagem = cmbViagem.getValue().id;
+        boolean apenasDevedores = chkApenasDevedores.isSelected();
+        String busca = txtBusca.getText() != null ? txtBusca.getText().toLowerCase() : "";
+
+        try {
+            ResultadoQueryPassagens resultado = buscarPassagensFinanceiro(idViagem, apenasDevedores, busca);
+            tabela.setItems(resultado.lista);
+            lblTotalPendente.setText(String.format("R$ %,.2f", resultado.somaPendente));
+        } catch (SQLException e) {
+            e.printStackTrace();
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao buscar dados: " + e.getMessage());
         }
     }
 
     // DR102: captura valores UI na FX thread, busca dados em bg, atualiza UI via Platform.runLater
     private void carregarDadosEmBackground() {
-        // 1. Capturar valores da UI na FX thread (antes de entrar na bg)
         final OpcaoViagem viagemSel = cmbViagem.getValue();
         if (viagemSel == null) return;
         final int idViagem = viagemSel.id;
         final boolean apenasDevedores = chkApenasDevedores.isSelected();
         final String busca = txtBusca.getText() != null ? txtBusca.getText().toLowerCase() : "";
 
-        Task<Void> task = new Task<>() {
+        Task<ResultadoQueryPassagens> task = new Task<>() {
             @Override
-            protected Void call() throws Exception {
-                ObservableList<PassagemFinanceiro> lista = FXCollections.observableArrayList();
-                java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
-
-                StringBuilder sql = new StringBuilder();
-                sql.append("SELECT p.id_passagem, p.numero_bilhete, v.data_viagem, ");
-                sql.append("pas.nome_passageiro, ");
-                sql.append("COALESCE(r.destino, 'N/A') as destino_nome, ");
-                sql.append("p.valor_total, p.valor_pago, p.status_passagem ");
-                sql.append("FROM passagens p ");
-                sql.append("JOIN viagens v ON p.id_viagem = v.id_viagem ");
-                sql.append("JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro ");
-                sql.append("LEFT JOIN rotas r ON p.id_rota = r.id ");
-                sql.append("WHERE 1=1 ");
-
-                java.util.List<Object> params = new java.util.ArrayList<>();
-                if (idViagem > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagem); }
-                if (apenasDevedores) { sql.append(" AND (p.valor_devedor > 0 OR p.valor_pago < p.valor_total) "); }
-                if (!busca.isEmpty()) {
-                    String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-                    sql.append(" AND (LOWER(pas.nome_passageiro) LIKE ? ESCAPE '\\' OR CAST(p.numero_bilhete AS TEXT) LIKE ? ESCAPE '\\') ");
-                    params.add("%" + buscaEscapada + "%");
-                    params.add("%" + buscaEscapada + "%");
-                }
-                sql.append(" ORDER BY p.id_passagem DESC");
-
-                try (Connection con = ConexaoBD.getConnection();
-                     PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-                    for (int i = 0; i < params.size(); i++) {
-                        Object p = params.get(i);
-                        if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
-                        else stmt.setString(i + 1, p.toString());
-                    }
-                    ResultSet rs = stmt.executeQuery();
-                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                    while (rs.next()) {
-                        java.math.BigDecimal total = rs.getBigDecimal("valor_total");
-                        java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
-                        if (total == null) total = java.math.BigDecimal.ZERO;
-                        if (pago == null) pago = java.math.BigDecimal.ZERO;
-                        java.math.BigDecimal devendo = total.subtract(pago);
-                        String dataFmt = "";
-                        if(rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
-                        String statusBD = rs.getString("status_passagem");
-                        if (statusBD == null) statusBD = "PENDENTE";
-                        lista.add(new PassagemFinanceiro(
-                            rs.getInt("id_passagem"), rs.getString("numero_bilhete"), dataFmt,
-                            rs.getString("nome_passageiro"), rs.getString("destino_nome"), total, pago, statusBD
-                        ));
-                        if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
-                    }
-                }
-
-                // 2. Atualizar UI na FX thread
-                final ObservableList<PassagemFinanceiro> finalLista = lista;
-                final java.math.BigDecimal finalSoma = somaPendente;
-                javafx.application.Platform.runLater(() -> {
-                    tabela.setItems(finalLista);
-                    lblTotalPendente.setText(String.format("R$ %,.2f", finalSoma));
-                });
-                return null;
+            protected ResultadoQueryPassagens call() throws Exception {
+                return buscarPassagensFinanceiro(idViagem, apenasDevedores, busca);
             }
         };
+        task.setOnSucceeded(event -> {
+            ResultadoQueryPassagens resultado = task.getValue();
+            tabela.setItems(resultado.lista);
+            lblTotalPendente.setText(String.format("R$ %,.2f", resultado.somaPendente));
+        });
         task.setOnFailed(event -> {
             Throwable ex = task.getException();
             if (ex != null) ex.printStackTrace();
-            javafx.application.Platform.runLater(() -> alert("Erro ao carregar dados financeiros."));
+            javafx.application.Platform.runLater(() -> AlertHelper.info("Erro ao carregar dados financeiros."));
         });
         Thread t = new Thread(task);
         t.setDaemon(true);
@@ -320,11 +263,11 @@ public class FinanceiroPassagensController {
     public void darBaixa() {
         PassagemFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
-            alert("Selecione uma passagem na tabela para dar baixa.");
+            AlertHelper.info("Selecione uma passagem na tabela para dar baixa.");
             return;
         }
         if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
-            alert("Esta passagem já está quitada!");
+            AlertHelper.info("Esta passagem já está quitada!");
             return;
         }
 
@@ -333,7 +276,7 @@ public class FinanceiroPassagensController {
             Passagem passagemCompleta = buscarPassagemCompletaPorId(selecionada.getId());
             
             if (passagemCompleta == null) {
-                alert("Erro ao carregar dados originais da passagem.");
+                AlertHelper.info("Erro ao carregar dados originais da passagem.");
                 return;
             }
 
@@ -404,16 +347,16 @@ public class FinanceiroPassagensController {
                 boolean sucesso = dao.atualizar(passagemRetorno);
                 
                 if (sucesso) {
-                    alert("Pagamento registrado com sucesso!");
+                    AlertHelper.info("Pagamento registrado com sucesso!");
                     carregarDados(); // Atualiza a tabela
                 } else {
-                    alert("Erro ao salvar o pagamento no banco.");
+                    AlertHelper.info("Erro ao salvar o pagamento no banco.");
                 }
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage());
         }
     }
     
@@ -482,9 +425,9 @@ public class FinanceiroPassagensController {
     @FXML
     public void estornarPagamento() {
         PassagemFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
-        if (selecionada == null) { alert("Selecione um item para estornar."); return; }
+        if (selecionada == null) { AlertHelper.info("Selecione um item para estornar."); return; }
         
-        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { alert("Este item não tem pagamento para estornar."); return; }
+        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { AlertHelper.info("Este item não tem pagamento para estornar."); return; }
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/EstornoPagamento.fxml"));
@@ -518,7 +461,7 @@ public class FinanceiroPassagensController {
                     // #DB011: null check antes de usar resultado de buscarPassagemCompletaPorId
                     Passagem p = buscarPassagemCompletaPorId(selecionada.getId());
                     if (p == null) {
-                        alert("Erro ao carregar dados da passagem. Registro nao encontrado.");
+                        AlertHelper.info("Erro ao carregar dados da passagem. Registro nao encontrado.");
                         return;
                     }
                     BigDecimal estornoBD = vEstorno;
@@ -568,19 +511,19 @@ public class FinanceiroPassagensController {
                     }
                     
                     con.commit();
-                    alert("Estorno realizado com sucesso!");
+                    AlertHelper.info("Estorno realizado com sucesso!");
                     carregarDados();
 
                     } catch (Exception ex) {
                         try { con.rollback(); } catch (Exception re) { re.printStackTrace(); }
                         ex.printStackTrace();
-                        alert("Erro ao gravar estorno: " + ex.getMessage());
+                        AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
                     }
                 }
             }
         } catch (Exception e) { 
             e.printStackTrace();
-            alert("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
         }
     }
 
@@ -597,19 +540,10 @@ public class FinanceiroPassagensController {
         } catch (Exception e) {
             System.err.println("FinanceiroPassagensController.gerarRelatorioCliente: erro ao abrir tela de extrato — " + e.getMessage());
             e.printStackTrace();
-            alert("Tela de Extrato ainda não criada ou com erro: " + e.getMessage());
+            AlertHelper.info("Tela de Extrato ainda não criada ou com erro: " + e.getMessage());
         }
     }
 
-    private void alert(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
-    }
-
-    public static class OpcaoViagem {
-        int id; String label;
-        public OpcaoViagem(int id, String label) { this.id = id; this.label = label; }
-        @Override public String toString() { return label; }
-    }
 
     // --- MODELO INTERNO PARA TABELA ---
     public static class PassagemFinanceiro {

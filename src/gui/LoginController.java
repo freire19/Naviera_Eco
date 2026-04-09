@@ -1,6 +1,5 @@
 package gui;
 
-import dao.ConexaoBD;
 import dao.UsuarioDAO;
 import gui.util.SessaoUsuario;
 import model.Usuario;
@@ -14,11 +13,9 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 
 import java.net.URL;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
+import gui.util.AlertHelper;
 
 public class LoginController implements Initializable {
 
@@ -38,21 +35,11 @@ public class LoginController implements Initializable {
         // DR117: background thread para nao bloquear FX thread
         Thread bg = new Thread(() -> {
             try {
-                ObservableList<String> logins = FXCollections.observableArrayList();
-                String sql = "SELECT login_usuario FROM usuarios WHERE ativo = true ORDER BY login_usuario";
-
-                try (Connection conn = ConexaoBD.getConnection();
-                     PreparedStatement stmt = conn.prepareStatement(sql);
-                     ResultSet rs = stmt.executeQuery()) {
-
-                    while (rs.next()) {
-                        logins.add(rs.getString("login_usuario"));
-                    }
-                }
-                Platform.runLater(() -> cmbUsuario.setItems(logins));
+                java.util.List<String> logins = usuarioDAO.listarLoginsAtivos();
+                Platform.runLater(() -> cmbUsuario.setItems(FXCollections.observableArrayList(logins)));
             } catch (Exception e) {
                 System.err.println("Erro ao carregar dados: " + e.getMessage());
-                Platform.runLater(() -> showAlert(AlertType.ERROR, "Erro", "Erro ao carregar usuarios."));
+                Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao carregar usuarios."));
             }
         });
         bg.setDaemon(true);
@@ -69,7 +56,7 @@ public class LoginController implements Initializable {
         String senha = txtSenha.getText();
 
         if (login == null || login.isEmpty() || senha.isEmpty()) {
-            showAlert(AlertType.WARNING, "Campos Vazios", "Selecione um usuario e digite a senha.");
+            AlertHelper.show(AlertType.WARNING, "Campos Vazios", "Selecione um usuario e digite a senha.");
             return;
         }
 
@@ -78,7 +65,7 @@ public class LoginController implements Initializable {
             stageLogin.close();
             abrirTelaPrincipal();
         } else {
-            showAlert(AlertType.ERROR, "Acesso Negado", "Senha incorreta ou usuario inativo.");
+            AlertHelper.show(AlertType.ERROR, "Acesso Negado", "Senha incorreta ou usuario inativo.");
         }
     }
 
@@ -93,7 +80,7 @@ public class LoginController implements Initializable {
             }
         } catch (Exception e) {
             System.err.println("Erro no login: " + e.getMessage());
-            showAlert(AlertType.ERROR, "Erro de Banco", "Erro ao verificar credenciais.");
+            AlertHelper.show(AlertType.ERROR, "Erro de Banco", "Erro ao verificar credenciais.");
         }
         return false;
     }
@@ -103,7 +90,7 @@ public class LoginController implements Initializable {
             new TelaPrincipalApp().start(new Stage());
         } catch (Exception e) {
             System.err.println("Erro ao abrir tela principal: " + e.getMessage());
-            showAlert(AlertType.ERROR, "Erro Fatal", "Nao foi possivel abrir a tela principal.");
+            AlertHelper.show(AlertType.ERROR, "Erro Fatal", "Nao foi possivel abrir a tela principal.");
         }
     }
 
@@ -112,11 +99,4 @@ public class LoginController implements Initializable {
         System.exit(0);
     }
 
-    private void showAlert(AlertType type, String title, String msg) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.showAndWait();
-    }
 }
