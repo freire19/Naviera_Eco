@@ -122,10 +122,10 @@ stmt.setInt(N, DAOUtils.empresaId());
 
 | DAO | Prioridade | Queries |
 |-----|-----------|---------|
-| PassagemDAO | ALTA | SELECT/UPDATE/DELETE pendentes |
-| EncomendaDAO | ALTA | SELECT/UPDATE/DELETE pendentes |
-| FreteDAO | ALTA | INSERT/SELECT/UPDATE/DELETE |
-| DespesaDAO | ALTA | 7 INSERTs + 5 SELECTs |
+| PassagemDAO | FEITO | 100% tenant-aware |
+| EncomendaDAO | FEITO | 100% tenant-aware |
+| FreteDAO | FEITO | 100% tenant-aware |
+| DespesaDAO | FEITO | 100% tenant-aware |
 | FuncionarioDAO | ALTA | 3 INSERTs + 12 SELECTs |
 | PassageiroDAO | MEDIA | 1 INSERT + 5 SELECTs |
 | RotaDAO | MEDIA | 1 INSERT + 2 SELECTs |

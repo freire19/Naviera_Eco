@@ -36,6 +36,10 @@ public class FreteDAO {
         List<Object> parametros = new ArrayList<>();
         List<String> condicoes = new ArrayList<>();
 
+        // Multi-tenant: sempre filtrar por empresa
+        condicoes.add("f.empresa_id = ?");
+        parametros.add(DAOUtils.empresaId());
+
         if (idViagem != null && idViagem > 0) {
             condicoes.add("f.id_viagem = ?");
             parametros.add(idViagem);
@@ -134,8 +138,9 @@ public class FreteDAO {
 
             boolean ok;
             try (PreparedStatement pstFrete = conn.prepareStatement(
-                    "DELETE FROM fretes WHERE id_frete = ?")) {
+                    "DELETE FROM fretes WHERE id_frete = ? AND empresa_id = ?")) {
                 pstFrete.setLong(1, idFrete);
+                pstFrete.setInt(2, DAOUtils.empresaId());
                 ok = pstFrete.executeUpdate() > 0;
             }
 

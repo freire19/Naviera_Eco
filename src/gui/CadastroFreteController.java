@@ -2,6 +2,7 @@ package gui;
 
 import dao.ItemFreteDAO;
 import dao.ConexaoBD;
+import dao.DAOUtils;
 import dao.ViagemDAO;
 import model.Viagem;
 import javafx.application.Platform;
@@ -1513,9 +1514,9 @@ public class CadastroFreteController implements Initializable {
 
             String sqlFrete;
             if (isNewFrete) {
-                sqlFrete = "INSERT INTO fretes (id_frete, numero_frete, data_emissao, data_saida_viagem, local_transporte, remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, cidade_cobranca, observacoes, num_notafiscal, valor_notafiscal, peso_notafiscal, valor_total_itens, desconto, valor_frete_calculado, valor_pago, troco, valor_devedor, tipo_pagamento, nome_caixa, status_frete, id_viagem) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                sqlFrete = "INSERT INTO fretes (id_frete, numero_frete, data_emissao, data_saida_viagem, local_transporte, remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, cidade_cobranca, observacoes, num_notafiscal, valor_notafiscal, peso_notafiscal, valor_total_itens, desconto, valor_frete_calculado, valor_pago, troco, valor_devedor, tipo_pagamento, nome_caixa, status_frete, id_viagem, empresa_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
             } else {
-                sqlFrete = "UPDATE fretes SET data_emissao = ?, data_saida_viagem = ?, local_transporte = ?, remetente_nome_temp = ?, destinatario_nome_temp = ?, rota_temp = ?, conferente_temp = ?, cidade_cobranca = ?, observacoes = ?, num_notafiscal = ?, valor_notafiscal = ?, peso_notafiscal = ?, valor_total_itens = ?, desconto = ?, valor_frete_calculado = ?, valor_pago = ?, troco = ?, valor_devedor = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ?, id_viagem = ? WHERE id_frete = ?";
+                sqlFrete = "UPDATE fretes SET data_emissao = ?, data_saida_viagem = ?, local_transporte = ?, remetente_nome_temp = ?, destinatario_nome_temp = ?, rota_temp = ?, conferente_temp = ?, cidade_cobranca = ?, observacoes = ?, num_notafiscal = ?, valor_notafiscal = ?, peso_notafiscal = ?, valor_total_itens = ?, desconto = ?, valor_frete_calculado = ?, valor_pago = ?, troco = ?, valor_devedor = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ?, id_viagem = ? WHERE id_frete = ? AND empresa_id = ?";
             }
 
             try (PreparedStatement pstFrete = conn.prepareStatement(sqlFrete)) {
@@ -1604,6 +1605,9 @@ public class CadastroFreteController implements Initializable {
 
                 if (!isNewFrete) {
                     pstFrete.setLong(paramIdx++, numeroFreteParaOperacao);
+                    pstFrete.setInt(paramIdx++, DAOUtils.empresaId());
+                } else {
+                    pstFrete.setInt(paramIdx++, DAOUtils.empresaId());
                 }
 
                 pstFrete.executeUpdate();
@@ -1762,9 +1766,10 @@ public class CadastroFreteController implements Initializable {
                     pstItems.executeUpdate();
                 }
 
-                String sqlDeleteFrete = "DELETE FROM fretes WHERE id_frete = ?";
+                String sqlDeleteFrete = "DELETE FROM fretes WHERE id_frete = ? AND empresa_id = ?";
                 try (PreparedStatement pstFrete = conn.prepareStatement(sqlDeleteFrete)) {
                     pstFrete.setLong(1, freteAtualId);
+                    pstFrete.setInt(2, DAOUtils.empresaId());
                     pstFrete.executeUpdate();
                 }
 

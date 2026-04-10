@@ -99,8 +99,8 @@ public class DespesaDAO {
                                    int idCategoria, int idViagem, Integer funcionarioId) {
         String sql = "INSERT INTO financeiro_saidas " +
                 "(descricao, valor_total, valor_pago, data_vencimento, data_pagamento, " +
-                "status, forma_pagamento, id_categoria, id_viagem) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "status, forma_pagamento, id_categoria, id_viagem, empresa_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, descricao);
@@ -112,6 +112,7 @@ public class DespesaDAO {
             stmt.setString(7, formaPagamento);
             stmt.setInt(8, idCategoria);
             stmt.setInt(9, idViagem);
+            stmt.setInt(10, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em DespesaDAO.inserirDespesa: " + e.getMessage());
@@ -123,12 +124,13 @@ public class DespesaDAO {
      * Atualiza o status de uma despesa (dar baixa).
      */
     public boolean atualizarStatus(int id, String status, LocalDate dataPagamento) {
-        String sql = "UPDATE financeiro_saidas SET status = ?, data_pagamento = ? WHERE id = ?";
+        String sql = "UPDATE financeiro_saidas SET status = ?, data_pagamento = ? WHERE id = ? AND empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, status);
             stmt.setDate(2, dataPagamento != null ? Date.valueOf(dataPagamento) : null);
             stmt.setInt(3, id);
+            stmt.setInt(4, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em DespesaDAO.atualizarStatus: " + e.getMessage());
@@ -141,11 +143,12 @@ public class DespesaDAO {
      */
     public boolean darBaixaBoleto(int id, String formaPagamento) {
         String sql = "UPDATE financeiro_saidas SET status='PAGO', forma_pagamento=?, " +
-                     "data_pagamento=CURRENT_DATE, valor_pago=valor_total WHERE id=?";
+                     "data_pagamento=CURRENT_DATE, valor_pago=valor_total WHERE id=? AND empresa_id=?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, formaPagamento);
             stmt.setInt(2, id);
+            stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em DespesaDAO.darBaixaBoleto: " + e.getMessage());
@@ -160,21 +163,23 @@ public class DespesaDAO {
     public void excluirComAuditoria(Connection con, int id, String motivo,
                                      String responsaveis, int idViagem,
                                      String detalheValor) throws SQLException {
-        String sqlUpdate = "UPDATE financeiro_saidas SET is_excluido = true, motivo_exclusao = ? WHERE id = ?";
+        String sqlUpdate = "UPDATE financeiro_saidas SET is_excluido = true, motivo_exclusao = ? WHERE id = ? AND empresa_id = ?";
         try (PreparedStatement stmt = con.prepareStatement(sqlUpdate)) {
             stmt.setString(1, motivo.toUpperCase());
             stmt.setInt(2, id);
+            stmt.setInt(3, DAOUtils.empresaId());
             stmt.executeUpdate();
         }
 
-        String sqlAudit = "INSERT INTO auditoria_financeiro (acao, usuario, motivo, detalhe_valor, id_viagem) " +
-                          "VALUES (?, ?, ?, ?, ?)";
+        String sqlAudit = "INSERT INTO auditoria_financeiro (acao, usuario, motivo, detalhe_valor, id_viagem, empresa_id) " +
+                          "VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = con.prepareStatement(sqlAudit)) {
             stmt.setString(1, "EXCLUSAO_DESPESA");
             stmt.setString(2, responsaveis);
             stmt.setString(3, motivo.toUpperCase());
             stmt.setString(4, detalheValor);
             stmt.setInt(5, idViagem);
+            stmt.setInt(6, DAOUtils.empresaId());
             stmt.executeUpdate();
         }
     }
@@ -186,16 +191,18 @@ public class DespesaDAO {
                                   String vencimento, String nomeUsuario) {
         try (Connection con = ConexaoBD.getConnection()) {
             try (PreparedStatement audit = con.prepareStatement(
-                    "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor) " +
-                    "VALUES (?, ?, ?, NOW(), ?)")) {
+                    "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor, empresa_id) " +
+                    "VALUES (?, ?, ?, NOW(), ?, ?)")) {
                 audit.setString(1, "EXCLUSAO_BOLETO");
                 audit.setString(2, "Exclusao de boleto: " + descricao);
                 audit.setString(3, nomeUsuario);
                 audit.setString(4, "Valor: " + valorFormatado + " | Vencimento: " + vencimento);
+                audit.setInt(5, DAOUtils.empresaId());
                 audit.executeUpdate();
             }
-            try (PreparedStatement s = con.prepareStatement("DELETE FROM financeiro_saidas WHERE id=?")) {
+            try (PreparedStatement s = con.prepareStatement("DELETE FROM financeiro_saidas WHERE id=? AND empresa_id=?")) {
                 s.setInt(1, id);
+                s.setInt(2, DAOUtils.empresaId());
                 return s.executeUpdate() > 0;
             }
         } catch (SQLException e) {
@@ -208,9 +215,10 @@ public class DespesaDAO {
      * Retorna o id_viagem de uma despesa específica.
      */
     public int buscarIdViagemDaDespesa(int idDespesa, Connection con) {
-        String sql = "SELECT id_viagem FROM financeiro_saidas WHERE id = ?";
+        String sql = "SELECT id_viagem FROM financeiro_saidas WHERE id = ? AND empresa_id = ?";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idDespesa);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) return rs.getInt("id_viagem");
             }
@@ -226,10 +234,11 @@ public class DespesaDAO {
     public String buscarInfoViagem(int idDespesa, Connection con) {
         String info = "VIAGEM N/D";
         String sql = "SELECT v.data_viagem, v.data_chegada FROM financeiro_saidas s " +
-                     "JOIN viagens v ON s.id_viagem = v.id_viagem WHERE s.id = ?";
+                     "JOIN viagens v ON s.id_viagem = v.id_viagem WHERE s.id = ? AND s.empresa_id = ?";
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM");
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idDespesa);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     Date dtIda = rs.getDate("data_viagem");
@@ -253,9 +262,12 @@ public class DespesaDAO {
     public List<String> listarCategorias() {
         List<String> lista = new ArrayList<>();
         try (Connection con = ConexaoBD.getConnection();
-             ResultSet rs = con.prepareStatement(
-                     "SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()) {
+             PreparedStatement pstmt = con.prepareStatement(
+                     "SELECT nome FROM categorias_despesa WHERE empresa_id = ? ORDER BY nome")) {
+            pstmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = pstmt.executeQuery()) {
             while (rs.next()) lista.add(rs.getString(1));
+            }
         } catch (SQLException e) {
             System.err.println("Erro SQL em DespesaDAO.listarCategorias: " + e.getMessage());
         }
@@ -267,8 +279,9 @@ public class DespesaDAO {
         if (nome == null || nome.isEmpty()) return 1;
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(
-                     "SELECT id FROM categorias_despesa WHERE nome = ?")) {
+                     "SELECT id FROM categorias_despesa WHERE nome = ? AND empresa_id = ?")) {
             stmt.setString(1, nome);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) return rs.getInt(1);
             }
@@ -286,15 +299,17 @@ public class DespesaDAO {
         String nomeUpper = nome.toUpperCase();
         try (Connection con = ConexaoBD.getConnection()) {
             try (PreparedStatement stmt = con.prepareStatement(
-                    "SELECT id FROM categorias_despesa WHERE nome = ?")) {
+                    "SELECT id FROM categorias_despesa WHERE nome = ? AND empresa_id = ?")) {
                 stmt.setString(1, nomeUpper);
+                stmt.setInt(2, DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) return rs.getInt(1);
                 }
             }
             try (PreparedStatement stmt = con.prepareStatement(
-                    "INSERT INTO categorias_despesa (nome) VALUES (?) RETURNING id")) {
+                    "INSERT INTO categorias_despesa (nome, empresa_id) VALUES (?, ?) RETURNING id")) {
                 stmt.setString(1, nomeUpper);
+                stmt.setInt(2, DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) return rs.getInt(1);
                 }
@@ -307,8 +322,9 @@ public class DespesaDAO {
     public boolean inserirCategoria(String nome) {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(
-                     "INSERT INTO categorias_despesa (nome) VALUES (?)")) {
+                     "INSERT INTO categorias_despesa (nome, empresa_id) VALUES (?, ?)")) {
             stmt.setString(1, nome.toUpperCase());
+            stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em DespesaDAO.inserirCategoria: " + e.getMessage());
@@ -329,9 +345,10 @@ public class DespesaDAO {
         StringBuilder sql = new StringBuilder(
             "SELECT id, data_vencimento, descricao, numero_parcela, total_parcelas, " +
             "valor_total, status FROM financeiro_saidas " +
-            "WHERE forma_pagamento = 'BOLETO' "
+            "WHERE forma_pagamento = 'BOLETO' AND empresa_id = ? "
         );
         List<Object> params = new ArrayList<>();
+        params.add(DAOUtils.empresaId());
 
         if (idViagem > 0) {
             sql.append(" AND id_viagem = ?");
@@ -378,9 +395,9 @@ public class DespesaDAO {
                                          int totalParcelas, String observacoes,
                                          int idCategoria, int idViagem) throws SQLException {
         String sqlFin = "INSERT INTO financeiro_saidas (descricao, valor_total, data_vencimento, status, " +
-                        "forma_pagamento, id_categoria, numero_parcela, total_parcelas, observacoes, id_viagem) " +
-                        "VALUES (?, ?, ?, 'PENDENTE', 'BOLETO', ?, ?, ?, ?, ?)";
-        String sqlAgenda = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
+                        "forma_pagamento, id_categoria, numero_parcela, total_parcelas, observacoes, id_viagem, empresa_id) " +
+                        "VALUES (?, ?, ?, 'PENDENTE', 'BOLETO', ?, ?, ?, ?, ?, ?)";
+        String sqlAgenda = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES (?, ?, false, ?)";
 
         try (Connection con = ConexaoBD.getConnection()) {
             con.setAutoCommit(false);
@@ -399,12 +416,14 @@ public class DespesaDAO {
                     stmtFin.setInt(6, totalParcelas);
                     stmtFin.setString(7, observacoes);
                     stmtFin.setInt(8, idViagem);
+                    stmtFin.setInt(9, DAOUtils.empresaId());
                     stmtFin.addBatch();
 
                     stmtAgenda.setDate(1, Date.valueOf(venc));
                     stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + descricao +
                             " (" + (i + 1) + "/" + totalParcelas + ") - R$ " +
                             String.format("%.2f", valor));
+                    stmtAgenda.setInt(3, DAOUtils.empresaId());
                     stmtAgenda.addBatch();
                 }
 

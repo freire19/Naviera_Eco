@@ -87,10 +87,11 @@ public class EncomendaDAO {
 
     public List<Encomenda> listarPorViagem(Long idViagem) {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas WHERE id_viagem = ? ORDER BY id_encomenda";
+        String sql = "SELECT * FROM encomendas WHERE empresa_id = ? AND id_viagem = ? ORDER BY id_encomenda";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, idViagem);
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setLong(2, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
                 Set<String> cols = getColumnNames(rs);
                 while (rs.next()) {
@@ -103,23 +104,26 @@ public class EncomendaDAO {
 
     public List<Encomenda> listarTodos() {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas ORDER BY id_encomenda DESC LIMIT 500";
+        String sql = "SELECT * FROM encomendas WHERE empresa_id = ? ORDER BY id_encomenda DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            Set<String> cols = getColumnNames(rs);
-            while (rs.next()) {
-                lista.add(mapearEncomenda(rs, cols));
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                Set<String> cols = getColumnNames(rs);
+                while (rs.next()) {
+                    lista.add(mapearEncomenda(rs, cols));
+                }
             }
         } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
     }
 
     public Encomenda buscarPorId(Long id) {
-        String sql = "SELECT * FROM encomendas WHERE id_encomenda = ?";
+        String sql = "SELECT * FROM encomendas WHERE id_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 Set<String> cols = getColumnNames(rs);
                 if (rs.next()) {
@@ -132,7 +136,7 @@ public class EncomendaDAO {
 
     public boolean atualizar(Encomenda e) {
         // CORREÇÃO: Agora atualiza também os dados de entrega caso sejam editados na tela
-        String sql = "UPDATE encomendas SET remetente=?, destinatario=?, observacoes=?, total_volumes=?, total_a_pagar=?, valor_pago=?, status_pagamento=?, forma_pagamento=?, local_pagamento=?, rota=?, numero_encomenda=?, nome_recebedor=?, doc_recebedor=?, entregue=? WHERE id_encomenda=?";
+        String sql = "UPDATE encomendas SET remetente=?, destinatario=?, observacoes=?, total_volumes=?, total_a_pagar=?, valor_pago=?, status_pagamento=?, forma_pagamento=?, local_pagamento=?, rota=?, numero_encomenda=?, nome_recebedor=?, doc_recebedor=?, entregue=? WHERE id_encomenda=? AND empresa_id=?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, e.getRemetente());
@@ -151,24 +155,26 @@ public class EncomendaDAO {
             stmt.setString(13, e.getDocRecebedor());
             stmt.setBoolean(14, e.isEntregue());
             stmt.setLong(15, e.getId());
+            stmt.setInt(16, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); return false; }
     }
     
     public boolean atualizarFinanceiro(Long idEncomenda, java.math.BigDecimal valorPago, String status) {
-        String sql = "UPDATE encomendas SET valor_pago = ?, status_pagamento = ? WHERE id_encomenda = ?";
+        String sql = "UPDATE encomendas SET valor_pago = ?, status_pagamento = ? WHERE id_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBigDecimal(1, valorPago);
             stmt.setString(2, status);
             stmt.setLong(3, idEncomenda);
+            stmt.setInt(4, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public boolean excluir(Long id) {
         String sqlItens = "DELETE FROM encomenda_itens WHERE id_encomenda = ?";
-        String sqlEnc = "DELETE FROM encomendas WHERE id_encomenda = ?";
+        String sqlEnc = "DELETE FROM encomendas WHERE id_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -178,6 +184,7 @@ public class EncomendaDAO {
                 }
                 try (PreparedStatement stmt2 = conn.prepareStatement(sqlEnc)) {
                     stmt2.setLong(1, id);
+                    stmt2.setInt(2, DAOUtils.empresaId());
                     int rows = stmt2.executeUpdate();
                     conn.commit();
                     return rows > 0;
@@ -191,7 +198,7 @@ public class EncomendaDAO {
 
     public boolean registrarEntrega(Long idEncomenda, String docRecebedor, String nomeRecebedor, String statusPagto) {
         // CORREÇÃO: Garante que os nomes das colunas estão certos
-        String sql = "UPDATE encomendas SET entregue = TRUE, doc_recebedor = ?, nome_recebedor = ?, status_pagamento = ? WHERE id_encomenda = ?";
+        String sql = "UPDATE encomendas SET entregue = TRUE, doc_recebedor = ?, nome_recebedor = ?, status_pagamento = ? WHERE id_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             // Normaliza/trima valores e trata strings vazias como NULL
@@ -203,6 +210,7 @@ public class EncomendaDAO {
             stmt.setString(2, nomeRecebedor);
             stmt.setString(3, statusPagto);
             stmt.setLong(4, idEncomenda);
+            stmt.setInt(5, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }

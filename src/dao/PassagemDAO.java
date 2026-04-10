@@ -104,7 +104,7 @@ public class PassagemDAO {
                      "valor_total=?, valor_desconto_geral=?, valor_a_pagar=?, valor_pago=?, troco=?, valor_devedor=?, " +
                      "id_caixa=?, status_passagem=?, observacoes=?, id_horario_saida=?, " +
                      "valor_pagamento_dinheiro=?, valor_pagamento_pix=?, valor_pagamento_cartao=? " +
-                     "WHERE id_passagem=?";
+                     "WHERE id_passagem=? AND empresa_id=?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -137,6 +137,7 @@ public class PassagemDAO {
             stmt.setBigDecimal(25, passagem.getValorPagamentoCartao());
             
             stmt.setLong(26, passagem.getId());
+            stmt.setInt(27, DAOUtils.empresaId());
 
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
@@ -145,10 +146,11 @@ public class PassagemDAO {
     }
 
     public boolean excluir(long id) {
-        String sql = "DELETE FROM passagens WHERE id_passagem = ?";
+        String sql = "DELETE FROM passagens WHERE id_passagem = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return false;
@@ -244,12 +246,14 @@ public class PassagemDAO {
         List<Passagem> passagens = new ArrayList<>();
         // #DB030: pre-carregar caches auxiliares para evitar N+1 no cold-start
         try { auxiliaresDAO.preCarregarCachesPassagem(); } catch (SQLException e) { /* cache opcional */ }
-        String sql = getBaseQuery() + "ORDER BY p.data_emissao DESC, p.numero_bilhete DESC LIMIT 500";
+        String sql = getBaseQuery() + "WHERE p.empresa_id = ? ORDER BY p.data_emissao DESC, p.numero_bilhete DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
             temDataChegada = detectarTemDataChegada(rs);
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
+            }
         } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
     }
@@ -257,10 +261,11 @@ public class PassagemDAO {
     public List<Passagem> listarPorViagem(long idViagem) {
         List<Passagem> passagens = new ArrayList<>();
         try { auxiliaresDAO.preCarregarCachesPassagem(); } catch (SQLException e) { /* cache opcional */ }
-        String sql = getBaseQuery() + " WHERE p.id_viagem = ? ORDER BY pa.nome_passageiro";
+        String sql = getBaseQuery() + " WHERE p.empresa_id = ? AND p.id_viagem = ? ORDER BY pa.nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, idViagem);
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setLong(2, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
                 temDataChegada = detectarTemDataChegada(rs);
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
@@ -276,6 +281,10 @@ public class PassagemDAO {
         StringBuilder sqlBuilder = new StringBuilder(getBaseQuery());
         List<String> conditions = new ArrayList<>();
         List<Object> params = new ArrayList<>();
+
+        // Multi-tenant: sempre filtrar por empresa
+        conditions.add("p.empresa_id = ?");
+        params.add(DAOUtils.empresaId());
 
         // Filtro por viagem (extrair ID do inicio da string "16 - 04/03/2026 - ...")
         if (viagemStr != null && !viagemStr.trim().isEmpty()) {
@@ -337,7 +346,7 @@ public class PassagemDAO {
         List<Passagem> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append(getBaseQuery());
-        sql.append("WHERE pa.nome_passageiro ILIKE ? ");
+        sql.append("WHERE p.empresa_id = ? AND pa.nome_passageiro ILIKE ? ");
 
         if (status != null && !status.equals("TODOS")) {
             if (status.equals("PENDENTES")) {
@@ -350,7 +359,8 @@ public class PassagemDAO {
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
-            stmt.setString(1, "%" + nomePassageiro + "%");
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setString(2, "%" + nomePassageiro + "%");
             try (ResultSet rs = stmt.executeQuery()) {
                 temDataChegada = detectarTemDataChegada(rs);
                 while (rs.next()) lista.add(mapResultSetToPassagem(rs));
@@ -369,6 +379,7 @@ public class PassagemDAO {
                      "valor_devedor = 0, " +
                      "status_passagem = 'PAGO' " +
                      "WHERE id_passageiro = ? " +
+                     "AND empresa_id = ? " +
                      "AND valor_devedor > 0";
         try (Connection conn = ConexaoBD.getConnection()) {
             conn.setAutoCommit(false);
@@ -376,6 +387,7 @@ public class PassagemDAO {
                 int rows;
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.setLong(1, idPassageiro);
+                    stmt.setInt(2, DAOUtils.empresaId());
                     rows = stmt.executeUpdate();
                 }
                 conn.commit();
@@ -400,6 +412,7 @@ public class PassagemDAO {
                      "FROM passageiros pa " +
                      "WHERE p.id_passageiro = pa.id_passageiro " +
                      "AND TRIM(pa.nome_passageiro) ILIKE TRIM(?) " +
+                     "AND p.empresa_id = ? " +
                      "AND p.valor_devedor > 0";
         Connection conn = null;
         try {
@@ -409,6 +422,7 @@ public class PassagemDAO {
             int rows;
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, nomePassageiro);
+                stmt.setInt(2, DAOUtils.empresaId());
                 rows = stmt.executeUpdate();
             }
 
