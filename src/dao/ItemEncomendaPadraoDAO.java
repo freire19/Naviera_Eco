@@ -64,6 +64,7 @@ public class ItemEncomendaPadraoDAO {
             stmt.setBigDecimal(4, item.getPrecoUnit());
             stmt.setBoolean(5, item.isPermiteValorDeclarado());
             stmt.setBoolean(6, item.isAtivo());
+            stmt.setInt(7, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     item.setId(rs.getLong("id_item_encomenda"));
@@ -87,6 +88,7 @@ public class ItemEncomendaPadraoDAO {
             stmt.setBoolean(5, item.isPermiteValorDeclarado());
             stmt.setBoolean(6, item.isAtivo());
             stmt.setLong(7, item.getId());
+            stmt.setInt(8, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
@@ -99,7 +101,7 @@ public class ItemEncomendaPadraoDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
-            return stmt.executeUpdate() > 0;
+            stmt.setInt(2, DAOUtils.empresaId());            return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
             return false;

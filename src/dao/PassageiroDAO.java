@@ -143,8 +143,8 @@ public class PassageiroDAO {
         String sql = "SELECT * FROM passageiros WHERE empresa_id = ? AND numero_documento = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, doc);
-            // empresa_id param shifted - see below
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setString(2, doc);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSetToPassageiro(rs);
@@ -161,6 +161,7 @@ public class PassageiroDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSetToPassageiro(rs);

@@ -63,6 +63,7 @@ public class UsuarioDAO {
             ps.setString(5, usuario.getFuncao());
             ps.setString(6, usuario.getPermissoes());
             ps.setBoolean(7, usuario.isAtivo());
+            ps.setInt(8, empresaId());
 
             int affectedRows = ps.executeUpdate();
             if (affectedRows > 0) {
@@ -87,7 +88,7 @@ public class UsuarioDAO {
         if (atualizarSenha) {
             sqlBuilder.append(", senha_hash=? ");
         }
-        sqlBuilder.append("WHERE id_usuario=?");
+        sqlBuilder.append("WHERE id_usuario=? AND empresa_id=?");
         String sql = sqlBuilder.toString();
 
         try (Connection conn = ConexaoBD.getConnection();
@@ -105,6 +106,7 @@ public class UsuarioDAO {
                 ps.setString(paramIndex++, hashSenha(usuario.getSenhaPlana()));
             }
             ps.setInt(paramIndex++, usuario.getId());
+            ps.setInt(paramIndex++, empresaId());
 
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
@@ -119,8 +121,8 @@ public class UsuarioDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idUsuario);
-            int affectedRows = ps.executeUpdate();
-            return affectedRows > 0;
+            ps.setInt(2, empresaId());
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
@@ -132,6 +134,7 @@ public class UsuarioDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idUsuario);
+            ps.setInt(2, empresaId());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return extrairUsuarioDoResultSet(rs, true);
@@ -184,10 +187,12 @@ public class UsuarioDAO {
         List<Usuario> lista = new ArrayList<>();
         String sql = "SELECT id_usuario, nome_completo, login_usuario, email, funcao, permissoes, ativo FROM usuarios WHERE empresa_id = ? ORDER BY nome_completo";
         try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, empresaId());
+            try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 lista.add(extrairUsuarioDoResultSet(rs, false));
+            }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
@@ -200,10 +205,12 @@ public class UsuarioDAO {
         List<String> nomesUsuarios = new ArrayList<>();
         String sql = "SELECT login_usuario FROM usuarios WHERE empresa_id = ? ORDER BY login_usuario";
         try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, empresaId());
+            try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 nomesUsuarios.add(rs.getString("login_usuario"));
+            }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
@@ -216,10 +223,12 @@ public class UsuarioDAO {
         List<String> logins = new ArrayList<>();
         String sql = "SELECT login_usuario FROM usuarios WHERE empresa_id = ? AND ativo = true ORDER BY login_usuario";
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, empresaId());
+            try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 logins.add(rs.getString("login_usuario"));
+            }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em UsuarioDAO.listarLoginsAtivos: " + e.getMessage());

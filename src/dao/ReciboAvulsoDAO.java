@@ -17,7 +17,7 @@ import model.ReciboAvulso;
 public class ReciboAvulsoDAO {
 
     public boolean salvar(ReciboAvulso r) {
-        String sql = "INSERT INTO recibos_avulsos (id_viagem, nome_pagador, referente_a, valor, data_emissao, tipo_recibo, empresa_id) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO recibos_avulsos (id_viagem, nome_pagador, referente_a, valor, data_emissao, tipo_recibo, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, r.getIdViagem());
             stmt.setString(2, r.getNomePagador());
@@ -26,6 +26,7 @@ public class ReciboAvulsoDAO {
             stmt.setBigDecimal(4, r.getValor());
             stmt.setDate(5, Date.valueOf(r.getDataEmissao()));
             stmt.setString(6, r.getTipoRecibo());
+            stmt.setInt(7, DAOUtils.empresaId());
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -58,7 +59,8 @@ public class ReciboAvulsoDAO {
         List<ReciboAvulso> lista = new ArrayList<>();
         String sql = "SELECT * FROM recibos_avulsos WHERE empresa_id = ? AND data_emissao = ? ORDER BY id_recibo DESC";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setDate(1, Date.valueOf(data));
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setDate(2, Date.valueOf(data));
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     detectarColunas(rs);

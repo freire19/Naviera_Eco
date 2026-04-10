@@ -70,6 +70,7 @@ public class TipoPassageiroDAO {
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nome);
+            ps.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = ps.executeQuery()) {
                 if(rs.next()) return rs.getInt("id");
             }
@@ -84,6 +85,7 @@ public class TipoPassageiroDAO {
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
+            ps.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = ps.executeQuery()) {
                 if(rs.next()) return rs.getString("nome");
             }

@@ -20,8 +20,9 @@ public class ClienteEncomendaDAO {
         String sql = "SELECT * FROM cad_clientes_encomenda WHERE empresa_id = ? ORDER BY nome_cliente ASC";
 
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 ClienteEncomenda cliente = new ClienteEncomenda();
@@ -42,6 +43,7 @@ public class ClienteEncomendaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setString(1, cliente.getNomeCliente());
+            stmt.setInt(2, empresaId());
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -62,7 +64,8 @@ public class ClienteEncomendaDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
-            stmt.setString(1, nome);
+            stmt.setInt(1, empresaId());
+            stmt.setString(2, nome);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     ClienteEncomenda cliente = new ClienteEncomenda();
@@ -108,7 +111,7 @@ public class ClienteEncomendaDAO {
      * @return true se a exclusão foi bem-sucedida, false caso contrário.
      */
     public boolean excluir(Long idCliente) {
-        String sql = "DELETE FROM cad_clientes_encomenda WHERE id_cliente = ? AND empresa_id = ? AND empresa_id = ?";
+        String sql = "DELETE FROM cad_clientes_encomenda WHERE id_cliente = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idCliente);

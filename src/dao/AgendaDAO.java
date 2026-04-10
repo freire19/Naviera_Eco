@@ -149,7 +149,8 @@ public class AgendaDAO {
         String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes WHERE empresa_id = ? AND data_evento = ? ORDER BY id_anotacao";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setDate(1, Date.valueOf(data));
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setDate(2, Date.valueOf(data));
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     tarefas.add(new TarefaAgenda(
@@ -171,9 +172,9 @@ public class AgendaDAO {
         List<TarefaAgenda> tarefas = new ArrayList<>();
         String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes WHERE empresa_id = ? ORDER BY data_evento DESC, id_anotacao DESC";
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 tarefas.add(new TarefaAgenda(
                     rs.getInt("id_anotacao"),
@@ -194,6 +195,7 @@ public class AgendaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBoolean(1, concluida);
             stmt.setInt(2, id);
+            stmt.setInt(3, DAOUtils.empresaId());
             stmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
@@ -205,6 +207,7 @@ public class AgendaDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             stmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());

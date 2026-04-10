@@ -21,8 +21,9 @@ public class ConferenteDAO {
         List<long[]> lista = new ArrayList<>();
         String sql = "SELECT id_conferente, nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
         try (Connection con = ConexaoBD.getConnection();
-             Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = st.executeQuery()) {
             while (rs.next()) {
                 lista.add(new long[]{rs.getLong("id_conferente"), 0});
                 // Recria como lista de objetos abaixo — usado via listarNomes()
@@ -40,8 +41,9 @@ public class ConferenteDAO {
         List<String> lista = new ArrayList<>();
         String sql = "SELECT nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
         try (Connection con = ConexaoBD.getConnection();
-             Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = st.executeQuery()) {
             while (rs.next()) {
                 String nome = rs.getString(1);
                 if (nome != null) lista.add(nome);
@@ -69,8 +71,9 @@ public class ConferenteDAO {
         List<ConferenteRow> lista = new ArrayList<>();
         String sql = "SELECT id_conferente, nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
         try (Connection con = ConexaoBD.getConnection();
-             Statement st = con.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             PreparedStatement st = con.prepareStatement(sql)) {
+            st.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = st.executeQuery()) {
             while (rs.next()) {
                 lista.add(new ConferenteRow(rs.getLong("id_conferente"), rs.getString("nome_conferente")));
             }
@@ -97,6 +100,7 @@ public class ConferenteDAO {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();
             }
@@ -113,6 +117,7 @@ public class ConferenteDAO {
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);
             stmt.setString(2, nome);
+            stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ConferenteDAO.inserir: " + e.getMessage());
@@ -127,6 +132,7 @@ public class ConferenteDAO {
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, novoNome);
             stmt.setLong(2, id);
+            stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ConferenteDAO.atualizar: " + e.getMessage());
@@ -140,6 +146,7 @@ public class ConferenteDAO {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ConferenteDAO.excluir: " + e.getMessage());
