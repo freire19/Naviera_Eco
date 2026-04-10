@@ -1,22 +1,36 @@
 # Build output
 bin/
 *.class
+dist/
+build/
 
 # IDE
 .metadata/
 .project
 .classpath
 .settings/
+.idea/
+.vscode/
+*.swp
+*.iml
 
 # Credenciais e configs sensiveis
 db.properties
 *.env
 .env
+.env.*
+**/.env
 *.key
 *.pem
 credentials*.json
 api_config.properties
 sync_config.properties
+impressoras.config
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
 
 # Logs e temporarios
 log_erros.txt

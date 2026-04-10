@@ -1,6 +1,6 @@
 -- ============================================================================
--- SCHEMA COMPLETO: sistema_embarcacao
--- Gerado a partir dos DAOs e Controllers do projeto SistemaEmbarcacao
+-- SCHEMA COMPLETO: naviera_eco
+-- Gerado a partir dos DAOs e Controllers do projeto Naviera Eco
 -- PostgreSQL 12+
 -- ============================================================================
 

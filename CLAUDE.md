@@ -9,10 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Camada | Tecnologia | Funcao | Porta |
 |--------|-----------|--------|-------|
 | **Desktop** | JavaFX 23 + Java 17 (Eclipse) | Console operacional (tripulacao/admin) | — |
-| **API** | Spring Boot 3.3 + PostgreSQL | Backend REST servindo desktop e app | 8080 |
+| **API** | Spring Boot 3.3 + PostgreSQL | Backend REST servindo desktop e app | 8081 |
 | **App** | React 19 + Vite | Frontend mobile-first (clientes) | 5173 dev / 80 prod |
 
-As 3 camadas compartilham o **mesmo banco PostgreSQL** (`sistema_embarcacao`).
+As 3 camadas compartilham o **mesmo banco PostgreSQL** (`naviera_eco`).
 
 ---
 
@@ -68,7 +68,7 @@ naviera-api/src/main/java/com/naviera/api/
 **Run**:
 ```bash
 cd naviera-api
-DB_USER=postgres DB_PASSWORD=<senha> JWT_SECRET=<secret> SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5437/sistema_embarcacao mvn spring-boot:run
+DB_USER=postgres DB_PASSWORD=<senha> JWT_SECRET=<secret> SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5437/naviera_eco mvn spring-boot:run
 ```
 
 ---
@@ -107,7 +107,7 @@ npm run build    # Build producao → dist/
 
 ## Database
 
-- **PostgreSQL**: `sistema_embarcacao` (44+ tabelas)
+- **PostgreSQL**: `naviera_eco` (44+ tabelas)
 - **Migrations**: `database_scripts/` (numeradas 000-009)
 - **Config desktop**: `db.properties` (criado a partir de `db.properties.example`)
 - **Config API**: env vars `DB_USER`, `DB_PASSWORD`, `SPRING_DATASOURCE_URL`

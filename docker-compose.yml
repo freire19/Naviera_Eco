@@ -4,15 +4,15 @@ services:
   api:
     build: ./naviera-api
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/sistema_embarcacao
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/naviera_eco
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/api/actuator/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -21,7 +21,7 @@ services:
   app:
     build: ./naviera-app
     ports:
-      - "80:80"
+      - "8180:80"
     depends_on:
       api:
         condition: service_healthy
