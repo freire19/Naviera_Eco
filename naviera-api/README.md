@@ -24,7 +24,7 @@ Backend REST que conecta o app Naviera ao **mesmo banco PostgreSQL** do sistema 
 
 - Java 17+
 - Maven 3.8+
-- PostgreSQL rodando com o banco `sistema_embarcacao`
+- PostgreSQL rodando com o banco `naviera_eco`
 - Migrations 001-008 já executadas (sistema desktop)
 
 ## Setup
@@ -32,7 +32,7 @@ Backend REST que conecta o app Naviera ao **mesmo banco PostgreSQL** do sistema 
 ### 1. Executar migration 009 (lojas parceiras)
 
 ```bash
-psql -U postgres -d sistema_embarcacao -f database/009_tabelas_lojas_parceiras.sql
+psql -U postgres -d naviera_eco -f database/009_tabelas_lojas_parceiras.sql
 ```
 
 ### 2. Configurar variáveis de ambiente

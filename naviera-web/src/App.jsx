@@ -1,0 +1,45 @@
+import { useState, useEffect, createContext, useContext } from 'react'
+import Login from './pages/Login.jsx'
+import Layout from './components/Layout.jsx'
+import './styles/global.css'
+
+export const AuthContext = createContext(null)
+export const useAuth = () => useContext(AuthContext)
+
+export default function App() {
+  const [usuario, setUsuario] = useState(() => {
+    const saved = localStorage.getItem('naviera_usuario')
+    return saved ? JSON.parse(saved) : null
+  })
+
+  const [theme, setTheme] = useState(() => localStorage.getItem('naviera_theme') || 'light')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('naviera_theme', theme)
+  }, [theme])
+
+  function login(data) {
+    localStorage.setItem('naviera_token', data.token)
+    localStorage.setItem('naviera_usuario', JSON.stringify(data.usuario))
+    setUsuario(data.usuario)
+  }
+
+  function logout() {
+    localStorage.removeItem('naviera_token')
+    localStorage.removeItem('naviera_usuario')
+    setUsuario(null)
+  }
+
+  function toggleTheme() {
+    setTheme(t => t === 'light' ? 'dark' : 'light')
+  }
+
+  if (!usuario) return <Login onLogin={login} theme={theme} toggleTheme={toggleTheme} />
+
+  return (
+    <AuthContext.Provider value={{ usuario, logout, theme, toggleTheme }}>
+      <Layout />
+    </AuthContext.Provider>
+  )
+}

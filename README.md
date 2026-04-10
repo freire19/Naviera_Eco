@@ -23,10 +23,10 @@ Sistema completo para gestao de transporte fluvial: passageiros, encomendas, fre
 
 ```bash
 # Criar banco
-createdb sistema_embarcacao
+createdb naviera_eco
 
 # Rodar migrations (em ordem)
-psql -d sistema_embarcacao -f database_scripts/001_criar_tabelas.sql
+psql -d naviera_eco -f database_scripts/001_criar_tabelas.sql
 # ... ate o ultimo script
 ```
 

@@ -29,7 +29,7 @@ public class LogService {
     // Arquivo de log em diretório dedicado
     private static final String ARQUIVO_LOG;
     static {
-        String dir = System.getProperty("user.home") + java.io.File.separator + ".sistema_embarcacao";
+        String dir = System.getProperty("user.home") + java.io.File.separator + ".naviera_eco";
         java.io.File dirFile = new java.io.File(dir);
         dirFile.mkdirs();
         // D024: tentar restringir permissoes do diretorio de log (owner-only)

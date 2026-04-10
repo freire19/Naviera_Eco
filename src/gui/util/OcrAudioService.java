@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 public class OcrAudioService {
 
     // DR130: substituir caminhos hardcoded Windows por caminho relativo ao home do usuario
-    private static final String BASE_DIR = System.getProperty("user.home") + File.separator + ".sistema_embarcacao";
+    private static final String BASE_DIR = System.getProperty("user.home") + File.separator + ".naviera_eco";
     private static final String TESSDATA_PATH = BASE_DIR + File.separator + "tessdata";
     private static final String MODELO_VOZ_PATH = BASE_DIR + File.separator + "modelo-voz";
     private static final String IDIOMA = "por";
