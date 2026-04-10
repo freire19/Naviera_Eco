@@ -58,6 +58,10 @@ public class ConexaoBD {
             System.err.println("AVISO SEGURANCA: senha do banco e fraca. Altere em db.properties.");
         }
 
+        // Multi-tenant: carrega empresa_id do db.properties (default = 1)
+        int empresaId = Integer.parseInt(props.getProperty("empresa.id", "1"));
+        TenantContext.setDefaultEmpresaId(empresaId);
+
         try {
             Class.forName("org.postgresql.Driver");
         } catch (ClassNotFoundException e) {

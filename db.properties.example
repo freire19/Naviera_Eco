@@ -1,5 +1,8 @@
 # Copie para db.properties e preencha com suas credenciais
-db.url=jdbc:postgresql://localhost:5432/naviera_eco
+db.url=jdbc:postgresql://localhost:5432/sistema_embarcacao
 db.usuario=postgres
 db.senha=SUA_SENHA_AQUI
 db.pool.tamanho=5
+
+# Multi-tenant: ID da empresa desta instalacao (default = 1)
+empresa.id=1

@@ -26,14 +26,15 @@ public class ViagemDAO {
                      "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
                      "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
-                     "WHERE v.data_viagem >= ? AND v.data_viagem < ?";
+                     "WHERE v.empresa_id = ? AND v.data_viagem >= ? AND v.data_viagem < ?";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             java.time.LocalDate inicio = java.time.LocalDate.of(ano, mes, 1);
-            stmt.setDate(1, java.sql.Date.valueOf(inicio));
-            stmt.setDate(2, java.sql.Date.valueOf(inicio.plusMonths(1)));
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setDate(2, java.sql.Date.valueOf(inicio));
+            stmt.setDate(3, java.sql.Date.valueOf(inicio.plusMonths(1)));
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -58,10 +59,11 @@ public class ViagemDAO {
     public List<Viagem> listarViagensRecentes(int limit) {
         List<Viagem> viagens = new ArrayList<>();
         String sql = "SELECT id_viagem, descricao, data_viagem, data_chegada, is_atual " +
-                     "FROM viagens ORDER BY id_viagem DESC LIMIT ?";
+                     "FROM viagens WHERE empresa_id = ? ORDER BY id_viagem DESC LIMIT ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, limit);
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setInt(2, limit);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     Viagem v = new Viagem();
@@ -88,31 +90,33 @@ public class ViagemDAO {
                      "JOIN rotas r ON v.id_rota = r.id " +
                      "JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
+                     "WHERE v.empresa_id = ? " +
                      "ORDER BY v.data_viagem DESC, ahs.descricao_horario_saida DESC, v.id_viagem DESC";
 
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    // DR111: null check para evitar NPE se data_viagem for NULL
+                    java.sql.Date dtViagem = rs.getDate("data_viagem");
+                    LocalDate dataViagem = dtViagem != null ? dtViagem.toLocalDate() : LocalDate.now();
+                    String origem = rs.getString("origem");
+                    String destino = rs.getString("destino");
+                    String nomeEmbarcacao = rs.getString("nome_embarcacao");
+                    String horarioDescricao = rs.getString("descricao_horario_saida");
+                    Long id = rs.getLong("id_viagem"); // Pega o ID
 
-            while (rs.next()) {
-                // DR111: null check para evitar NPE se data_viagem for NULL
-                java.sql.Date dtViagem = rs.getDate("data_viagem");
-                LocalDate dataViagem = dtViagem != null ? dtViagem.toLocalDate() : LocalDate.now();
-                String origem = rs.getString("origem");
-                String destino = rs.getString("destino");
-                String nomeEmbarcacao = rs.getString("nome_embarcacao");
-                String horarioDescricao = rs.getString("descricao_horario_saida");
-                Long id = rs.getLong("id_viagem"); // Pega o ID
+                    String nomeRotaConcatenado = origem + (destino != null && !destino.isEmpty() ? " - " + destino : "");
 
-                String nomeRotaConcatenado = origem + (destino != null && !destino.isEmpty() ? " - " + destino : "");
-
-                // Formato Padronizado: ID - DATA ...
-                listaFormatada.add(String.format("%d - %s - %s - %s - %s",
-                                                 id,
-                                                 dataViagem.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                                                 (horarioDescricao != null ? horarioDescricao : "N/A"),
-                                                 nomeRotaConcatenado,
-                                                 nomeEmbarcacao));
+                    // Formato Padronizado: ID - DATA ...
+                    listaFormatada.add(String.format("%d - %s - %s - %s - %s",
+                                                     id,
+                                                     dataViagem.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                                                     (horarioDescricao != null ? horarioDescricao : "N/A"),
+                                                     nomeRotaConcatenado,
+                                                     nomeEmbarcacao));
+                }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
@@ -130,10 +134,11 @@ public class ViagemDAO {
                      "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
                      "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
-                     "WHERE v.id_viagem = ?";
+                     "WHERE v.id_viagem = ? AND v.empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSetToViagem(rs);
@@ -156,16 +161,18 @@ public class ViagemDAO {
                      "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
                      "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
-                     "WHERE v.is_atual = TRUE " +
+                     "WHERE v.is_atual = TRUE AND v.empresa_id = ? " +
                      "ORDER BY v.data_viagem DESC, ahs.descricao_horario_saida DESC LIMIT 1";
 
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            if (rs.next()) {
-                cacheViagemAtiva = mapResultSetToViagem(rs);
-                return cacheViagemAtiva;
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    cacheViagemAtiva = mapResultSetToViagem(rs);
+                    return cacheViagemAtiva;
+                }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
@@ -247,12 +254,13 @@ public class ViagemDAO {
 
         if (idRotaInt == null || idEmbarcacaoInt == null) return null;
 
-        String sql = "SELECT id_viagem FROM viagens WHERE data_viagem = ? AND id_rota = ? AND id_embarcacao = ?";
+        String sql = "SELECT id_viagem FROM viagens WHERE data_viagem = ? AND id_rota = ? AND id_embarcacao = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(dataViagem));
             stmt.setInt(2, idRotaInt);
             stmt.setInt(3, idEmbarcacaoInt);
+            stmt.setInt(4, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) return rs.getLong("id_viagem");
             }
@@ -270,13 +278,16 @@ public class ViagemDAO {
                      "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
                      "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
+                     "WHERE v.empresa_id = ? " +
                      "ORDER BY v.data_viagem DESC, ahs.descricao_horario_saida DESC";
 
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 viagens.add(mapResultSetToViagem(rs));
+            }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
@@ -313,7 +324,7 @@ public class ViagemDAO {
 
     public boolean inserir(Viagem v) {
         // Validacao de data de partida removida do DAO — responsabilidade do controller.
-        String sql = "INSERT INTO viagens (id_viagem, data_viagem, id_horario_saida, data_chegada, descricao, ativa, is_atual, id_embarcacao, id_rota) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO viagens (id_viagem, data_viagem, id_horario_saida, data_chegada, descricao, ativa, is_atual, id_embarcacao, id_rota, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, v.getId());
@@ -325,6 +336,7 @@ public class ViagemDAO {
             stmt.setBoolean(7, v.getIsAtual());
             stmt.setLong(8, v.getIdEmbarcacao());
             stmt.setLong(9, v.getIdRota());
+            stmt.setInt(10, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
     }
@@ -332,7 +344,7 @@ public class ViagemDAO {
     public boolean atualizar(Viagem v) {
         // #023: permite atualizar viagens passadas (corrigir descricao, embarcacao, rota)
         // DL024: impede apenas MUDAR data para o passado em viagens que ainda nao partiram
-        String sql = "UPDATE viagens SET data_viagem = ?, id_horario_saida = ?, data_chegada = ?, descricao = ?, ativa = ?, is_atual = ?, id_embarcacao = ?, id_rota = ? WHERE id_viagem = ?";
+        String sql = "UPDATE viagens SET data_viagem = ?, id_horario_saida = ?, data_chegada = ?, descricao = ?, ativa = ?, is_atual = ?, id_embarcacao = ?, id_rota = ? WHERE id_viagem = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(v.getDataViagem()));
@@ -344,6 +356,7 @@ public class ViagemDAO {
             stmt.setLong(7, v.getIdEmbarcacao());
             stmt.setLong(8, v.getIdRota());
             stmt.setLong(9, v.getId());
+            stmt.setInt(10, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
     }
@@ -353,14 +366,14 @@ public class ViagemDAO {
         // nas FK que referenciam viagens. Enquanto o schema nao for alterado para adicionar
         // CASCADE, esta exclusao manual em transacao e necessaria para manter integridade.
         String[] sqlFilhos = {
-            "DELETE FROM encomenda_itens WHERE id_encomenda IN (SELECT id_encomenda FROM encomendas WHERE id_viagem = ?)",
-            "DELETE FROM passagens WHERE id_viagem = ?",
-            "DELETE FROM encomendas WHERE id_viagem = ?",
-            "DELETE FROM fretes WHERE id_viagem = ?",
-            "DELETE FROM recibos_avulsos WHERE id_viagem = ?",
-            "DELETE FROM financeiro_saidas WHERE id_viagem = ?"
+            "DELETE FROM encomenda_itens WHERE id_encomenda IN (SELECT id_encomenda FROM encomendas WHERE id_viagem = ? AND empresa_id = ?)",
+            "DELETE FROM passagens WHERE id_viagem = ? AND empresa_id = ?",
+            "DELETE FROM encomendas WHERE id_viagem = ? AND empresa_id = ?",
+            "DELETE FROM fretes WHERE id_viagem = ? AND empresa_id = ?",
+            "DELETE FROM recibos_avulsos WHERE id_viagem = ? AND empresa_id = ?",
+            "DELETE FROM financeiro_saidas WHERE id_viagem = ? AND empresa_id = ?"
         };
-        String sqlViagem = "DELETE FROM viagens WHERE id_viagem = ?";
+        String sqlViagem = "DELETE FROM viagens WHERE id_viagem = ? AND empresa_id = ?";
 
         Connection conn = null;
         try {
@@ -370,6 +383,7 @@ public class ViagemDAO {
             for (String sql : sqlFilhos) {
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.setLong(1, id);
+                    stmt.setInt(2, DAOUtils.empresaId());
                     stmt.executeUpdate();
                 }
             }
@@ -377,6 +391,7 @@ public class ViagemDAO {
             boolean resultado;
             try (PreparedStatement stmt = conn.prepareStatement(sqlViagem)) {
                 stmt.setLong(1, id);
+                stmt.setInt(2, DAOUtils.empresaId());
                 resultado = stmt.executeUpdate() > 0;
             }
 
@@ -394,10 +409,10 @@ public class ViagemDAO {
     // --- CORREÇÃO PRINCIPAL: DEFINIR VIAGEM ATIVA USANDO is_atual ---
     public boolean definirViagemAtiva(long idViagemParaAtivar) {
         invalidarCacheViagem();
-        // Zera is_atual de TODAS as viagens
-        String sqlDesativar = "UPDATE viagens SET is_atual = false";
+        // Zera is_atual de TODAS as viagens DESTA EMPRESA
+        String sqlDesativar = "UPDATE viagens SET is_atual = false WHERE empresa_id = ?";
         // Define is_atual = true apenas para a escolhida
-        String sqlAtivar = "UPDATE viagens SET is_atual = true WHERE id_viagem = ?";
+        String sqlAtivar = "UPDATE viagens SET is_atual = true WHERE id_viagem = ? AND empresa_id = ?";
         
         Connection conn = null;
         try {
@@ -405,11 +420,13 @@ public class ViagemDAO {
             conn.setAutoCommit(false);
             
             try (PreparedStatement s1 = conn.prepareStatement(sqlDesativar)) { 
+                s1.setInt(1, DAOUtils.empresaId());
                 s1.executeUpdate(); 
             }
             
             try (PreparedStatement s2 = conn.prepareStatement(sqlAtivar)) { 
-                s2.setLong(1, idViagemParaAtivar); 
+                s2.setLong(1, idViagemParaAtivar);
+                s2.setInt(2, DAOUtils.empresaId());
                 s2.executeUpdate(); 
             }
             

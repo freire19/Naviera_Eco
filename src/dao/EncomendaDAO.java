@@ -26,7 +26,7 @@ public class EncomendaDAO {
      * Se itens for null/vazio, insere apenas a encomenda.
      */
     public Encomenda inserirComItens(Encomenda encomenda, java.util.List<model.EncomendaItem> itens) {
-        String sqlEnc = "INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, entregue, doc_recebedor, nome_recebedor, rota, data_lancamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlEnc = "INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, entregue, doc_recebedor, nome_recebedor, rota, data_lancamento, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         String sqlItem = "INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection()) {
             conn.setAutoCommit(false);
@@ -50,6 +50,7 @@ public class EncomendaDAO {
                     stmt.setString(15, encomenda.getNomeRecebedor());
                     stmt.setString(16, encomenda.getNomeRota());
                     stmt.setDate(17, encomenda.getDataLancamentoDate() != null ? java.sql.Date.valueOf(encomenda.getDataLancamentoDate()) : null);
+                    stmt.setInt(18, DAOUtils.empresaId());
 
                     int affectedRows = stmt.executeUpdate();
                     if (affectedRows > 0) {

@@ -46,8 +46,8 @@ public class PassagemDAO {
                      "id_agente, numero_requisicao, valor_alimentacao, valor_transporte, valor_cargas, valor_desconto_tarifa, " +
                      "valor_total, valor_desconto_geral, valor_a_pagar, valor_pago, troco, valor_devedor, " +
                      "id_caixa, id_usuario_emissor, status_passagem, observacoes, id_horario_saida, " +
-                     "valor_pagamento_dinheiro, valor_pagamento_pix, valor_pagamento_cartao" +
-                     ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                     "valor_pagamento_dinheiro, valor_pagamento_pix, valor_pagamento_cartao, empresa_id" +
+                     ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -84,6 +84,7 @@ public class PassagemDAO {
             stmt.setBigDecimal(26, passagem.getValorPagamentoDinheiro());
             stmt.setBigDecimal(27, passagem.getValorPagamentoPix());
             stmt.setBigDecimal(28, passagem.getValorPagamentoCartao());
+            stmt.setInt(29, DAOUtils.empresaId());
 
             int affectedRows = stmt.executeUpdate();
             if (affectedRows > 0) {
