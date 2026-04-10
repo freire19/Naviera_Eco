@@ -8,7 +8,7 @@ import model.TipoPassageiro;
 public class TipoPassageiroDAO {
 
     public boolean inserir(TipoPassageiro tp) {
-        String sql = "INSERT INTO tipo_passageiro (nome, idade_min, idade_max, deficiente, gratuito) "
+        String sql = "INSERT INTO tipo_passageiro (nome, idade_min, idade_max, deficiente, gratuito, empresa_id) "
                    + "VALUES (?,?,?,?,?)";
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {

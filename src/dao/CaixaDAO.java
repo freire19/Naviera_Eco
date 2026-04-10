@@ -10,20 +10,19 @@ import model.Caixa;
 
 public class CaixaDAO {
 
-    // LISTAR (Lê os dados da tabela 'caixas')
     public List<Caixa> listarTodos() {
         List<Caixa> lista = new ArrayList<>();
-        String sql = "SELECT * FROM caixas ORDER BY id_caixa";
-
+        String sql = "SELECT * FROM caixas WHERE empresa_id = ? ORDER BY id_caixa";
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                Caixa c = new Caixa();
-                c.setId(rs.getInt("id_caixa"));
-                c.setNome(rs.getString("nome_caixa"));
-                lista.add(c);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Caixa c = new Caixa();
+                    c.setId(rs.getInt("id_caixa"));
+                    c.setNome(rs.getString("nome_caixa"));
+                    lista.add(c);
+                }
             }
         } catch (SQLException e) {
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
@@ -31,15 +30,13 @@ public class CaixaDAO {
         return lista;
     }
     
-    // INSERIR (Salva na tabela 'caixas')
     public boolean inserir(Caixa caixa) {
-        String sql = "INSERT INTO caixas (nome_caixa) VALUES (?)";
+        String sql = "INSERT INTO caixas (nome_caixa, empresa_id) VALUES (?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
             stmt.setString(1, caixa.getNome());
+            stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-            
         } catch (SQLException e) {
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
@@ -47,29 +44,26 @@ public class CaixaDAO {
     }
 
     public boolean atualizar(Caixa caixa) {
-        String sql = "UPDATE caixas SET nome_caixa = ? WHERE id_caixa = ?";
+        String sql = "UPDATE caixas SET nome_caixa = ? WHERE id_caixa = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
             stmt.setString(1, caixa.getNome());
             stmt.setInt(2, caixa.getId());
+            stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-            
         } catch (SQLException e) {
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }
 
-    // EXCLUIR (Remove usando 'id_caixa')
     public boolean excluir(int id) {
-        String sql = "DELETE FROM caixas WHERE id_caixa = ?";
+        String sql = "DELETE FROM caixas WHERE id_caixa = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
             stmt.setInt(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-            
         } catch (SQLException e) {
             System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
             return false;

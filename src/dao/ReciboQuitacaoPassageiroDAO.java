@@ -12,7 +12,7 @@ public class ReciboQuitacaoPassageiroDAO {
 
     public void salvar(ReciboQuitacaoPassageiro recibo) {
         // Atualizei o nome da tabela aqui
-        String sql = "INSERT INTO historico_recibo_quitacao_passageiro (nome_passageiro, data_pagamento, valor_total, forma_pagamento, itens_pagos) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO historico_recibo_quitacao_passageiro (nome_passageiro, data_pagamento, valor_total, forma_pagamento, itens_pagos, empresa_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
@@ -22,6 +22,7 @@ public class ReciboQuitacaoPassageiroDAO {
             stmt.setBigDecimal(3, recibo.getValorTotal());
             stmt.setString(4, recibo.getFormaPagamento());
             stmt.setString(5, recibo.getItensPagos());
+            stmt.setInt(6, DAOUtils.empresaId());
             
             stmt.executeUpdate();
         } catch (Exception e) {
@@ -31,13 +32,13 @@ public class ReciboQuitacaoPassageiroDAO {
 
     public List<ReciboQuitacaoPassageiro> listarPorPassageiro(String nome) {
         List<ReciboQuitacaoPassageiro> lista = new ArrayList<>();
-        // Atualizei o nome da tabela aqui
-        String sql = "SELECT * FROM historico_recibo_quitacao_passageiro WHERE nome_passageiro = ? ORDER BY data_pagamento DESC";
+        String sql = "SELECT * FROM historico_recibo_quitacao_passageiro WHERE empresa_id = ? AND nome_passageiro = ? ORDER BY data_pagamento DESC";
         
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
-            stmt.setString(1, nome);
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setString(2, nome);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     ReciboQuitacaoPassageiro r = new ReciboQuitacaoPassageiro();

@@ -17,7 +17,7 @@ public class ConferenteDAO {
      */
     public List<long[]> listarTodos() {
         List<long[]> lista = new ArrayList<>();
-        String sql = "SELECT id_conferente, nome_conferente FROM conferentes ORDER BY nome_conferente";
+        String sql = "SELECT id_conferente, nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
         try (Connection con = ConexaoBD.getConnection();
              Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
@@ -36,7 +36,7 @@ public class ConferenteDAO {
      */
     public List<String> listarNomes() {
         List<String> lista = new ArrayList<>();
-        String sql = "SELECT nome_conferente FROM conferentes ORDER BY nome_conferente";
+        String sql = "SELECT nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
         try (Connection con = ConexaoBD.getConnection();
              Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
@@ -65,7 +65,7 @@ public class ConferenteDAO {
     /** Lista todos os conferentes como ConferenteRow (id + nome). */
     public List<ConferenteRow> listarComId() {
         List<ConferenteRow> lista = new ArrayList<>();
-        String sql = "SELECT id_conferente, nome_conferente FROM conferentes ORDER BY nome_conferente";
+        String sql = "SELECT id_conferente, nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
         try (Connection con = ConexaoBD.getConnection();
              Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
@@ -91,7 +91,7 @@ public class ConferenteDAO {
 
     /** Verifica se um conferente com dado id já existe. */
     public boolean existe(long id) {
-        String sql = "SELECT 1 FROM conferentes WHERE id_conferente = ?";
+        String sql = "SELECT 1 FROM conferentes WHERE id_conferente = ? AND empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);
@@ -106,7 +106,7 @@ public class ConferenteDAO {
 
     /** Insere novo conferente. */
     public boolean inserir(long id, String nome) {
-        String sql = "INSERT INTO conferentes (id_conferente, nome_conferente) VALUES(?, ?)";
+        String sql = "INSERT INTO conferentes (id_conferente, nome_conferente, empresa_id) VALUES(?, ?)";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);
@@ -120,7 +120,7 @@ public class ConferenteDAO {
 
     /** Atualiza o nome de um conferente. */
     public boolean atualizar(long id, String novoNome) {
-        String sql = "UPDATE conferentes SET nome_conferente = ? WHERE id_conferente = ?";
+        String sql = "UPDATE conferentes SET nome_conferente = ? WHERE id_conferente = ? AND empresa_id = ? AND empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, novoNome);
@@ -134,7 +134,7 @@ public class ConferenteDAO {
 
     /** Exclui um conferente pelo id. */
     public boolean excluir(long id) {
-        String sql = "DELETE FROM conferentes WHERE id_conferente = ?";
+        String sql = "DELETE FROM conferentes WHERE id_conferente = ? AND empresa_id = ? AND empresa_id = ? AND empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);

@@ -13,7 +13,7 @@ import model.ReciboAvulso;
 public class ReciboAvulsoDAO {
 
     public boolean salvar(ReciboAvulso r) {
-        String sql = "INSERT INTO recibos_avulsos (id_viagem, nome_pagador, referente_a, valor, data_emissao, tipo_recibo) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO recibos_avulsos (id_viagem, nome_pagador, referente_a, valor, data_emissao, tipo_recibo, empresa_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, r.getIdViagem());
             stmt.setString(2, r.getNomePagador());
@@ -33,7 +33,7 @@ public class ReciboAvulsoDAO {
     public List<ReciboAvulso> listarPorViagem(int idViagem) {
         List<ReciboAvulso> lista = new ArrayList<>();
         // Ordena do mais recente para o mais antigo
-        String sql = "SELECT * FROM recibos_avulsos WHERE id_viagem = ? ORDER BY id_recibo DESC"; 
+        String sql = "SELECT * FROM recibos_avulsos WHERE empresa_id = ? AND id_viagem = ? ORDER BY id_recibo DESC"; 
         
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idViagem);

@@ -178,7 +178,7 @@ public class UsuarioDAO {
 
     public List<Usuario> listarTodos() {
         List<Usuario> lista = new ArrayList<>();
-        String sql = "SELECT id_usuario, nome_completo, login_usuario, email, funcao, permissoes, ativo FROM usuarios ORDER BY nome_completo";
+        String sql = "SELECT id_usuario, nome_completo, login_usuario, email, funcao, permissoes, ativo FROM usuarios WHERE empresa_id = ? ORDER BY nome_completo";
         try (Connection conn = ConexaoBD.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
@@ -194,7 +194,7 @@ public class UsuarioDAO {
     // Método para listar apenas os nomes de login dos usuários (para ComboBox)
     public List<String> listarNomesDeUsuarios() {
         List<String> nomesUsuarios = new ArrayList<>();
-        String sql = "SELECT login_usuario FROM usuarios ORDER BY login_usuario";
+        String sql = "SELECT login_usuario FROM usuarios WHERE empresa_id = ? ORDER BY login_usuario";
         try (Connection conn = ConexaoBD.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {

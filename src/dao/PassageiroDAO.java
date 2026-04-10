@@ -24,7 +24,7 @@ public class PassageiroDAO {
     public List<Passageiro> listarTodos() {
         List<Passageiro> passageiros = new ArrayList<>();
         // O mapResultSetToPassageiro agora não precisa mais da conexão como parâmetro
-        String sql = "SELECT * FROM passageiros ORDER BY nome_passageiro";
+        String sql = "SELECT * FROM passageiros WHERE empresa_id = ? ORDER BY nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -50,7 +50,7 @@ public class PassageiroDAO {
     }
 
     public Passageiro inserir(Passageiro passageiro) {
-        String sql = "INSERT INTO passageiros (nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO passageiros (nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade, empresa_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -104,7 +104,7 @@ public class PassageiroDAO {
     
     public List<String> listarTodosNomesPassageiros() {
         List<String> nomes = new ArrayList<>();
-        String sql = "SELECT nome_passageiro FROM passageiros ORDER BY nome_passageiro";
+        String sql = "SELECT nome_passageiro FROM passageiros WHERE empresa_id = ? ORDER BY nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -118,7 +118,7 @@ public class PassageiroDAO {
     }
     
     public Passageiro buscarPorNome(String nome) {
-        String sql = "SELECT * FROM passageiros WHERE nome_passageiro ILIKE ?";
+        String sql = "SELECT * FROM passageiros WHERE empresa_id = ? AND nome_passageiro ILIKE ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, nome);
@@ -150,7 +150,7 @@ public class PassageiroDAO {
     }
     
     public Passageiro buscarPorId(long id) {
-        String sql = "SELECT * FROM passageiros WHERE id_passageiro = ?";
+        String sql = "SELECT * FROM passageiros WHERE id_passageiro = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);

@@ -13,7 +13,7 @@ public class ClienteEncomendaDAO {
 
     public List<ClienteEncomenda> listarTodos() {
         List<ClienteEncomenda> clientes = new ArrayList<>();
-        String sql = "SELECT * FROM cad_clientes_encomenda ORDER BY nome_cliente ASC";
+        String sql = "SELECT * FROM cad_clientes_encomenda WHERE empresa_id = ? ORDER BY nome_cliente ASC";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -32,7 +32,7 @@ public class ClienteEncomendaDAO {
     }
 
     public ClienteEncomenda salvar(ClienteEncomenda cliente) {
-        String sql = "INSERT INTO cad_clientes_encomenda (nome_cliente) VALUES (?) ON CONFLICT (nome_cliente) DO NOTHING RETURNING id_cliente";
+        String sql = "INSERT INTO cad_clientes_encomenda (nome_cliente, empresa_id) VALUES (?, ?) ON CONFLICT (nome_cliente) DO NOTHING RETURNING id_cliente";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -54,7 +54,7 @@ public class ClienteEncomendaDAO {
     }
     
     public ClienteEncomenda buscarPorNomeExato(String nome) {
-        String sql = "SELECT * FROM cad_clientes_encomenda WHERE nome_cliente = ?";
+        String sql = "SELECT * FROM cad_clientes_encomenda WHERE empresa_id = ? AND nome_cliente = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             

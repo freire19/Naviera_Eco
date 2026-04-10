@@ -62,7 +62,7 @@ public class AgendaDAO {
     // Busca apenas as descrições (para as bolinhas do calendário)
     public List<String> buscarAnotacoesPorData(LocalDate data) {
         List<String> notas = new ArrayList<>();
-        String sql = "SELECT descricao FROM agenda_anotacoes WHERE data_evento = ? AND concluida = false";
+        String sql = "SELECT descricao FROM agenda_anotacoes WHERE empresa_id = ? AND data_evento = ? AND concluida = false";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
@@ -142,7 +142,7 @@ public class AgendaDAO {
     // Busca as tarefas de um dia específico (caso ainda usemos o clique no calendário)
     public List<TarefaAgenda> buscarTarefasCompletasPorData(LocalDate data) {
         List<TarefaAgenda> tarefas = new ArrayList<>();
-        String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes WHERE data_evento = ? ORDER BY id_anotacao";
+        String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes WHERE empresa_id = ? AND data_evento = ? ORDER BY id_anotacao";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
@@ -165,7 +165,7 @@ public class AgendaDAO {
     // Busca TODAS as tarefas para a tela de gerenciamento
     public List<TarefaAgenda> buscarTodasTarefas() {
         List<TarefaAgenda> tarefas = new ArrayList<>();
-        String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes ORDER BY data_evento DESC, id_anotacao DESC";
+        String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes WHERE empresa_id = ? ORDER BY data_evento DESC, id_anotacao DESC";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -185,7 +185,7 @@ public class AgendaDAO {
     }
 
     public void atualizarStatus(int id, boolean concluida) {
-        String sql = "UPDATE agenda_anotacoes SET concluida = ? WHERE id_anotacao = ?";
+        String sql = "UPDATE agenda_anotacoes SET concluida = ? WHERE id_anotacao = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBoolean(1, concluida);
@@ -197,7 +197,7 @@ public class AgendaDAO {
     }
     
     public void excluirTarefa(int id) {
-        String sql = "DELETE FROM agenda_anotacoes WHERE id_anotacao = ?";
+        String sql = "DELETE FROM agenda_anotacoes WHERE id_anotacao = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);

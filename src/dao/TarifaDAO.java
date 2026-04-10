@@ -13,7 +13,7 @@ public class TarifaDAO {
 
     public Tarifa buscarTarifaPorRotaETipo(long idRota, int idTipoPassagem) {
         Tarifa tarifa = null;
-        String sql = "SELECT id_tarifa, id_rota, id_tipo_passagem, valor_transporte, valor_cargas, valor_alimentacao, valor_desconto FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ?";
+        String sql = "SELECT id_tarifa, id_rota, id_tipo_passagem, valor_transporte, valor_cargas, valor_alimentacao, valor_desconto FROM tarifas WHERE empresa_id = ? AND id_rota = ? AND id_tipo_passagem = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idRota);
@@ -77,7 +77,7 @@ public class TarifaDAO {
     }
 
     public boolean excluir(int idTarifa) {
-        String sql = "DELETE FROM tarifas WHERE id_tarifa = ?";
+        String sql = "DELETE FROM tarifas WHERE id_tarifa = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idTarifa);

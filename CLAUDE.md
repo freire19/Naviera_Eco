@@ -126,19 +126,19 @@ stmt.setInt(N, DAOUtils.empresaId());
 | EncomendaDAO | FEITO | 100% tenant-aware |
 | FreteDAO | FEITO | 100% tenant-aware |
 | DespesaDAO | FEITO | 100% tenant-aware |
-| FuncionarioDAO | ALTA | 3 INSERTs + 12 SELECTs |
-| PassageiroDAO | MEDIA | 1 INSERT + 5 SELECTs |
-| RotaDAO | MEDIA | 1 INSERT + 2 SELECTs |
-| EmbarcacaoDAO | MEDIA | 1 INSERT |
+| FuncionarioDAO | FEITO | 100% tenant-aware |
+| PassageiroDAO | PARCIAL | SQL atualizado, falta params |
+| RotaDAO | FEITO | 100% tenant-aware |
+| EmbarcacaoDAO | FEITO | 100% tenant-aware + ON CONFLICT fix |
 | TarifaDAO | MEDIA | 1 INSERT + 3 SELECTs |
-| CaixaDAO | BAIXA | 1 INSERT + 1 SELECT |
-| ConferenteDAO | BAIXA | 1 INSERT + 4 SELECTs |
-| ClienteEncomendaDAO | BAIXA | 1 INSERT + 2 SELECTs |
+| CaixaDAO | FEITO | 100% tenant-aware |
+| ConferenteDAO | PARCIAL | SQL atualizado, falta params |
+| ClienteEncomendaDAO | PARCIAL | SQL atualizado, falta params |
 | UsuarioDAO | BAIXA | 1 INSERT + 6 SELECTs |
-| AgendaDAO | BAIXA | 1 INSERT + 5 SELECTs |
-| ReciboAvulsoDAO | BAIXA | 1 INSERT + 2 SELECTs |
-| ReciboQuitacaoPassageiroDAO | BAIXA | 1 INSERT + 1 SELECT |
-| TipoPassageiroDAO | BAIXA | 1 INSERT + 2 SELECTs |
+| AgendaDAO | PARCIAL | SQL atualizado, falta params |
+| ReciboAvulsoDAO | PARCIAL | SQL atualizado, falta params |
+| ReciboQuitacaoPassageiroDAO | FEITO | 100% tenant-aware |
+| TipoPassageiroDAO | PARCIAL | SQL atualizado, falta params |
 | ItemFreteDAO | BAIXA | 1 INSERT + 1 SELECT |
 | ItemEncomendaPadraoDAO | BAIXA | 1 INSERT + 1 SELECT |
 | EncomendaItemDAO | BAIXA | 1 INSERT + 2 SELECTs |
