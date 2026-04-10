@@ -176,10 +176,11 @@ public class GerarReciboAvulsoController implements Initializable {
     private ObservableList<String> carregarListaViagensParaFiltroAsync() {
         ObservableList<String> itens = FXCollections.observableArrayList();
         // Alterado nome da coluna no SQL para 'data_chegada'
-        String sql = "SELECT id_viagem, data_viagem, data_chegada FROM viagens ORDER BY id_viagem DESC";
+        String sql = "SELECT id_viagem, data_viagem, data_chegada FROM viagens WHERE empresa_id = ? ORDER BY id_viagem DESC";
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = stmt.executeQuery();
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             while (rs.next()) {
                 long id = rs.getLong("id_viagem");

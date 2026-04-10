@@ -221,10 +221,11 @@ public class RelatorioFretesController implements Initializable {
         List<String> clientes = new ArrayList<>();
         clientes.add("Todos os Clientes");
         
-        String sql = "SELECT DISTINCT f.destinatario_nome_temp FROM fretes f WHERE f.id_viagem = ? AND f.destinatario_nome_temp IS NOT NULL ORDER BY f.destinatario_nome_temp";
+        String sql = "SELECT DISTINCT f.destinatario_nome_temp FROM fretes f WHERE f.id_viagem = ? AND f.empresa_id = ? AND f.destinatario_nome_temp IS NOT NULL ORDER BY f.destinatario_nome_temp";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 String cliente = rs.getString("destinatario_nome_temp");
@@ -245,10 +246,11 @@ public class RelatorioFretesController implements Initializable {
         
         List<String> devedores = new ArrayList<>();
         
-        String sql = "SELECT DISTINCT f.destinatario_nome_temp FROM fretes f WHERE f.id_viagem = ? AND f.valor_devedor > 0.01 AND f.destinatario_nome_temp IS NOT NULL ORDER BY f.destinatario_nome_temp";
+        String sql = "SELECT DISTINCT f.destinatario_nome_temp FROM fretes f WHERE f.id_viagem = ? AND f.empresa_id = ? AND f.valor_devedor > 0.01 AND f.destinatario_nome_temp IS NOT NULL ORDER BY f.destinatario_nome_temp";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 String devedor = rs.getString("destinatario_nome_temp");
@@ -279,21 +281,22 @@ public class RelatorioFretesController implements Initializable {
             "FROM fretes f " +
             "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
             "LEFT JOIN viagens v ON f.id_viagem = v.id_viagem " +
-            "WHERE f.id_viagem = ? "
+            "WHERE f.id_viagem = ? AND f.empresa_id = ? "
         );
-        
+
         if (filtrarCliente) {
             sql.append(" AND f.destinatario_nome_temp = ? ");
         }
         sql.append(" ORDER BY f.numero_frete, fi.nome_item_ou_id_produto");
-        
+
         double totalItens = 0;
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
             stmt.setLong(1, viagem.getId());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             if (filtrarCliente) {
-                stmt.setString(2, cliente);
+                stmt.setString(3, cliente);
             }
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -315,24 +318,25 @@ public class RelatorioFretesController implements Initializable {
         
         lblTotalItens.setText(String.format("R$ %.2f", totalItens));
         
-        // Carregar situaÃ§Ã£o financeira
+        // Carregar situação financeira
         StringBuilder sqlFin = new StringBuilder(
             "SELECT f.numero_frete, f.valor_total_itens, f.valor_pago, f.valor_devedor " +
             "FROM fretes f " +
-            "WHERE f.id_viagem = ? "
+            "WHERE f.id_viagem = ? AND f.empresa_id = ? "
         );
         if (filtrarCliente) {
             sqlFin.append(" AND f.destinatario_nome_temp = ? ");
         }
         sqlFin.append(" ORDER BY f.numero_frete");
-        
+
         double totalEmAberto = 0;
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sqlFin.toString())) {
             stmt.setLong(1, viagem.getId());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             if (filtrarCliente) {
-                stmt.setString(2, cliente);
+                stmt.setString(3, cliente);
             }
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -530,13 +534,14 @@ public class RelatorioFretesController implements Initializable {
         String sql = "SELECT fi.quantidade, fi.nome_item_ou_id_produto, fi.preco_unitario, (fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
-                     "WHERE f.id_viagem = ? AND f.destinatario_nome_temp = ? " +
+                     "WHERE f.id_viagem = ? AND f.empresa_id = ? AND f.destinatario_nome_temp = ? " +
                      "ORDER BY f.numero_frete, fi.nome_item_ou_id_produto";
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
-            stmt.setString(2, cliente);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
+            stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             
             while (rs.next()) {
@@ -631,11 +636,12 @@ public class RelatorioFretesController implements Initializable {
     }
     
     private String buscarNumeroFrete(Viagem viagem, String cliente) {
-        String sql = "SELECT numero_frete FROM fretes WHERE id_viagem = ? AND destinatario_nome_temp = ? LIMIT 1";
+        String sql = "SELECT numero_frete FROM fretes WHERE id_viagem = ? AND empresa_id = ? AND destinatario_nome_temp = ? LIMIT 1";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
-            stmt.setString(2, cliente);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
+            stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getString("numero_frete");
         } catch (Exception e) { e.printStackTrace(); }
@@ -643,11 +649,12 @@ public class RelatorioFretesController implements Initializable {
     }
     
     private String buscarRemetenteFrete(Viagem viagem, String cliente) {
-        String sql = "SELECT remetente_nome_temp FROM fretes WHERE id_viagem = ? AND destinatario_nome_temp = ? LIMIT 1";
+        String sql = "SELECT remetente_nome_temp FROM fretes WHERE id_viagem = ? AND empresa_id = ? AND destinatario_nome_temp = ? LIMIT 1";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
-            stmt.setString(2, cliente);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
+            stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getString("remetente_nome_temp");
         } catch (Exception e) { e.printStackTrace(); }
@@ -655,10 +662,11 @@ public class RelatorioFretesController implements Initializable {
     }
     
     private String buscarRotaFrete(Viagem viagem) {
-        String sql = "SELECT r.origem, r.destino FROM viagens v JOIN rotas r ON v.id_rota = r.id WHERE v.id_viagem = ?";
+        String sql = "SELECT r.origem, r.destino FROM viagens v JOIN rotas r ON v.id_rota = r.id WHERE v.id_viagem = ? AND v.empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getString("origem") + " - " + rs.getString("destino");
         } catch (Exception e) { e.printStackTrace(); }
@@ -668,11 +676,12 @@ public class RelatorioFretesController implements Initializable {
     private double[] buscarValoresFinanceiros(Viagem viagem, String cliente) {
         double total = 0, pago = 0, devedor = 0;
         String sql = "SELECT SUM(valor_total_itens) as total, SUM(valor_pago) as pago, SUM(valor_devedor) as devedor " +
-                     "FROM fretes WHERE id_viagem = ? AND destinatario_nome_temp = ?";
+                     "FROM fretes WHERE id_viagem = ? AND empresa_id = ? AND destinatario_nome_temp = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
-            stmt.setString(2, cliente);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
+            stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 total = rs.getDouble("total");
@@ -745,17 +754,18 @@ public class RelatorioFretesController implements Initializable {
                      "fi.nome_item_ou_id_produto, fi.quantidade, fi.preco_unitario, (fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
-                     "WHERE f.id_viagem = ? " +
+                     "WHERE f.id_viagem = ? AND f.empresa_id = ? " +
                      "ORDER BY f.numero_frete, fi.nome_item_ou_id_produto";
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
-            
+
             while (rs.next()) {
                 String numFrete = rs.getString("numero_frete");
-                
+
                 FreteCompleto frete = fretesMap.get(numFrete);
                 if (frete == null) {
                     frete = new FreteCompleto();
@@ -768,7 +778,7 @@ public class RelatorioFretesController implements Initializable {
                     frete.itens = new ArrayList<>();
                     fretesMap.put(numFrete, frete);
                 }
-                
+
                 ItemFrete item = new ItemFrete();
                 item.descricao = rs.getString("nome_item_ou_id_produto");
                 item.quantidade = rs.getDouble("quantidade");
@@ -1192,13 +1202,14 @@ public class RelatorioFretesController implements Initializable {
                      "(fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
-                     "WHERE f.id_viagem = ? AND f.destinatario_nome_temp = ? " +
+                     "WHERE f.id_viagem = ? AND f.empresa_id = ? AND f.destinatario_nome_temp = ? " +
                      "ORDER BY f.remetente_nome_temp, fi.nome_item_ou_id_produto";
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
-            stmt.setString(2, cliente);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
+            stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             
             while (rs.next()) {
@@ -1351,17 +1362,18 @@ public class RelatorioFretesController implements Initializable {
                      "fi.nome_item_ou_id_produto, fi.quantidade, fi.preco_unitario, (fi.quantidade * fi.preco_unitario) as total_item " +
                      "FROM fretes f " +
                      "JOIN frete_itens fi ON f.id_frete = fi.id_frete " +
-                     "WHERE f.id_viagem = ? " +
+                     "WHERE f.id_viagem = ? AND f.empresa_id = ? " +
                      "ORDER BY f.numero_frete, fi.nome_item_ou_id_produto";
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
-            
+
             while (rs.next()) {
                 String numFrete = rs.getString("numero_frete");
-                
+
                 FreteCompleto frete = fretesMap.get(numFrete);
                 if (frete == null) {
                     frete = new FreteCompleto();
@@ -1374,7 +1386,7 @@ public class RelatorioFretesController implements Initializable {
                     frete.itens = new ArrayList<>();
                     fretesMap.put(numFrete, frete);
                 }
-                
+
                 ItemFrete item = new ItemFrete();
                 item.descricao = rs.getString("nome_item_ou_id_produto");
                 item.quantidade = rs.getDouble("quantidade");
@@ -1590,13 +1602,14 @@ public class RelatorioFretesController implements Initializable {
         
         String sql = "SELECT f.numero_frete, f.valor_total_itens, f.valor_pago, f.valor_devedor " +
                      "FROM fretes f " +
-                     "WHERE f.id_viagem = ? AND f.destinatario_nome_temp = ? " +
+                     "WHERE f.id_viagem = ? AND f.empresa_id = ? AND f.destinatario_nome_temp = ? " +
                      "ORDER BY f.numero_frete";
-        
+
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
-            stmt.setString(2, cliente);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
+            stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             
             while (rs.next()) {

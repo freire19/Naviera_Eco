@@ -163,10 +163,11 @@ public class AuditoriaExclusoesSaida {
     private ObservableList<OpcaoViagem> carregarViagensBg(int idInicial) {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        String sql = "SELECT id_viagem, descricao, data_viagem FROM viagens ORDER BY data_viagem DESC";
+        String sql = "SELECT id_viagem, descricao, data_viagem FROM viagens WHERE empresa_id = ? ORDER BY data_viagem DESC";
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 int id = rs.getInt("id_viagem");
                 String desc = rs.getString("descricao");
@@ -209,10 +210,11 @@ public class AuditoriaExclusoesSaida {
                 ObservableList<RegistroAuditoria> lista = FXCollections.observableArrayList();
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
                 // DL050: buscar tanto por coluna 'acao' quanto 'tipo_operacao' (padronizacao pendente)
-                String sql = "SELECT * FROM auditoria_financeiro WHERE (acao = 'EXCLUSAO_DESPESA' OR tipo_operacao = 'EXCLUSAO_BOLETO') AND id_viagem = ? ORDER BY data_hora DESC";
+                String sql = "SELECT * FROM auditoria_financeiro WHERE (acao = 'EXCLUSAO_DESPESA' OR tipo_operacao = 'EXCLUSAO_BOLETO') AND id_viagem = ? AND empresa_id = ? ORDER BY data_hora DESC";
                 try (Connection con = ConexaoBD.getConnection();
                      PreparedStatement stmt = con.prepareStatement(sql)) {
                     stmt.setInt(1, idViagem);
+                    stmt.setInt(2, dao.DAOUtils.empresaId());
                     ResultSet rs = stmt.executeQuery();
                     while (rs.next()) {
                         String responsaveis = rs.getString("usuario");

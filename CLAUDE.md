@@ -81,73 +81,62 @@ Diretorio: `naviera-api/`
 
 ## MIGRACAO MULTI-TENANT — STATUS E PLANO
 
-### Fase 0: Preparacao (EM ANDAMENTO)
+### Fase 0: Preparacao (CONCLUIDA)
 
 | Item | Status | Detalhe |
 |------|--------|---------|
-| Migration SQL 013 | FEITO | `013_multi_tenant.sql` — tabela `empresas`, `empresa_id` em 17 tabelas, indices, `clientes_app`, `versao_sistema` |
+| Migration SQL 013 | FEITO | `013_multi_tenant.sql` — tabela `empresas`, `empresa_id` em 24+ tabelas, indices |
 | TenantContext | FEITO | `dao/TenantContext.java` — ThreadLocal + default via db.properties |
 | DAOUtils helpers | FEITO | `empresaId()`, `setEmpresa()`, `TENANT_FILTER` |
 | ConexaoBD atualizado | FEITO | Le `empresa.id` do db.properties e inicializa TenantContext |
-| ViagemDAO | FEITO | 100% tenant-aware (SELECT, INSERT, UPDATE, DELETE) |
-| PassagemDAO INSERT | FEITO | INSERT inclui empresa_id |
-| EncomendaDAO INSERT | FEITO | INSERT inclui empresa_id |
+| DAOs tenant-aware | FEITO | 22/24 DAOs migrados (faltam EmpresaDAO e BalancoViagemDAO) |
+| Controllers GUI | FEITO | 22 controllers com SQL inline migrados para empresa_id |
 
-### DAOs PENDENTES — Padrao a seguir
+### DAOs — Status Final
 
-**REGRA: Toda query que toca tabela de negocio DEVE filtrar por empresa_id.**
+| DAO | Status |
+|-----|--------|
+| ViagemDAO | FEITO |
+| PassagemDAO | FEITO |
+| EncomendaDAO | FEITO |
+| FreteDAO | FEITO |
+| DespesaDAO | FEITO |
+| FuncionarioDAO | FEITO |
+| RotaDAO | FEITO |
+| EmbarcacaoDAO | FEITO |
+| TarifaDAO | FEITO |
+| CaixaDAO | FEITO |
+| ConferenteDAO | FEITO |
+| ClienteEncomendaDAO | FEITO |
+| UsuarioDAO | FEITO |
+| AgendaDAO | FEITO |
+| ReciboAvulsoDAO | FEITO |
+| ReciboQuitacaoPassageiroDAO | FEITO |
+| TipoPassageiroDAO | FEITO |
+| ItemFreteDAO | FEITO |
+| ItemEncomendaPadraoDAO | FEITO |
+| PassageiroDAO | FEITO |
+| EncomendaItemDAO | N/A (tabela filha via FK) |
+| EmpresaDAO | PENDENTE |
+| BalancoViagemDAO | PENDENTE (queries complexas) |
 
-Padrao para cada tipo de operacao:
+### Controllers GUI — SQL Inline Migrado
 
-```java
-// SELECT — adicionar WHERE empresa_id = ? (ou AND empresa_id = ?)
-String sql = "SELECT * FROM passagens WHERE empresa_id = ? AND id_viagem = ?";
-stmt.setInt(1, DAOUtils.empresaId());
-stmt.setLong(2, idViagem);
+22 controllers com SQL inline agora filtram por empresa_id:
+BalancoViagemController, FinanceiroPassagensController, FinanceiroEncomendasController,
+FinanceiroFretesController, FinanceiroEntradaController, FinanceiroSaidaController,
+VenderPassagemController, CadastroFreteController, CadastroBoletoController,
+TabelaPrecoFreteController, TelaPrincipalController, AuditoriaExclusoesSaida,
+RelatorioEncomendaGeralController, EstornoPagamentoController, GerarReciboAvulsoController,
+RelatorioFretesController, ExtratoClienteEncomendaController, BaixaPagamentoController,
+QuitarDividaEncomendaTotalController, HistoricoEstornosController,
+HistoricoEstornosPassagensController, ConfigurarSincronizacaoController,
+CompanyDataLoader
 
-// INSERT — adicionar empresa_id na lista de colunas e valores
-String sql = "INSERT INTO fretes (..., empresa_id) VALUES (..., ?)";
-stmt.setInt(N, DAOUtils.empresaId());
+**Padrao usado:** `dao.DAOUtils.empresaId()` em todo SQL inline.
 
-// UPDATE — adicionar AND empresa_id = ? no WHERE
-String sql = "UPDATE passagens SET ... WHERE id_passagem = ? AND empresa_id = ?";
-stmt.setInt(N, DAOUtils.empresaId());
-
-// DELETE — adicionar AND empresa_id = ? no WHERE
-String sql = "DELETE FROM passagens WHERE id_passagem = ? AND empresa_id = ?";
-stmt.setInt(N, DAOUtils.empresaId());
-```
-
-**DAOs que PRECISAM de empresa_id (tenant-scoped):**
-
-| DAO | Prioridade | Queries |
-|-----|-----------|---------|
-| PassagemDAO | FEITO | 100% tenant-aware |
-| EncomendaDAO | FEITO | 100% tenant-aware |
-| FreteDAO | FEITO | 100% tenant-aware |
-| DespesaDAO | FEITO | 100% tenant-aware |
-| FuncionarioDAO | FEITO | 100% tenant-aware |
-| PassageiroDAO | PARCIAL | SQL atualizado, falta params |
-| RotaDAO | FEITO | 100% tenant-aware |
-| EmbarcacaoDAO | FEITO | 100% tenant-aware + ON CONFLICT fix |
-| TarifaDAO | FEITO | INSERT/UPDATE/DELETE com empresa_id |
-| CaixaDAO | FEITO | 100% tenant-aware |
-| ConferenteDAO | PARCIAL | SQL atualizado, falta params |
-| ClienteEncomendaDAO | PARCIAL | SQL atualizado, falta params |
-| UsuarioDAO | SQL PRONTO | Falta: setInt params |
-| AgendaDAO | PARCIAL | SQL atualizado, falta params |
-| ReciboAvulsoDAO | PARCIAL | SQL atualizado, falta params |
-| ReciboQuitacaoPassageiroDAO | FEITO | 100% tenant-aware |
-| TipoPassageiroDAO | PARCIAL | SQL atualizado, falta params |
-| ItemFreteDAO | FEITO | 100% tenant-aware |
-| ItemEncomendaPadraoDAO | SQL PRONTO | Falta: setInt params |
-| EncomendaItemDAO | N/A | Tabela filha sem empresa_id (segurança via FK) |
-| EmpresaDAO | PENDENTE | Mudar para filtrar por empresa_id |
-| BalancoViagemDAO | MEDIA | Queries complexas de relatorio — verificar cada uma |
-
-**DAOs que NAO precisam de empresa_id (dados globais):**
-
-- AuxiliaresDAO (tabelas aux_* sao compartilhadas)
+**Tabelas que NAO recebem empresa_id (dados globais/compartilhados):**
+aux_*, contatos, frete_itens, encomenda_itens, log_estornos_*, clientes_app
 
 ### Fase 1: Banco multi-tenant — PENDENTE
 
@@ -183,10 +172,10 @@ stmt.setInt(N, DAOUtils.empresaId());
 
 ```bash
 # Executar migration multi-tenant
-psql -U postgres -d sistema_embarcacao -f database_scripts/013_multi_tenant.sql
+psql -U postgres -d naviera_eco -f database_scripts/013_multi_tenant.sql
 
 # Verificar se empresa_id foi adicionado
-psql -U postgres -d sistema_embarcacao -c "\d passagens" | grep empresa_id
+psql -U postgres -d naviera_eco -c "\d passagens" | grep empresa_id
 
 # API (Spring Boot)
 cd naviera-api && mvn spring-boot:run

@@ -527,10 +527,10 @@ public class TelaPrincipalController implements Initializable {
         cmbFrequencia.getSelectionModel().select(1); 
 
         // CARREGA BARCOS
-        carregarDadosComboSimples(cmbBarcos, "SELECT nome FROM embarcacoes ORDER BY nome");
-        
+        carregarDadosComboSimples(cmbBarcos, "SELECT nome FROM embarcacoes WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome");
+
         // CORREÇÃO AQUI: Usa 'origem' e 'destino' em vez de 'nome'
-        carregarDadosComboSimples(cmbRotas, "SELECT origem || ' / ' || destino FROM rotas ORDER BY origem");
+        carregarDadosComboSimples(cmbRotas, "SELECT origem || ' / ' || destino FROM rotas WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY origem");
 
         grid.add(new Label("Embarcação:"), 0, 0);
         grid.add(cmbBarcos, 1, 0);
@@ -585,7 +585,7 @@ public class TelaPrincipalController implements Initializable {
     }
 
     private void gerarLembretesNoBanco(String nomeBarco, String nomeRota, LocalDate inicio, LocalDate fim, int intervalo) {
-        String sqlInsert = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
+        String sqlInsert = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES (?, ?, false, ?)";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmtInsert = conn.prepareStatement(sqlInsert)) {
@@ -598,6 +598,7 @@ public class TelaPrincipalController implements Initializable {
             while (!dataAtual.isAfter(fim)) {
                 stmtInsert.setDate(1, Date.valueOf(dataAtual));
                 stmtInsert.setString(2, textoLembrete);
+                stmtInsert.setInt(3, dao.DAOUtils.empresaId());
                 stmtInsert.executeUpdate();
                 
                 dataAtual = dataAtual.plusDays(intervalo);
@@ -656,14 +657,15 @@ public class TelaPrincipalController implements Initializable {
         int[] counts = {0, 0, 0};
         if (idViagem < 0) return counts;
         String[] sqls = {
-            "SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi JOIN fretes f ON fi.id_frete = f.id_frete WHERE f.id_viagem = ? AND (f.excluido = FALSE OR f.excluido IS NULL)",
-            "SELECT COUNT(*) FROM encomendas WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)",
-            "SELECT COUNT(*) FROM passagens WHERE id_viagem = ? AND (excluido = FALSE OR excluido IS NULL)"
+            "SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi JOIN fretes f ON fi.id_frete = f.id_frete WHERE f.id_viagem = ? AND f.empresa_id = ? AND (f.excluido = FALSE OR f.excluido IS NULL)",
+            "SELECT COUNT(*) FROM encomendas WHERE id_viagem = ? AND empresa_id = ? AND (excluido = FALSE OR excluido IS NULL)",
+            "SELECT COUNT(*) FROM passagens WHERE id_viagem = ? AND empresa_id = ? AND (excluido = FALSE OR excluido IS NULL)"
         };
         try (Connection conn = ConexaoBD.getConnection()) {
             for (int i = 0; i < sqls.length; i++) {
                 try (PreparedStatement stmt = conn.prepareStatement(sqls[i])) {
                     stmt.setLong(1, idViagem);
+                    stmt.setInt(2, dao.DAOUtils.empresaId());
                     try (ResultSet rs = stmt.executeQuery()) {
                         if (rs.next()) counts[i] = rs.getInt(1);
                     }
@@ -1005,7 +1007,7 @@ public class TelaPrincipalController implements Initializable {
             // #014: Ler credenciais de db.properties (nao hardcoded)
             String host = "localhost";
             String porta = "5432";
-            String banco = "sistema_embarcacao";
+            String banco = "naviera_eco";
             String usuario = "postgres";
             String senha = "";
             try {

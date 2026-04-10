@@ -269,10 +269,11 @@ public class VenderPassagemController implements Initializable {
                 listaViagensCarregadas = new ArrayList<>();
                 List<String> viagensFormatadas = new ArrayList<>();
 
-                String sql = "SELECT id_viagem, data_viagem, data_chegada, descricao, id_horario_saida, is_atual FROM viagens ORDER BY data_viagem DESC";
+                String sql = "SELECT id_viagem, data_viagem, data_chegada, descricao, id_horario_saida, is_atual FROM viagens WHERE empresa_id = ? ORDER BY data_viagem DESC";
                 try (Connection conn = ConexaoBD.getConnection();
-                     PreparedStatement stmt = conn.prepareStatement(sql);
-                     ResultSet rs = stmt.executeQuery()) {
+                     PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setInt(1, dao.DAOUtils.empresaId());
+                    ResultSet rs = stmt.executeQuery();
 
                     while (rs.next()) {
                         Viagem v = new Viagem();

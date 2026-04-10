@@ -179,10 +179,11 @@ public class BalancoViagemController {
         String sqlP = "SELECT r.origem, r.destino, COUNT(*), SUM(p.valor_total) " +
                       "FROM passagens p " +
                       "LEFT JOIN rotas r ON p.id_rota = r.id " +
-                      "WHERE p.id_viagem=? GROUP BY r.origem, r.destino ORDER BY r.origem";
+                      "WHERE p.id_viagem=? AND p.empresa_id = ? GROUP BY r.origem, r.destino ORDER BY r.origem";
         // DP020: ResultSet em try-with-resources
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement s = con.prepareStatement(sqlP)) {
             s.setInt(1, idViagem);
+            s.setInt(2, dao.DAOUtils.empresaId());
             try (ResultSet rs = s.executeQuery()) {
                 while(rs.next()) {
                     String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
@@ -196,8 +197,8 @@ public class BalancoViagemController {
 
         // 2. Receitas - CARGAS
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? GROUP BY rota_temp")) {
-            s.setInt(1,idViagem); s.setInt(2,idViagem);
+             PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? AND empresa_id = ? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? AND empresa_id = ? GROUP BY rota_temp")) {
+            s.setInt(1,idViagem); s.setInt(2, dao.DAOUtils.empresaId()); s.setInt(3,idViagem); s.setInt(4, dao.DAOUtils.empresaId());
             try (ResultSet rs = s.executeQuery()) {
                 while(rs.next()) {
                     String tipo = rs.getString(1);
@@ -222,12 +223,12 @@ public class BalancoViagemController {
 
         totalPendenteGlobal = BigDecimal.ZERO;
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND valor_devedor > 0.01");
-             PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND status_pagamento != 'PAGO'");
-             PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND status_frete != 'PAGO'")) {
-            st0.setInt(1,idViagem); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) { BigDecimal v0=r0.getBigDecimal(1); if(v0!=null) totalPendenteGlobal=totalPendenteGlobal.add(v0); } }
-            st1.setInt(1,idViagem); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) { BigDecimal v1=r1.getBigDecimal(1); if(v1!=null) totalPendenteGlobal=totalPendenteGlobal.add(v1); } }
-            st2.setInt(1,idViagem); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) { BigDecimal v2=r2.getBigDecimal(1); if(v2!=null) totalPendenteGlobal=totalPendenteGlobal.add(v2); } }
+             PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND empresa_id = ? AND valor_devedor > 0.01");
+             PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND empresa_id = ? AND status_pagamento != 'PAGO'");
+             PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND empresa_id = ? AND status_frete != 'PAGO'")) {
+            st0.setInt(1,idViagem); st0.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) { BigDecimal v0=r0.getBigDecimal(1); if(v0!=null) totalPendenteGlobal=totalPendenteGlobal.add(v0); } }
+            st1.setInt(1,idViagem); st1.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) { BigDecimal v1=r1.getBigDecimal(1); if(v1!=null) totalPendenteGlobal=totalPendenteGlobal.add(v1); } }
+            st2.setInt(1,idViagem); st2.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) { BigDecimal v2=r2.getBigDecimal(1); if(v2!=null) totalPendenteGlobal=totalPendenteGlobal.add(v2); } }
         } catch(Exception e){ System.err.println("Erro em BalancoViagemController (pendentes Fx): " + e.getMessage()); }
         lblCardPendente.setText(formatar(totalPendenteGlobal));
         BigDecimal recebido = dadosAtuais.getTotalEntradas().subtract(totalPendenteGlobal);
@@ -399,8 +400,8 @@ public class BalancoViagemController {
     }
 
     private void carregarDespesasAgrupadas(Map<String, List<LinhaDespesaDetalhada>> map) {
-        String sql = "SELECT s.descricao, c.nome, s.valor_total FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE s.id_viagem=? ORDER BY c.nome, s.descricao";
-        try(Connection c=ConexaoBD.getConnection(); PreparedStatement s=c.prepareStatement(sql)){ s.setInt(1,idViagemAtual); ResultSet rs=s.executeQuery();
+        String sql = "SELECT s.descricao, c.nome, s.valor_total FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE s.id_viagem=? AND s.empresa_id = ? ORDER BY c.nome, s.descricao";
+        try(Connection c=ConexaoBD.getConnection(); PreparedStatement s=c.prepareStatement(sql)){ s.setInt(1,idViagemAtual); s.setInt(2, dao.DAOUtils.empresaId()); ResultSet rs=s.executeQuery();
             while(rs.next()){ String cat=rs.getString(2)==null?"OUTROS":rs.getString(2); map.computeIfAbsent(cat,k->new ArrayList<>()).add(new LinhaDespesaDetalhada("-",rs.getString(1),cat,rs.getBigDecimal(3))); }
         }catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDespesasAgrupadas: " + e.getMessage()); }
     }
@@ -500,10 +501,11 @@ public class BalancoViagemController {
         final int idAtual = this.idViagemAtual;
         Thread bg = new Thread(() -> {
             try {
-                String sql = "SELECT v.id_viagem, e.nome, v.data_viagem, v.data_chegada FROM viagens v JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao ORDER BY v.data_viagem DESC";
+                String sql = "SELECT v.id_viagem, e.nome, v.data_viagem, v.data_chegada FROM viagens v JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao WHERE v.empresa_id = ? ORDER BY v.data_viagem DESC";
                 ObservableList<String> l = FXCollections.observableArrayList();
                 String valorSelecionado[] = {null};
                 try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
+                    stmt.setInt(1, dao.DAOUtils.empresaId());
                     ResultSet rs = stmt.executeQuery();
                     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
                     while (rs.next()) {

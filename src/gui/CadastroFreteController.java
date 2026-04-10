@@ -724,9 +724,10 @@ public class CadastroFreteController implements Initializable {
         }
 
         try (Connection conn = ConexaoBD.getConnection()) {
-            String sqlFrete = "SELECT * FROM fretes WHERE numero_frete = ?";
+            String sqlFrete = "SELECT * FROM fretes WHERE numero_frete = ? AND empresa_id = ?";
             try (PreparedStatement pst = conn.prepareStatement(sqlFrete)) {
                 pst.setLong(1, numeroFreteLong);
+                pst.setInt(2, dao.DAOUtils.empresaId());
                 try (ResultSet rs = pst.executeQuery()) {
                     if (rs.next()) {
                         preencherCamposDoFrete(rs, numFrete);
@@ -1322,10 +1323,11 @@ public class CadastroFreteController implements Initializable {
     private void carregarRotas() {
         if (listaRotasOriginal == null) listaRotasOriginal = FXCollections.observableArrayList();
         listaRotasOriginal.clear();
-        String sql = "SELECT origem, destino FROM rotas ORDER BY origem, destino";
+        String sql = "SELECT origem, destino FROM rotas WHERE empresa_id = ? ORDER BY origem, destino";
         try (Connection c = ConexaoBD.getConnection();
-             Statement s = c.createStatement();
-             ResultSet r = s.executeQuery(sql)) {
+             PreparedStatement s = c.prepareStatement(sql)) {
+            s.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet r = s.executeQuery();
             while (r.next()) {
                 String o = r.getString("origem");
                 String d = r.getString("destino");
@@ -1345,10 +1347,11 @@ public class CadastroFreteController implements Initializable {
     private void carregarConferentesDoBanco() {
         if (listaConferentesOriginal == null) listaConferentesOriginal = FXCollections.observableArrayList();
         listaConferentesOriginal.clear();
-        String sql = "SELECT nome_conferente FROM conferentes ORDER BY nome_conferente";
+        String sql = "SELECT nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
         try (Connection c = ConexaoBD.getConnection();
-             Statement s = c.createStatement();
-             ResultSet r = s.executeQuery(sql)) {
+             PreparedStatement s = c.prepareStatement(sql)) {
+            s.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet r = s.executeQuery();
             while (r.next()) {
                 String nome = r.getString(1);
                 if (nome != null) listaConferentesOriginal.add(nome);
@@ -1435,10 +1438,11 @@ public class CadastroFreteController implements Initializable {
         } catch (SQLException e) {
             // Fallback se sequence nao existir ainda (rodar script 010)
             System.err.println("Sequence seq_numero_frete nao encontrada. Usando fallback MAX+1. Execute o script 010_criar_sequence_frete.sql.");
-            String fallback = "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes";
+            String fallback = "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes WHERE empresa_id = ?";
             try (Connection conn = ConexaoBD.getConnection();
-                 Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(fallback)) {
+                 PreparedStatement stmt = conn.prepareStatement(fallback)) {
+                stmt.setInt(1, dao.DAOUtils.empresaId());
+                ResultSet rs = stmt.executeQuery();
                 if (rs.next()) return rs.getLong(1);
             }
         }
@@ -1572,9 +1576,10 @@ public class CadastroFreteController implements Initializable {
                     BigDecimal trocoExistente = BigDecimal.ZERO;
                     String tipoPgtoExistente = null;
                     String caixaExistente = null;
-                    String sqlBusca = "SELECT valor_pago, troco, tipo_pagamento, nome_caixa FROM fretes WHERE id_frete = ?";
+                    String sqlBusca = "SELECT valor_pago, troco, tipo_pagamento, nome_caixa FROM fretes WHERE id_frete = ? AND empresa_id = ?";
                     try (PreparedStatement psBusca = conn.prepareStatement(sqlBusca)) {
                         psBusca.setLong(1, freteAtualId);
+                        psBusca.setInt(2, dao.DAOUtils.empresaId());
                         try (ResultSet rsBusca = psBusca.executeQuery()) {
                             if (rsBusca.next()) {
                                 pagoExistente = rsBusca.getBigDecimal("valor_pago");

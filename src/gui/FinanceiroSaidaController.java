@@ -301,28 +301,31 @@ public class FinanceiroSaidaController {
                 int idViagemDaDespesa = buscarIdViagemDaDespesa(sel.getId(), con);
                 String infoViagem = buscarInfoViagem(sel.getId(), con);
                 String responsaveis = solicitanteFinal.toUpperCase() + " / " + nomeAdmin.toUpperCase();
-                String sqlUpdate = "UPDATE financeiro_saidas SET is_excluido = true, motivo_exclusao = ? WHERE id = ?";
+                String sqlUpdate = "UPDATE financeiro_saidas SET is_excluido = true, motivo_exclusao = ? WHERE id = ? AND empresa_id = ?";
                 try (PreparedStatement stmt = con.prepareStatement(sqlUpdate)) {
                     stmt.setString(1, reason.toUpperCase());
                     stmt.setInt(2, sel.getId());
+                    stmt.setInt(3, dao.DAOUtils.empresaId());
                     stmt.executeUpdate();
-                String sqlAudit = "INSERT INTO auditoria_financeiro (acao, usuario, motivo, detalhe_valor, id_viagem) VALUES (?, ?, ?, ?, ?)";
+                String sqlAudit = "INSERT INTO auditoria_financeiro (acao, usuario, motivo, detalhe_valor, id_viagem, empresa_id) VALUES (?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement stmt = con.prepareStatement(sqlAudit)) {
                     stmt.setString(1, "EXCLUSAO_DESPESA");
-                    stmt.setString(2, responsaveis); 
+                    stmt.setString(2, responsaveis);
                     stmt.setString(3, reason.toUpperCase());
                     stmt.setString(4, sel.getDescricao() + " | " + sel.getValorFormatado() + " | " + infoViagem);
                     stmt.setInt(5, idViagemDaDespesa);
+                    stmt.setInt(6, dao.DAOUtils.empresaId());
                 con.commit();
                 AlertHelper.info("Registro marcado como excluído com sucesso!");
             } catch (Exception e) {
                 e.printStackTrace();
                 AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao excluir: " + e.getMessage());
     private String validarPermissaoGerente(String senha) {
-        String sql = "SELECT login_usuario, senha_hash FROM usuarios WHERE (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
+        String sql = "SELECT login_usuario, senha_hash FROM usuarios WHERE empresa_id = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 String hashDoBanco = rs.getString("senha_hash");
                 String login = rs.getString("login_usuario");
@@ -339,10 +342,11 @@ public class FinanceiroSaidaController {
         return null;
     private String buscarInfoViagem(int idDespesa, Connection con) {
         String info = "VIAGEM N/D";
-        String sql = "SELECT v.data_viagem, v.data_chegada FROM financeiro_saidas s JOIN viagens v ON s.id_viagem = v.id_viagem WHERE s.id = ?";
+        String sql = "SELECT v.data_viagem, v.data_chegada FROM financeiro_saidas s JOIN viagens v ON s.id_viagem = v.id_viagem WHERE s.id = ? AND s.empresa_id = ?";
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM");
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idDespesa);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 java.sql.Date dtIda = rs.getDate("data_viagem");
@@ -353,7 +357,7 @@ public class FinanceiroSaidaController {
         } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.buscarInfoViagem: " + e.getMessage()); }
         return info;
     private int buscarIdViagemDaDespesa(int idDespesa, Connection con) {
-        String sql = "SELECT id_viagem FROM financeiro_saidas WHERE id = ?";
+        String sql = "SELECT id_viagem FROM financeiro_saidas WHERE id = ? AND empresa_id = ?";
             if (rs.next()) return rs.getInt("id_viagem");
         } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.buscarIdViagemDaDespesa: " + e.getMessage()); }
         return 0;
@@ -534,8 +538,9 @@ public class FinanceiroSaidaController {
         dialog.setContentText("Nome:");
         Optional<String> res = dialog.showAndWait();
         if(res.isPresent() && !res.get().isEmpty()) {
-            try(Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome) VALUES (?)")) {
+            try(Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome, empresa_id) VALUES (?, ?)")) {
                 stmt.setString(1, res.get().toUpperCase());
+                stmt.setInt(2, dao.DAOUtils.empresaId());
                 carregarCategorias(); 
             } catch(Exception e) { AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
     @FXML public void limparFiltros() {
@@ -554,7 +559,9 @@ public class FinanceiroSaidaController {
         listaCategoriasOriginal.clear();
         listaCategoriasOriginal.add("Todas"); 
         ObservableList<String> catsParaCadastro = FXCollections.observableArrayList();
-        try (Connection con = ConexaoBD.getConnection(); ResultSet rs = con.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()) {
+        try (Connection con = ConexaoBD.getConnection(); PreparedStatement pst = con.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = ? ORDER BY nome")) {
+            pst.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = pst.executeQuery();
             while(rs.next()) {
                 String nome = rs.getString(1);
                 listaCategoriasOriginal.add(nome);
@@ -567,8 +574,9 @@ public class FinanceiroSaidaController {
         catsFiltro.addAll(catsParaCadastro);
         cmbFiltroCategoria.setItems(catsFiltro);
     private int buscarIdCategoria(String nome) throws SQLException {
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ?")) {
+        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ? AND empresa_id = ?")) {
             stmt.setString(1, nome);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             if(rs.next()) return rs.getInt(1);
         return 1; 
     private void configuringTabela() {

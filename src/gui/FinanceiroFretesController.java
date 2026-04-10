@@ -126,9 +126,10 @@ public class FinanceiroFretesController {
         sql.append("(SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi WHERE fi.id_frete = f.id_frete) AS total_volumes ");
         sql.append("FROM fretes f ");
         sql.append("LEFT JOIN viagens v ON f.id_viagem = v.id_viagem ");
-        sql.append("WHERE f.status_frete != 'CANCELADO' ");
+        sql.append("WHERE f.empresa_id = ? AND f.status_frete != 'CANCELADO' ");
         // D003: parametriza idViagem
         java.util.List<Object> params = new java.util.ArrayList<>();
+        params.add(dao.DAOUtils.empresaId());
         if (idViagem > 0) { sql.append(" AND f.id_viagem = ?"); params.add(idViagem); }
         if (chkApenasDevedores.isSelected()) sql.append(" AND (f.valor_devedor > 0.01 OR f.valor_pago IS NULL OR f.valor_pago < f.valor_total_itens) ");
         String busca = txtBusca.getText().toLowerCase();
@@ -193,8 +194,9 @@ public class FinanceiroFretesController {
             con.setAutoCommit(false);
                 // Buscar desconto ja armazenado no banco (DL012)
                 java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
-                try (PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM fretes WHERE id_frete = ? FOR UPDATE")) {
+                try (PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM fretes WHERE id_frete = ? AND empresa_id = ? FOR UPDATE")) {
                     stmtQ.setLong(1, idFrete);
+                    stmtQ.setInt(2, dao.DAOUtils.empresaId());
                     try (ResultSet rs = stmtQ.executeQuery()) {
                         if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
                     }
@@ -273,8 +275,8 @@ public class FinanceiroFretesController {
                          "v.data_viagem, f.conferente_temp, f.rota_temp " +
                          "FROM fretes f " +
                          "LEFT JOIN viagens v ON f.id_viagem = v.id_viagem " +
-                         "WHERE f.id_frete = ?";
-            
+                         "WHERE f.id_frete = ? AND f.empresa_id = ?";
+
             String remetente = "", destinatario = "", conferente = "", rota = "", dataHora = "", pagamento = "";
             String numeroFrete = selecionada.getNumero();
             double total = 0;
@@ -282,6 +284,7 @@ public class FinanceiroFretesController {
             try (Connection con = ConexaoBD.getConnection();
                  PreparedStatement stmt = con.prepareStatement(sql)) {
                 stmt.setLong(1, selecionada.getId());
+                stmt.setInt(2, dao.DAOUtils.empresaId());
                 ResultSet rs = stmt.executeQuery();
                 
                 if (rs.next()) {

@@ -98,9 +98,12 @@ public class ExtratoClienteEncomendaController {
 
     private void carregarListaClientesBanco() {
         ObservableList<String> nomes = FXCollections.observableArrayList();
-        String sql = "SELECT DISTINCT nome FROM ( SELECT nome_cliente as nome FROM cad_clientes_encomenda UNION SELECT destinatario as nome FROM encomendas ) as todos WHERE nome IS NOT NULL ORDER BY nome";
+        String sql = "SELECT DISTINCT nome FROM ( SELECT nome_cliente as nome FROM cad_clientes_encomenda WHERE empresa_id = ? UNION SELECT destinatario as nome FROM encomendas WHERE empresa_id = ? ) as todos WHERE nome IS NOT NULL ORDER BY nome";
         try (Connection con = ConexaoBD.getConnection();
-             ResultSet rs = con.prepareStatement(sql).executeQuery()) {
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+             stmt.setInt(1, dao.DAOUtils.empresaId());
+             stmt.setInt(2, dao.DAOUtils.empresaId());
+             ResultSet rs = stmt.executeQuery();
              while(rs.next()) nomes.add(rs.getString("nome"));
         } catch (Exception e) { e.printStackTrace(); }
         javafx.application.Platform.runLater(() -> {
@@ -156,14 +159,16 @@ public class ExtratoClienteEncomendaController {
                      "v.data_viagem, v.data_chegada, r.origem, r.destino " +
                      "FROM encomendas e " +
                      "LEFT JOIN viagens v ON e.id_viagem = v.id_viagem " +
-                     "LEFT JOIN rotas r ON v.id_rota = r.id " + 
+                     "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "WHERE UPPER(TRIM(e.destinatario)) = UPPER(TRIM(?)) " +
+                     "AND e.empresa_id = ? " +
                      "ORDER BY v.data_viagem DESC";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
 
             stmt.setString(1, nomeClienteAtual.trim());
+            stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
@@ -260,7 +265,8 @@ public class ExtratoClienteEncomendaController {
                                    "desconto = (total_a_pagar - valor_pago) * (1 - ?), " +
                                    "valor_pago = total_a_pagar - ((total_a_pagar - valor_pago) * (1 - ?)), " +
                                    "status_pagamento = 'PAGO', tipo_pagamento = ?, caixa = ? " +
-                                   "WHERE UPPER(TRIM(destinatario)) = UPPER(TRIM(?)) AND valor_pago < total_a_pagar";
+                                   "WHERE UPPER(TRIM(destinatario)) = UPPER(TRIM(?)) AND valor_pago < total_a_pagar " +
+                                   "AND empresa_id = ?";
 
                 try (Connection con = ConexaoBD.getConnection();
                      PreparedStatement stmt = con.prepareStatement(sqlUpdate)) {
@@ -270,6 +276,7 @@ public class ExtratoClienteEncomendaController {
                     stmt.setString(3, forma);
                     stmt.setString(4, caixa);
                     stmt.setString(5, nomeClienteAtual.trim());
+                    stmt.setInt(6, dao.DAOUtils.empresaId());
                     
                     int qtd = stmt.executeUpdate();
                     

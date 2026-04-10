@@ -139,8 +139,9 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
     
     private int contarPendentes(Connection conn, String tabela) {
         try {
-            String sql = "SELECT COUNT(*) FROM " + tabela + " WHERE sincronizado = FALSE AND (excluido = FALSE OR excluido IS NULL)";
+            String sql = "SELECT COUNT(*) FROM " + tabela + " WHERE sincronizado = FALSE AND (excluido = FALSE OR excluido IS NULL) AND empresa_id = ?";
             PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1);

@@ -94,7 +94,7 @@ public class TabelaPrecoFreteController implements Initializable {
         Thread bg = new Thread(() -> {
             try {
                 java.util.List<ItemFrete> dados = new java.util.ArrayList<>();
-                String sql = "SELECT * FROM itens_frete_padrao ORDER BY nome_item";
+                String sql = "SELECT * FROM itens_frete_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item";
                 try (Connection conn = ConexaoBD.getConnection();
                      PreparedStatement stmt = conn.prepareStatement(sql);
                      ResultSet rs = stmt.executeQuery()) {
@@ -141,11 +141,12 @@ public class TabelaPrecoFreteController implements Initializable {
 
     private void carregarDados() {
         listaItens.clear();
-        String sql = "SELECT * FROM itens_frete_padrao ORDER BY nome_item";
-        
+        String sql = "SELECT * FROM itens_frete_padrao WHERE empresa_id = ? ORDER BY nome_item";
+
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
                 int id = rs.getInt("id_item_frete"); 
@@ -215,12 +216,13 @@ public class TabelaPrecoFreteController implements Initializable {
     }
 
     private void inserirItem(String nome, BigDecimal normal, BigDecimal desconto) {
-        String sql = "INSERT INTO itens_frete_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, preco_unitario_desconto, ativo) VALUES (?, ?, 'UN', ?, ?, TRUE)";
+        String sql = "INSERT INTO itens_frete_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, preco_unitario_desconto, ativo, empresa_id) VALUES (?, ?, 'UN', ?, ?, TRUE, ?)";
         try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, nome);
-            stmt.setString(2, nome); 
+            stmt.setString(2, nome);
             stmt.setBigDecimal(3, normal);
             stmt.setBigDecimal(4, desconto);
+            stmt.setInt(5, dao.DAOUtils.empresaId());
             stmt.executeUpdate();
             AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item adicionado com sucesso!");
         } catch (SQLException e) {
@@ -230,13 +232,14 @@ public class TabelaPrecoFreteController implements Initializable {
     }
 
     private void atualizarItem(int id, String nome, BigDecimal normal, BigDecimal desconto) {
-        String sql = "UPDATE itens_frete_padrao SET nome_item = ?, descricao = ?, preco_unitario_padrao = ?, preco_unitario_desconto = ? WHERE id_item_frete = ?";
+        String sql = "UPDATE itens_frete_padrao SET nome_item = ?, descricao = ?, preco_unitario_padrao = ?, preco_unitario_desconto = ? WHERE id_item_frete = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, nome);
             stmt.setString(2, nome);
             stmt.setBigDecimal(3, normal);
             stmt.setBigDecimal(4, desconto);
             stmt.setInt(5, id);
+            stmt.setInt(6, dao.DAOUtils.empresaId());
             stmt.executeUpdate();
             AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item editado com sucesso!");
         } catch (SQLException e) {
@@ -255,9 +258,10 @@ public class TabelaPrecoFreteController implements Initializable {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            String sql = "DELETE FROM itens_frete_padrao WHERE id_item_frete = ?";
+            String sql = "DELETE FROM itens_frete_padrao WHERE id_item_frete = ? AND empresa_id = ?";
             try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, itemSelecionado.getIdItemFrete());
+                stmt.setInt(2, dao.DAOUtils.empresaId());
                 stmt.executeUpdate();
                 AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item excluído.");
                 limparCampos();

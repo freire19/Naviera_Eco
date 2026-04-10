@@ -54,7 +54,8 @@ public class CompanyDataLoader {
                 // Fallback: buscar direto da tabela de configuração
                 try (Connection con = ConexaoBD.getConnection();
                      PreparedStatement stmt = con.prepareStatement(
-                         "SELECT nome_embarcacao, cnpj, telefone, endereco, path_logo FROM configuracao_empresa LIMIT 1")) {
+                         "SELECT nome_embarcacao, cnpj, telefone, endereco, path_logo FROM configuracao_empresa WHERE empresa_id = ? LIMIT 1")) {
+                    stmt.setInt(1, dao.DAOUtils.empresaId());
                     ResultSet rs = stmt.executeQuery();
                     if (rs.next()) {
                         nomeEmpresa = rs.getString("nome_embarcacao");

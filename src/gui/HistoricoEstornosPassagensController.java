@@ -61,14 +61,16 @@ public class HistoricoEstornosPassagensController {
                      "FROM log_estornos_passagens l " +
                      "JOIN passagens p ON l.id_passagem = p.id_passagem " +
                      "WHERE l.data_hora BETWEEN ? AND ? " +
+                     "AND p.empresa_id = ? " +
                      "ORDER BY l.data_hora DESC";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
-            
+
             // Converte LocalDate para Timestamp/Date do SQL
             stmt.setTimestamp(1, java.sql.Timestamp.valueOf(dpInicio.getValue().atStartOfDay()));
             stmt.setTimestamp(2, java.sql.Timestamp.valueOf(dpFim.getValue().atTime(23, 59, 59)));
+            stmt.setInt(3, dao.DAOUtils.empresaId());
 
             // DR113: ResultSet em try-with-resources
             try (ResultSet rs = stmt.executeQuery()) {

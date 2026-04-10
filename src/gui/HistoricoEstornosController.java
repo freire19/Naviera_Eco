@@ -63,13 +63,15 @@ public class HistoricoEstornosController {
                      "FROM log_estornos_encomendas l " +
                      "JOIN encomendas e ON l.id_encomenda = e.id_encomenda " +
                      "WHERE l.data_hora::date BETWEEN ? AND ? " +
+                     "AND e.empresa_id = ? " +
                      "ORDER BY l.data_hora DESC";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
-            
+
             stmt.setDate(1, java.sql.Date.valueOf(dpInicio.getValue()));
             stmt.setDate(2, java.sql.Date.valueOf(dpFim.getValue()));
+            stmt.setInt(3, dao.DAOUtils.empresaId());
             // DR113: ResultSet em try-with-resources
             try (ResultSet rs = stmt.executeQuery()) {
                 while(rs.next()) {

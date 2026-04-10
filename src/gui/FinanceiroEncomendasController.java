@@ -123,9 +123,10 @@ public class FinanceiroEncomendasController {
         java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT e.id_encomenda, e.numero_encomenda, v.data_viagem, e.remetente, e.destinatario, e.total_a_pagar, e.valor_pago ");
-        sql.append("FROM encomendas e JOIN viagens v ON e.id_viagem = v.id_viagem WHERE 1=1 ");
+        sql.append("FROM encomendas e JOIN viagens v ON e.id_viagem = v.id_viagem WHERE e.empresa_id = ? ");
         // D003: parametriza idViagem em vez de concatenar
         java.util.List<Object> params = new java.util.ArrayList<>();
+        params.add(dao.DAOUtils.empresaId());
         if (idViagem > 0) { sql.append(" AND e.id_viagem = ?"); params.add(idViagem); }
         if (chkApenasDevedores.isSelected()) sql.append(" AND (e.valor_pago < e.total_a_pagar OR e.valor_pago IS NULL) ");
         String busca = txtBusca.getText().toLowerCase();

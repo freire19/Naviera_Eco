@@ -62,7 +62,7 @@ public class CadastroBoletoController {
                 buscarViagemAtual();
                 // DR104: buscar categorias em bg, atualizar ComboBox na FX thread
                 ObservableList<String> cats = FXCollections.observableArrayList();
-                try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()){
+                try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome").executeQuery()){
                     while(rs.next()) cats.add(rs.getString(1));
                 } catch(Exception e) { System.err.println("Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
                 final ObservableList<String> finalCats = cats;
@@ -86,16 +86,20 @@ public class CadastroBoletoController {
     }
     
     private void buscarViagemAtual() {
-        String sql = "SELECT id_viagem FROM viagens WHERE is_atual = true ORDER BY id_viagem DESC LIMIT 1";
+        String sql = "SELECT id_viagem FROM viagens WHERE is_atual = true AND empresa_id = ? ORDER BY id_viagem DESC LIMIT 1";
         try (Connection con = ConexaoBD.getConnection();
-             ResultSet rs = con.prepareStatement(sql).executeQuery()) {
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = pst.executeQuery();
             if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
             else buscarUltimaViagem();
         } catch (Exception e) { buscarUltimaViagem(); }
     }
     
     private void buscarUltimaViagem() {
-        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT id_viagem FROM viagens ORDER BY id_viagem DESC LIMIT 1").executeQuery()){
+        try(Connection c = ConexaoBD.getConnection(); PreparedStatement pst = c.prepareStatement("SELECT id_viagem FROM viagens WHERE empresa_id = ? ORDER BY id_viagem DESC LIMIT 1")) {
+            pst.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = pst.executeQuery();
             if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
         } catch(Exception e){ System.err.println("Erro em CadastroBoletoController.buscarUltimaViagem: " + e.getMessage()); }
     }
@@ -116,7 +120,7 @@ public class CadastroBoletoController {
 
     private void carregarCategorias() {
         ObservableList<String> cats = FXCollections.observableArrayList();
-        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa ORDER BY nome").executeQuery()){
+        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome").executeQuery()){
             while(rs.next()) cats.add(rs.getString(1));
         } catch(Exception e) { System.err.println("Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(cats);
@@ -156,8 +160,8 @@ public class CadastroBoletoController {
             try (Connection con = ConexaoBD.getConnection()) {
                 con.setAutoCommit(false);
 
-                String sqlFinanceiro = "INSERT INTO financeiro_saidas (descricao, valor_total, data_vencimento, status, forma_pagamento, id_categoria, numero_parcela, total_parcelas, observacoes, id_viagem) VALUES (?, ?, ?, 'PENDENTE', 'BOLETO', ?, ?, ?, ?, ?)";
-                String sqlAgenda = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
+                String sqlFinanceiro = "INSERT INTO financeiro_saidas (descricao, valor_total, data_vencimento, status, forma_pagamento, id_categoria, numero_parcela, total_parcelas, observacoes, id_viagem, empresa_id) VALUES (?, ?, ?, 'PENDENTE', 'BOLETO', ?, ?, ?, ?, ?, ?)";
+                String sqlAgenda = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES (?, ?, false, ?)";
 
                 try (PreparedStatement stmtFin = con.prepareStatement(sqlFinanceiro);
                      PreparedStatement stmtAgenda = con.prepareStatement(sqlAgenda)) {
@@ -177,10 +181,12 @@ public class CadastroBoletoController {
                         stmtFin.setInt(6, parcelas);
                         stmtFin.setString(7, txtObs.getText());
                         stmtFin.setInt(8, idViagemAtual);
+                        stmtFin.setInt(9, dao.DAOUtils.empresaId());
                         stmtFin.addBatch();
 
                         stmtAgenda.setDate(1, Date.valueOf(vencimento));
                         stmtAgenda.setString(2, "VENCIMENTO BOLETO: " + txtDescricao.getText() + " (" + (i + 1) + "/" + parcelas + ") - R$ " + String.format("%.2f", valorDestaParcela));
+                        stmtAgenda.setInt(3, dao.DAOUtils.empresaId());
                         stmtAgenda.addBatch();
                     }
                     stmtFin.executeBatch();
@@ -206,14 +212,16 @@ public class CadastroBoletoController {
         if(nome == null || nome.isEmpty()) return 1;
         // #DB008: Connection em try-with-resources (antes vazava em cada early return)
         try (Connection con = ConexaoBD.getConnection()) {
-            try (PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ?")) {
+            try (PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ? AND empresa_id = ?")) {
                 stmt.setString(1, nome.toUpperCase());
+                stmt.setInt(2, dao.DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     if(rs.next()) return rs.getInt(1);
                 }
             }
-            try (PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome) VALUES (?) RETURNING id")) {
+            try (PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome, empresa_id) VALUES (?, ?) RETURNING id")) {
                 stmt.setString(1, nome.toUpperCase());
+                stmt.setInt(2, dao.DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     if(rs.next()) return rs.getInt(1);
                 }
@@ -248,8 +256,9 @@ public class CadastroBoletoController {
     public void filtrar() {
         ObservableList<Boleto> lista = FXCollections.observableArrayList();
         // DL049: filtrar boletos pela viagem ativa
-        StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE forma_pagamento = 'BOLETO' ");
+        StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE empresa_id = ? AND forma_pagamento = 'BOLETO' ");
         java.util.List<Object> params = new java.util.ArrayList<>();
+        params.add(dao.DAOUtils.empresaId());
 
         if (idViagemAtual > 0) {
             sql.append(" AND id_viagem = ?");
@@ -299,9 +308,10 @@ public class CadastroBoletoController {
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent()) {
             String formaEscolhida = result.get();
-            try(Connection c = ConexaoBD.getConnection(); PreparedStatement s = c.prepareStatement("UPDATE financeiro_saidas SET status='PAGO', forma_pagamento=?, data_pagamento=CURRENT_DATE, valor_pago=valor_total WHERE id=?")) {
-                s.setString(1, formaEscolhida); 
+            try(Connection c = ConexaoBD.getConnection(); PreparedStatement s = c.prepareStatement("UPDATE financeiro_saidas SET status='PAGO', forma_pagamento=?, data_pagamento=CURRENT_DATE, valor_pago=valor_total WHERE id=? AND empresa_id = ?")) {
+                s.setString(1, formaEscolhida);
                 s.setInt(2, sel.getId());
+                s.setInt(3, dao.DAOUtils.empresaId());
                 s.executeUpdate();
                 filtrar();
             } catch(Exception e) { e.printStackTrace(); }
@@ -318,16 +328,18 @@ public class CadastroBoletoController {
                 // Registrar em auditoria antes de deletar
                 String usuario = SessaoUsuario.isUsuarioLogado() ? SessaoUsuario.getUsuarioLogado().getNomeCompleto() : "DESCONHECIDO";
                 try (PreparedStatement audit = c.prepareStatement(
-                        "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor) VALUES (?, ?, ?, NOW(), ?)")) {
+                        "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor, empresa_id) VALUES (?, ?, ?, NOW(), ?, ?)")) {
                     audit.setString(1, "EXCLUSAO_BOLETO");
                     audit.setString(2, "Exclusao de boleto: " + sel.getDescricao());
                     audit.setString(3, usuario);
                     audit.setString(4, "Valor: " + sel.getValorFormatado() + " | Vencimento: " + sel.getVencimento());
+                    audit.setInt(5, dao.DAOUtils.empresaId());
                     audit.executeUpdate();
                 }
                 // Agora deleta
-                try (PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=?")) {
+                try (PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=? AND empresa_id = ?")) {
                     s.setInt(1, sel.getId());
+                    s.setInt(2, dao.DAOUtils.empresaId());
                     s.executeUpdate();
                 }
                 filtrar();

@@ -136,8 +136,9 @@ public class FinanceiroPassagensController {
         sql.append("JOIN viagens v ON p.id_viagem = v.id_viagem ");
         sql.append("JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro ");
         sql.append("LEFT JOIN rotas r ON p.id_rota = r.id ");
-        sql.append("WHERE 1=1 ");
+        sql.append("WHERE p.empresa_id = ? ");
         java.util.List<Object> params = new java.util.ArrayList<>();
+        params.add(dao.DAOUtils.empresaId());
         if (idViagem > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagem); }
         if (apenasDevedores) { sql.append(" AND (p.valor_devedor > 0 OR p.valor_pago < p.valor_total) "); }
         if (busca != null && !busca.isEmpty()) {

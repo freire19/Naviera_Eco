@@ -119,7 +119,9 @@ public class BaixaPagamentoController {
     private void carregarUsuariosCaixa() {
         ObservableList<String> users = FXCollections.observableArrayList();
         try (Connection con = ConexaoBD.getConnection();
-             ResultSet rs = con.prepareStatement("SELECT nome_caixa FROM caixas ORDER BY nome_caixa").executeQuery()) {
+             java.sql.PreparedStatement ps = con.prepareStatement("SELECT nome_caixa FROM caixas WHERE empresa_id = ? ORDER BY nome_caixa")) {
+            ps.setInt(1, dao.DAOUtils.empresaId());
+            ResultSet rs = ps.executeQuery();
             while(rs.next()) users.add(rs.getString(1));
         } catch (SQLException e) {
             System.err.println("Erro ao carregar caixas: " + e.getMessage());

@@ -85,11 +85,12 @@ public class FinanceiroEntradaController {
     private void carregarUsuariosNoCombo() {
         ObservableList<String> usuarios = FXCollections.observableArrayList("Todos");
         
-        String sql = "SELECT nome_completo FROM usuarios ORDER BY nome_completo"; 
-        
+        String sql = "SELECT nome_completo FROM usuarios WHERE empresa_id = ? ORDER BY nome_completo";
+
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+             stmt.setInt(1, dao.DAOUtils.empresaId());
+             ResultSet rs = stmt.executeQuery();
              
              while(rs.next()){
                  usuarios.add(rs.getString("nome_completo"));
@@ -159,14 +160,16 @@ public class FinanceiroEntradaController {
 
         // 1. ENCOMENDAS — #012: parametrizado
         sql.append("SELECT 'ENCOMENDA' as origem, total_a_pagar as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, caixa as usuario ");
-        sql.append("FROM encomendas WHERE 1=1 ");
+        sql.append("FROM encomendas WHERE empresa_id = ? ");
+        params.add(dao.DAOUtils.empresaId());
         if (idViagemSelecionada > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagemSelecionada); }
 
         sql.append(" UNION ALL ");
 
         // 2. FRETES
         sql.append("SELECT 'FRETE' as origem, valor_frete_calculado as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, nome_caixa as usuario ");
-        sql.append("FROM fretes WHERE 1=1 ");
+        sql.append("FROM fretes WHERE empresa_id = ? ");
+        params.add(dao.DAOUtils.empresaId());
         if (idViagemSelecionada > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagemSelecionada); }
 
         sql.append(" UNION ALL ");
@@ -176,7 +179,8 @@ public class FinanceiroEntradaController {
         sql.append(" COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') as pgto, 'SISTEMA' as usuario ");
         sql.append(" FROM passagens p ");
         sql.append(" LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento ");
-        sql.append(" WHERE 1=1 ");
+        sql.append(" WHERE p.empresa_id = ? ");
+        params.add(dao.DAOUtils.empresaId());
         if (idViagemSelecionada > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagemSelecionada); }
 
         try (Connection con = ConexaoBD.getConnection();
