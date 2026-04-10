@@ -78,7 +78,7 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
     @FXML
     private void testarConexao() {
         lblStatusConexao.setText("⏳ Testando conexão...");
-        lblStatusConexao.setStyle("-fx-text-fill: #FF9800; -fx-font-weight: bold;");
+        lblStatusConexao.setStyle("-fx-text-fill: #F59E0B; -fx-font-weight: bold;");
         btnTestarConexao.setDisable(true);
         
         // Atualizar URL temporariamente
@@ -87,7 +87,7 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
         
         if (novaUrl.isEmpty()) {
             lblStatusConexao.setText("❌ URL não pode estar vazia!");
-            lblStatusConexao.setStyle("-fx-text-fill: #F44336; -fx-font-weight: bold;");
+            lblStatusConexao.setStyle("-fx-text-fill: #EF4444; -fx-font-weight: bold;");
             btnTestarConexao.setDisable(false);
             return;
         }
@@ -99,11 +99,11 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
                 btnTestarConexao.setDisable(false);
                 if (sucesso) {
                     lblStatusConexao.setText("✅ Conexão bem-sucedida!");
-                    lblStatusConexao.setStyle("-fx-text-fill: #4CAF50; -fx-font-weight: bold;");
+                    lblStatusConexao.setStyle("-fx-text-fill: #059669; -fx-font-weight: bold;");
                     log("✅ Conexão com o servidor estabelecida com sucesso.");
                 } else {
                     lblStatusConexao.setText("❌ Falha na conexão!");
-                    lblStatusConexao.setStyle("-fx-text-fill: #F44336; -fx-font-weight: bold;");
+                    lblStatusConexao.setStyle("-fx-text-fill: #EF4444; -fx-font-weight: bold;");
                     syncClient.setServerUrl(urlAnterior);
                     log("❌ ERRO: Falha ao conectar com o servidor " + novaUrl);
                 }
@@ -169,7 +169,7 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
                 if (resultado.sucesso) {
                     // Limpar mensagem de erro e mostrar sucesso
                     lblStatusConexao.setText("✅ Sincronização bem-sucedida!");
-                    lblStatusConexao.setStyle("-fx-text-fill: #4CAF50; -fx-font-weight: bold;");
+                    lblStatusConexao.setStyle("-fx-text-fill: #059669; -fx-font-weight: bold;");
                     
                     log("✅ Sincronização concluída!");
                     log("   Enviados: " + resultado.registrosEnviados);
@@ -188,7 +188,7 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
                     alert.showAndWait();
                 } else {
                     lblStatusConexao.setText("❌ Erro na sincronização!");
-                    lblStatusConexao.setStyle("-fx-text-fill: #F44336; -fx-font-weight: bold;");
+                    lblStatusConexao.setStyle("-fx-text-fill: #EF4444; -fx-font-weight: bold;");
                     
                     log("❌ Erro na sincronização: " + resultado.mensagem);
                     for (String erro : resultado.erros) {

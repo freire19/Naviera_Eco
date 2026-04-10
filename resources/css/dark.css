@@ -103,7 +103,7 @@
 .button-acesso-rapido:hover {
     -fx-background-color: #0F2D24 !important;
     -fx-border-color: #34D399 !important;
-    -fx-effect: dropshadow(three-pass-box, rgba(13, 86, 223, 0.6), 10, 0, 0, 0) !important;
+    -fx-effect: dropshadow(three-pass-box, rgba(5,150,105,0.4), 10, 0, 0, 0) !important;
     -fx-cursor: hand;
 }
 .button {
@@ -360,10 +360,10 @@
 /* Card Total Gasto */
 .card-total {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #b71c1c !important;
+    -fx-border-color: #DC2626 !important;
 }
 .card-total .label {
-    -fx-text-fill: #ef5350 !important; /* Vermelho claro */
+    -fx-text-fill: #EF4444 !important; /* Vermelho claro */
 }
 
 /* Inputs da Tela Financeira e Filtros */
@@ -382,7 +382,7 @@
 .campo-valor {
     -fx-background-color: #0F2D24 !important;
     -fx-border-color: #F59E0B !important;
-    -fx-text-fill: #ffcc80 !important;
+    -fx-text-fill: #FBBF24 !important;
 }
 
 /* Scroll Panes */
@@ -476,7 +476,7 @@
 
 .radio-button:hover .radio {
     -fx-border-color: #6EE7B7 !important;
-    -fx-effect: dropshadow(gaussian, rgba(77,184,255,0.5), 4, 0, 0, 0);
+    -fx-effect: dropshadow(gaussian, rgba(52,211,153,0.3), 4, 0, 0, 0);
 }
 
 /* --- 10. PROGRESS BAR E INDICATORS --- */
@@ -866,7 +866,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel de alerta */
 .painel-alerta {
-    -fx-background-color: #3d2626 !important;
+    -fx-background-color: #450a0a !important;
     -fx-border-radius: 5px !important;
     -fx-border-color: #DC2626 !important;
 }

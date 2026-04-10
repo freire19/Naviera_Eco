@@ -1852,8 +1852,8 @@ public class VenderPassagemController implements Initializable {
         txtBil.setFont(fontBilheteNum);
         txtBil.setTextAlignment(TextAlignment.CENTER);
 
-        String situacao = "PENDENTE"; Color cor = Color.RED;
-        if(p.getDevedor() != null && p.getDevedor().compareTo(BigDecimal.ZERO) <= 0) { situacao = "PAGO"; cor = Color.GREEN; }
+        String situacao = "PENDENTE"; Color cor = Color.web("#DC2626");
+        if(p.getDevedor() != null && p.getDevedor().compareTo(BigDecimal.ZERO) <= 0) { situacao = "PAGO"; cor = Color.web("#059669"); }
         Text txtSit = new Text(situacao); txtSit.setFont(fontSituacao); txtSit.setFill(cor);
 
         bilBox.getChildren().addAll(txtBil, txtSit);

@@ -99,7 +99,7 @@ public class GerarReciboAvulsoController implements Initializable {
     private String empresaLogoPath = ""; 
 
     // CORES
-    private final String COR_AZUL_SISTEMA = "#047857"; 
+    private final String COR_PRIMARIA_BRAND = "#059669";
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -251,7 +251,7 @@ public class GerarReciboAvulsoController implements Initializable {
         colAcoes.setCellFactory(param -> new TableCell<>() {
             private final Button btnPrint = new Button("🖨");
             {
-                btnPrint.setStyle("-fx-background-color: " + COR_AZUL_SISTEMA + "; -fx-text-fill: white; -fx-font-size: 11px; -fx-cursor: hand;");
+                btnPrint.setStyle("-fx-background-color: " + COR_PRIMARIA_BRAND + "; -fx-text-fill: white; -fx-font-size: 11px; -fx-cursor: hand;");
                 btnPrint.setOnAction(e -> {
                     ReciboAvulso r = getTableView().getItems().get(getIndex());
                     // Chama o método da classe principal corretamente
@@ -288,15 +288,15 @@ public class GerarReciboAvulsoController implements Initializable {
         layout.setAlignment(Pos.CENTER);
         
         Button btnA4 = new Button("🖨 A4 Econômico (Padrão)");
-        btnA4.setStyle("-fx-background-color: " + COR_AZUL_SISTEMA + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-pref-width: 250;");
+        btnA4.setStyle("-fx-background-color: " + COR_PRIMARIA_BRAND + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-pref-width: 250;");
         btnA4.setOnAction(e -> imprimirA4Preenchido(r));
 
         Button btnBranco = new Button("📄 A4 em Branco (2 vias)");
-        btnBranco.setStyle("-fx-background-color: #78909c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-pref-width: 250;");
+        btnBranco.setStyle("-fx-background-color: #7BA393; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-pref-width: 250;");
         btnBranco.setOnAction(e -> imprimirA4DuploEconomico(r, false));
 
         Button btnTermica = new Button("🧾 Cupom Térmico");
-        btnTermica.setStyle("-fx-background-color: #37474f; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-pref-width: 250;");
+        btnTermica.setStyle("-fx-background-color: #3D6B56; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-pref-width: 250;");
         btnTermica.setOnAction(e -> imprimirTermica(r));
         
         layout.getChildren().addAll(new Label("Selecione o modelo:"), btnA4, btnBranco, btnTermica);
@@ -512,7 +512,7 @@ public class GerarReciboAvulsoController implements Initializable {
         VBox mainContainer = new VBox(15);
         mainContainer.setPrefWidth(600); 
         mainContainer.setMaxWidth(600);
-        mainContainer.setStyle("-fx-background-color: white; -fx-border-color: " + COR_AZUL_SISTEMA + "; -fx-border-width: 2;");
+        mainContainer.setStyle("-fx-background-color: white; -fx-border-color: " + COR_PRIMARIA_BRAND + "; -fx-border-width: 2;");
         mainContainer.setPadding(new Insets(20));
 
         HBox header = new HBox(20); header.setAlignment(Pos.TOP_CENTER);
@@ -520,7 +520,7 @@ public class GerarReciboAvulsoController implements Initializable {
         VBox leftSide = new VBox(5); leftSide.setPrefWidth(350); leftSide.setAlignment(Pos.TOP_LEFT);
         HBox logoTitle = new HBox(10); logoTitle.setAlignment(Pos.CENTER_LEFT); 
         ImageView logoView = carregarLogo(50);
-        Label lblEmp = new Label(empresaNome); lblEmp.setFont(Font.font("Arial", FontWeight.BOLD, 14)); lblEmp.setTextFill(Color.web(COR_AZUL_SISTEMA)); lblEmp.setWrapText(true); lblEmp.setMaxWidth(280);
+        Label lblEmp = new Label(empresaNome); lblEmp.setFont(Font.font("Arial", FontWeight.BOLD, 14)); lblEmp.setTextFill(Color.web(COR_PRIMARIA_BRAND)); lblEmp.setWrapText(true); lblEmp.setMaxWidth(280);
         logoTitle.getChildren().addAll(logoView, lblEmp);
         Label lblEnd = new Label(empresaEndereco); lblEnd.setFont(Font.font("Arial", 10));
         Label lblContatos = new Label("CNPJ: " + empresaCnpj + " | Tel: " + empresaTelefone); lblContatos.setFont(Font.font("Arial", 10));
@@ -528,11 +528,11 @@ public class GerarReciboAvulsoController implements Initializable {
         
         VBox rightSide = new VBox(10); rightSide.setPrefWidth(200); rightSide.setAlignment(Pos.TOP_RIGHT);
         HBox boxNum = new HBox(5); boxNum.setAlignment(Pos.CENTER_RIGHT);
-        Label lblN = new Label("RECIBO Nº"); lblN.setFont(Font.font("Arial", FontWeight.BOLD, 14)); lblN.setTextFill(Color.web(COR_AZUL_SISTEMA));
+        Label lblN = new Label("RECIBO Nº"); lblN.setFont(Font.font("Arial", FontWeight.BOLD, 14)); lblN.setTextFill(Color.web(COR_PRIMARIA_BRAND));
         Label valN = new Label(preenchido ? String.valueOf(r.getId()) : "____"); valN.setFont(Font.font("Arial", FontWeight.BOLD, 14));
         boxNum.getChildren().addAll(lblN, valN);
         
-        VBox valorBox = new VBox(5); valorBox.setStyle("-fx-border-color: " + COR_AZUL_SISTEMA + "; -fx-border-width: 1; -fx-padding: 5;"); valorBox.setAlignment(Pos.CENTER);
+        VBox valorBox = new VBox(5); valorBox.setStyle("-fx-border-color: " + COR_PRIMARIA_BRAND + "; -fx-border-width: 1; -fx-padding: 5;"); valorBox.setAlignment(Pos.CENTER);
         Label lblV = new Label("VALOR R$"); lblV.setFont(Font.font("Arial", FontWeight.BOLD, 10));
         String valTxt = preenchido ? NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(r.getValor()) : "";
         Label txtV = new Label(valTxt); txtV.setFont(Font.font("Arial", FontWeight.BOLD, 16));
@@ -542,7 +542,7 @@ public class GerarReciboAvulsoController implements Initializable {
         header.getChildren().addAll(leftSide, rightSide);
         mainContainer.getChildren().add(header);
         
-        Line div = new Line(0,0,560,0); div.setStroke(Color.web(COR_AZUL_SISTEMA)); div.setStrokeWidth(1);
+        Line div = new Line(0,0,560,0); div.setStroke(Color.web(COR_PRIMARIA_BRAND)); div.setStrokeWidth(1);
         mainContainer.getChildren().add(div);
 
         VBox body = new VBox(15); body.setPadding(new Insets(10, 0, 10, 0));
@@ -577,10 +577,10 @@ public class GerarReciboAvulsoController implements Initializable {
     private VBox criarLinhaEconomica(String label, String valor) {
         VBox v = new VBox(2);
         HBox content = new HBox(5); content.setAlignment(Pos.BOTTOM_LEFT);
-        Label lbl = new Label(label); lbl.setFont(Font.font("Arial", FontWeight.BOLD, 10)); lbl.setTextFill(Color.web(COR_AZUL_SISTEMA)); lbl.setMinWidth(Region.USE_PREF_SIZE);
+        Label lbl = new Label(label); lbl.setFont(Font.font("Arial", FontWeight.BOLD, 10)); lbl.setTextFill(Color.web(COR_PRIMARIA_BRAND)); lbl.setMinWidth(Region.USE_PREF_SIZE);
         Label val = new Label(valor); val.setFont(Font.font("Arial", 11)); val.setTextFill(Color.BLACK);
         content.getChildren().addAll(lbl, val);
-        Line line = new Line(0, 0, 560, 0); line.setStroke(Color.web("#B0BEC5")); // Cinza bem claro
+        Line line = new Line(0, 0, 560, 0); line.setStroke(Color.web("#7BA393")); // Cinza bem claro
         v.getChildren().addAll(content, line);
         return v;
     }

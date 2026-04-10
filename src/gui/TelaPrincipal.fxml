@@ -328,7 +328,7 @@
                                                 <Label text="Feriado" styleClass="label-small"/>
                                             </HBox>
                                             <HBox alignment="CENTER_LEFT" spacing="5">
-                                                <Circle radius="5" fill="#e3f2fd" stroke="#2196f3"/>
+                                                <Circle radius="5" fill="#E6F5ED" stroke="#059669"/>
                                                 <Label text="Hoje" styleClass="label-small"/>
                                             </HBox>
                                         </children>

@@ -4,16 +4,16 @@
 
 /* Scroll Pane */
 .sync-scroll {
-    -fx-background-color: #f5f6fa;
+    -fx-background-color: #F7FBF9;
 }
 
 .sync-scroll > .viewport {
-    -fx-background-color: #f5f6fa;
+    -fx-background-color: #F7FBF9;
 }
 
 /* Container Principal */
 .sync-container {
-    -fx-background-color: #f5f6fa;
+    -fx-background-color: #F7FBF9;
     -fx-padding: 30;
 }
 
@@ -122,7 +122,7 @@
 .stat-blue { -fx-text-fill: #059669; }
 .stat-green { -fx-text-fill: #34D399; }
 .stat-orange { -fx-text-fill: #F59E0B; }
-.stat-purple { -fx-text-fill: #9C27B0; }
+.stat-purple { -fx-text-fill: #059669; }
 .stat-red { -fx-text-fill: #EF4444; }
 
 .stat-label {

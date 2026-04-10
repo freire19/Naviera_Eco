@@ -28,17 +28,17 @@
                <children>
                   <VBox spacing="5.0">
                      <children>
-                        <Label text="Viagem Selecionada" textFill="#546e7a"><font><Font name="System Bold" size="14.0" /></font></Label>
-                        <ComboBox fx:id="cmbViagem" prefWidth="320.0" style="-fx-border-color: #1565c0; -fx-border-radius: 4; -fx-font-size: 13px;" />
+                        <Label text="Viagem Selecionada" textFill="#7BA393"><font><Font name="System Bold" size="14.0" /></font></Label>
+                        <ComboBox fx:id="cmbViagem" prefWidth="320.0" style="-fx-border-color: #059669; -fx-border-radius: 4; -fx-font-size: 13px;" />
                      </children>
                   </VBox>
                   <VBox spacing="5.0" HBox.hgrow="ALWAYS">
                      <children>
-                        <Label text="Buscar Cliente" textFill="#546e7a"><font><Font name="System Bold" size="14.0" /></font></Label>
+                        <Label text="Buscar Cliente" textFill="#7BA393"><font><Font name="System Bold" size="14.0" /></font></Label>
                         <TextField fx:id="txtBusca" promptText="Digite o nome..." style="-fx-border-color: #cfd8dc; -fx-border-radius: 4; -fx-font-size: 13px;" />
                      </children>
                   </VBox>
-                  <CheckBox fx:id="chkApenasDevedores" selected="true" text="Apenas Pendentes (A Receber)" textFill="#c62828">
+                  <CheckBox fx:id="chkApenasDevedores" selected="true" text="Apenas Pendentes (A Receber)" textFill="#DC2626">
                      <font><Font name="System Bold" size="13.0" /></font>
                      <HBox.margin><Insets top="25.0" /></HBox.margin>
                      <cursor><Cursor fx:constant="HAND" /></cursor>
@@ -72,7 +72,7 @@
             <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="painel-totais" style="-fx-padding: 10;">
                <children>
                   <Label text="Total a Receber nesta lista:" textFill="#cccccc"><font><Font name="System Bold" size="14.0" /></font></Label>
-                  <Label fx:id="lblTotalPendente" text="R$ 0,00" textFill="#c62828"><font><Font name="System Bold" size="20.0" /></font></Label>
+                  <Label fx:id="lblTotalPendente" text="R$ 0,00" textFill="#DC2626"><font><Font name="System Bold" size="20.0" /></font></Label>
                </children>
             </HBox>
          </children>
@@ -81,9 +81,9 @@
    <right>
       <VBox prefWidth="260.0" spacing="15.0" styleClass="painel-lateral" style="-fx-padding: 15;" BorderPane.alignment="CENTER">
          <children>
-            <Label text="Ações Financeiras" textFill="#546e7a"><font><Font name="System Bold" size="14.0" /></font></Label>
+            <Label text="Ações Financeiras" textFill="#7BA393"><font><Font name="System Bold" size="14.0" /></font></Label>
             <Separator />
-            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#darBaixa" prefHeight="50.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="✅ DAR BAIXA">
+            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#darBaixa" prefHeight="50.0" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold;" text="✅ DAR BAIXA">
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="13.0" /></font>
             </Button>
             <Separator />
@@ -91,16 +91,16 @@
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="12.0" /></font>
             </Button>
             <Separator />
-            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#verHistoricoEstornos" prefHeight="45.0" style="-fx-background-color: #ff9800; -fx-text-fill: white; -fx-font-weight: bold;" text="📋 HISTÓRICO ESTORNOS">
+            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#verHistoricoEstornos" prefHeight="45.0" style="-fx-background-color: #F59E0B; -fx-text-fill: white; -fx-font-weight: bold;" text="📋 HISTÓRICO ESTORNOS">
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="12.0" /></font>
             </Button>
             <Separator />
-            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#estornarPagamento" prefHeight="50.0" style="-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-weight: bold;" text="❌ ESTORNAR (GERENTE)">
+            <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#estornarPagamento" prefHeight="50.0" style="-fx-background-color: #DC2626; -fx-text-fill: white; -fx-font-weight: bold;" text="❌ ESTORNAR (GERENTE)">
                <cursor><Cursor fx:constant="HAND" /></cursor><font><Font size="13.0" /></font>
             </Button>
             <VBox VBox.vgrow="ALWAYS" />
             <Separator />
-            <Button fx:id="btnSair" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#sair" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" text="🚪 SAIR">
+            <Button fx:id="btnSair" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#sair" prefHeight="40.0" style="-fx-background-color: #7BA393; -fx-text-fill: white; -fx-font-weight: bold;" text="🚪 SAIR">
                <cursor><Cursor fx:constant="HAND" /></cursor>
             </Button>
          </children>

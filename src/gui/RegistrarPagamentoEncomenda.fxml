@@ -18,7 +18,7 @@
    <children>
       <VBox spacing="10.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
          <children>
-            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-padding: 8; -fx-background-radius: 4;" text="REGISTRAR PAGAMENTO">
+            <Label alignment="CENTER" maxWidth="Infinity" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-padding: 8; -fx-background-radius: 4;" text="REGISTRAR PAGAMENTO">
                <font>
                   <Font name="System Bold" size="16.0" />
                </font>

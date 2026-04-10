@@ -77,7 +77,7 @@ public class TelaGerenciarAgendaController implements Initializable {
         colAcoes.setCellFactory(param -> new TableCell<>() {
             private final Button btnExcluir = new Button("Excluir");
             {
-                btnExcluir.setStyle("-fx-background-color: #ffcdd2; -fx-text-fill: red;");
+                btnExcluir.setStyle("-fx-background-color: #FEE2E2; -fx-text-fill: red;");
                 btnExcluir.setOnAction(event -> {
                     TarefaAgenda tarefa = getTableView().getItems().get(getIndex());
                     excluirTarefa(tarefa);

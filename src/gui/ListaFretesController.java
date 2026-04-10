@@ -148,7 +148,7 @@ public class ListaFretesController {
                     double aReceber = parseDoubleFromMonetaryString(item.getDevedor());
                     String status = item.getStatus();
                     if ("CANCELADO".equalsIgnoreCase(status)) { setStyle("-fx-background-color: #f5f5f5; -fx-opacity: 0.5;"); } 
-                    else if (aReceber <= 0.01) { setStyle("-fx-background-color: #e8f5e9;"); } 
+                    else if (aReceber <= 0.01) { setStyle("-fx-background-color: #D1FAE5;"); } 
                     else { setStyle(""); }
                 }
             }
@@ -158,7 +158,7 @@ public class ListaFretesController {
     private void aplicarEstiloCabecalho() {
         Platform.runLater(() -> {
             Set<Node> headers = tabelaFretes.lookupAll(".column-header");
-            for (Node header : headers) { header.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cfd8dc; -fx-border-width: 0 1 1 0;"); }
+            for (Node header : headers) { header.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #A7F3D0; -fx-border-width: 0 1 1 0;"); }
             Node headerBackground = tabelaFretes.lookup(".column-header-background");
             if (headerBackground != null) { headerBackground.setStyle("-fx-background-color: #f0f0f0;"); }
             Set<Node> labels = tabelaFretes.lookupAll(".column-header .label");
@@ -388,9 +388,9 @@ public class ListaFretesController {
         box.setAlignment(Pos.CENTER_RIGHT);
         
         box.getChildren().add(new Label("RESUMO GERAL"));
-        box.getChildren().add(criarLinhaTotalImp("Total Lançado:", lblTotalLancado.getText(), Color.BLUE));
-        box.getChildren().add(criarLinhaTotalImp("Total Recebido:", lblTotalRecebido.getText(), Color.GREEN));
-        box.getChildren().add(criarLinhaTotalImp("Total A Receber:", lblTotalAReceber.getText(), Color.RED));
+        box.getChildren().add(criarLinhaTotalImp("Total Lançado:", lblTotalLancado.getText(), Color.web("#0369A1")));
+        box.getChildren().add(criarLinhaTotalImp("Total Recebido:", lblTotalRecebido.getText(), Color.web("#059669")));
+        box.getChildren().add(criarLinhaTotalImp("Total A Receber:", lblTotalAReceber.getText(), Color.web("#DC2626")));
         
         return box;
     }

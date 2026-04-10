@@ -435,7 +435,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
             headerBox.setAlignment(Pos.TOP_LEFT);
 
             Label lblTitulo = PrintLayoutHelper.criarTitulo("Tabela de Preços de Encomenda");
-            lblTitulo.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1F3A56;");
+            lblTitulo.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0F2620;");
             headerBox.getChildren().add(lblTitulo);
 
             Separator sep = new Separator();
@@ -536,7 +536,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
                 "-fx-font-size: 11px;" +
                 "-fx-font-weight: bold;" +
                 "-fx-text-fill: white;" +
-                "-fx-background-color: #1F3A56;" +
+                "-fx-background-color: #059669;" +
                 "-fx-padding: 4 6 4 6;");
         return lbl;
     }

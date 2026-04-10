@@ -651,7 +651,7 @@ public class GestaoFuncionariosController {
         VBox corpoTabela = new VBox();
         
         HBox titulos = new HBox();
-        titulos.setStyle("-fx-background-color: #E6F5ED; -fx-padding: 2; -fx-border-color: #bbdefb; -fx-border-width: 0 0 1 0;");
+        titulos.setStyle("-fx-background-color: #E6F5ED; -fx-padding: 2; -fx-border-color: #A7F3D0; -fx-border-width: 0 0 1 0;");
         titulos.getChildren().addAll(
             criarCelulaTexto("DATA", 60, true, Pos.CENTER_LEFT),
             criarCelulaTexto("DESCRIÇÃO", 240, true, Pos.CENTER_LEFT), 
@@ -687,7 +687,7 @@ public class GestaoFuncionariosController {
         totais.add(textoBold("TOT. VENCIMENTOS", 10), 0, 0);
         totais.add(new Text(nf.format(totalVencimentos)), 0, 1);
         totais.add(textoBold("TOT. DESCONTOS", 10), 1, 0);
-        Text tDesc = new Text(nf.format(totalDescontos)); tDesc.setFill(Color.RED);
+        Text tDesc = new Text(nf.format(totalDescontos)); tDesc.setFill(Color.web("#DC2626"));
         totais.add(tDesc, 1, 1);
         
         VBox boxLiq = new VBox(2);

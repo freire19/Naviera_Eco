@@ -21,7 +21,7 @@ const T = {
     err: "#DC2626", errBg: "#FEE2E2", errTx: "#DC2626",
     amber: "#B45309", amberBg: "#FEF3C7",
     shadow: "0 2px 12px rgba(0,0,0,0.05)",
-    skBase: "#EEF7F2", skShine: "#dff0e6",
+    skBase: "#EEF7F2", skShine: "#EEF7F2",
   },
   dark: {
     bg: "#040D0A", card: "#0F2D24", soft: "#0A1F18", accent: "#0F2D24",
@@ -35,7 +35,7 @@ const T = {
     err: "#EF4444", errBg: "#450a0a", errTx: "#F87171",
     amber: "#FBBF24", amberBg: "#3a3520",
     shadow: "none",
-    skBase: "#0A1F18", skShine: "#14332a",
+    skBase: "#0A1F18", skShine: "#0A1F18",
   }
 };
 
@@ -364,10 +364,10 @@ function MapaCPF({ t, authHeaders }) {
 
       {/* MAP — SVG river route */}
       {emViagem && <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${t.border}` }}>
-        <div style={{ position: "relative", height: 180, background: "linear-gradient(160deg, #040D0A 0%, #0A1F18 30%, #0F2D24 70%, #040D0A 100%)" }}>
+        <div style={{ position: "relative", height: 180, background: "linear-gradient(160deg, #040D0A 0%, #0F2D24 30%, #040D0A 70%, #0A1F18 100%)" }}>
           <svg width="100%" height="100%" viewBox="0 0 400 180" style={{ position: "absolute", top: 0, left: 0 }}>
-            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="#059669" strokeWidth="20" opacity="0.25"/>
-            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="#34D399" strokeWidth="9" opacity="0.35"/>
+            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="rgba(5,150,105,0.5)" strokeWidth="20" opacity="0.35"/>
+            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="rgba(52,211,153,0.6)" strokeWidth="9" opacity="0.4"/>
             <path d="M25 82 Q65 96, 115 76 Q165 56, 215 83 Q265 106, 315 71 Q355 50, 392 86" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" strokeDasharray="5 4"/>
             <circle cx="25" cy="82" r="4.5" fill="#34D399" stroke="white" strokeWidth="1.5"/>
             <text x="25" y="100" textAnchor="middle" fill="white" fontSize="8.5" fontWeight="500">Manaus</text>

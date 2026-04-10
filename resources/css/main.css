@@ -46,7 +46,7 @@
 }
 
 .main-tab-pane .tab:hover {
-    -fx-background-color: #0d9668;
+    -fx-background-color: #059669;
 }
 
 .main-tab-pane .tab:selected:hover {
@@ -62,11 +62,11 @@
 }
 
 .main-tab-pane .tab:selected .tab-close-button {
-    -fx-background-color: #cc0000;
+    -fx-background-color: #DC2626;
 }
 
 .main-tab-pane .tab .tab-close-button:hover {
-    -fx-background-color: #ff0000;
+    -fx-background-color: #EF4444;
 }
 
 .main-tab-pane .tab-content-area {
@@ -80,7 +80,7 @@
 .title-main-screen {
     -fx-font-size: 32px !important;
     -fx-font-weight: 900 !important;
-    -fx-text-fill: #065f46 !important;
+    -fx-text-fill: #047857 !important;
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 3, 0, 1, 1);
     -fx-padding: 0 0 0 10;
 }
@@ -123,7 +123,7 @@
     -fx-text-fill: #000000;
     -fx-alignment: CENTER;
     -fx-background-color: #ffffff;
-    -fx-border-color: #cfd8dc;
+    -fx-border-color: #A7F3D0;
     -fx-border-width: 2px;
 }
 
@@ -158,7 +158,7 @@
 .text-area,
 .text-input {
     -fx-background-color: #FFFFFF !important;
-    -fx-border-color: #B0BEC5 !important;
+    -fx-border-color: #7BA393 !important;
     -fx-border-width: 1px;
     -fx-border-radius: 3px;
     -fx-background-radius: 3px;
@@ -166,13 +166,13 @@
     -fx-font-weight: 600;
     -fx-text-fill: #000000 !important;
     -fx-font-size: 14px;
-    -fx-prompt-text-fill: #546e7a !important;
+    -fx-prompt-text-fill: #3D6B56 !important;
 }
 
 /* COMBOBOX FLAT / CLEAN */
 .combo-box {
     -fx-background-color: #FFFFFF !important;
-    -fx-border-color: #B0BEC5 !important;
+    -fx-border-color: #7BA393 !important;
     -fx-border-width: 1px;
     -fx-border-radius: 3px;
     -fx-background-radius: 3px;
@@ -199,7 +199,7 @@
 }
 
 .combo-box .arrow {
-    -fx-background-color: #455A64;
+    -fx-background-color: #3D6B56;
     -fx-padding: 3px;
 }
 
@@ -207,10 +207,10 @@
 .text-field:hover,
 .combo-box:hover,
 .text-area:hover {
-    -fx-border-color: #455A64 !important;
+    -fx-border-color: #3D6B56 !important;
 }
 .combo-box:hover .arrow {
-    -fx-background-color: #263238;
+    -fx-background-color: #0F2620;
 }
 
 .text-field:focused,
@@ -218,7 +218,7 @@
 .text-area:focused,
 .text-input:focused {
     -fx-background-color: #FFFFFF !important;
-    -fx-border-color: #065f46 !important;
+    -fx-border-color: #047857 !important;
     -fx-border-width: 2px;
     -fx-effect: none;
 }
@@ -243,13 +243,13 @@
     -fx-opacity: 1.0;
     -fx-text-fill: #000000 !important;
     -fx-background-color: #F5F5F5 !important;
-    -fx-border-color: #CFD8DC !important;
+    -fx-border-color: #A7F3D0 !important;
     -fx-font-weight: 600;
 }
 
 .combo-box:disabled .arrow {
     -fx-opacity: 0.5;
-    -fx-background-color: #B0BEC5;
+    -fx-background-color: #7BA393;
 }
 
 .text-field-disabled-custom {
@@ -261,8 +261,8 @@
 .combo-box.combo-viagem,
 .combo-box.combo-viagem:focused,
 .combo-box.combo-viagem:disabled {
-    -fx-background-color: #fff9c4 !important;
-    -fx-border-color: #fbc02d !important;
+    -fx-background-color: #FEF3C7 !important;
+    -fx-border-color: #FBBF24 !important;
     -fx-border-width: 2px;
     -fx-font-weight: 800;
 }
@@ -273,7 +273,7 @@
     -fx-font-weight: 800;
 }
 .combo-box.combo-viagem .arrow {
-    -fx-background-color: #f9a825;
+    -fx-background-color: #F59E0B;
 }
 
 /* ================================================================== */
@@ -298,14 +298,14 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 4, 0, 2, 2);
 }
 .button:pressed {
-    -fx-background-color: #064e3b;
+    -fx-background-color: #052E22;
     -fx-effect: none;
     -fx-translate-y: 2px;
 }
 
 /* Variações de Botão */
-.button-cancel { -fx-background-color: #78909c; }
-.button-cancel:hover { -fx-background-color: #546e7a; }
+.button-cancel { -fx-background-color: #7BA393; }
+.button-cancel:hover { -fx-background-color: #3D6B56; }
 
 .button-success {
     -fx-background-color: #059669;
@@ -355,7 +355,7 @@
 /* ================================================================== */
 .table-view {
     -fx-background-color: white;
-    -fx-border-color: #b0bec5;
+    -fx-border-color: #7BA393;
     -fx-font-size: 14px;
 }
 
@@ -443,7 +443,7 @@
 }
 
 .tab:hover {
-    -fx-background-color: #0d9668;
+    -fx-background-color: #059669;
     -fx-cursor: hand;
 }
 
@@ -501,7 +501,7 @@
 }
 
 .table-container-border {
-    -fx-border-color: #cfd8dc;
+    -fx-border-color: #A7F3D0;
     -fx-border-radius: 4;
     -fx-border-width: 1;
 }
@@ -557,7 +557,7 @@
     -fx-spacing: 0;
     -fx-alignment: CENTER_LEFT;
     -fx-background-color: #FFFFFF;
-    -fx-border-color: #B0BEC5;
+    -fx-border-color: #7BA393;
     -fx-border-width: 1px;
     -fx-border-radius: 3px;
     -fx-background-radius: 3px;
@@ -577,7 +577,7 @@
 }
 
 .h-compound .splitter {
-    -fx-background-color: #B0BEC5;
+    -fx-background-color: #7BA393;
     -fx-min-width: 1px;
     -fx-max-width: 1px;
 }
@@ -635,13 +635,13 @@
 /* Garantir que campos sempre tenham fundo branco no modo claro */
 TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
     -fx-background-color: #FFFFFF !important;
-    -fx-text-fill: #263238 !important;
-    -fx-border-color: #B0BEC5 !important;
+    -fx-text-fill: #0F2620 !important;
+    -fx-border-color: #7BA393 !important;
 }
 
 /* Garantir texto escuro em labels */
 Label {
-    -fx-text-fill: #263238 !important;
+    -fx-text-fill: #0F2620 !important;
 }
 
 /* Painéis de fundo claro */
@@ -656,7 +656,7 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 
 .list-cell, .tree-cell {
     -fx-background-color: #FFFFFF !important;
-    -fx-text-fill: #263238 !important;
+    -fx-text-fill: #0F2620 !important;
 }
 
 .list-cell:hover, .tree-cell:hover {
@@ -670,27 +670,27 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 
 /* Painéis de informação (modo claro) */
 .info-panel {
-    -fx-background-color: #e0f2f1 !important;
+    -fx-background-color: #E6F5ED !important;
     -fx-background-radius: 5px !important;
-    -fx-border-color: #b2dfdb !important;
+    -fx-border-color: #A7F3D0 !important;
     -fx-border-radius: 5px !important;
     -fx-padding: 10px !important;
 }
 
 /* Painel de input/adicionar (modo claro) */
 .input-panel {
-    -fx-background-color: #fff3e0 !important;
+    -fx-background-color: #FEF3C7 !important;
     -fx-background-radius: 5px !important;
-    -fx-border-color: #ffe0b2 !important;
+    -fx-border-color: #FBBF24 !important;
     -fx-border-radius: 5px !important;
     -fx-padding: 10px !important;
 }
 
 /* Painel de totais (modo claro) */
 .totals-panel {
-    -fx-background-color: #cfd8dc !important;
+    -fx-background-color: #A7F3D0 !important;
     -fx-background-radius: 5px 5px 0 0 !important;
-    -fx-border-color: #b0bec5 !important;
+    -fx-border-color: #7BA393 !important;
     -fx-padding: 8px 20px !important;
 }
 
@@ -742,7 +742,7 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 
 /* Card de total/destaque */
 .card-total {
-    -fx-background-color: #ffebee !important;
+    -fx-background-color: #FEE2E2 !important;
     -fx-background-radius: 8px !important;
     -fx-border-color: #DC2626 !important;
     -fx-border-width: 0 0 0 6 !important;
@@ -752,7 +752,7 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 /* Painel de totais (rodapé) */
 .painel-totais {
     -fx-background-color: #F7FBF9 !important;
-    -fx-border-color: #cfd8dc !important;
+    -fx-border-color: #A7F3D0 !important;
     -fx-border-width: 1px 0 0 0 !important;
 }
 
@@ -760,7 +760,7 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 .botao-categoria {
     -fx-background-color: #f5f5f5 !important;
     -fx-text-fill: #607d8b !important;
-    -fx-border-color: #cfd8dc !important;
+    -fx-border-color: #A7F3D0 !important;
     -fx-border-radius: 6px !important;
     -fx-background-radius: 6px !important;
     -fx-font-weight: bold !important;
@@ -795,8 +795,8 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 
 /* Campo de valor com destaque */
 .campo-valor {
-    -fx-background-color: #fff3e0 !important;
-    -fx-border-color: #ffb74d !important;
+    -fx-background-color: #FEF3C7 !important;
+    -fx-border-color: #F59E0B !important;
     -fx-border-width: 2px !important;
     -fx-font-weight: bold !important;
     -fx-text-fill: #000000 !important;
@@ -815,7 +815,7 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
     -fx-background-color: #ffffff !important;
     -fx-text-fill: #000000 !important;
     -fx-font-weight: bold !important;
-    -fx-border-color: #cfd8dc !important;
+    -fx-border-color: #A7F3D0 !important;
 }
 
 /* Painel de taxas */
@@ -841,14 +841,14 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 .painel-login {
     -fx-background-color: #ffffff !important;
     -fx-background-radius: 10px !important;
-    -fx-border-color: #cfd8dc !important;
+    -fx-border-color: #A7F3D0 !important;
     -fx-border-radius: 10px !important;
 }
 
 /* Dialog de pagamento */
 .dialog-pagamento {
     -fx-background-color: #f5f5f5 !important;
-    -fx-border-color: #065f46 !important;
+    -fx-border-color: #047857 !important;
     -fx-border-width: 2px !important;
 }
 
@@ -869,7 +869,7 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 }
 
 .botao-cancelar:hover {
-    -fx-background-color: #cfd8dc !important;
+    -fx-background-color: #A7F3D0 !important;
 }
 
 /* Dialog estorno */
@@ -881,9 +881,9 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 
 /* Painel de alerta */
 .painel-alerta {
-    -fx-background-color: #fce4ec !important;
+    -fx-background-color: #FEE2E2 !important;
     -fx-border-radius: 5px !important;
-    -fx-border-color: #f48fb1 !important;
+    -fx-border-color: #EF4444 !important;
 }
 
 /* Dialog quitar dívida */

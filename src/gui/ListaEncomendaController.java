@@ -307,7 +307,7 @@ public class ListaEncomendaController implements Initializable {
         if (selecionado) {
             // Quando SELECIONADO: fundo azul, texto branco, borda destacada
             String corFundo = escuro ? "#059669" : "#059669";
-            String corBorda = escuro ? "#0d9668" : "#003d82";
+            String corBorda = escuro ? "#0d9668" : "#059669";
             rb.setStyle(
                 "-fx-background-color: " + corFundo + "; " +
                 "-fx-text-fill: white; " +
@@ -389,7 +389,7 @@ public class ListaEncomendaController implements Initializable {
                     if (enc.isEntregue()) {
                         setStyle("-fx-text-fill: #059669; -fx-font-weight: 800;");
                     } else {
-                        setStyle("-fx-text-fill: #d84315; -fx-font-weight: 800;");
+                        setStyle("-fx-text-fill: #DC2626; -fx-font-weight: 800;");
                     }
                 }
             }

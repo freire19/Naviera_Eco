@@ -242,7 +242,7 @@
                                     <VBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="5.0" styleClass="card-panel" style="-fx-border-color: #eeeeee; -fx-border-radius: 5; -fx-background-radius: 5;">
                                        <children>
                                           <Label styleClass="label-padrao" text="Salário Acumulado" textFill="#757575"><font><Font name="System Bold" size="12.0" /></font></Label>
-                                          <Label fx:id="lblAcumulado" text="R$ 0,00" textFill="#0277bd"><font><Font name="System Bold" size="24.0" /></font></Label>
+                                          <Label fx:id="lblAcumulado" text="R$ 0,00" textFill="#059669"><font><Font name="System Bold" size="24.0" /></font></Label>
                                        </children>
                                     </VBox>
                                     <VBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="5.0" styleClass="card-panel" style="-fx-border-color: #eeeeee; -fx-border-radius: 5; -fx-background-radius: 5;">

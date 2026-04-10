@@ -69,7 +69,7 @@
                         <Label text="Opções de Impressão:" textFill="#777777"><font><Font name="System Italic" size="12.0" /></font></Label>
                         <Button onAction="#handleImprimirBranco" style="-fx-background-color: #757575; -fx-text-fill: white; -fx-cursor: hand;" text="A4 EM BRANCO" />
                         <Button onAction="#handleImprimirPreenchido" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="SALVAR E IMPRIMIR (A4)" />
-                        <Button onAction="#handleImprimirTermica" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="SALVAR E IMPRIMIR (TÉRMICA)" />
+                        <Button onAction="#handleImprimirTermica" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="SALVAR E IMPRIMIR (TÉRMICA)" />
                      </children>
                   </HBox>
                </children>

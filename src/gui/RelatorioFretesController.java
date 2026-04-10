@@ -897,7 +897,7 @@ public class RelatorioFretesController implements Initializable {
         String stTxt = (frete.valorDevedor > 0.01) ? "FALTA PAGAR" : "PAGO";
         Label lSt = new Label(stTxt);
         lSt.setFont(FONT_NEGRITO);
-        lSt.setTextFill(stTxt.equals("PAGO") ? Color.LIGHTGREEN : Color.ORANGE);
+        lSt.setTextFill(stTxt.equals("PAGO") ? Color.web("#4ADE80") : Color.web("#F59E0B"));
         
         header.getChildren().addAll(lNum, boxNomes, spacer, lSt);
         box.getChildren().add(header);
@@ -965,7 +965,7 @@ public class RelatorioFretesController implements Initializable {
             
             Label lFalta = new Label("A Pagar: " + fmtMoeda(frete.valorDevedor));
             lFalta.setFont(FONT_NEGRITO);
-            lFalta.setTextFill(Color.RED);
+            lFalta.setTextFill(Color.web("#DC2626"));
             boxValores.getChildren().add(lFalta);
         } else {
             Label lTot = new Label("TOTAL: " + fmtMoeda(frete.valorTotal) + " (PAGO)");
@@ -1049,7 +1049,7 @@ public class RelatorioFretesController implements Initializable {
         box.getChildren().add(criarLinhaTotalA4("TOTAL FRETES (LANÃ‡ADO):", tTotal, Color.web(COR_AZUL_ESCURO)));
         box.getChildren().add(criarLinhaTotalA4("TOTAL RECEBIDO (PAGO):", tPago, Color.FORESTGREEN));
         
-        Color corDevedor = (tDevedor > 0.01) ? Color.RED : Color.BLACK;
+        Color corDevedor = (tDevedor > 0.01) ? Color.web("#DC2626") : Color.BLACK;
         box.getChildren().add(criarLinhaTotalA4("TOTAL A RECEBER (FIADO):", tDevedor, corDevedor));
         
         return box;
@@ -1066,7 +1066,7 @@ public class RelatorioFretesController implements Initializable {
         lVal.setFont(FONT_TOTAIS_VALOR);
         lVal.setTextFill(corValor);
         
-        if (corValor.equals(Color.RED)) lTit.setTextFill(Color.RED);
+        if (corValor.equals(Color.web("#DC2626"))) lTit.setTextFill(Color.web("#DC2626"));
         
         linha.getChildren().addAll(lTit, lVal);
         return linha;

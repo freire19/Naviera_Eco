@@ -498,7 +498,7 @@ public class RelatorioUtil {
         if (status != null) {
             Label lSt = new Label(status);
             lSt.setFont(FONT_NEGRITO_A4);
-            lSt.setTextFill(status.contains("PAGO") ? Color.LIGHTGREEN : Color.ORANGE);
+            lSt.setTextFill(status.contains("PAGO") ? Color.web("#4ADE80") : Color.web("#F59E0B"));
             header.getChildren().add(lSt);
         }
 

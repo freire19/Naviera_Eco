@@ -20,7 +20,7 @@
             <HBox alignment="CENTER_LEFT" spacing="15.0">
                <children>
                   <Button fx:id="btnIniciar" mnemonicParsing="false" onAction="#handleIniciar" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="Nova (F2)" />
-                  <Button fx:id="btnAbrirLista" mnemonicParsing="false" onAction="#handleAbrirLista" style="-fx-background-color: #6c757d; -fx-text-fill: white;" text="Ver Lista" />
+                  <Button fx:id="btnAbrirLista" mnemonicParsing="false" onAction="#handleAbrirLista" style="-fx-background-color: #7BA393; -fx-text-fill: white;" text="Ver Lista" />
                   <Label alignment="CENTER" maxWidth="1.7976931348623157E308" text="REGISTRAR NOVA ENCOMENDA" textFill="#059669" HBox.hgrow="ALWAYS">
                      <font>
                         <Font name="System Bold" size="22.0" />
@@ -184,7 +184,7 @@
                               <TextField fx:id="txtValorTotal" editable="false" prefWidth="80.0" />
                            </children>
                         </VBox>
-                        <Button fx:id="btnAdicionarItem" mnemonicParsing="false" onAction="#handleAdicionarItem" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #ff9800; -fx-text-fill: white; -fx-font-weight: bold;" text="Adicionar" />
+                        <Button fx:id="btnAdicionarItem" mnemonicParsing="false" onAction="#handleAdicionarItem" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #F59E0B; -fx-text-fill: white; -fx-font-weight: bold;" text="Adicionar" />
                      </children>
                      <padding>
                         <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
@@ -242,19 +242,19 @@
             
             <HBox alignment="CENTER_LEFT" spacing="8.0" prefHeight="55.0" minHeight="55.0" styleClass="buttons-panel">
                <children>
-                  <Button fx:id="btnSalvar" mnemonicParsing="false" onAction="#handleSalvar" prefHeight="36.0" minWidth="100.0" style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;" text="F3 - FINALIZAR" />
+                  <Button fx:id="btnSalvar" mnemonicParsing="false" onAction="#handleSalvar" prefHeight="36.0" minWidth="100.0" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;" text="F3 - FINALIZAR" />
                   
-                  <Button fx:id="btnEditar" mnemonicParsing="false" onAction="#handleEditar" prefHeight="36.0" minWidth="60.0" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-size: 11px;" text="Editar" />
+                  <Button fx:id="btnEditar" mnemonicParsing="false" onAction="#handleEditar" prefHeight="36.0" minWidth="60.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 11px;" text="Editar" />
                   
-                  <Button fx:id="btnExcluir" mnemonicParsing="false" onAction="#handleExcluir" prefHeight="36.0" minWidth="60.0" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-size: 11px;" text="Excluir" />
+                  <Button fx:id="btnExcluir" mnemonicParsing="false" onAction="#handleExcluir" prefHeight="36.0" minWidth="60.0" style="-fx-background-color: #DC2626; -fx-text-fill: white; -fx-font-size: 11px;" text="Excluir" />
                   
-                  <Button fx:id="btnImprimir" mnemonicParsing="false" onAction="#handleImprimir" prefHeight="36.0" minWidth="65.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-size: 11px;" text="Imprimir" />
+                  <Button fx:id="btnImprimir" mnemonicParsing="false" onAction="#handleImprimir" prefHeight="36.0" minWidth="65.0" style="-fx-background-color: #7BA393; -fx-text-fill: white; -fx-font-size: 11px;" text="Imprimir" />
                   
-                  <Button fx:id="btnEntregar" mnemonicParsing="false" onAction="#handleEntregar" prefHeight="36.0" minWidth="70.0" style="-fx-background-color: #17a2b8; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;" text="Entregar" />
+                  <Button fx:id="btnEntregar" mnemonicParsing="false" onAction="#handleEntregar" prefHeight="36.0" minWidth="70.0" style="-fx-background-color: #0369A1; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;" text="Entregar" />
                   
                   <HBox alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
                      <children>
-                        <Button fx:id="btnSair" mnemonicParsing="false" onAction="#handleSair" prefHeight="36.0" minWidth="70.0" style="-fx-background-color: #343a40; -fx-text-fill: white; -fx-font-size: 11px;" text="Sair (Esc)" />
+                        <Button fx:id="btnSair" mnemonicParsing="false" onAction="#handleSair" prefHeight="36.0" minWidth="70.0" style="-fx-background-color: #0F2620; -fx-text-fill: white; -fx-font-size: 11px;" text="Sair (Esc)" />
                      </children>
                   </HBox>
                </children>

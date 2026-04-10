@@ -97,7 +97,7 @@
                      <font><Font size="11.0" /></font>
                   </Button>
 
-                  <Button fx:id="btnQuitarTudo" mnemonicParsing="false" onAction="#quitarDividaTotal" prefHeight="50.0" prefWidth="180.0" style="-fx-background-color: #66bb6a; -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 3, 0, 0, 2);" text="✅ QUITAR DÍVIDA">
+                  <Button fx:id="btnQuitarTudo" mnemonicParsing="false" onAction="#quitarDividaTotal" prefHeight="50.0" prefWidth="180.0" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 3, 0, 0, 2);" text="✅ QUITAR DÍVIDA">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                      <font><Font size="13.0" /></font>
                   </Button>

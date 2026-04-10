@@ -27,7 +27,7 @@
                <children>
                   <VBox>
                      <children>
-                        <Label fx:id="lblTituloViagem" text="Visão Geral da Viagem" textFill="#1a237e">
+                        <Label fx:id="lblTituloViagem" text="Visão Geral da Viagem" textFill="#0F2620">
                            <font>
                               <Font name="System Bold" size="22.0" />
                            </font>
@@ -40,7 +40,7 @@
                      </children>
                   </VBox>
                   <Pane HBox.hgrow="ALWAYS" />
-                  <Button mnemonicParsing="false" onAction="#atualizarDashboard" style="-fx-background-color: #1a237e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;" text="🔄 ATUALIZAR DADOS">
+                  <Button mnemonicParsing="false" onAction="#atualizarDashboard" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;" text="🔄 ATUALIZAR DADOS">
                      <font>
                         <Font size="13.0" />
                      </font>

@@ -295,11 +295,11 @@ public class TelaPrincipalController implements Initializable {
 
         String corBordaNormal = isModoEscuro ? "#333333" : "#cccccc";
 
-        String corBordaDestaque = isModoEscuro ? "#0d56df" : "#0d9668";
-        String corFundoHover = isModoEscuro ? "#121a33" : "#E6F5ED";
+        String corBordaDestaque = isModoEscuro ? "#34D399" : "#0d9668";
+        String corFundoHover = isModoEscuro ? "#0A1F18" : "#E6F5ED";
         String corFundoPadrao = isModoEscuro ? "#333333" : "white";
-        String corFeriado = isModoEscuro ? "#b71c1c" : "#fff9c4";
-        String corHojeFundo = isModoEscuro ? "#0d56df" : "#E6F5ED";
+        String corFeriado = isModoEscuro ? "#DC2626" : "#fff9c4";
+        String corHojeFundo = isModoEscuro ? "#34D399" : "#E6F5ED";
 
         calendarioGrid.setStyle("-fx-border-color: " + corBordaNormal + "; -fx-border-width: 1px;");
 
@@ -354,13 +354,13 @@ public class TelaPrincipalController implements Initializable {
             
             if (dataAtual.equals(LocalDate.now())) lblNumeroDia.setTextFill(Color.WHITE);
             else if (feriado != null && isModoEscuro) lblNumeroDia.setTextFill(Color.WHITE);
-            else if (feriado != null) lblNumeroDia.setTextFill(Color.ORANGE);
+            else if (feriado != null) lblNumeroDia.setTextFill(Color.web("#F59E0B"));
             
             cell.getChildren().add(lblNumeroDia);
             
             if (feriado != null) {
                 Label lblFer = new Label("★ " + feriado);
-                String corTextoFeriado = isModoEscuro ? "#ffcdd2" : "#f57f17";
+                String corTextoFeriado = isModoEscuro ? "#FEE2E2" : "#B45309";
                 lblFer.setStyle("-fx-text-fill: " + corTextoFeriado + "; -fx-font-size: 9px; -fx-padding: 0 0 0 2;");
                 cell.getChildren().add(lblFer);
             }
@@ -384,7 +384,7 @@ public class TelaPrincipalController implements Initializable {
             if (v.getDataViagem().equals(data)) {
                 String destino = v.getDestino() != null ? v.getDestino() : "Viagem";
                 Label lbl = new Label("\uD83D\uDEA2 " + destino);
-                String bg = isModoEscuro ? "#047857" : "#ffcdd2";
+                String bg = isModoEscuro ? "#0F2D24" : "#FEE2E2";
                 String tx = isModoEscuro ? "#ffffff" : "#DC2626";
                 lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");
                 lbl.setMaxWidth(Double.MAX_VALUE);
@@ -397,7 +397,7 @@ public class TelaPrincipalController implements Initializable {
         for (AgendaDAO.ResumoBoleto b : boletos) {
             if (b.vencimento.equals(data)) {
                 Label lbl = new Label("\uD83D\uDCC4 " + nf.format(b.valor));
-                String bg = isModoEscuro ? "#b71c1c" : "#ffebee";
+                String bg = isModoEscuro ? "#DC2626" : "#FEE2E2";
                 String tx = isModoEscuro ? "#ffffff" : "#DC2626";
                 lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3; -fx-border-color: #ef5350; -fx-border-width: 0 0 0 2;");
                 lbl.setMaxWidth(Double.MAX_VALUE);
@@ -410,14 +410,14 @@ public class TelaPrincipalController implements Initializable {
     private void adicionarNotasNaCelula(VBox cell, List<String> notas) {
         for (String nota : notas) {
             Label lbl = new Label("\u270E " + nota);
-            String bg = isModoEscuro ? "#004d40" : "#b2dfdb";
-            String tx = isModoEscuro ? "#e0f2f1" : "#00695c";
+            String bg = isModoEscuro ? "#0F2D24" : "#A7F3D0";
+            String tx = isModoEscuro ? "#D1FAE5" : "#047857";
             String notaLower = nota.toLowerCase();
             if (notaLower.contains("manaus") && notaLower.contains("juta")) {
                 if (notaLower.indexOf("manaus") < notaLower.indexOf("juta")) {
-                    bg = isModoEscuro ? "#1b5e20" : "#a5d6a7"; tx = isModoEscuro ? "#e8f5e9" : "#1b5e20";
+                    bg = isModoEscuro ? "#047857" : "#A7F3D0"; tx = isModoEscuro ? "#D1FAE5" : "#047857";
                 } else {
-                    bg = isModoEscuro ? "#bf360c" : "#ffccbc"; tx = isModoEscuro ? "#fbe9e7" : "#bf360c";
+                    bg = isModoEscuro ? "#DC2626" : "#FEE2E2"; tx = isModoEscuro ? "#FEE2E2" : "#DC2626";
                 }
             }
             lbl.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + tx + "; -fx-font-size: 9px; -fx-padding: 1 3 1 3; -fx-background-radius: 3;");

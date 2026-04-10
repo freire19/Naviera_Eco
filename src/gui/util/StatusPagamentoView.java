@@ -7,7 +7,7 @@ public class StatusPagamentoView {
     public static String getCorCSS(StatusPagamento status) {
         switch (status) {
             case PAGO: case QUITADO: return "#059669";
-            case PARCIAL: return "#F59E0B";
+            case PARCIAL: return "#B45309";
             case PENDENTE: case NAO_PAGO: return "#DC2626";
             case EMITIDA: return "#059669";
             case CANCELADA: return "#757575";

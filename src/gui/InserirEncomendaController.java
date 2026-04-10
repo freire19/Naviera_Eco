@@ -413,14 +413,14 @@ public class InserirEncomendaController implements Initializable {
         estilizarBotao(btnSalvar, "#059669"); 
         estilizarBotao(btnIniciar, "#059669"); 
         estilizarBotao(btnEntregar, "#0369A1");
-        estilizarBotao(btnImprimir, "#607d8b"); 
+        estilizarBotao(btnImprimir, "#7BA393"); 
         estilizarBotao(btnExcluir, "#DC2626"); 
-        estilizarBotao(btnEditar, "#ff8f00"); 
+        estilizarBotao(btnEditar, "#F59E0B"); 
         estilizarBotao(btnSair, "#424242"); 
         if(btnAdicionarItem != null) {
-            btnAdicionarItem.setStyle("-fx-background-color: #fbc02d; -fx-text-fill: black; -fx-font-weight: bold; -fx-cursor: hand;");
-            btnAdicionarItem.setOnMousePressed(e -> btnAdicionarItem.setStyle("-fx-background-color: #c49000; -fx-text-fill: black; -fx-font-weight: bold;"));
-            btnAdicionarItem.setOnMouseReleased(e -> btnAdicionarItem.setStyle("-fx-background-color: #fbc02d; -fx-text-fill: black; -fx-font-weight: bold;"));
+            btnAdicionarItem.setStyle("-fx-background-color: #FBBF24; -fx-text-fill: black; -fx-font-weight: bold; -fx-cursor: hand;");
+            btnAdicionarItem.setOnMousePressed(e -> btnAdicionarItem.setStyle("-fx-background-color: #B45309; -fx-text-fill: black; -fx-font-weight: bold;"));
+            btnAdicionarItem.setOnMouseReleased(e -> btnAdicionarItem.setStyle("-fx-background-color: #FBBF24; -fx-text-fill: black; -fx-font-weight: bold;"));
         }
         String estiloAzulForte = "-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
         if(btnAudioInput != null) btnAudioInput.setStyle(estiloAzulForte);
@@ -1610,7 +1610,7 @@ public class InserirEncomendaController implements Initializable {
             if (!estaQuitado) {
                 btnEntregar.setDisable(false);
                 btnEntregar.setText("Receber Restante");
-                estilizarBotao(btnEntregar, "#ff9800"); 
+                estilizarBotao(btnEntregar, "#F59E0B"); 
             } else {
                 btnEntregar.setDisable(true);
                 btnEntregar.setText("Concluído");

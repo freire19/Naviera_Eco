@@ -33,7 +33,7 @@
                   <VBox alignment="CENTER_RIGHT" styleClass="card-total" style="-fx-padding: 5 25 5 25;">
                      <children>
                         <Label text="TOTAL GASTO (FILTRADO)" textFill="#757575"><font><Font name="System Bold" size="12.0" /></font></Label>
-                        <Label fx:id="lblTotalGasto" text="R$ 0,00" textFill="#c62828"><font><Font name="System Bold" size="42.0" /></font></Label>
+                        <Label fx:id="lblTotalGasto" text="R$ 0,00" textFill="#DC2626"><font><Font name="System Bold" size="42.0" /></font></Label>
                      </children>
                   </VBox>
                </children>
@@ -103,29 +103,29 @@
                   </Label>
                   <Separator />
                   
-                  <Label text="Data do Gasto" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <Label text="Data do Gasto" textFill="#7BA393"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <DatePicker fx:id="dpDataGasto" maxWidth="1.7976931348623157E308" style="-fx-font-size: 13px;" />
 
-                  <Label text="Data do Pagamento" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <Label text="Data do Pagamento" textFill="#7BA393"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <DatePicker fx:id="dpDataPrimeiroPagamento" maxWidth="1.7976931348623157E308" style="-fx-font-size: 13px;" />
                   
-                  <Label text="Descrição / Fornecedor" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <Label text="Descrição / Fornecedor" textFill="#7BA393"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <TextField fx:id="txtDescricao" promptText="Ex: Padaria Central" style="-fx-border-color: #cfd8dc; -fx-font-size: 13px;" />
                   
-                  <Label text="Categoria" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <Label text="Categoria" textFill="#7BA393"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <HBox spacing="5.0">
                      <children>
                         <ComboBox fx:id="cmbCategoria" maxWidth="1.7976931348623157E308" promptText="Selecione..." style="-fx-font-size: 13px;" HBox.hgrow="ALWAYS" />
-                        <Button onAction="#novaCategoria" style="-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-weight: bold;" text="+">
+                        <Button onAction="#novaCategoria" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold;" text="+">
                             <font><Font size="12.0" /></font>
                         </Button>
                      </children>
                   </HBox>
                   
-                  <Label text="Valor (R$)" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <Label text="Valor (R$)" textFill="#7BA393"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <TextField fx:id="txtValor" promptText="0,00" styleClass="campo-valor" />
                   
-                  <Label text="Forma de Pagamento" textFill="#546e7a"><font><Font name="System Bold" size="12.0" /></font></Label>
+                  <Label text="Forma de Pagamento" textFill="#7BA393"><font><Font name="System Bold" size="12.0" /></font></Label>
                   <ComboBox fx:id="cmbFormaPagamento" maxWidth="1.7976931348623157E308" style="-fx-font-size: 13px;" />
                   
                   <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#salvarLancamento" prefHeight="40.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="SALVAR DESPESA">
@@ -146,7 +146,7 @@
                      <VBox.margin><Insets top="5.0" /></VBox.margin>
                   </Separator>
                   <Label text="Recursos Humanos:" textFill="#757575"><font><Font size="11.0" /></font></Label>
-                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirGestaoFuncionarios" prefHeight="35.0" style="-fx-background-color: #1976d2; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;" text="GESTÃO DE FUNCIONÁRIOS">
+                  <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#abrirGestaoFuncionarios" prefHeight="35.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;" text="GESTÃO DE FUNCIONÁRIOS">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                   </Button>
                   </children>
@@ -172,7 +172,7 @@
             </TableView>
             <HBox alignment="CENTER_RIGHT" spacing="15.0">
                <children>
-                   <Button mnemonicParsing="false" onAction="#abrirAuditoria" prefHeight="40.0" style="-fx-background-color: #616161; -fx-text-fill: white; -fx-font-weight: bold;" text="👁 AUDITORIA">
+                   <Button mnemonicParsing="false" onAction="#abrirAuditoria" prefHeight="40.0" style="-fx-background-color: #7BA393; -fx-text-fill: white; -fx-font-weight: bold;" text="👁 AUDITORIA">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                      <font><Font size="12.0" /></font>
                   </Button>
@@ -182,12 +182,12 @@
                      <font><Font size="12.0" /></font>
                   </Button>
                
-                   <Button mnemonicParsing="false" onAction="#excluir" prefHeight="40.0" style="-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-weight: bold;" text="🗑 EXCLUIR SELECIONADO">
+                   <Button mnemonicParsing="false" onAction="#excluir" prefHeight="40.0" style="-fx-background-color: #DC2626; -fx-text-fill: white; -fx-font-weight: bold;" text="🗑 EXCLUIR SELECIONADO">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                      <font><Font size="12.0" /></font>
                   </Button>
                   
-                  <Button fx:id="btnSair" mnemonicParsing="false" onAction="#sair" prefHeight="40.0" style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-font-weight: bold;" text="🚪 SAIR">
+                  <Button fx:id="btnSair" mnemonicParsing="false" onAction="#sair" prefHeight="40.0" style="-fx-background-color: #7BA393; -fx-text-fill: white; -fx-font-weight: bold;" text="🚪 SAIR">
                      <cursor><Cursor fx:constant="HAND" /></cursor>
                      <font><Font size="12.0" /></font>
                   </Button>

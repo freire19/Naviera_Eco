@@ -429,7 +429,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         HBox box = new HBox(5); box.setPrefWidth(w); box.setPadding(new Insets(3, 5, 3, 5));
         box.setStyle(par ? "-fx-background-color: white;" : "-fx-background-color: #f9f9f9;");
         String st = (e.getSaldoDevedor().compareTo(BigDecimal.ZERO) > 0) ? "PENDENTE" : "PAGO";
-        Color corSt = st.equals("PENDENTE") ? Color.RED : Color.GREEN;
+        Color corSt = st.equals("PENDENTE") ? Color.web("#DC2626") : Color.web("#059669");
         box.getChildren().addAll(
             criarCelTabela(e.getNumeroEncomenda(), 40, false, false), 
             criarCelTabela(e.getRemetente(), 150, false, false), 
@@ -640,7 +640,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
         String stTxt = (enc.getSaldoDevedor().compareTo(BigDecimal.ZERO) > 0) ? "FALTA PAGAR" : "PAGO";
-        Label lSt = new Label(stTxt); lSt.setFont(FONT_NEGRITO); lSt.setTextFill(stTxt.equals("PAGO") ? Color.LIGHTGREEN : Color.ORANGE);
+        Label lSt = new Label(stTxt); lSt.setFont(FONT_NEGRITO); lSt.setTextFill(stTxt.equals("PAGO") ? Color.web("#4ADE80") : Color.web("#F59E0B"));
 
         header.getChildren().addAll(lNum, boxNomes, spacer, lSt); box.getChildren().add(header);
 
@@ -696,7 +696,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
             
             Label lFalta = new Label("A Pagar: " + fmtMoeda(enc.getSaldoDevedor())); 
             lFalta.setFont(FONT_NEGRITO); 
-            lFalta.setTextFill(Color.RED);
+            lFalta.setTextFill(Color.web("#DC2626"));
             boxValores.getChildren().add(lFalta);
             
         } else {
@@ -719,7 +719,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         box.getChildren().add(criarLinhaTotal("TOTAL ENCOMENDA (LANÇADO):", tLancado, Color.web(COR_AZUL_ESCURO)));
         box.getChildren().add(criarLinhaTotal("TOTAL DESCONTO:", tDesc, Color.DIMGRAY));
         box.getChildren().add(criarLinhaTotal("TOTAL RECEBIDO (PAGO):", tRecebido, Color.FORESTGREEN));
-        Color corFiado = (tAReceber.compareTo(BigDecimal.ZERO) > 0) ? Color.RED : Color.BLACK;
+        Color corFiado = (tAReceber.compareTo(BigDecimal.ZERO) > 0) ? Color.web("#DC2626") : Color.BLACK;
         box.getChildren().add(criarLinhaTotal("TOTAL A RECEBER (FIADO):", tAReceber, corFiado));
         return box;
     }
@@ -728,7 +728,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
         HBox linha = new HBox(10); linha.setAlignment(Pos.CENTER_RIGHT);
         Label lTit = new Label(titulo); lTit.setFont(FONT_TOTAIS_TITULO);
         Label lVal = new Label(fmtMoeda(valor)); lVal.setFont(FONT_TOTAIS_VALOR); lVal.setTextFill(corValor); 
-        if (corValor.equals(Color.RED)) lTit.setTextFill(Color.RED);
+        if (corValor.equals(Color.web("#DC2626"))) lTit.setTextFill(Color.web("#DC2626"));
         linha.getChildren().addAll(lTit, lVal);
         return linha;
     }

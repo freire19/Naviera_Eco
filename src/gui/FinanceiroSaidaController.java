@@ -707,7 +707,7 @@ public class FinanceiroSaidaController {
     private String getCorPorForma(String forma) {
         if (forma == null) return "black";
         switch (forma.toUpperCase()) {
-            case "DINHEIRO": return "#059669"; case "PIX": return "#059669"; case "CARTAO": return "#B45309"; case "TRANSFERENCIA": return "#7C3AED"; case "BOLETO": return "#DC2626"; default: return "black";
+            case "DINHEIRO": return "#059669"; case "PIX": return "#059669"; case "CARTAO": return "#B45309"; case "TRANSFERENCIA": return "#7BA393"; case "BOLETO": return "#DC2626"; default: return "black";
         }
     }
 

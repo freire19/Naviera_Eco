@@ -61,7 +61,7 @@
             <FlowPane alignment="CENTER" hgap="20.0" style="-fx-padding: 0 0 5 0;" vgap="10.0">
                 <HBox alignment="CENTER_LEFT" spacing="5">
                     <Label styleClass="label-bold" text="Total Lançado:" />
-                    <Label fx:id="lblTotalLancado" style="-fx-text-fill:#0078D7; -fx-font-weight:bold; -fx-font-size: 15px;" text="R$ 0,00" />
+                    <Label fx:id="lblTotalLancado" style="-fx-text-fill:#059669; -fx-font-weight:bold; -fx-font-size: 15px;" text="R$ 0,00" />
                 </HBox>
                 <Label style="-fx-text-fill: #ccc;" text="|" />
                 
@@ -79,7 +79,7 @@
                 
                 <HBox alignment="CENTER_LEFT" spacing="5">
                     <Label styleClass="label-bold" text="Lançamentos:" />
-                    <Label fx:id="lblLancamentos" style="-fx-text-fill:#0078D7; -fx-font-weight:bold; -fx-font-size: 15px;" text="0" />
+                    <Label fx:id="lblLancamentos" style="-fx-text-fill:#059669; -fx-font-weight:bold; -fx-font-size: 15px;" text="0" />
                 </HBox>
                 <Label style="-fx-text-fill: #ccc;" text="|" />
                 

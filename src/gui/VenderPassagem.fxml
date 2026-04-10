@@ -15,7 +15,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane fx:id="rootPane" style="-fx-background-color: #dce6ec;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.VenderPassagemController">
+<BorderPane fx:id="rootPane" style="-fx-background-color: #F7FBF9;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.VenderPassagemController">
    
    <top>
       <VBox style="-fx-background-color: #047857; -fx-border-color: #404040; -fx-border-width: 0 0 1 0;" BorderPane.alignment="CENTER">
@@ -140,7 +140,7 @@
                      <children>
                         <!-- Viagem Selecionada -->
                         <VBox spacing="2" HBox.hgrow="ALWAYS" minWidth="260.0">
-                           <Label text="Viagem Selecionada:" textFill="#1976d2">
+                           <Label text="Viagem Selecionada:" textFill="#059669">
                               <font>
                                  <Font name="System Bold" size="11.0" />
                               </font>
@@ -188,7 +188,7 @@
 
                         <!-- Tipo Passagem -->
                         <VBox spacing="2" prefWidth="120.0">
-                           <Label text="Tipo Pass.:" textFill="#1976d2">
+                           <Label text="Tipo Pass.:" textFill="#3D6B56">
                               <font>
                                  <Font name="System Bold" size="11.0" />
                               </font>
@@ -223,7 +223,7 @@
                   <!-- TARIFAS -->
                   <HBox spacing="15.0" alignment="CENTER_LEFT" styleClass="painel-taxas" style="-fx-padding: 8;">
                      <children>
-                        <Label text="TARIFAS:" textFill="#e65100">
+                        <Label text="TARIFAS:" textFill="#B45309">
                            <font>
                               <Font name="System Bold" size="11.0" />
                            </font>
@@ -279,12 +279,12 @@
                            <Separator orientation="VERTICAL" />
 
                            <VBox spacing="1" alignment="CENTER_RIGHT">
-                              <Label text="Desconto" textFill="#d32f2f">
+                              <Label text="Desconto" textFill="#DC2626">
                                  <font>
                                     <Font size="10.0" />
                                  </font>
                               </Label>
-                              <TextField fx:id="txtDesconto" alignment="CENTER_RIGHT" prefWidth="90.0" prefHeight="30.0" style="-fx-text-fill: #d32f2f; -fx-border-color: transparent transparent #ef9a9a transparent; -fx-background-color: transparent; -fx-font-size: 16px; -fx-padding: 0;" text="0,00" />
+                              <TextField fx:id="txtDesconto" alignment="CENTER_RIGHT" prefWidth="90.0" prefHeight="30.0" style="-fx-text-fill: #DC2626; -fx-border-color: transparent transparent #FEE2E2 transparent; -fx-background-color: transparent; -fx-font-size: 16px; -fx-padding: 0;" text="0,00" />
                            </VBox>
 
                            <VBox spacing="1" alignment="CENTER_RIGHT" style="-fx-background-color: #059669; -fx-padding: 2 12 2 12; -fx-border-radius: 4;">
@@ -351,7 +351,7 @@
       <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="painel-rodape" style="-fx-padding: 8 10 8 10;" BorderPane.alignment="CENTER">
          <children>
             <Button fx:id="btnEditar" onAction="#handleEditar" prefHeight="45.0" prefWidth="130.0"
-                    style="-fx-background-color: #1e88e5; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
+                    style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
                     text="EDITAR (F3)" />
             <Button fx:id="btnExcluir" onAction="#handleExcluir" prefHeight="45.0" prefWidth="130.0"
                     style="-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
@@ -361,7 +361,7 @@
                     text="CANCELAR (F5)" />
             <Separator orientation="VERTICAL" />
             <Button fx:id="btnImprimirBilhete" onAction="#handleImprimirBilhete" prefHeight="45.0" prefWidth="130.0"
-                    style="-fx-background-color: #1e88e5; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
+                    style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
                     text="BILHETE (F6)" />
             <Button fx:id="btnImprimirLista" onAction="#handleImprimirLista" prefHeight="45.0" prefWidth="190.0"
                     style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-radius: 3;"
