@@ -12,7 +12,7 @@ export default function Encomendas({ viagemAtiva }) {
   useEffect(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/op/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setEncomendas)
       .catch(() => {})
       .finally(() => setLoading(false))

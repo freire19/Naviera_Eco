@@ -12,7 +12,7 @@ export default function Fretes({ viagemAtiva }) {
   useEffect(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/fretes?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/op/fretes?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setFretes)
       .catch(() => {})
       .finally(() => setLoading(false))

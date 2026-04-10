@@ -12,7 +12,7 @@ export default function Passagens({ viagemAtiva }) {
   useEffect(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/passagens?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/op/passagens?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setPassagens)
       .catch(() => {})
       .finally(() => setLoading(false))

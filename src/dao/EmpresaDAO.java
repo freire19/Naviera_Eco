@@ -1,37 +1,71 @@
 package dao;
 
-import model.Empresa; 
+import model.Empresa;
 import java.sql.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 // D026: dados da empresa (CNPJ, tel) sao publicos e usados em recibos/impressao.
 // Auth de escrita esta no CadastroEmpresaController (exigirAdmin). Leitura livre e intencional.
 public class EmpresaDAO {
 
-    /** ID fixo do registro unico de configuracao da empresa */
+    /** @deprecated Usar buscar() que usa TenantContext. Mantido para compatibilidade. */
+    @Deprecated
     public static final int ID_EMPRESA_PRINCIPAL = 1;
 
-    // DP012: cache — configuracao_empresa raramente muda, evita 6+ queries/sessao
-    private static Empresa cacheEmpresa = null;
+    // DP012: cache por empresa_id — configuracao_empresa raramente muda
+    private static final ConcurrentHashMap<Integer, Empresa> cacheEmpresas = new ConcurrentHashMap<>();
 
-    /** Invalida cache (chamar apos salvarOuAtualizar). */
-    public static void invalidarCache() { cacheEmpresa = null; }
+    /** Invalida cache da empresa atual. */
+    public static void invalidarCache() {
+        cacheEmpresas.remove(DAOUtils.empresaId());
+    }
 
-    // Salva ou atualiza o único registro da empresa
+    /** Busca configuracao da empresa do tenant atual. */
+    public Empresa buscar() {
+        int empresaId = DAOUtils.empresaId();
+
+        // DP012: retorna cache se disponivel
+        Empresa cached = cacheEmpresas.get(empresaId);
+        if (cached != null) return cached;
+
+        String sql = "SELECT id_config, companhia, nome_embarcacao, comandante, proprietario, origem_padrao, " +
+                     "gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, path_logo, recomendacoes_bilhete " +
+                     "FROM configuracao_empresa WHERE empresa_id = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, empresaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Empresa e = mapearResultSet(rs);
+                    cacheEmpresas.put(empresaId, e);
+                    return e;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro SQL em EmpresaDAO.buscar: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /** Mantém compatibilidade com chamadas existentes que passam id. */
+    public Empresa buscarPorId(int id) {
+        return buscar();
+    }
+
     public boolean salvarOuAtualizar(Empresa empresa) {
-        Empresa existente = buscarPorId(ID_EMPRESA_PRINCIPAL);
+        int empresaId = DAOUtils.empresaId();
+        Empresa existente = buscar();
 
         String sql;
-        // Usa o nome da tabela correto: "configuracao_empresa"
         if (existente == null) {
-            // INSERT se não existe
-            sql = "INSERT INTO configuracao_empresa (id_config, companhia, nome_embarcacao, comandante, proprietario, " +
+            sql = "INSERT INTO configuracao_empresa (empresa_id, companhia, nome_embarcacao, comandante, proprietario, " +
                   "origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, path_logo, recomendacoes_bilhete) " +
                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         } else {
-            // UPDATE se já existe
             sql = "UPDATE configuracao_empresa SET companhia=?, nome_embarcacao=?, comandante=?, proprietario=?, " +
                   "origem_padrao=?, gerente=?, linha_rio_padrao=?, cnpj=?, ie=?, endereco=?, cep=?, telefone=?, " +
-                  "frase_relatorio=?, path_logo=?, recomendacoes_bilhete=? WHERE id_config=?";
+                  "frase_relatorio=?, path_logo=?, recomendacoes_bilhete=? WHERE empresa_id=?";
         }
 
         try (Connection conn = ConexaoBD.getConnection();
@@ -39,7 +73,7 @@ public class EmpresaDAO {
 
             int paramIndex = 1;
             if (existente == null) {
-                ps.setInt(paramIndex++, ID_EMPRESA_PRINCIPAL);
+                ps.setInt(paramIndex++, empresaId);
             }
             ps.setString(paramIndex++, empresa.getCompanhia());
             ps.setString(paramIndex++, empresa.getEmbarcacao());
@@ -58,7 +92,7 @@ public class EmpresaDAO {
             ps.setString(paramIndex++, empresa.getRecomendacoesBilhete());
 
             if (existente != null) {
-                ps.setInt(paramIndex++, ID_EMPRESA_PRINCIPAL);
+                ps.setInt(paramIndex++, empresaId);
             }
 
             int affectedRows = ps.executeUpdate();
@@ -66,48 +100,29 @@ public class EmpresaDAO {
             return affectedRows > 0;
 
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EmpresaDAO: " + e.getMessage());
+            System.err.println("Erro SQL em EmpresaDAO.salvarOuAtualizar: " + e.getMessage());
             return false;
         }
     }
 
-    public Empresa buscarPorId(int id) {
-        // DP012: retorna cache se disponivel (empresa principal)
-        if (id == ID_EMPRESA_PRINCIPAL && cacheEmpresa != null) return cacheEmpresa;
-
-        String sql = "SELECT id_config, companhia, nome_embarcacao, comandante, proprietario, origem_padrao, " +
-                     "gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, path_logo, recomendacoes_bilhete " +
-                     "FROM configuracao_empresa WHERE id_config = ?";
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Empresa e = new Empresa();
-                    e.setId(rs.getInt("id_config"));
-                    e.setCompanhia(rs.getString("companhia"));
-                    e.setEmbarcacao(rs.getString("nome_embarcacao"));
-                    e.setComandante(rs.getString("comandante"));
-                    e.setProprietario(rs.getString("proprietario"));
-                    e.setOrigem(rs.getString("origem_padrao"));
-                    e.setGerente(rs.getString("gerente"));
-                    e.setLinhaDoRio(rs.getString("linha_rio_padrao"));
-                    e.setCnpj(rs.getString("cnpj"));
-                    e.setIe(rs.getString("ie"));
-                    e.setEndereco(rs.getString("endereco"));
-                    e.setCep(rs.getString("cep"));
-                    e.setTelefone(rs.getString("telefone"));
-                    e.setFrase(rs.getString("frase_relatorio"));
-                    e.setCaminhoFoto(rs.getString("path_logo"));
-                    e.setRecomendacoesBilhete(rs.getString("recomendacoes_bilhete"));
-                    if (id == ID_EMPRESA_PRINCIPAL) cacheEmpresa = e;
-                    return e;
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Erro SQL em EmpresaDAO: " + e.getMessage());
-        }
-        return null;
+    private Empresa mapearResultSet(ResultSet rs) throws SQLException {
+        Empresa e = new Empresa();
+        e.setId(rs.getInt("id_config"));
+        e.setCompanhia(rs.getString("companhia"));
+        e.setEmbarcacao(rs.getString("nome_embarcacao"));
+        e.setComandante(rs.getString("comandante"));
+        e.setProprietario(rs.getString("proprietario"));
+        e.setOrigem(rs.getString("origem_padrao"));
+        e.setGerente(rs.getString("gerente"));
+        e.setLinhaDoRio(rs.getString("linha_rio_padrao"));
+        e.setCnpj(rs.getString("cnpj"));
+        e.setIe(rs.getString("ie"));
+        e.setEndereco(rs.getString("endereco"));
+        e.setCep(rs.getString("cep"));
+        e.setTelefone(rs.getString("telefone"));
+        e.setFrase(rs.getString("frase_relatorio"));
+        e.setCaminhoFoto(rs.getString("path_logo"));
+        e.setRecomendacoesBilhete(rs.getString("recomendacoes_bilhete"));
+        return e;
     }
 }

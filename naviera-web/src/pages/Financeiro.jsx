@@ -12,7 +12,7 @@ export default function Financeiro({ viagemAtiva }) {
   useEffect(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/op/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setBalanco)
       .catch(() => {})
       .finally(() => setLoading(false))

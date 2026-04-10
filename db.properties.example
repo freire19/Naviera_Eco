@@ -6,3 +6,6 @@ db.pool.tamanho=5
 
 # Multi-tenant: ID da empresa desta instalacao (default = 1)
 empresa.id=1
+
+# Versao do aplicativo (usado para auto-update check)
+app.versao=1.0.0

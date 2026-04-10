@@ -4,17 +4,23 @@ import com.naviera.api.dto.LojaDTO;
 import com.naviera.api.dto.PedidoDTO;
 import com.naviera.api.model.*;
 import com.naviera.api.repository.*;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class LojaService {
     private final LojaParceiraRepository lojaRepo;
     private final PedidoLojaRepository pedidoRepo;
     private final ClienteAppRepository clienteRepo;
+    private final JdbcTemplate jdbc;
 
-    public LojaService(LojaParceiraRepository lojaRepo, PedidoLojaRepository pedidoRepo, ClienteAppRepository clienteRepo) {
-        this.lojaRepo = lojaRepo; this.pedidoRepo = pedidoRepo; this.clienteRepo = clienteRepo;
+    public LojaService(LojaParceiraRepository lojaRepo, PedidoLojaRepository pedidoRepo,
+                       ClienteAppRepository clienteRepo, JdbcTemplate jdbc) {
+        this.lojaRepo = lojaRepo; this.pedidoRepo = pedidoRepo;
+        this.clienteRepo = clienteRepo; this.jdbc = jdbc;
     }
 
     public List<LojaDTO> listarAtivas() {
@@ -56,6 +62,41 @@ public class LojaService {
             l.getRotasAtendidas(), l.getVerificada(),
             l.getTotalEntregas(), l.getNotaMedia(),
             l.getTelefoneComercial(), l.getEmailComercial());
+    }
+
+    public List<Map<String, Object>> listarAvaliacoes(Long idLoja) {
+        return jdbc.queryForList("""
+            SELECT a.*, c.nome AS nome_cliente
+            FROM avaliacoes_loja a
+            LEFT JOIN clientes_app c ON a.id_cliente = c.id
+            WHERE a.id_loja = ?
+            ORDER BY a.data_avaliacao DESC""", idLoja);
+    }
+
+    @Transactional
+    public Map<String, Object> criarAvaliacao(Long idLoja, Long clienteId, Object nota, Object comentario) {
+        jdbc.update("""
+            INSERT INTO avaliacoes_loja (id_loja, id_cliente, nota, comentario)
+            VALUES (?, ?, ?, ?)""",
+            idLoja, clienteId, nota, comentario);
+
+        jdbc.update("""
+            UPDATE lojas_parceiras SET nota_media = (
+                SELECT AVG(nota) FROM avaliacoes_loja WHERE id_loja = ?
+            ) WHERE id = ?""", idLoja, idLoja);
+
+        return Map.of("mensagem", "Avaliacao registrada");
+    }
+
+    public Map<String, Object> stats(Long idLoja) {
+        return jdbc.queryForMap("""
+            SELECT
+                COUNT(p.id) AS total_pedidos,
+                COALESCE((SELECT AVG(nota) FROM avaliacoes_loja WHERE id_loja = ?), 0) AS nota_media,
+                COALESCE((SELECT COUNT(*) FROM avaliacoes_loja WHERE id_loja = ?), 0) AS total_avaliacoes,
+                COALESCE(SUM(p.valor_total), 0) AS receita_total
+            FROM pedidos_loja p
+            WHERE p.id_loja = ?""", idLoja, idLoja, idLoja);
     }
 
     private PedidoDTO toPedidoDTO(PedidoLoja p) {

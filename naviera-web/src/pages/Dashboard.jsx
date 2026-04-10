@@ -21,7 +21,7 @@ export default function Dashboard({ viagemAtiva, onNavigate }) {
 
   useEffect(() => {
     if (!viagemAtiva) return
-    api.get(`/dashboard/resumo?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/op/dashboard/resumo?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setResumo)
       .catch(() => {})
   }, [viagemAtiva])

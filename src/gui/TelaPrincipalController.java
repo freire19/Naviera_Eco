@@ -163,6 +163,94 @@ public class TelaPrincipalController implements Initializable {
         Thread t = new Thread(taskInit);
         t.setDaemon(true);
         t.start();
+
+        // Check de versao em background (nao bloqueia startup)
+        verificarAtualizacao();
+    }
+
+    /**
+     * Verifica se ha nova versao disponivel no servidor.
+     * Nao bloqueia o startup — roda em thread daemon.
+     */
+    private void verificarAtualizacao() {
+        Thread tVersao = new Thread(() -> {
+            try {
+                // Ler versao local do db.properties
+                java.util.Properties props = new java.util.Properties();
+                try (java.io.FileInputStream fis = new java.io.FileInputStream("db.properties")) {
+                    props.load(fis);
+                }
+                String versaoLocal = props.getProperty("app.versao", "1.0.0");
+
+                // Ler URL do servidor de sync
+                java.util.Properties syncProps = new java.util.Properties();
+                java.io.File syncFile = new java.io.File("sync_config.properties");
+                String serverUrl = "http://localhost:8081";
+                if (syncFile.exists()) {
+                    try (java.io.FileInputStream fis = new java.io.FileInputStream(syncFile)) {
+                        syncProps.load(fis);
+                        serverUrl = syncProps.getProperty("server.url", serverUrl);
+                    }
+                }
+
+                // GET /api/public/versao/check?v=1.0.0
+                java.net.URL url = new java.net.URL(serverUrl + "/api/public/versao/check?v=" + versaoLocal);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
+                if (conn.getResponseCode() != 200) return;
+
+                String response;
+                try (java.io.BufferedReader br = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    response = sb.toString();
+                } finally {
+                    conn.disconnect();
+                }
+
+                // Parse simples do JSON
+                boolean atualizado = response.contains("\"atualizado\":true");
+                boolean obrigatoria = response.contains("\"obrigatoria\":true");
+
+                if (!atualizado) {
+                    // Extrair versaoNova
+                    String versaoNova = versaoLocal;
+                    int idx = response.indexOf("\"versaoNova\":\"");
+                    if (idx >= 0) {
+                        int start = idx + 14;
+                        int end = response.indexOf("\"", start);
+                        if (end > start) versaoNova = response.substring(start, end);
+                    }
+
+                    String msg = obrigatoria
+                        ? "Atualizacao OBRIGATORIA disponivel: v" + versaoNova + "\nPor favor, atualize o sistema."
+                        : "Nova versao disponivel: v" + versaoNova;
+
+                    String finalMsg = msg;
+                    boolean finalObrigatoria = obrigatoria;
+                    javafx.application.Platform.runLater(() -> {
+                        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                            finalObrigatoria
+                                ? javafx.scene.control.Alert.AlertType.WARNING
+                                : javafx.scene.control.Alert.AlertType.INFORMATION);
+                        alert.setTitle("Atualizacao");
+                        alert.setHeaderText(finalObrigatoria ? "Atualizacao Obrigatoria" : "Nova Versao");
+                        alert.setContentText(finalMsg);
+                        alert.showAndWait();
+                    });
+                }
+            } catch (Exception e) {
+                // Silencioso — se nao conseguir verificar, segue normalmente
+                System.out.println("[VERSAO] Nao foi possivel verificar atualizacao: " + e.getMessage());
+            }
+        }, "VersionCheck");
+        tVersao.setDaemon(true);
+        tVersao.start();
     }
 
     // ================================================================================

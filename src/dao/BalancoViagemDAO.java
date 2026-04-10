@@ -44,11 +44,12 @@ public class BalancoViagemDAO {
             String sqlPassagem = "SELECT r.origem, r.destino, COUNT(*) as qtd, COALESCE(SUM(p.valor_total), 0) as total " +
                                  "FROM passagens p " +
                                  "LEFT JOIN rotas r ON p.id_rota = r.id " +
-                                 "WHERE p.id_viagem = ? " +
+                                 "WHERE p.id_viagem = ? AND p.empresa_id = ? " +
                                  "GROUP BY r.origem, r.destino";
 
             try (PreparedStatement stmt = connection.prepareStatement(sqlPassagem)) {
                 stmt.setInt(1, idViagem);
+                stmt.setInt(2, DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         String origem = rs.getString("origem");
@@ -66,10 +67,11 @@ public class BalancoViagemDAO {
 
             // 2. ENCOMENDAS
             String sqlEncomenda = "SELECT rota, COUNT(*) as qtd, COALESCE(SUM(total_a_pagar), 0) as total " +
-                                  "FROM encomendas WHERE id_viagem = ? GROUP BY rota";
+                                  "FROM encomendas WHERE id_viagem = ? AND empresa_id = ? GROUP BY rota";
 
             try (PreparedStatement stmt = connection.prepareStatement(sqlEncomenda)) {
                 stmt.setInt(1, idViagem);
+                stmt.setInt(2, DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         String rota = rs.getString("rota");
@@ -86,10 +88,11 @@ public class BalancoViagemDAO {
 
             // 3. FRETES
             String sqlFrete = "SELECT rota_temp, COUNT(*) as qtd, COALESCE(SUM(valor_frete_calculado), 0) as total " +
-                              "FROM fretes WHERE id_viagem = ? GROUP BY rota_temp";
+                              "FROM fretes WHERE id_viagem = ? AND empresa_id = ? GROUP BY rota_temp";
 
             try (PreparedStatement stmt = connection.prepareStatement(sqlFrete)) {
                 stmt.setInt(1, idViagem);
+                stmt.setInt(2, DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         String rota = rs.getString("rota_temp");
@@ -108,12 +111,13 @@ public class BalancoViagemDAO {
             String sqlSaidas = "SELECT c.nome, SUM(d.valor_total) as total " +
                                "FROM financeiro_saidas d " +
                                "JOIN categorias_despesa c ON d.id_categoria = c.id " +
-                               "WHERE d.id_viagem = ? " +
+                               "WHERE d.id_viagem = ? AND d.empresa_id = ? " +
                                "GROUP BY c.nome";
 
             BigDecimal somaSaidas = BigDecimal.ZERO;
             try (PreparedStatement stmt = connection.prepareStatement(sqlSaidas)) {
                 stmt.setInt(1, idViagem);
+                stmt.setInt(2, DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         String categoria = rs.getString("nome");

@@ -6,7 +6,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.io.IOException; import java.util.List;
+import java.io.IOException; import java.util.ArrayList; import java.util.Map;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -20,8 +20,28 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = h.substring(7);
             if (jwtUtil.validar(token)) {
                 String tipo = jwtUtil.getTipo(token);
-                var auth = new UsernamePasswordAuthenticationToken(jwtUtil.getClienteId(token), null,
-                    List.of(new SimpleGrantedAuthority("CNPJ".equals(tipo) ? "ROLE_CNPJ" : "ROLE_CPF")));
+                String role;
+                if ("OPERADOR".equals(tipo)) {
+                    role = "ROLE_OPERADOR";
+                } else if ("CNPJ".equals(tipo)) {
+                    role = "ROLE_CNPJ";
+                } else {
+                    role = "ROLE_CPF";
+                }
+                var authorities = new ArrayList<SimpleGrantedAuthority>();
+                authorities.add(new SimpleGrantedAuthority(role));
+                if ("OPERADOR".equals(tipo)) {
+                    // Operadores com funcao ADMIN ganham ROLE_ADMIN adicional
+                    io.jsonwebtoken.Claims claims = jwtUtil.parsear(token);
+                    String funcao = claims.get("funcao", String.class);
+                    if ("ADMIN".equalsIgnoreCase(funcao)) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                    }
+                }
+                var auth = new UsernamePasswordAuthenticationToken(jwtUtil.getClienteId(token), null, authorities);
+                if ("OPERADOR".equals(tipo)) {
+                    auth.setDetails(Map.of("empresa_id", jwtUtil.getEmpresaId(token)));
+                }
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }

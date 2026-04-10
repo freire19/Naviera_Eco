@@ -1,6 +1,7 @@
 package com.naviera.api.service;
 
 import com.naviera.api.config.ApiException;
+import static com.naviera.api.config.MoneyUtils.toBigDecimal;
 import com.naviera.api.dto.BilheteDTO;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -258,9 +259,4 @@ public class BilheteService {
         return doc;
     }
 
-    private java.math.BigDecimal toBigDecimal(Object v) {
-        if (v == null) return java.math.BigDecimal.ZERO;
-        if (v instanceof java.math.BigDecimal bd) return bd;
-        return new java.math.BigDecimal(v.toString());
-    }
 }

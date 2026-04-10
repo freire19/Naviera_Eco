@@ -9,7 +9,9 @@ import java.util.Map;
 @RestController @RequestMapping("/lojas")
 public class LojaController {
     private final LojaService service;
-    public LojaController(LojaService service) { this.service = service; }
+    public LojaController(LojaService service) {
+        this.service = service;
+    }
 
     /** Lista todas as lojas parceiras ativas (CNPJ vê parceiros, CPF vê vitrine) */
     @GetMapping
@@ -46,5 +48,21 @@ public class LojaController {
         String codigo = (String) body.getOrDefault("codigoRastreio", "");
         service.vincularFrete(pedidoId, idFrete, codigo);
         return ResponseEntity.ok(Map.of("mensagem", "Frete vinculado com sucesso"));
+    }
+
+    @GetMapping("/{id}/avaliacoes")
+    public ResponseEntity<?> avaliacoes(@PathVariable Long id) {
+        return ResponseEntity.ok(service.listarAvaliacoes(id));
+    }
+
+    @PostMapping("/{id}/avaliacoes")
+    public ResponseEntity<?> avaliar(@PathVariable Long id, @RequestBody Map<String, Object> dados, Authentication auth) {
+        Long clienteId = (Long) auth.getPrincipal();
+        return ResponseEntity.ok(service.criarAvaliacao(id, clienteId, dados.get("nota"), dados.get("comentario")));
+    }
+
+    @GetMapping("/{id}/stats")
+    public ResponseEntity<?> stats(@PathVariable Long id) {
+        return ResponseEntity.ok(service.stats(id));
     }
 }

@@ -14,14 +14,9 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Cliente de sincronizacao bidirecional.
- *
- * AVISO: Esta classe esta incompleta — receberDadosDoServidor() e
- * processarRegistroRecebido (UPDATE/INSERT) NAO estao implementados.
- * Apenas envio e DELETE funcionam. Use com cautela.
- *
- * @deprecated Funcionalidade incompleta. Considerar reimplementar com biblioteca HTTP/JSON adequada.
+ * Upload e download funcionam via POST /api/sync (ida-e-volta unica por tabela).
+ * Conflitos resolvidos por last-write-wins (ultima_atualizacao).
  */
-@Deprecated
 public class SyncClient {
 
     // Configurações - altere para seu servidor
@@ -198,7 +193,7 @@ public class SyncClient {
         return CompletableFuture.supplyAsync(() -> {
             SyncResult resultadoGeral = new SyncResult();
             
-            String[] tabelas = {"passageiros", "passagens", "viagens", "encomendas", "fretes"};
+            String[] tabelas = {"viagens", "passageiros", "cad_clientes_encomenda", "passagens", "encomendas", "fretes"};
             
             for (String tabela : tabelas) {
                 try {
@@ -309,11 +304,12 @@ public class SyncClient {
 
         String colunaId = getColunaId(tabela);
 
-        String sql = "SELECT * FROM " + tabela + " WHERE sincronizado = FALSE AND (excluido = FALSE OR excluido IS NULL)";
-        
+        String sql = "SELECT * FROM " + tabela + " WHERE sincronizado = FALSE AND (excluido = FALSE OR excluido IS NULL) AND empresa_id = ?";
+
         try (java.sql.Connection conn = dao.ConexaoBD.getConnection();
-             java.sql.PreparedStatement stmt = conn.prepareStatement(sql);
-             java.sql.ResultSet rs = stmt.executeQuery()) {
+             java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, dao.DAOUtils.empresaId());
+            java.sql.ResultSet rs = stmt.executeQuery();
             
             java.sql.ResultSetMetaData meta = rs.getMetaData();
             int colunas = meta.getColumnCount();
@@ -370,38 +366,113 @@ public class SyncClient {
         String uuid = (String) registro.get("uuid");
         String dadosJson = (String) registro.get("dadosJson");
 
-        try {
+        if (uuid == null || uuid.isEmpty()) return;
+
+        try (java.sql.Connection conn = dao.ConexaoBD.getConnection()) {
+            String colunaId = getColunaId(tabela);
+            int empresaId = dao.DAOUtils.empresaId();
+
             // Verificar se já existe localmente
-            String sqlCheck = "SELECT id FROM " + tabela + " WHERE uuid = ?::uuid";
-            
-            try (java.sql.Connection conn = dao.ConexaoBD.getConnection();
-                 java.sql.PreparedStatement stmt = conn.prepareStatement(sqlCheck)) {
-                
+            String sqlCheck = "SELECT " + colunaId + " FROM " + tabela + " WHERE uuid = ?::uuid AND empresa_id = ?";
+            boolean existe = false;
+
+            try (java.sql.PreparedStatement stmt = conn.prepareStatement(sqlCheck)) {
                 stmt.setString(1, uuid);
+                stmt.setInt(2, empresaId);
                 java.sql.ResultSet rs = stmt.executeQuery();
-                
-                if ("DELETE".equals(acao)) {
-                    if (rs.next()) {
-                        // Marcar como excluído
-                        String sqlDel = "UPDATE " + tabela + " SET excluido = TRUE, sincronizado = TRUE WHERE uuid = ?::uuid";
-                        try (java.sql.PreparedStatement stmtDel = conn.prepareStatement(sqlDel)) {
-                            stmtDel.setString(1, uuid);
-                            stmtDel.executeUpdate();
-                        }
+                existe = rs.next();
+            }
+
+            if ("DELETE".equals(acao)) {
+                if (existe) {
+                    String sqlDel = "UPDATE " + tabela + " SET excluido = TRUE, sincronizado = TRUE WHERE uuid = ?::uuid AND empresa_id = ?";
+                    try (java.sql.PreparedStatement stmtDel = conn.prepareStatement(sqlDel)) {
+                        stmtDel.setString(1, uuid);
+                        stmtDel.setInt(2, empresaId);
+                        stmtDel.executeUpdate();
                     }
-                } else if (rs.next()) {
-                    // TODO: DM051 — implementar recebimento de registros (UPDATE/INSERT)
-                    // UPDATE - atualizar registro existente
-                    // Implementar lógica de atualização específica por tabela
-                } else {
-                    // TODO: DM051 — implementar recebimento de registros (UPDATE/INSERT)
-                    // INSERT - criar novo registro
-                    // Implementar lógica de inserção específica por tabela
+                }
+            } else if (existe) {
+                // UPDATE — aplicar dados recebidos do servidor
+                Map<String, Object> dados = parseFullJson(dadosJson);
+                if (dados.isEmpty()) return;
+
+                Set<String> skipCols = new HashSet<>(Arrays.asList("uuid", "sincronizado", "empresa_id", colunaId));
+                List<String> setClauses = new ArrayList<>();
+                List<Object> valores = new ArrayList<>();
+
+                for (Map.Entry<String, Object> entry : dados.entrySet()) {
+                    if (skipCols.contains(entry.getKey())) continue;
+                    setClauses.add(entry.getKey() + " = ?");
+                    valores.add(entry.getValue());
+                }
+
+                if (setClauses.isEmpty()) return;
+
+                // sincronizado = TRUE → trigger bypass
+                setClauses.add("sincronizado = TRUE");
+
+                String sql = "UPDATE " + tabela + " SET " + String.join(", ", setClauses) +
+                    " WHERE uuid = ?::uuid AND empresa_id = ?";
+                valores.add(uuid);
+                valores.add(empresaId);
+
+                try (java.sql.PreparedStatement stmtUpd = conn.prepareStatement(sql)) {
+                    for (int i = 0; i < valores.size(); i++) {
+                        stmtUpd.setObject(i + 1, valores.get(i));
+                    }
+                    stmtUpd.executeUpdate();
+                }
+            } else {
+                // INSERT — registro novo vindo do servidor
+                Map<String, Object> dados = parseFullJson(dadosJson);
+                if (dados.isEmpty()) return;
+
+                List<String> colunas = new ArrayList<>();
+                List<String> placeholders = new ArrayList<>();
+                List<Object> valores = new ArrayList<>();
+
+                for (Map.Entry<String, Object> entry : dados.entrySet()) {
+                    String col = entry.getKey();
+                    if (col.equals(colunaId)) continue; // skip auto-increment
+
+                    colunas.add(col);
+                    if ("uuid".equals(col)) {
+                        placeholders.add("?::uuid");
+                    } else {
+                        placeholders.add("?");
+                    }
+                    valores.add(entry.getValue());
+                }
+
+                // Garantir sincronizado = TRUE
+                if (!colunas.contains("sincronizado")) {
+                    colunas.add("sincronizado");
+                    placeholders.add("?");
+                    valores.add(true);
+                }
+
+                // Garantir empresa_id
+                if (!colunas.contains("empresa_id")) {
+                    colunas.add("empresa_id");
+                    placeholders.add("?");
+                    valores.add(empresaId);
+                }
+
+                String sql = "INSERT INTO " + tabela +
+                    " (" + String.join(", ", colunas) + ") VALUES (" +
+                    String.join(", ", placeholders) + ")";
+
+                try (java.sql.PreparedStatement stmtIns = conn.prepareStatement(sql)) {
+                    for (int i = 0; i < valores.size(); i++) {
+                        stmtIns.setObject(i + 1, valores.get(i));
+                    }
+                    stmtIns.executeUpdate();
                 }
             }
-            
         } catch (Exception e) {
             System.err.println("Erro ao processar registro de " + tabela + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -417,16 +488,18 @@ public class SyncClient {
         String colunaId = getColunaId(tabela);
         
         // Usar ID em vez de UUID para evitar problemas de cast
-        String sql = "UPDATE " + tabela + " SET sincronizado = TRUE WHERE " + colunaId + " = ?";
-        
+        String sql = "UPDATE " + tabela + " SET sincronizado = TRUE WHERE " + colunaId + " = ? AND empresa_id = ?";
+
         try (java.sql.Connection conn = dao.ConexaoBD.getConnection();
              java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
+
+            int empresaId = dao.DAOUtils.empresaId();
             int count = 0;
             for (Map<String, Object> reg : registros) {
                 Object idLocal = reg.get("idLocal");
                 if (idLocal != null) {
                     stmt.setObject(1, idLocal);
+                    stmt.setInt(2, empresaId);
                     stmt.addBatch();
                     count++;
                 }
@@ -754,6 +827,115 @@ public class SyncClient {
         return null;
     }
     
+    /**
+     * Parse completo de um JSON flat — retorna TODOS os key-value pairs.
+     * Suporta string, number, boolean e null.
+     */
+    private Map<String, Object> parseFullJson(String json) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (json == null || json.trim().isEmpty()) return result;
+
+        json = json.trim();
+        if (json.startsWith("{")) json = json.substring(1);
+        if (json.endsWith("}")) json = json.substring(0, json.length() - 1);
+
+        int i = 0;
+        while (i < json.length()) {
+            // Procurar inicio da chave
+            int keyStart = json.indexOf('"', i);
+            if (keyStart < 0) break;
+            int keyEnd = json.indexOf('"', keyStart + 1);
+            if (keyEnd < 0) break;
+            String key = json.substring(keyStart + 1, keyEnd);
+
+            // Procurar ':'
+            int colon = json.indexOf(':', keyEnd + 1);
+            if (colon < 0) break;
+
+            // Ler valor
+            int valueStart = colon + 1;
+            while (valueStart < json.length() && json.charAt(valueStart) == ' ') valueStart++;
+
+            if (valueStart >= json.length()) break;
+
+            char c = json.charAt(valueStart);
+            Object value;
+
+            if (c == '"') {
+                // String value — encontrar aspa de fechamento (cuidando de escapes)
+                int vEnd = valueStart + 1;
+                boolean escape = false;
+                StringBuilder sb = new StringBuilder();
+                while (vEnd < json.length()) {
+                    char ch = json.charAt(vEnd);
+                    if (escape) {
+                        if (ch == 'n') sb.append('\n');
+                        else if (ch == 'r') sb.append('\r');
+                        else if (ch == 't') sb.append('\t');
+                        else sb.append(ch);
+                        escape = false;
+                    } else if (ch == '\\') {
+                        escape = true;
+                    } else if (ch == '"') {
+                        break;
+                    } else {
+                        sb.append(ch);
+                    }
+                    vEnd++;
+                }
+                value = sb.toString();
+                i = vEnd + 1;
+            } else if (c == 'n' && json.startsWith("null", valueStart)) {
+                value = null;
+                i = valueStart + 4;
+            } else if (c == 't' && json.startsWith("true", valueStart)) {
+                value = true;
+                i = valueStart + 4;
+            } else if (c == 'f' && json.startsWith("false", valueStart)) {
+                value = false;
+                i = valueStart + 5;
+            } else if (c == '{' || c == '[') {
+                // Objeto ou array aninhado — pular (nao suportado em flat parse)
+                int nivel = 0;
+                int vEnd = valueStart;
+                char open = c, close = (c == '{') ? '}' : ']';
+                while (vEnd < json.length()) {
+                    if (json.charAt(vEnd) == open) nivel++;
+                    else if (json.charAt(vEnd) == close) {
+                        nivel--;
+                        if (nivel == 0) { vEnd++; break; }
+                    }
+                    vEnd++;
+                }
+                value = json.substring(valueStart, vEnd);
+                i = vEnd;
+            } else {
+                // Number
+                int vEnd = valueStart;
+                while (vEnd < json.length() && json.charAt(vEnd) != ',' && json.charAt(vEnd) != '}') vEnd++;
+                String numStr = json.substring(valueStart, vEnd).trim();
+                try {
+                    if (numStr.contains(".")) {
+                        value = Double.parseDouble(numStr);
+                    } else {
+                        long l = Long.parseLong(numStr);
+                        value = (l >= Integer.MIN_VALUE && l <= Integer.MAX_VALUE) ? (int) l : l;
+                    }
+                } catch (NumberFormatException e) {
+                    value = numStr;
+                }
+                i = vEnd;
+            }
+
+            result.put(key, value);
+
+            // Avançar até próxima vírgula ou fim
+            while (i < json.length() && (json.charAt(i) == ',' || json.charAt(i) == ' ')) i++;
+        }
+
+        return result;
+    }
+
     /**
      * Obtém status de sincronização formatado.
      */

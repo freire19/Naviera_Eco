@@ -21,10 +21,19 @@ public class JwtUtil {
             .issuedAt(new Date()).expiration(new Date(System.currentTimeMillis() + expirationMs))
             .signWith(key()).compact();
     }
+
+    public String gerarTokenOperador(Long usuarioId, String login, String funcao, Integer empresaId) {
+        return Jwts.builder().subject(login)
+            .claim("id", usuarioId).claim("tipo", "OPERADOR").claim("funcao", funcao)
+            .claim("empresa_id", empresaId)
+            .issuedAt(new Date()).expiration(new Date(System.currentTimeMillis() + expirationMs))
+            .signWith(key()).compact();
+    }
     public Claims parsear(String token) {
         return Jwts.parser().verifyWith(key()).build().parseSignedClaims(token).getPayload();
     }
     public boolean validar(String token) { try { parsear(token); return true; } catch (JwtException e) { return false; } }
     public Long getClienteId(String token) { return parsear(token).get("id", Long.class); }
     public String getTipo(String token) { return parsear(token).get("tipo", String.class); }
+    public Integer getEmpresaId(String token) { return parsear(token).get("empresa_id", Integer.class); }
 }
