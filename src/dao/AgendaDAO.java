@@ -1,5 +1,7 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -48,12 +50,12 @@ public class AgendaDAO {
     }
 
     public void adicionarAnotacao(LocalDate data, String texto) {
-        String sql = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida) VALUES (?, ?, false)";
+        String sql = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES (?, ?, false, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
             stmt.setString(2, texto);
-            stmt.executeUpdate();
+            stmt.setInt(3, DAOUtils.empresaId());
         } catch (SQLException e) {
             System.err.println("Erro SQL em AgendaDAO: " + e.getMessage());
         }
@@ -65,7 +67,8 @@ public class AgendaDAO {
         String sql = "SELECT descricao FROM agenda_anotacoes WHERE empresa_id = ? AND data_evento = ? AND concluida = false";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setDate(1, Date.valueOf(data));
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setDate(2, Date.valueOf(data));
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     notas.add(rs.getString("descricao"));
@@ -85,13 +88,14 @@ public class AgendaDAO {
     public Map<LocalDate, List<String>> buscarAnotacoesDoMes(int mes, int ano) {
         Map<LocalDate, List<String>> mapa = new HashMap<>();
         String sql = "SELECT data_evento, descricao FROM agenda_anotacoes " +
-                     "WHERE data_evento >= ? AND data_evento < ? AND concluida = false";
+                     "WHERE empresa_id = ? AND data_evento >= ? AND data_evento < ? AND concluida = false";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             LocalDate inicio = LocalDate.of(ano, mes, 1);
             LocalDate fim = inicio.plusMonths(1);
-            stmt.setDate(1, Date.valueOf(inicio));
-            stmt.setDate(2, Date.valueOf(fim));
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setDate(2, Date.valueOf(inicio));
+            stmt.setDate(3, Date.valueOf(fim));
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     java.sql.Date dtEvento = rs.getDate("data_evento");

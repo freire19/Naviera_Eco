@@ -1,5 +1,7 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,7 +108,7 @@ public class ConferenteDAO {
 
     /** Insere novo conferente. */
     public boolean inserir(long id, String nome) {
-        String sql = "INSERT INTO conferentes (id_conferente, nome_conferente, empresa_id) VALUES(?, ?)";
+        String sql = "INSERT INTO conferentes (id_conferente, nome_conferente, empresa_id) VALUES(?, ?, ?)";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);
@@ -120,7 +122,7 @@ public class ConferenteDAO {
 
     /** Atualiza o nome de um conferente. */
     public boolean atualizar(long id, String novoNome) {
-        String sql = "UPDATE conferentes SET nome_conferente = ? WHERE id_conferente = ? AND empresa_id = ? AND empresa_id = ?";
+        String sql = "UPDATE conferentes SET nome_conferente = ? WHERE id_conferente = ? AND empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, novoNome);
@@ -134,7 +136,7 @@ public class ConferenteDAO {
 
     /** Exclui um conferente pelo id. */
     public boolean excluir(long id) {
-        String sql = "DELETE FROM conferentes WHERE id_conferente = ? AND empresa_id = ? AND empresa_id = ? AND empresa_id = ?";
+        String sql = "DELETE FROM conferentes WHERE id_conferente = ? AND empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, id);

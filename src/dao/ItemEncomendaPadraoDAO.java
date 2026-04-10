@@ -1,6 +1,10 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import java.sql.Connection;
+// tenant filter
+import static dao.DAOUtils.empresaId;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,7 +26,7 @@ public class ItemEncomendaPadraoDAO {
 
     public List<ItemEncomendaPadrao> listarTodos(boolean apenasAtivos) {
         List<ItemEncomendaPadrao> lista = new ArrayList<>();
-        String sql = "SELECT * FROM itens_encomenda_padrao ";
+        String sql = "SELECT * FROM itens_encomenda_padrao WHERE empresa_id = ? ";
         if (apenasAtivos) {
             sql += " WHERE ativo = true ";
         }
@@ -51,7 +55,7 @@ public class ItemEncomendaPadraoDAO {
     }
     
     public boolean inserir(ItemEncomendaPadrao item) {
-        String sql = "INSERT INTO itens_encomenda_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, permite_valor_declarado, ativo) VALUES (?, ?, ?, ?, ?, ?) RETURNING id_item_encomenda";
+        String sql = "INSERT INTO itens_encomenda_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, permite_valor_declarado, ativo, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id_item_encomenda";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, item.getNomeItem());
@@ -73,7 +77,7 @@ public class ItemEncomendaPadraoDAO {
     }
 
     public boolean atualizar(ItemEncomendaPadrao item) {
-        String sql = "UPDATE itens_encomenda_padrao SET nome_item = ?, descricao = ?, unidade_medida = ?, preco_unitario_padrao = ?, permite_valor_declarado = ?, ativo = ? WHERE id_item_encomenda = ?";
+        String sql = "UPDATE itens_encomenda_padrao SET nome_item = ?, descricao = ?, unidade_medida = ?, preco_unitario_padrao = ?, permite_valor_declarado = ?, ativo = ? WHERE id_item_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, item.getNomeItem());
@@ -91,7 +95,7 @@ public class ItemEncomendaPadraoDAO {
     }
 
     public boolean excluir(long id) {
-        String sql = "DELETE FROM itens_encomenda_padrao WHERE id_item_encomenda = ?";
+        String sql = "DELETE FROM itens_encomenda_padrao WHERE id_item_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);

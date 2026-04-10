@@ -37,7 +37,7 @@ public class TarifaDAO {
     }
 
     public boolean inserir(Tarifa tarifa) {
-        String sql = "INSERT INTO tarifas (id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao, valor_cargas, valor_desconto) VALUES (?,?,?,?,?,?)";
+        String sql = "INSERT INTO tarifas (id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao, valor_cargas, valor_desconto, empresa_id) VALUES (?,?,?,?,?,?,?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, tarifa.getRotaId());
@@ -46,6 +46,7 @@ public class TarifaDAO {
             ps.setBigDecimal(4, DAOUtils.nvl(tarifa.getValorAlimentacao()));
             ps.setBigDecimal(5, DAOUtils.nvl(tarifa.getValorCargas()));
             ps.setBigDecimal(6, DAOUtils.nvl(tarifa.getValorDesconto()));
+            ps.setInt(7, DAOUtils.empresaId());
             if (ps.executeUpdate() > 0) {
                 try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
@@ -61,7 +62,7 @@ public class TarifaDAO {
     }
     
     public boolean atualizar(Tarifa tarifa) {
-        String sql = "UPDATE tarifas SET valor_transporte = ?, valor_alimentacao = ?, valor_cargas = ?, valor_desconto = ? WHERE id_tarifa = ?";
+        String sql = "UPDATE tarifas SET valor_transporte = ?, valor_alimentacao = ?, valor_cargas = ?, valor_desconto = ? WHERE id_tarifa = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setBigDecimal(1, DAOUtils.nvl(tarifa.getValorTransporte()));
@@ -69,6 +70,7 @@ public class TarifaDAO {
             ps.setBigDecimal(3, DAOUtils.nvl(tarifa.getValorCargas()));
             ps.setBigDecimal(4, DAOUtils.nvl(tarifa.getValorDesconto()));
             ps.setInt(5, tarifa.getId());
+            ps.setInt(6, DAOUtils.empresaId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
@@ -81,6 +83,7 @@ public class TarifaDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idTarifa);
+            ps.setInt(2, DAOUtils.empresaId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());

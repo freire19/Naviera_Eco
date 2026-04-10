@@ -1,7 +1,11 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import model.ClienteEncomenda;
 import java.sql.Connection;
+// tenant filter
+import static dao.DAOUtils.empresaId;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -82,11 +86,12 @@ public class ClienteEncomendaDAO {
      * @return true se a atualização foi bem-sucedida, false caso contrário.
      */
     public boolean atualizar(ClienteEncomenda cliente) {
-        String sql = "UPDATE cad_clientes_encomenda SET nome_cliente = ? WHERE id_cliente = ?";
+        String sql = "UPDATE cad_clientes_encomenda SET nome_cliente = ? WHERE id_cliente = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, cliente.getNomeCliente());
             stmt.setLong(2, cliente.getIdCliente());
+            stmt.setInt(3, empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
@@ -103,10 +108,11 @@ public class ClienteEncomendaDAO {
      * @return true se a exclusão foi bem-sucedida, false caso contrário.
      */
     public boolean excluir(Long idCliente) {
-        String sql = "DELETE FROM cad_clientes_encomenda WHERE id_cliente = ?";
+        String sql = "DELETE FROM cad_clientes_encomenda WHERE id_cliente = ? AND empresa_id = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, idCliente);
+            stmt.setInt(2, empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());

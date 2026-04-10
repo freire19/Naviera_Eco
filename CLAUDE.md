@@ -130,19 +130,19 @@ stmt.setInt(N, DAOUtils.empresaId());
 | PassageiroDAO | PARCIAL | SQL atualizado, falta params |
 | RotaDAO | FEITO | 100% tenant-aware |
 | EmbarcacaoDAO | FEITO | 100% tenant-aware + ON CONFLICT fix |
-| TarifaDAO | MEDIA | 1 INSERT + 3 SELECTs |
+| TarifaDAO | FEITO | INSERT/UPDATE/DELETE com empresa_id |
 | CaixaDAO | FEITO | 100% tenant-aware |
 | ConferenteDAO | PARCIAL | SQL atualizado, falta params |
 | ClienteEncomendaDAO | PARCIAL | SQL atualizado, falta params |
-| UsuarioDAO | BAIXA | 1 INSERT + 6 SELECTs |
+| UsuarioDAO | SQL PRONTO | Falta: setInt params |
 | AgendaDAO | PARCIAL | SQL atualizado, falta params |
 | ReciboAvulsoDAO | PARCIAL | SQL atualizado, falta params |
 | ReciboQuitacaoPassageiroDAO | FEITO | 100% tenant-aware |
 | TipoPassageiroDAO | PARCIAL | SQL atualizado, falta params |
-| ItemFreteDAO | BAIXA | 1 INSERT + 1 SELECT |
-| ItemEncomendaPadraoDAO | BAIXA | 1 INSERT + 1 SELECT |
-| EncomendaItemDAO | BAIXA | 1 INSERT + 2 SELECTs |
-| EmpresaDAO | ESPECIAL | Mudar para filtrar por empresa_id ao inves de id_config fixo |
+| ItemFreteDAO | FEITO | 100% tenant-aware |
+| ItemEncomendaPadraoDAO | SQL PRONTO | Falta: setInt params |
+| EncomendaItemDAO | N/A | Tabela filha sem empresa_id (segurança via FK) |
+| EmpresaDAO | PENDENTE | Mudar para filtrar por empresa_id |
 | BalancoViagemDAO | MEDIA | Queries complexas de relatorio — verificar cada uma |
 
 **DAOs que NAO precisam de empresa_id (dados globais):**

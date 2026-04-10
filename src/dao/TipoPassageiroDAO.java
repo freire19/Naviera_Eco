@@ -1,5 +1,7 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,7 +66,7 @@ public class TipoPassageiroDAO {
 
     // Busca ID pelo nome
     public int buscarIdPorNome(String nome) {
-        String sql = "SELECT id FROM tipo_passageiro WHERE nome=? LIMIT 1";
+        String sql = "SELECT id FROM tipo_passageiro WHERE nome=? AND empresa_id = ? LIMIT 1";
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nome);
@@ -78,7 +80,7 @@ public class TipoPassageiroDAO {
     }
 
     public String buscarNomePorId(int id) {
-        String sql = "SELECT nome FROM tipo_passageiro WHERE id=?";
+        String sql = "SELECT nome FROM tipo_passageiro WHERE id=? AND empresa_id = ?";
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);

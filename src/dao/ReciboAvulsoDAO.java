@@ -1,6 +1,10 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import java.sql.Connection;
+// tenant filter
+import static dao.DAOUtils.empresaId;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -52,7 +56,7 @@ public class ReciboAvulsoDAO {
 
     public List<ReciboAvulso> listarPorData(LocalDate data) {
         List<ReciboAvulso> lista = new ArrayList<>();
-        String sql = "SELECT * FROM recibos_avulsos WHERE data_emissao = ? ORDER BY id_recibo DESC";
+        String sql = "SELECT * FROM recibos_avulsos WHERE empresa_id = ? AND data_emissao = ? ORDER BY id_recibo DESC";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(data));
             try (ResultSet rs = stmt.executeQuery()) {

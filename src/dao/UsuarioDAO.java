@@ -1,9 +1,13 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import model.Usuario;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
+// tenant filter
+import static dao.DAOUtils.empresaId;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -48,7 +52,7 @@ public class UsuarioDAO {
     }
 
     public boolean inserir(Usuario usuario) {
-        String sql = "INSERT INTO usuarios (nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO usuarios (nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -111,7 +115,7 @@ public class UsuarioDAO {
     }
 
     public boolean excluir(int idUsuario) {
-        String sql = "DELETE FROM usuarios WHERE id_usuario=?";
+        String sql = "DELETE FROM usuarios WHERE id_usuario=? AND empresa_id=?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idUsuario);
@@ -124,7 +128,7 @@ public class UsuarioDAO {
     }
     
     public Usuario buscarPorId(int idUsuario) {
-        String sql = "SELECT id_usuario, nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo FROM usuarios WHERE id_usuario = ?";
+        String sql = "SELECT id_usuario, nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo FROM usuarios WHERE id_usuario = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idUsuario);
@@ -210,7 +214,7 @@ public class UsuarioDAO {
     /** Retorna apenas os logins de usuarios ativos (para combo de login). */
     public List<String> listarLoginsAtivos() {
         List<String> logins = new ArrayList<>();
-        String sql = "SELECT login_usuario FROM usuarios WHERE ativo = true ORDER BY login_usuario";
+        String sql = "SELECT login_usuario FROM usuarios WHERE empresa_id = ? AND ativo = true ORDER BY login_usuario";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {

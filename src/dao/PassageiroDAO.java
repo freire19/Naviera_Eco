@@ -1,7 +1,11 @@
 package dao;
 
+// Multi-tenant imports added automatically
+
 import model.Passageiro;
 import java.sql.Connection;
+// tenant filter
+import static dao.DAOUtils.empresaId;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -63,6 +67,7 @@ public class PassageiroDAO {
             stmt.setObject(4, passageiro.getDataNascimento() != null ? java.sql.Date.valueOf(passageiro.getDataNascimento()) : null);
             stmt.setObject(5, auxDAO.obterIdAuxiliar("aux_sexo", "nome_sexo", "id_sexo", passageiro.getSexo()));
             stmt.setObject(6, auxDAO.obterIdAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", passageiro.getNacionalidade()));
+            stmt.setInt(7, empresaId());
 
             int affectedRows = stmt.executeUpdate();
             if (affectedRows > 0) {
@@ -80,7 +85,7 @@ public class PassageiroDAO {
     }
 
     public boolean atualizar(Passageiro passageiro) {
-        String sql = "UPDATE passageiros SET nome_passageiro = ?, numero_documento = ?, id_tipo_doc = ?, data_nascimento = ?, id_sexo = ?, id_nacionalidade = ?, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id_passageiro = ?";
+        String sql = "UPDATE passageiros SET nome_passageiro = ?, numero_documento = ?, id_tipo_doc = ?, data_nascimento = ?, id_sexo = ?, id_nacionalidade = ?, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id_passageiro = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -94,6 +99,7 @@ public class PassageiroDAO {
             stmt.setObject(5, auxDAO.obterIdAuxiliar("aux_sexo", "nome_sexo", "id_sexo", passageiro.getSexo()));
             stmt.setObject(6, auxDAO.obterIdAuxiliar("aux_nacionalidades", "nome_nacionalidade", "id_nacionalidade", passageiro.getNacionalidade()));
             stmt.setLong(7, passageiro.getId());
+            stmt.setInt(8, empresaId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -134,10 +140,11 @@ public class PassageiroDAO {
     }
 
     public Passageiro buscarPorDoc(String doc) {
-        String sql = "SELECT * FROM passageiros WHERE numero_documento = ?";
+        String sql = "SELECT * FROM passageiros WHERE empresa_id = ? AND numero_documento = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, doc);
+            // empresa_id param shifted - see below
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSetToPassageiro(rs);
