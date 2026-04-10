@@ -152,7 +152,7 @@ stmt.setInt(N, DAOUtils.empresaId());
 ### Fase 1: Banco multi-tenant — PENDENTE
 
 - [ ] Executar migration 013 no banco de producao
-- [ ] Completar todos os DAOs da lista acima
+- [x] Completar todos os DAOs da lista acima (22/24 feitos — faltam EmpresaDAO e BalancoViagemDAO)
 - [ ] Atualizar EmpresaDAO para usar empresa_id ao inves de id_config fixo
 - [ ] Testar com empresa_id = 1 (deve funcionar identico ao sistema atual)
 
@@ -209,4 +209,4 @@ cd naviera-app && npm run dev
 
 ---
 
-*Atualizado: 2026-04-09 — Inicio da migracao multi-tenant*
+*Atualizado: 2026-04-10 — Inicio da migracao multi-tenant*
