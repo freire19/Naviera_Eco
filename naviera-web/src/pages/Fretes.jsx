@@ -43,7 +43,7 @@ export default function Fretes({ viagemAtiva }) {
   const fetchFretes = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/fretes?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/fretes?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setFretes)
       .catch(() => showToast('Erro ao carregar fretes', 'error'))
       .finally(() => setLoading(false))
@@ -68,7 +68,7 @@ export default function Fretes({ viagemAtiva }) {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/op/fretes', {
+      await api.post('/fretes', {
         id_viagem: viagemAtiva.id_viagem,
         remetente_nome_temp: form.remetente_nome_temp,
         destinatario_nome_temp: form.destinatario_nome_temp,
@@ -102,7 +102,7 @@ export default function Fretes({ viagemAtiva }) {
     if (!showPay) return
     setPaying(true)
     try {
-      await api.post(`/op/fretes/${showPay.id_frete}/pagar`, {
+      await api.post(`/fretes/${showPay.id_frete}/pagar`, {
         valor_pago: parseFloat(valorPago) || 0,
       })
       showToast('Pagamento registrado com sucesso')
@@ -119,7 +119,7 @@ export default function Fretes({ viagemAtiva }) {
   async function handleDelete(frete) {
     if (!window.confirm(`Excluir frete #${frete.numero_frete || frete.id_frete}? Esta acao nao pode ser desfeita.`)) return
     try {
-      await api.delete(`/op/fretes/${frete.id_frete}`)
+      await api.delete(`/fretes/${frete.id_frete}`)
       showToast('Frete excluido com sucesso')
       fetchFretes()
     } catch {

@@ -33,7 +33,7 @@ export default function FinanceiroSaida({ viagemAtiva }) {
   const carregar = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/financeiro/saidas?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/financeiro/saidas?viagem_id=${viagemAtiva.id_viagem}`)
       .then(data => setSaidas(Array.isArray(data) ? data : []))
       .catch(() => showToast('Erro ao carregar saidas', 'error'))
       .finally(() => setLoading(false))
@@ -71,7 +71,7 @@ export default function FinanceiroSaida({ viagemAtiva }) {
 
     setSalvando(true)
     try {
-      await api.post('/op/financeiro/saida', {
+      await api.post('/financeiro/saida', {
         id_viagem: viagemAtiva.id_viagem,
         descricao: form.descricao.trim(),
         valor: parseFloat(form.valor),
@@ -103,7 +103,7 @@ export default function FinanceiroSaida({ viagemAtiva }) {
     }
     setSalvando(true)
     try {
-      await api.delete(`/op/financeiro/saida/${modalExcluir.id_despesa || modalExcluir.id}`, {
+      await api.delete(`/financeiro/saida/${modalExcluir.id_despesa || modalExcluir.id}`, {
         motivo: motivoExclusao.trim()
       })
       showToast('Saida excluida com sucesso!')

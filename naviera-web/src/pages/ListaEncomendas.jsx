@@ -18,7 +18,7 @@ export default function ListaEncomendas({ viagemAtiva }) {
   const carregar = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setEncomendas)
       .catch(() => showToast('Erro ao carregar encomendas', 'error'))
       .finally(() => setLoading(false))

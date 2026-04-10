@@ -119,7 +119,7 @@ public class CadastrosWriteService {
     }
 
     @Transactional
-    public Map<String, Object> atualizarUsuario(Integer empresaId, Long id, Map<String, Object> dados) {
+    public Map<String, Object> atualizarUsuario(Integer empresaId, Integer id, Map<String, Object> dados) {
         int rows = jdbc.update("""
             UPDATE usuarios SET nome = ?, email = ?, funcao = ?, permissao = ?
             WHERE id = ? AND empresa_id = ?""",

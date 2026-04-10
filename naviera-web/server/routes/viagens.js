@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
              e.nome AS nome_embarcacao, r.origem, r.destino
       FROM viagens v
       LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
-      LEFT JOIN rotas r ON v.id_rota = r.id_rota
+      LEFT JOIN rotas r ON v.id_rota = r.id
       WHERE v.empresa_id = $1
       ORDER BY v.data_viagem DESC
     `, [empresaId])
@@ -34,8 +34,8 @@ router.get('/ativa', async (req, res) => {
              e.nome AS nome_embarcacao, r.origem, r.destino
       FROM viagens v
       LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
-      LEFT JOIN rotas r ON v.id_rota = r.id_rota
-      WHERE v.ativa = TRUE AND v.empresa_id = $1
+      LEFT JOIN rotas r ON v.id_rota = r.id
+      WHERE v.is_atual = TRUE AND v.empresa_id = $1
       ORDER BY v.data_viagem DESC
       LIMIT 1
     `, [empresaId])
@@ -53,7 +53,7 @@ router.get('/:id', async (req, res) => {
       SELECT v.*, e.nome AS nome_embarcacao, r.origem, r.destino
       FROM viagens v
       LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
-      LEFT JOIN rotas r ON v.id_rota = r.id_rota
+      LEFT JOIN rotas r ON v.id_rota = r.id
       WHERE v.id_viagem = $1 AND v.empresa_id = $2
     `, [req.params.id, empresaId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'Viagem nao encontrada' })
@@ -110,10 +110,10 @@ router.put('/:id/ativar', async (req, res) => {
     const { ativa } = req.body
     await client.query('BEGIN')
     if (ativa) {
-      await client.query('UPDATE viagens SET ativa = FALSE WHERE empresa_id = $1', [empresaId])
+      await client.query('UPDATE viagens SET is_atual = FALSE WHERE empresa_id = $1', [empresaId])
     }
     const result = await client.query(
-      'UPDATE viagens SET ativa = $1 WHERE id_viagem = $2 AND empresa_id = $3 RETURNING *',
+      'UPDATE viagens SET is_atual = $1 WHERE id_viagem = $2 AND empresa_id = $3 RETURNING *',
       [ativa !== false, req.params.id, empresaId]
     )
     await client.query('COMMIT')
@@ -130,17 +130,47 @@ router.put('/:id/ativar', async (req, res) => {
 
 // DELETE /api/viagens/:id
 router.delete('/:id', async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const result = await pool.query(
+    await client.query('BEGIN')
+    await client.query(
+      'DELETE FROM encomenda_itens WHERE id_encomenda IN (SELECT id_encomenda FROM encomendas WHERE id_viagem = $1 AND empresa_id = $2)',
+      [req.params.id, empresaId]
+    )
+    await client.query(
+      'DELETE FROM passagens WHERE id_viagem = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    await client.query(
+      'DELETE FROM encomendas WHERE id_viagem = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    await client.query(
+      'DELETE FROM frete_itens WHERE id_frete IN (SELECT id_frete FROM fretes WHERE id_viagem = $1 AND empresa_id = $2)',
+      [req.params.id, empresaId]
+    )
+    await client.query(
+      'DELETE FROM fretes WHERE id_viagem = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    await client.query(
+      'DELETE FROM financeiro_saidas WHERE id_viagem = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    const result = await client.query(
       'DELETE FROM viagens WHERE id_viagem = $1 AND empresa_id = $2 RETURNING id_viagem',
       [req.params.id, empresaId]
     )
+    await client.query('COMMIT')
     if (result.rows.length === 0) return res.status(404).json({ error: 'Viagem nao encontrada' })
     res.json({ mensagem: 'Viagem excluida' })
   } catch (err) {
+    await client.query('ROLLBACK')
     console.error('[Viagens] Erro ao excluir:', err.message)
-    res.status(500).json({ error: 'Erro ao excluir viagem. Verifique se nao ha passagens/encomendas/fretes vinculados.' })
+    res.status(500).json({ error: 'Erro ao excluir viagem.' })
+  } finally {
+    client.release()
   }
 })
 

@@ -322,14 +322,14 @@ public class FinanceiroSaidaController {
                 AppLogger.error("FinanceiroSaidaController", e.getMessage(), e);
                 AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroSaidaController", "Erro ao excluir: " + e.getMessage());
     private String validarPermissaoGerente(String senha) {
-        String sql = "SELECT login_usuario, senha_hash FROM usuarios WHERE empresa_id = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
+        String sql = "SELECT nome, senha FROM usuarios WHERE empresa_id = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND excluido IS NOT TRUE";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                String hashDoBanco = rs.getString("senha_hash");
-                String login = rs.getString("login_usuario");
+                String hashDoBanco = rs.getString("senha");
+                String login = rs.getString("nome");
                 try {
                     if (hashDoBanco != null) {
                         // Sempre usa BCrypt — sem fallback plaintext

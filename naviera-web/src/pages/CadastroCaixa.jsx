@@ -19,7 +19,7 @@ export default function CadastroCaixa({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/cadastros/caixas')
+    api.get('/cadastros/caixas')
       .then(setCaixas)
       .catch(() => showToast('Erro ao carregar caixas', 'error'))
       .finally(() => setLoading(false))
@@ -56,10 +56,10 @@ export default function CadastroCaixa({ viagemAtiva, onNavigate }) {
     setSalvando(true)
     try {
       if (editando) {
-        await api.put(`/op/cadastros/caixas/${editando.id_caixa}`, form)
+        await api.put(`/cadastros/caixas/${editando.id_caixa}`, form)
         showToast('Caixa atualizado com sucesso')
       } else {
-        await api.post('/op/cadastros/caixas', form)
+        await api.post('/cadastros/caixas', form)
         showToast('Caixa criado com sucesso')
       }
       fecharModal()

@@ -19,7 +19,7 @@ export default function CadastroConferente({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/cadastros/conferentes')
+    api.get('/cadastros/conferentes')
       .then(setConferentes)
       .catch(() => showToast('Erro ao carregar conferentes', 'error'))
       .finally(() => setLoading(false))
@@ -56,10 +56,10 @@ export default function CadastroConferente({ viagemAtiva, onNavigate }) {
     setSalvando(true)
     try {
       if (editando) {
-        await api.put(`/op/cadastros/conferentes/${editando.id_conferente}`, form)
+        await api.put(`/cadastros/conferentes/${editando.id_conferente}`, form)
         showToast('Conferente atualizado com sucesso')
       } else {
-        await api.post('/op/cadastros/conferentes', form)
+        await api.post('/cadastros/conferentes', form)
         showToast('Conferente criado com sucesso')
       }
       fecharModal()

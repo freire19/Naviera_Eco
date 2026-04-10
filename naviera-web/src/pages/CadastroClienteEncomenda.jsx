@@ -23,7 +23,7 @@ export default function CadastroClienteEncomenda({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/cadastros/clientes-encomenda')
+    api.get('/cadastros/clientes-encomenda')
       .then(setClientes)
       .catch(() => showToast('Erro ao carregar clientes', 'error'))
       .finally(() => setLoading(false))
@@ -64,10 +64,10 @@ export default function CadastroClienteEncomenda({ viagemAtiva, onNavigate }) {
     setSalvando(true)
     try {
       if (editando) {
-        await api.put(`/op/cadastros/clientes-encomenda/${editando.id_cliente_encomenda}`, form)
+        await api.put(`/cadastros/clientes-encomenda/${editando.id_cliente_encomenda}`, form)
         showToast('Cliente atualizado com sucesso')
       } else {
-        await api.post('/op/cadastros/clientes-encomenda', form)
+        await api.post('/cadastros/clientes-encomenda', form)
         showToast('Cliente criado com sucesso')
       }
       fecharModal()

@@ -33,7 +33,7 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/cadastros/tarifas')
+    api.get('/cadastros/tarifas')
       .then(setTarifas)
       .catch(() => showToast('Erro ao carregar tarifas', 'error'))
       .finally(() => setLoading(false))
@@ -42,8 +42,8 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
   useEffect(() => { carregar() }, [carregar])
 
   useEffect(() => {
-    api.get('/op/rotas').then(setRotas).catch(() => {})
-    api.get('/op/cadastros/tipos-passageiro').then(setTiposPassageiro).catch(() => {})
+    api.get('/rotas').then(setRotas).catch(() => {})
+    api.get('/cadastros/tipos-passageiro').then(setTiposPassageiro).catch(() => {})
   }, [])
 
   function abrirCriar() {
@@ -88,10 +88,10 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
         valor_desconto: Number(form.valor_desconto) || 0
       }
       if (editando) {
-        await api.put(`/op/cadastros/tarifas/${editando.id_tarifa}`, payload)
+        await api.put(`/cadastros/tarifas/${editando.id_tarifa}`, payload)
         showToast('Tarifa atualizada com sucesso')
       } else {
-        await api.post('/op/cadastros/tarifas', payload)
+        await api.post('/cadastros/tarifas', payload)
         showToast('Tarifa criada com sucesso')
       }
       fecharModal()

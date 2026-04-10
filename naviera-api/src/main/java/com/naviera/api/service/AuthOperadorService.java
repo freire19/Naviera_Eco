@@ -47,7 +47,7 @@ public class AuthOperadorService {
         return new AuthOperadorResponse(token, dto);
     }
 
-    public UsuarioDTO me(Long usuarioId) {
+    public UsuarioDTO me(Integer usuarioId) {
         var usuario = repo.findById(usuarioId)
             .orElseThrow(() -> ApiException.notFound("Usuario nao encontrado"));
 

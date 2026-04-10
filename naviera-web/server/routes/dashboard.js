@@ -15,7 +15,7 @@ router.get('/resumo', async (req, res) => {
     const [passagens, encomendas, fretes] = await Promise.all([
       pool.query('SELECT COUNT(*) AS total, COALESCE(SUM(valor_total), 0) AS valor FROM passagens WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
       pool.query('SELECT COUNT(*) AS total, COALESCE(SUM(total_a_pagar), 0) AS valor FROM encomendas WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
-      pool.query('SELECT COUNT(*) AS total, COALESCE(SUM(valor_nominal), 0) AS valor FROM fretes WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId])
+      pool.query('SELECT COUNT(*) AS total, COALESCE(SUM(valor_frete_calculado), 0) AS valor FROM fretes WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId])
     ])
 
     res.json({

@@ -6,18 +6,19 @@ const router = Router()
 router.use(authMiddleware)
 
 // GET /api/financeiro/entradas?viagem_id=X
+// Nota: entradas sao calculadas a partir de passagens+encomendas+fretes (nao tem tabela propria)
 router.get('/entradas', async (req, res) => {
   try {
     const { viagem_id } = req.query
+    if (!viagem_id) return res.json([])
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT * FROM financeiro_entradas WHERE empresa_id = $1'
-    const params = [empresaId]
-    if (viagem_id) {
-      sql += ' AND id_viagem = $2'
-      params.push(viagem_id)
-    }
-    sql += ' ORDER BY data_entrada DESC'
-    const result = await pool.query(sql, params)
+    const result = await pool.query(`
+      SELECT 'Passagens' AS tipo, COUNT(*) AS qtd, COALESCE(SUM(valor_pago), 0) AS valor FROM passagens WHERE id_viagem = $1 AND empresa_id = $2
+      UNION ALL
+      SELECT 'Encomendas', COUNT(*), COALESCE(SUM(valor_pago), 0) FROM encomendas WHERE id_viagem = $1 AND empresa_id = $2
+      UNION ALL
+      SELECT 'Fretes', COUNT(*), COALESCE(SUM(valor_pago), 0) FROM fretes WHERE id_viagem = $1 AND empresa_id = $2
+    `, [viagem_id, empresaId])
     res.json(result.rows)
   } catch (err) {
     res.status(500).json({ error: 'Erro ao listar entradas' })
@@ -29,13 +30,13 @@ router.get('/saidas', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT * FROM financeiro_saidas WHERE excluido = FALSE AND empresa_id = $1'
+    let sql = 'SELECT * FROM financeiro_saidas WHERE (is_excluido = FALSE OR is_excluido IS NULL) AND empresa_id = $1'
     const params = [empresaId]
     if (viagem_id) {
       sql += ' AND id_viagem = $2'
       params.push(viagem_id)
     }
-    sql += ' ORDER BY data DESC'
+    sql += ' ORDER BY data_vencimento DESC'
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -54,7 +55,7 @@ router.get('/balanco', async (req, res) => {
       pool.query('SELECT COALESCE(SUM(valor_pago), 0) AS total FROM passagens WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
       pool.query('SELECT COALESCE(SUM(valor_pago), 0) AS total FROM encomendas WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
       pool.query('SELECT COALESCE(SUM(valor_pago), 0) AS total FROM fretes WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
-      pool.query('SELECT COALESCE(SUM(valor), 0) AS total FROM financeiro_saidas WHERE id_viagem = $1 AND excluido = FALSE AND empresa_id = $2', [viagem_id, empresaId])
+      pool.query('SELECT COALESCE(SUM(valor_total), 0) AS total FROM financeiro_saidas WHERE id_viagem = $1 AND (is_excluido = FALSE OR is_excluido IS NULL) AND empresa_id = $2', [viagem_id, empresaId])
     ])
 
     const receitas = {
@@ -80,15 +81,24 @@ router.get('/balanco', async (req, res) => {
 router.post('/saida', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    const { id_viagem, descricao, valor, data, id_categoria, id_funcionario, tipo } = req.body
-    if (!descricao || !valor || !data) {
-      return res.status(400).json({ error: 'Campos obrigatorios: descricao, valor, data' })
+    const {
+      id_viagem, descricao, valor_total, data_vencimento, id_categoria, id_funcionario, forma_pagamento,
+      valor_pago, data_pagamento, status, numero_parcela, total_parcelas, observacoes
+    } = req.body
+    if (!descricao || !valor_total) {
+      return res.status(400).json({ error: 'Campos obrigatorios: descricao, valor_total' })
     }
     const result = await pool.query(`
-      INSERT INTO financeiro_saidas (id_viagem, descricao, valor, data, id_categoria, funcionario_id, tipo, excluido, empresa_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8)
+      INSERT INTO financeiro_saidas (id_viagem, descricao, valor_total, data_vencimento, id_categoria, funcionario_id, forma_pagamento,
+        valor_pago, data_pagamento, status, numero_parcela, total_parcelas, observacoes, is_excluido, empresa_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, FALSE, $14)
       RETURNING *
-    `, [id_viagem || null, descricao, valor, data, id_categoria || null, id_funcionario || null, tipo || null, empresaId])
+    `, [
+      id_viagem || null, descricao, valor_total, data_vencimento || null, id_categoria || null, id_funcionario || null, forma_pagamento || null,
+      parseFloat(valor_pago) || 0, data_pagamento || null, status || 'PENDENTE',
+      numero_parcela ? parseInt(numero_parcela) : null, total_parcelas ? parseInt(total_parcelas) : null, observacoes || null,
+      empresaId
+    ])
     res.status(201).json(result.rows[0])
   } catch (err) {
     console.error('[Financeiro] Erro ao criar saida:', err.message)
@@ -102,7 +112,7 @@ router.delete('/saida/:id', async (req, res) => {
     const empresaId = req.user.empresa_id
     const { motivo } = req.body
     const result = await pool.query(
-      'UPDATE financeiro_saidas SET excluido = TRUE, motivo_exclusao = $1 WHERE id = $2 AND empresa_id = $3 RETURNING id',
+      'UPDATE financeiro_saidas SET is_excluido = TRUE, motivo_exclusao = $1 WHERE id = $2 AND empresa_id = $3 RETURNING id',
       [motivo || null, req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Saida nao encontrada' })

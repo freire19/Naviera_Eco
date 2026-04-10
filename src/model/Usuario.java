@@ -1,15 +1,15 @@
 package model;
 
 public class Usuario {
-    private int id;             // Corresponde a id_usuario
-    private String nomeCompleto; // Corresponde a nome_completo
+    private int id;             // Corresponde a id (PK)
+    private String nomeCompleto; // Corresponde a nome (usado tambem como login)
     private String email;
     private transient String senhaPlana; // Temporario — nunca persiste, nunca serializa
-    private String senhaHash;   // Hash BCrypt armazenado no banco
+    private String senhaHash;   // Hash BCrypt — coluna 'senha' no banco
     private String funcao;
-    private String permissoes; // Corresponde a permissoes
-    private String loginUsuario; // Corresponde a login_usuario
-    private boolean ativo;
+    private String permissoes; // Corresponde a permissao (singular no banco)
+    private String loginUsuario; // Mapeado para 'nome' no banco (nao existe coluna login_usuario)
+    private boolean ativo;      // Inverso de 'excluido' no banco (ativo=true → excluido=false)
 
     public Usuario() {
     }

@@ -86,7 +86,7 @@ public class FinanceiroEntradaController {
     private void carregarUsuariosNoCombo() {
         ObservableList<String> usuarios = FXCollections.observableArrayList("Todos");
         
-        String sql = "SELECT nome_completo FROM usuarios WHERE empresa_id = ? ORDER BY nome_completo";
+        String sql = "SELECT nome FROM usuarios WHERE empresa_id = ? ORDER BY nome";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
@@ -94,7 +94,7 @@ public class FinanceiroEntradaController {
              ResultSet rs = stmt.executeQuery();
              
              while(rs.next()){
-                 usuarios.add(rs.getString("nome_completo"));
+                 usuarios.add(rs.getString("nome"));
              }
              
         } catch (SQLException e) {

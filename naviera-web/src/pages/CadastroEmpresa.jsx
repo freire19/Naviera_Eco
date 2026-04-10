@@ -14,7 +14,7 @@ export default function CadastroEmpresa({ viagemAtiva, onNavigate }) {
 
   useEffect(() => {
     setLoading(true)
-    api.get('/op/cadastros/empresa')
+    api.get('/cadastros/empresa')
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setForm(data[0])
@@ -35,7 +35,7 @@ export default function CadastroEmpresa({ viagemAtiva, onNavigate }) {
     e.preventDefault()
     setSalvando(true)
     try {
-      await api.put('/op/cadastros/empresa', form)
+      await api.put('/cadastros/empresa', form)
       showToast('Dados da empresa atualizados com sucesso')
     } catch (err) {
       showToast(err.message || 'Erro ao salvar dados da empresa', 'error')

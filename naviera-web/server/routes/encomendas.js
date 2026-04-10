@@ -49,7 +49,7 @@ router.post('/', async (req, res) => {
     const empresaId = req.user.empresa_id
     const {
       id_viagem, remetente, destinatario, observacoes, total_volumes,
-      total_a_pagar, valor_pago, desconto, forma_pagamento, rota, id_caixa, itens
+      total_a_pagar, valor_pago, desconto, forma_pagamento, rota, id_caixa, local_pagamento, itens
     } = req.body
     if (!id_viagem || !remetente || !destinatario || !total_a_pagar) {
       return res.status(400).json({ error: 'Campos obrigatorios: id_viagem, remetente, destinatario, total_a_pagar' })
@@ -71,22 +71,22 @@ router.post('/', async (req, res) => {
     const result = await client.query(`
       INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes,
         total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento,
-        forma_pagamento, entregue, rota, data_lancamento, empresa_id)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,FALSE,$12,CURRENT_DATE,$13)
+        forma_pagamento, entregue, rota, data_lancamento, local_pagamento, id_caixa, empresa_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,FALSE,$12,CURRENT_DATE,$13,$14,$15)
       RETURNING *
     `, [
       id_viagem, numEncomenda, remetente, destinatario, observacoes || null,
       total_volumes || 0, vPagar, vPago, vDesconto, status,
-      forma_pagamento || null, rota || null, empresaId
+      forma_pagamento || null, rota || null, local_pagamento || null, id_caixa ? parseInt(id_caixa) : null, empresaId
     ])
 
     const encomendaId = result.rows[0].id_encomenda
     if (itens && Array.isArray(itens)) {
       for (const item of itens) {
         await client.query(`
-          INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [encomendaId, item.quantidade || 1, item.descricao, item.valor_unitario || 0, item.valor_total || 0])
+          INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [encomendaId, item.quantidade || 1, item.descricao, item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null])
       }
     }
 

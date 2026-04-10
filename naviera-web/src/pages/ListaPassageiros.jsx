@@ -18,7 +18,7 @@ export default function ListaPassageiros({ viagemAtiva }) {
   const carregar = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/passagens?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/passagens?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setPassagens)
       .catch(() => showToast('Erro ao carregar passageiros', 'error'))
       .finally(() => setLoading(false))

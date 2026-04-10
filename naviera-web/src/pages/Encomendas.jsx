@@ -54,7 +54,7 @@ export default function Encomendas({ viagemAtiva }) {
   const fetchEncomendas = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setEncomendas)
       .catch(() => notify('Erro ao carregar encomendas', 'error'))
       .finally(() => setLoading(false))
@@ -78,7 +78,7 @@ export default function Encomendas({ viagemAtiva }) {
     }
     setSubmitting(true)
     try {
-      await api.post('/op/encomendas', {
+      await api.post('/encomendas', {
         id_viagem: viagemAtiva.id_viagem,
         remetente: form.remetente.trim(),
         destinatario: form.destinatario.trim(),
@@ -116,7 +116,7 @@ export default function Encomendas({ viagemAtiva }) {
     }
     setSubmitting(true)
     try {
-      await api.post(`/op/encomendas/${showPagar.id_encomenda}/pagar`, { valor_pago: valor })
+      await api.post(`/encomendas/${showPagar.id_encomenda}/pagar`, { valor_pago: valor })
       notify('Pagamento registrado com sucesso')
       setShowPagar(null)
       fetchEncomendas()
@@ -141,7 +141,7 @@ export default function Encomendas({ viagemAtiva }) {
     }
     setSubmitting(true)
     try {
-      await api.put(`/op/encomendas/${showEntregar.id_encomenda}/entregar`, {
+      await api.put(`/encomendas/${showEntregar.id_encomenda}/entregar`, {
         nome_recebedor: entregarForm.nome_recebedor.trim(),
         doc_recebedor: entregarForm.doc_recebedor.trim(),
       })
@@ -159,7 +159,7 @@ export default function Encomendas({ viagemAtiva }) {
   async function handleDelete() {
     setSubmitting(true)
     try {
-      await api.delete(`/op/encomendas/${showConfirmDelete.id_encomenda}`)
+      await api.delete(`/encomendas/${showConfirmDelete.id_encomenda}`)
       notify('Encomenda excluida')
       setShowConfirmDelete(null)
       fetchEncomendas()

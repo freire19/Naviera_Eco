@@ -18,7 +18,7 @@ export default function ListaFretes({ viagemAtiva }) {
   const carregar = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/fretes?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/fretes?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setFretes)
       .catch(() => showToast('Erro ao carregar fretes', 'error'))
       .finally(() => setLoading(false))

@@ -24,7 +24,7 @@ export default function CadastroEmbarcacao({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/embarcacoes')
+    api.get('/embarcacoes')
       .then(setEmbarcacoes)
       .catch(() => showToast('Erro ao carregar embarcacoes', 'error'))
       .finally(() => setLoading(false))
@@ -67,10 +67,10 @@ export default function CadastroEmbarcacao({ viagemAtiva, onNavigate }) {
     try {
       const payload = { ...form, capacidade_passageiros: Number(form.capacidade_passageiros) || 0 }
       if (editando) {
-        await api.put(`/op/cadastros/embarcacoes/${editando.id_embarcacao}`, payload)
+        await api.put(`/cadastros/embarcacoes/${editando.id_embarcacao}`, payload)
         showToast('Embarcacao atualizada com sucesso')
       } else {
-        await api.post('/op/cadastros/embarcacoes', payload)
+        await api.post('/cadastros/embarcacoes', payload)
         showToast('Embarcacao criada com sucesso')
       }
       fecharModal()

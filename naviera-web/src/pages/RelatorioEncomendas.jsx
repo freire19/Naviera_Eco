@@ -20,8 +20,8 @@ export default function RelatorioEncomendas({ viagemAtiva }) {
     if (!viagemAtiva) return
     setLoading(true)
     Promise.all([
-      api.get(`/op/encomendas/resumo?viagem_id=${viagemAtiva.id_viagem}`),
-      api.get(`/op/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
+      api.get(`/encomendas/resumo?viagem_id=${viagemAtiva.id_viagem}`),
+      api.get(`/encomendas?viagem_id=${viagemAtiva.id_viagem}`)
     ])
       .then(([r, e]) => {
         setResumo(r)

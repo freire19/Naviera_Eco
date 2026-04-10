@@ -81,8 +81,8 @@ export default function Layout() {
   const [viagemAtiva, setViagemAtiva] = useState(null)
 
   useEffect(() => {
-    api.get('/op/viagens').then(setViagens).catch(() => {})
-    api.get('/op/viagens/ativa').then(v => { if (v) setViagemAtiva(v) }).catch(() => {})
+    api.get('/viagens').then(setViagens).catch(() => {})
+    api.get('/viagens/ativa').then(v => { if (v) setViagemAtiva(v) }).catch(() => {})
   }, [])
 
   const pageConfig = PAGES[currentPage] || PAGES.inicio

@@ -37,7 +37,7 @@ export default function Financeiro({ viagemAtiva }) {
 
   const carregarBalanco = useCallback(() => {
     if (!viagemAtiva) return
-    api.get(`/op/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setBalanco)
       .catch(() => {})
   }, [viagemAtiva])
@@ -45,7 +45,7 @@ export default function Financeiro({ viagemAtiva }) {
   const carregarSaidas = useCallback(() => {
     if (!viagemAtiva) return
     setLoadingSaidas(true)
-    api.get(`/op/financeiro/saidas?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/financeiro/saidas?viagem_id=${viagemAtiva.id_viagem}`)
       .then(data => setSaidas(Array.isArray(data) ? data : []))
       .catch(() => setSaidas([]))
       .finally(() => setLoadingSaidas(false))
@@ -55,8 +55,8 @@ export default function Financeiro({ viagemAtiva }) {
     if (!viagemAtiva) return
     setLoading(true)
     Promise.all([
-      api.get(`/op/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`).then(setBalanco).catch(() => {}),
-      api.get(`/op/financeiro/saidas?viagem_id=${viagemAtiva.id_viagem}`).then(data => setSaidas(Array.isArray(data) ? data : [])).catch(() => setSaidas([]))
+      api.get(`/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`).then(setBalanco).catch(() => {}),
+      api.get(`/financeiro/saidas?viagem_id=${viagemAtiva.id_viagem}`).then(data => setSaidas(Array.isArray(data) ? data : [])).catch(() => setSaidas([]))
     ]).finally(() => setLoading(false))
   }, [viagemAtiva])
 
@@ -92,7 +92,7 @@ export default function Financeiro({ viagemAtiva }) {
 
     setSalvando(true)
     try {
-      await api.post('/op/financeiro/saida', {
+      await api.post('/financeiro/saida', {
         id_viagem: viagemAtiva.id_viagem,
         descricao: form.descricao.trim(),
         valor: parseFloat(form.valor),
@@ -130,7 +130,7 @@ export default function Financeiro({ viagemAtiva }) {
 
     setSalvando(true)
     try {
-      await api.delete(`/op/financeiro/saida/${modalExcluir.id_despesa || modalExcluir.id}`, {
+      await api.delete(`/financeiro/saida/${modalExcluir.id_despesa || modalExcluir.id}`, {
         motivo: motivoExclusao.trim()
       })
       mostrarToast('Saida excluida com sucesso!')

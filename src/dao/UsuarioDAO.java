@@ -39,7 +39,7 @@ public class UsuarioDAO {
     }
     
     public int gerarProximoId() {
-        String sql = "SELECT nextval('usuarios_id_usuario_seq')";
+        String sql = "SELECT nextval('usuarios_id_seq')";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -53,24 +53,23 @@ public class UsuarioDAO {
     }
 
     public boolean inserir(Usuario usuario) {
-        String sql = "INSERT INTO usuarios (nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO usuarios (nome, senha, email, funcao, permissao, excluido, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, usuario.getNomeCompleto());
-            ps.setString(2, usuario.getLoginUsuario());
-            ps.setString(3, hashSenha(usuario.getSenhaPlana()));
-            ps.setString(4, usuario.getEmail());
-            ps.setString(5, usuario.getFuncao());
-            ps.setString(6, usuario.getPermissoes());
-            ps.setBoolean(7, usuario.isAtivo());
-            ps.setInt(8, empresaId());
+            ps.setString(2, hashSenha(usuario.getSenhaPlana()));
+            ps.setString(3, usuario.getEmail());
+            ps.setString(4, usuario.getFuncao());
+            ps.setString(5, usuario.getPermissoes());
+            ps.setBoolean(6, !usuario.isAtivo()); // excluido = inverso de ativo
+            ps.setInt(7, empresaId());
 
             int affectedRows = ps.executeUpdate();
             if (affectedRows > 0) {
                 try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
-                        usuario.setId(generatedKeys.getInt("id_usuario"));
+                        usuario.setId(generatedKeys.getInt("id"));
                     }
                 }
                 return true;
@@ -85,23 +84,22 @@ public class UsuarioDAO {
     public boolean atualizar(Usuario usuario) {
         boolean atualizarSenha = usuario.getSenhaPlana() != null && !usuario.getSenhaPlana().isEmpty();
         
-        StringBuilder sqlBuilder = new StringBuilder("UPDATE usuarios SET nome_completo=?, login_usuario=?, email=?, funcao=?, permissoes=?, ativo=? ");
+        StringBuilder sqlBuilder = new StringBuilder("UPDATE usuarios SET nome=?, email=?, funcao=?, permissao=?, excluido=? ");
         if (atualizarSenha) {
-            sqlBuilder.append(", senha_hash=? ");
+            sqlBuilder.append(", senha=? ");
         }
-        sqlBuilder.append("WHERE id_usuario=? AND empresa_id=?");
+        sqlBuilder.append("WHERE id=? AND empresa_id=?");
         String sql = sqlBuilder.toString();
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            
+
             int paramIndex = 1;
             ps.setString(paramIndex++, usuario.getNomeCompleto());
-            ps.setString(paramIndex++, usuario.getLoginUsuario());
             ps.setString(paramIndex++, usuario.getEmail());
             ps.setString(paramIndex++, usuario.getFuncao());
             ps.setString(paramIndex++, usuario.getPermissoes());
-            ps.setBoolean(paramIndex++, usuario.isAtivo());
+            ps.setBoolean(paramIndex++, !usuario.isAtivo()); // excluido = inverso de ativo
 
             if (atualizarSenha) {
                 ps.setString(paramIndex++, hashSenha(usuario.getSenhaPlana()));
@@ -118,7 +116,7 @@ public class UsuarioDAO {
     }
 
     public boolean excluir(int idUsuario) {
-        String sql = "DELETE FROM usuarios WHERE id_usuario=? AND empresa_id=?";
+        String sql = "DELETE FROM usuarios WHERE id=? AND empresa_id=?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idUsuario);
@@ -131,7 +129,7 @@ public class UsuarioDAO {
     }
     
     public Usuario buscarPorId(int idUsuario) {
-        String sql = "SELECT id_usuario, nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo FROM usuarios WHERE id_usuario = ? AND empresa_id = ?";
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE id = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idUsuario);
@@ -147,11 +145,11 @@ public class UsuarioDAO {
         return null;
     }
     
-    public Usuario buscarPorLogin(String loginUsuario) {
-        String sql = "SELECT id_usuario, nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo FROM usuarios WHERE login_usuario = ?";
+    public Usuario buscarPorLogin(String nomeUsuario) {
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, loginUsuario);
+            ps.setString(1, nomeUsuario);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return extrairUsuarioDoResultSet(rs, true);
@@ -164,15 +162,15 @@ public class UsuarioDAO {
     }
 
     // Renomeado de verificarLogin para buscarPorUsuarioESenha para alinhar com o LoginController
-    public Usuario buscarPorUsuarioESenha(String loginUsuario, String senhaTextoPlano) {
-        String sql = "SELECT id_usuario, nome_completo, login_usuario, senha_hash, email, funcao, permissoes, ativo FROM usuarios WHERE login_usuario = ? AND ativo = TRUE";
+    public Usuario buscarPorUsuarioESenha(String nomeUsuario, String senhaTextoPlano) {
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ? AND excluido IS NOT TRUE";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            
-            ps.setString(1, loginUsuario);
+
+            ps.setString(1, nomeUsuario);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    String hashArmazenado = rs.getString("senha_hash");
+                    String hashArmazenado = rs.getString("senha");
                     if (verificarSenha(senhaTextoPlano, hashArmazenado)) {
                         return extrairUsuarioDoResultSet(rs, false);
                     }
@@ -186,7 +184,7 @@ public class UsuarioDAO {
 
     public List<Usuario> listarTodos() {
         List<Usuario> lista = new ArrayList<>();
-        String sql = "SELECT id_usuario, nome_completo, login_usuario, email, funcao, permissoes, ativo FROM usuarios WHERE empresa_id = ? ORDER BY nome_completo";
+        String sql = "SELECT id, nome, email, funcao, permissao, excluido FROM usuarios WHERE empresa_id = ? ORDER BY nome";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empresaId());
@@ -201,16 +199,16 @@ public class UsuarioDAO {
         return lista;
     }
 
-    // Método para listar apenas os nomes de login dos usuários (para ComboBox)
+    // Método para listar apenas os nomes dos usuários (para ComboBox)
     public List<String> listarNomesDeUsuarios() {
         List<String> nomesUsuarios = new ArrayList<>();
-        String sql = "SELECT login_usuario FROM usuarios WHERE empresa_id = ? ORDER BY login_usuario";
+        String sql = "SELECT nome FROM usuarios WHERE empresa_id = ? ORDER BY nome";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empresaId());
             try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                nomesUsuarios.add(rs.getString("login_usuario"));
+                nomesUsuarios.add(rs.getString("nome"));
             }
             }
         } catch (SQLException e) {
@@ -219,16 +217,16 @@ public class UsuarioDAO {
         return nomesUsuarios;
     }
 
-    /** Retorna apenas os logins de usuarios ativos (para combo de login). */
+    /** Retorna apenas os nomes de usuarios ativos (nao excluidos) para combo de login. */
     public List<String> listarLoginsAtivos() {
         List<String> logins = new ArrayList<>();
-        String sql = "SELECT login_usuario FROM usuarios WHERE empresa_id = ? AND ativo = true ORDER BY login_usuario";
+        String sql = "SELECT nome FROM usuarios WHERE empresa_id = ? AND excluido IS NOT TRUE ORDER BY nome";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empresaId());
             try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                logins.add(rs.getString("login_usuario"));
+                logins.add(rs.getString("nome"));
             }
             }
         } catch (SQLException e) {
@@ -239,18 +237,18 @@ public class UsuarioDAO {
     
     private Usuario extrairUsuarioDoResultSet(ResultSet rs, boolean incluirSenhaHashNoObjeto) throws SQLException {
         Usuario u = new Usuario();
-        u.setId(rs.getInt("id_usuario"));
-        u.setNomeCompleto(rs.getString("nome_completo"));
-        u.setLoginUsuario(rs.getString("login_usuario"));
+        u.setId(rs.getInt("id"));
+        u.setNomeCompleto(rs.getString("nome"));
+        u.setLoginUsuario(rs.getString("nome")); // login usa nome (mesmo campo)
         if (incluirSenhaHashNoObjeto) {
-            u.setSenhaHash(rs.getString("senha_hash"));
+            u.setSenhaHash(rs.getString("senha"));
         } else {
             u.setSenhaHash(null);
         }
         u.setEmail(rs.getString("email"));
         u.setFuncao(rs.getString("funcao"));
-        u.setPermissoes(rs.getString("permissoes"));
-        u.setAtivo(rs.getBoolean("ativo"));
+        u.setPermissoes(rs.getString("permissao"));
+        u.setAtivo(!rs.getBoolean("excluido")); // excluido=false → ativo=true
         return u;
     }
 }

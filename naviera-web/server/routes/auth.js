@@ -17,8 +17,13 @@ router.post('/login', loginLimiter, async (req, res) => {
 
   try {
     // Login by nome or email
+    // empresa_id pode nao existir se migration 013 nao foi rodada
+    const hasEmpresaId = await pool.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name = 'empresa_id'"
+    )
+    const empresaCol = hasEmpresaId.rows.length > 0 ? ', empresa_id' : ''
     const result = await pool.query(
-      'SELECT id, nome, email, senha, funcao, permissao, empresa_id FROM usuarios WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1)) AND (excluido = FALSE OR excluido IS NULL)',
+      `SELECT id, nome, email, senha, funcao, permissao${empresaCol} FROM usuarios WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1)) AND (excluido = FALSE OR excluido IS NULL)`,
       [login]
     )
 
@@ -36,7 +41,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       id: user.id,
       login: user.nome,
       funcao: user.funcao,
-      empresa_id: user.empresa_id
+      empresa_id: user.empresa_id || 1
     })
 
     res.json({
@@ -60,7 +65,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nome, email, funcao, permissao, empresa_id FROM usuarios WHERE id = $1',
+      'SELECT id, nome, email, funcao, permissao FROM usuarios WHERE id = $1',
       [req.user.id]
     )
     if (result.rows.length === 0) {

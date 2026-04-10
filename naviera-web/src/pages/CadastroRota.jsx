@@ -19,7 +19,7 @@ export default function CadastroRota({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/rotas')
+    api.get('/rotas')
       .then(setRotas)
       .catch(() => showToast('Erro ao carregar rotas', 'error'))
       .finally(() => setLoading(false))
@@ -59,10 +59,10 @@ export default function CadastroRota({ viagemAtiva, onNavigate }) {
     setSalvando(true)
     try {
       if (editando) {
-        await api.put(`/op/cadastros/rotas/${editando.id_rota}`, form)
+        await api.put(`/cadastros/rotas/${editando.id_rota}`, form)
         showToast('Rota atualizada com sucesso')
       } else {
-        await api.post('/op/cadastros/rotas', form)
+        await api.post('/cadastros/rotas', form)
         showToast('Rota criada com sucesso')
       }
       fecharModal()

@@ -20,8 +20,8 @@ export default function RelatorioPassagens({ viagemAtiva }) {
     if (!viagemAtiva) return
     setLoading(true)
     Promise.all([
-      api.get(`/op/passagens/resumo?viagem_id=${viagemAtiva.id_viagem}`),
-      api.get(`/op/passagens?viagem_id=${viagemAtiva.id_viagem}`)
+      api.get(`/passagens/resumo?viagem_id=${viagemAtiva.id_viagem}`),
+      api.get(`/passagens?viagem_id=${viagemAtiva.id_viagem}`)
     ])
       .then(([r, p]) => {
         setResumo(r)

@@ -51,7 +51,7 @@ export default function Passagens({ viagemAtiva }) {
   const carregarPassagens = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/passagens?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/passagens?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setPassagens)
       .catch(() => showToast('Erro ao carregar passagens', 'error'))
       .finally(() => setLoading(false))
@@ -62,7 +62,7 @@ export default function Passagens({ viagemAtiva }) {
   }, [carregarPassagens])
 
   useEffect(() => {
-    api.get('/op/cadastros/tipos-passageiro')
+    api.get('/cadastros/tipos-passageiro')
       .then(setTiposPassageiro)
       .catch(() => {})
   }, [])
@@ -97,7 +97,7 @@ export default function Passagens({ viagemAtiva }) {
 
     setSalvando(true)
     try {
-      await api.post('/op/passagens', {
+      await api.post('/passagens', {
         ...form,
         id_viagem: viagemAtiva.id_viagem,
         valor_total: Number(form.valor_total) || 0,
@@ -144,7 +144,7 @@ export default function Passagens({ viagemAtiva }) {
 
     setPagando(true)
     try {
-      await api.post(`/op/passagens/${modalPagar.id_passagem}/pagar`, { valor_pago: valor })
+      await api.post(`/passagens/${modalPagar.id_passagem}/pagar`, { valor_pago: valor })
       showToast('Pagamento registrado com sucesso')
       fecharModalPagar()
       carregarPassagens()
@@ -161,7 +161,7 @@ export default function Passagens({ viagemAtiva }) {
     if (!window.confirm(`Excluir passagem ${passagem.num_bilhete || passagem.id_passagem}?`)) return
 
     try {
-      await api.delete(`/op/passagens/${passagem.id_passagem}`)
+      await api.delete(`/passagens/${passagem.id_passagem}`)
       showToast('Passagem excluida com sucesso')
       carregarPassagens()
     } catch (err) {

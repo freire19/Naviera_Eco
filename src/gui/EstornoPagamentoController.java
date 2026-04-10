@@ -116,7 +116,7 @@ public class EstornoPagamentoController {
     // Valida a senha comparando com todos os gerentes do banco
     private boolean validarAutorizadorNoBanco(String senhaDigitada) {
         // Busca a hash de todos que são 'Gerente'
-        String sql = "SELECT id_usuario, nome_completo, senha_hash FROM usuarios WHERE empresa_id = ? AND funcao ILIKE '%Gerente%'";
+        String sql = "SELECT id, nome, senha FROM usuarios WHERE empresa_id = ? AND funcao ILIKE '%Gerente%'";
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
@@ -124,9 +124,9 @@ public class EstornoPagamentoController {
             ResultSet rs = stmt.executeQuery();
             
             while(rs.next()) {
-                String hashDoBanco = rs.getString("senha_hash");
-                int id = rs.getInt("id_usuario");
-                String nome = rs.getString("nome_completo");
+                String hashDoBanco = rs.getString("senha");
+                int id = rs.getInt("id");
+                String nome = rs.getString("nome");
 
                 // Verifica se a senha bate com a hash usando BCrypt
                 boolean senhaConfere = false;

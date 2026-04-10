@@ -20,8 +20,8 @@ export default function RelatorioFretes({ viagemAtiva }) {
     if (!viagemAtiva) return
     setLoading(true)
     Promise.all([
-      api.get(`/op/fretes/resumo?viagem_id=${viagemAtiva.id_viagem}`),
-      api.get(`/op/fretes?viagem_id=${viagemAtiva.id_viagem}`)
+      api.get(`/fretes/resumo?viagem_id=${viagemAtiva.id_viagem}`),
+      api.get(`/fretes?viagem_id=${viagemAtiva.id_viagem}`)
     ])
       .then(([r, f]) => {
         setResumo(r)

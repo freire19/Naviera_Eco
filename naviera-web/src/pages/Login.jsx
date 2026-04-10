@@ -13,7 +13,7 @@ export default function Login({ onLogin, theme, toggleTheme }) {
     setLoading(true)
 
     try {
-      const data = await api.post('/auth/operador/login', { login, senha })
+      const data = await api.post('/auth/login', { login, senha })
       onLogin(data)
     } catch (err) {
       setErro(err.message || 'Erro ao fazer login')

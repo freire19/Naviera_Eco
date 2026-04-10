@@ -18,7 +18,7 @@ export default function BalancoViagem({ viagemAtiva }) {
   const carregar = useCallback(() => {
     if (!viagemAtiva) return
     setLoading(true)
-    api.get(`/op/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/financeiro/balanco?viagem_id=${viagemAtiva.id_viagem}`)
       .then(setBalanco)
       .catch(() => showToast('Erro ao carregar balanco', 'error'))
       .finally(() => setLoading(false))

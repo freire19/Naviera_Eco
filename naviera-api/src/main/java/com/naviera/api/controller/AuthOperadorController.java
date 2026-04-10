@@ -23,7 +23,7 @@ public class AuthOperadorController {
 
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication auth) {
-        Long id = (Long) auth.getPrincipal();
+        Integer id = ((Number) auth.getPrincipal()).intValue();
         return ResponseEntity.ok(service.me(id));
     }
 }

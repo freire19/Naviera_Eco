@@ -162,7 +162,7 @@ public class CadastroUsuarioController implements Initializable {
             lblMensagem.setText("Preencha os dados para um novo usuário. O ID é para referência.");
         } else {
             txtId.clear(); 
-            AlertHelper.show(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID. Verifique a sequence 'usuarios_id_usuario_seq'.");
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro ao Gerar ID", "Não foi possível obter um novo ID. Verifique a sequence 'usuarios_id_seq'.");
             lblMensagem.setText("Erro ao gerar ID. Verifique o console.");
         }
         txtNomeCompleto.requestFocus();

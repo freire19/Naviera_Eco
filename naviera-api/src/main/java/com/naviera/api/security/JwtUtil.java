@@ -22,7 +22,7 @@ public class JwtUtil {
             .signWith(key()).compact();
     }
 
-    public String gerarTokenOperador(Long usuarioId, String login, String funcao, Integer empresaId) {
+    public String gerarTokenOperador(Integer usuarioId, String login, String funcao, Integer empresaId) {
         return Jwts.builder().subject(login)
             .claim("id", usuarioId).claim("tipo", "OPERADOR").claim("funcao", funcao)
             .claim("empresa_id", empresaId)

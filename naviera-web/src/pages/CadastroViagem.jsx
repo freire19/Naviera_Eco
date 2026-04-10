@@ -28,7 +28,7 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/viagens')
+    api.get('/viagens')
       .then(setViagens)
       .catch(() => showToast('Erro ao carregar viagens', 'error'))
       .finally(() => setLoading(false))
@@ -37,8 +37,8 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
   useEffect(() => { carregar() }, [carregar])
 
   useEffect(() => {
-    api.get('/op/cadastros/embarcacoes').then(setEmbarcacoes).catch(() => {})
-    api.get('/op/cadastros/rotas').then(setRotas).catch(() => {})
+    api.get('/embarcacoes').then(setEmbarcacoes).catch(() => {})
+    api.get('/rotas').then(setRotas).catch(() => {})
   }, [])
 
   function abrirCriar() {
@@ -75,10 +75,10 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
     setSalvando(true)
     try {
       if (editando) {
-        await api.put(`/op/viagens/${editando.id_viagem}`, form)
+        await api.put(`/viagens/${editando.id_viagem}`, form)
         showToast('Viagem atualizada com sucesso')
       } else {
-        await api.post('/op/viagens', form)
+        await api.post('/viagens', form)
         showToast('Viagem criada com sucesso')
       }
       fecharModal()
@@ -93,7 +93,7 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
   async function handleExcluir(item) {
     if (!window.confirm(`Excluir viagem "${item.descricao || item.id_viagem}"?`)) return
     try {
-      await api.delete(`/op/viagens/${item.id_viagem}`)
+      await api.delete(`/viagens/${item.id_viagem}`)
       showToast('Viagem excluida com sucesso')
       carregar()
     } catch (err) {
@@ -103,7 +103,7 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
 
   async function handleToggleAtiva(item) {
     try {
-      await api.put(`/op/viagens/${item.id_viagem}/ativar`, { ativa: !item.ativa })
+      await api.put(`/viagens/${item.id_viagem}/ativar`, { ativa: !item.ativa })
       showToast(item.ativa ? 'Viagem desativada' : 'Viagem ativada')
       carregar()
     } catch (err) {

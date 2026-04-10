@@ -27,7 +27,7 @@ export default function CadastroUsuario({ viagemAtiva, onNavigate }) {
 
   const carregar = useCallback(() => {
     setLoading(true)
-    api.get('/op/cadastros/usuarios')
+    api.get('/cadastros/usuarios')
       .then(setUsuarios)
       .catch(() => showToast('Erro ao carregar usuarios', 'error'))
       .finally(() => setLoading(false))
@@ -76,10 +76,10 @@ export default function CadastroUsuario({ viagemAtiva, onNavigate }) {
       if (editando && !payload.senha) delete payload.senha
 
       if (editando) {
-        await api.put(`/op/cadastros/usuarios/${editando.id_usuario}`, payload)
+        await api.put(`/cadastros/usuarios/${editando.id_usuario}`, payload)
         showToast('Usuario atualizado com sucesso')
       } else {
-        await api.post('/op/cadastros/usuarios', payload)
+        await api.post('/cadastros/usuarios', payload)
         showToast('Usuario criado com sucesso')
       }
       fecharModal()

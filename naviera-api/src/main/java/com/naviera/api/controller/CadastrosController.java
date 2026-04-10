@@ -120,7 +120,7 @@ public class CadastrosController {
         return ResponseEntity.ok(writeService.criarUsuario(TenantUtils.getEmpresaId(auth), dados));
     }
     @PutMapping("/usuarios/{id}")
-    public ResponseEntity<?> atualizarUsuario(@PathVariable Long id, @RequestBody Map<String, Object> dados, Authentication auth) {
+    public ResponseEntity<?> atualizarUsuario(@PathVariable Integer id, @RequestBody Map<String, Object> dados, Authentication auth) {
         return ResponseEntity.ok(writeService.atualizarUsuario(TenantUtils.getEmpresaId(auth), id, dados));
     }
 

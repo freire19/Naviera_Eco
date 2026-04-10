@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-export const API = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+export const API = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
 
 /* ═══ HOOK: useApi com refresh ═══ */
 export function useApi(path, authHeaders, deps = []) {
