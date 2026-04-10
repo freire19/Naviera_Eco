@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import model.DadosBalancoViagem;
 import model.ItemResumoBalanco;
+import gui.util.AppLogger;
 
 public class BalancoViagemDAO {
 
@@ -61,7 +62,7 @@ public class BalancoViagemDAO {
                     }
                 }
             } catch (SQLException e) {
-                System.err.println("Erro SQL Passagens: " + e.getMessage());
+                AppLogger.warn("BalancoViagemDAO", "Erro SQL Passagens: " + e.getMessage());
                 dados.marcarIncompleto("Passagens", e.getMessage());
             }
 
@@ -82,7 +83,7 @@ public class BalancoViagemDAO {
                     }
                 }
             } catch (SQLException e) {
-                System.err.println("Erro SQL Encomendas: " + e.getMessage());
+                AppLogger.warn("BalancoViagemDAO", "Erro SQL Encomendas: " + e.getMessage());
                 dados.marcarIncompleto("Encomendas", e.getMessage());
             }
 
@@ -103,7 +104,7 @@ public class BalancoViagemDAO {
                     }
                 }
             } catch (SQLException e) {
-                System.err.println("Erro SQL Fretes: " + e.getMessage());
+                AppLogger.warn("BalancoViagemDAO", "Erro SQL Fretes: " + e.getMessage());
                 dados.marcarIncompleto("Fretes", e.getMessage());
             }
 
@@ -130,7 +131,7 @@ public class BalancoViagemDAO {
             dados.setTotalSaidas(somaSaidas);
 
         } catch (SQLException e) {
-            System.err.println("Erro SQL em BalancoViagemDAO: " + e.getMessage());
+            AppLogger.warn("BalancoViagemDAO", "Erro SQL em BalancoViagemDAO: " + e.getMessage());
         } finally {
             fecharSeLocal(connection);
         }

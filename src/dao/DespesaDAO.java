@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import gui.util.AppLogger;
 
 /**
  * DAO para financeiro_saidas e categorias_despesa.
@@ -85,7 +86,7 @@ public class DespesaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.buscarDespesas: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.buscarDespesas: " + e.getMessage());
         }
         return resultado;
     }
@@ -115,7 +116,7 @@ public class DespesaDAO {
             stmt.setInt(10, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.inserirDespesa: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.inserirDespesa: " + e.getMessage());
             return false;
         }
     }
@@ -133,7 +134,7 @@ public class DespesaDAO {
             stmt.setInt(4, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.atualizarStatus: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.atualizarStatus: " + e.getMessage());
             return false;
         }
     }
@@ -151,7 +152,7 @@ public class DespesaDAO {
             stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.darBaixaBoleto: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.darBaixaBoleto: " + e.getMessage());
             return false;
         }
     }
@@ -206,7 +207,7 @@ public class DespesaDAO {
                 return s.executeUpdate() > 0;
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.excluirBoleto: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.excluirBoleto: " + e.getMessage());
             return false;
         }
     }
@@ -223,7 +224,7 @@ public class DespesaDAO {
                 if (rs.next()) return rs.getInt("id_viagem");
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.buscarIdViagemDaDespesa: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.buscarIdViagemDaDespesa: " + e.getMessage());
         }
         return 0;
     }
@@ -249,7 +250,7 @@ public class DespesaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.buscarInfoViagem: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.buscarInfoViagem: " + e.getMessage());
         }
         return info;
     }
@@ -269,7 +270,7 @@ public class DespesaDAO {
             while (rs.next()) lista.add(rs.getString(1));
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.listarCategorias: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.listarCategorias: " + e.getMessage());
         }
         return lista;
     }
@@ -286,7 +287,7 @@ public class DespesaDAO {
                 if (rs.next()) return rs.getInt(1);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.buscarIdCategoria: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.buscarIdCategoria: " + e.getMessage());
         }
         return 1;
     }
@@ -327,7 +328,7 @@ public class DespesaDAO {
             stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.inserirCategoria: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.inserirCategoria: " + e.getMessage());
             return false;
         }
     }
@@ -381,7 +382,7 @@ public class DespesaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em DespesaDAO.buscarBoletos: " + e.getMessage());
+            AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.buscarBoletos: " + e.getMessage());
         }
         return resultado;
     }

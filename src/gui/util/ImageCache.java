@@ -2,6 +2,7 @@ package gui.util;
 
 import javafx.scene.image.Image;
 import java.util.concurrent.ConcurrentHashMap;
+import gui.util.AppLogger;
 
 /**
  * DP029: Cache de imagens para evitar leitura repetida do disco.
@@ -18,7 +19,7 @@ public class ImageCache {
             try {
                 return new Image("file:" + path);
             } catch (Exception e) {
-                System.err.println("ImageCache: erro ao carregar imagem '" + path + "': " + e.getMessage());
+                AppLogger.warn("ImageCache", "ImageCache: erro ao carregar imagem '" + path + "': " + e.getMessage());
                 return null;
             }
         });

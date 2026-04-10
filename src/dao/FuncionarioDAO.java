@@ -7,6 +7,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 /**
  * DAO para funcionarios e operacoes financeiras de folha.
@@ -30,7 +31,7 @@ public class FuncionarioDAO {
             }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.listarTodos: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.listarTodos: " + e.getMessage());
         }
         return lista;
     }
@@ -47,7 +48,7 @@ public class FuncionarioDAO {
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.inserir: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.inserir: " + e.getMessage());
             return false;
         }
     }
@@ -62,7 +63,7 @@ public class FuncionarioDAO {
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.atualizar: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.atualizar: " + e.getMessage());
             return false;
         }
     }
@@ -76,7 +77,7 @@ public class FuncionarioDAO {
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.atualizarDataInicioCalculo: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.atualizarDataInicioCalculo: " + e.getMessage());
             return false;
         }
     }
@@ -89,7 +90,7 @@ public class FuncionarioDAO {
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.demitir: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.demitir: " + e.getMessage());
             return false;
         }
     }
@@ -128,7 +129,7 @@ public class FuncionarioDAO {
                 if (rs.next()) return rs.getInt(1) > 0;
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.existeEventoRH: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.existeEventoRH: " + e.getMessage());
         }
         return false;
     }
@@ -145,7 +146,7 @@ public class FuncionarioDAO {
                 if (rs.next()) return rs.getInt(1) > 0;
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.existeDescontoLegado: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.existeDescontoLegado: " + e.getMessage());
         }
         return false;
     }
@@ -161,7 +162,7 @@ public class FuncionarioDAO {
                 if (rs.next()) return rs.getInt(1) > 0;
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.existeFaltaNoDia: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.existeFaltaNoDia: " + e.getMessage());
         }
         return false;
     }
@@ -184,7 +185,7 @@ public class FuncionarioDAO {
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.lancarEventoRH: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.lancarEventoRH: " + e.getMessage());
             return false;
         }
     }
@@ -214,7 +215,7 @@ public class FuncionarioDAO {
             }
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.lancarDebito: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.lancarDebito: " + e.getMessage());
             return false;
         }
     }
@@ -245,7 +246,7 @@ public class FuncionarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.carregarHistorico (saidas): " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.carregarHistorico (saidas): " + e.getMessage());
         }
 
         String sqlRH = "SELECT data_evento, descricao, valor, tipo FROM eventos_rh " +
@@ -268,7 +269,7 @@ public class FuncionarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.carregarHistorico (eventos): " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.carregarHistorico (eventos): " + e.getMessage());
         }
 
         return historico;
@@ -336,7 +337,7 @@ public class FuncionarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO: " + e.getMessage());
         }
         return 0.0;
     }
@@ -347,7 +348,7 @@ public class FuncionarioDAO {
             try (ResultSet rs = ps.executeQuery()) {
             if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.buscarViagemAtiva: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.buscarViagemAtiva: " + e.getMessage());
         }
         return 1;
     }
@@ -359,7 +360,7 @@ public class FuncionarioDAO {
              ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) return rs.getInt("id");
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FuncionarioDAO.buscarIdCategoriaFuncionarios: " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.buscarIdCategoriaFuncionarios: " + e.getMessage());
         }
         return 1;
     }

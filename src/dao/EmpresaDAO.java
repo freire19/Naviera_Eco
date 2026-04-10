@@ -3,6 +3,7 @@ package dao;
 import model.Empresa;
 import java.sql.*;
 import java.util.concurrent.ConcurrentHashMap;
+import gui.util.AppLogger;
 
 // D026: dados da empresa (CNPJ, tel) sao publicos e usados em recibos/impressao.
 // Auth de escrita esta no CadastroEmpresaController (exigirAdmin). Leitura livre e intencional.
@@ -43,7 +44,7 @@ public class EmpresaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EmpresaDAO.buscar: " + e.getMessage());
+            AppLogger.warn("EmpresaDAO", "Erro SQL em EmpresaDAO.buscar: " + e.getMessage());
         }
         return null;
     }
@@ -100,7 +101,7 @@ public class EmpresaDAO {
             return affectedRows > 0;
 
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EmpresaDAO.salvarOuAtualizar: " + e.getMessage());
+            AppLogger.warn("EmpresaDAO", "Erro SQL em EmpresaDAO.salvarOuAtualizar: " + e.getMessage());
             return false;
         }
     }

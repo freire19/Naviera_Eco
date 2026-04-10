@@ -66,6 +66,7 @@ import model.Encomenda;
 import model.EncomendaItem;
 import model.Rota;
 import model.Viagem;
+import gui.util.AppLogger;
 
 public class ListaEncomendaController implements Initializable {
 
@@ -168,7 +169,7 @@ public class ListaEncomendaController implements Initializable {
             }
 
             @Override protected void failed() {
-                System.err.println("Erro ao carregar combos: " + getException().getMessage());
+                AppLogger.warn("ListaEncomendaController", "Erro ao carregar combos: " + getException().getMessage());
             }
         };
         Thread tCombos = new Thread(taskCombos);
@@ -447,7 +448,7 @@ public class ListaEncomendaController implements Initializable {
             }
             aplicarFiltros();
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("ListaEncomendaController", e.getMessage(), e);
         }
     }
 
@@ -967,7 +968,7 @@ public class ListaEncomendaController implements Initializable {
                 carregarEncomendasDaViagem(cmbViagem.getValue());
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("ListaEncomendaController", e.getMessage(), e);
         }
     }
 

@@ -22,6 +22,7 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.Optional;
+import gui.util.AppLogger;
 
 public class ExtratoClienteEncomendaController {
 
@@ -91,7 +92,7 @@ public class ExtratoClienteEncomendaController {
         colRota.setStyle("-fx-alignment: CENTER-LEFT; -fx-font-size: 14px;");
         colData.setStyle("-fx-alignment: CENTER; -fx-font-size: 14px;");
         
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em ExtratoClienteEncomendaController.configuringTabela (CSS): " + e.getMessage()); }
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ AppLogger.warn("ExtratoClienteEncomendaController", "Erro em ExtratoClienteEncomendaController.configuringTabela (CSS): " + e.getMessage()); }
     }
     
     private void configurarTabela() { configuringTabela(); } 
@@ -105,7 +106,7 @@ public class ExtratoClienteEncomendaController {
              stmt.setInt(2, dao.DAOUtils.empresaId());
              ResultSet rs = stmt.executeQuery();
              while(rs.next()) nomes.add(rs.getString("nome"));
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("ExtratoClienteEncomendaController", e.getMessage(), e); }
         javafx.application.Platform.runLater(() -> {
             listaTodosClientes.setAll(nomes);
             cmbClientes.setItems(listaTodosClientes);
@@ -216,7 +217,7 @@ public class ExtratoClienteEncomendaController {
             btnQuitarTudo.setDisable(dividaTotalAtual <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("ExtratoClienteEncomendaController", e.getMessage(), e);
             Alert a = new Alert(Alert.AlertType.ERROR);
             a.setContentText("Erro ao buscar dados: " + e.getMessage());
             a.show();
@@ -291,7 +292,7 @@ public class ExtratoClienteEncomendaController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("ExtratoClienteEncomendaController", e.getMessage(), e);
             Alert a = new Alert(Alert.AlertType.ERROR, "Erro ao quitar: " + e.getMessage());
             a.show();
         }

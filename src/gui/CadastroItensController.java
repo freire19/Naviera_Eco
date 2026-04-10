@@ -28,6 +28,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroItensController implements Initializable {
 
@@ -73,7 +74,7 @@ public class CadastroItensController implements Initializable {
                 List<ItemFrete> dados = dao.listarTodos(true);
                 Platform.runLater(() -> listaItensFrete.setAll(dados));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("CadastroItensController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);

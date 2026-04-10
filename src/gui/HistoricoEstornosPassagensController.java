@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import gui.util.AppLogger;
 
 public class HistoricoEstornosPassagensController {
 
@@ -91,7 +92,7 @@ public class HistoricoEstornosPassagensController {
             javafx.application.Platform.runLater(() -> tabela.setItems(lista));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("HistoricoEstornosPassagensController", e.getMessage(), e);
             // DR113: Alert via Platform.runLater (carregarDados() pode ser chamado de bg thread)
             javafx.application.Platform.runLater(() -> {
                 Alert alert = new Alert(Alert.AlertType.ERROR);

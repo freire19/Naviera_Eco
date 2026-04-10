@@ -17,6 +17,7 @@ import java.io.File;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroEmpresaController implements Initializable {
 
@@ -81,7 +82,7 @@ public class CadastroEmpresaController implements Initializable {
                             if (e.getRecomendacoesBilhete() != null) {
                                 txtRecomendacoes.setText(e.getRecomendacoesBilhete());
                             }
-                        } catch (Exception ex) { System.err.println("CadastroEmpresaController.initialize: getRecomendacoesBilhete indisponivel — " + ex.getMessage()); }
+                        } catch (Exception ex) { AppLogger.warn("CadastroEmpresaController", "CadastroEmpresaController.initialize: getRecomendacoesBilhete indisponivel — " + ex.getMessage()); }
                         lblMensagem.setText("Dados carregados.");
                     } else {
                         empresaAtual = null;
@@ -90,7 +91,7 @@ public class CadastroEmpresaController implements Initializable {
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("CadastroEmpresaController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -124,7 +125,7 @@ public class CadastroEmpresaController implements Initializable {
                     txtRecomendacoes.setText(e.getRecomendacoesBilhete());
                 }
             } catch (Exception ex) {
-                System.err.println("CadastroEmpresaController.carregarEmpresa: getRecomendacoesBilhete indisponivel — " + ex.getMessage());
+                AppLogger.warn("CadastroEmpresaController", "CadastroEmpresaController.carregarEmpresa: getRecomendacoesBilhete indisponivel — " + ex.getMessage());
             }
             
             lblMensagem.setText("Dados carregados.");

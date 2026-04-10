@@ -18,6 +18,7 @@ import model.Caixa; // Importar a classe model.Caixa
 import java.net.URL;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 // import dao.CaixaDAO; // Descomente se for usar o DAO
 
 public class CadastroCaixaController implements Initializable {
@@ -142,7 +143,7 @@ public class CadastroCaixaController implements Initializable {
             tabela.getSelectionModel().clearSelection();
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroCaixaController", e.getMessage(), e);
         }
     }
 

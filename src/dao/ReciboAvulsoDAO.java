@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import model.ReciboAvulso;
+import gui.util.AppLogger;
 
 public class ReciboAvulsoDAO {
 
@@ -30,7 +31,7 @@ public class ReciboAvulsoDAO {
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
+            AppLogger.warn("ReciboAvulsoDAO", "Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
         }
         return false;
     }
@@ -50,7 +51,7 @@ public class ReciboAvulsoDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
+            AppLogger.warn("ReciboAvulsoDAO", "Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -69,7 +70,7 @@ public class ReciboAvulsoDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
+            AppLogger.warn("ReciboAvulsoDAO", "Erro SQL em ReciboAvulsoDAO: " + e.getMessage());
         }
         return lista;
     }

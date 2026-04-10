@@ -18,6 +18,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class RotasController implements Initializable {
 
@@ -51,7 +52,7 @@ public class RotasController implements Initializable {
                 }
                 Platform.runLater(() -> listaRotas.setAll(vms));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar rotas: " + e.getMessage());
+                AppLogger.warn("RotasController", "Erro ao carregar rotas: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -71,7 +72,7 @@ public class RotasController implements Initializable {
                 listaRotas.add(toViewModel(r));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("RotasController", e.getMessage(), e);
             AlertHelper.show(Alert.AlertType.ERROR, "Erro de Banco de Dados", "Falha ao carregar rotas: " + e.getMessage());
         }
     }

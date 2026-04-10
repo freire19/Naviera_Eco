@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.mindrot.jbcrypt.BCrypt;
+import gui.util.AppLogger;
 
 public class EstornoPagamentoController {
 
@@ -49,7 +50,7 @@ public class EstornoPagamentoController {
             try {
                 carregarFormasPagamento();
             } catch (Exception e) {
-                System.err.println("Erro em EstornoPagamentoController (bg init): " + e.getMessage());
+                AppLogger.warn("EstornoPagamentoController", "Erro em EstornoPagamentoController (bg init): " + e.getMessage());
                 javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("EstornoPagamentoController", e));
             }
         });
@@ -138,7 +139,7 @@ public class EstornoPagamentoController {
                     }
                 } catch (IllegalArgumentException e) {
                     // Hash nao e BCrypt valido — ignora este usuario
-                    System.err.println("Hash invalido para usuario " + nome + ": formato nao-BCrypt");
+                    AppLogger.warn("EstornoPagamentoController", "Hash invalido para usuario " + nome + ": formato nao-BCrypt");
                 }
 
                 if (senhaConfere) {
@@ -149,7 +150,7 @@ public class EstornoPagamentoController {
             }
             
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("EstornoPagamentoController", e.getMessage(), e);
             AlertHelper.error("Erro ao conectar no banco para validar senha: " + e.getMessage());
         }
         return false; // Nenhuma senha bateu

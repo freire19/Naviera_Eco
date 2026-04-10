@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import gui.util.AppLogger;
 
 public class ViagemDAO {
 
@@ -42,7 +43,7 @@ public class ViagemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return viagens;
     }
@@ -78,7 +79,7 @@ public class ViagemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO.listarViagensRecentes: " + e.getMessage());
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO.listarViagensRecentes: " + e.getMessage());
         }
         return viagens;
     }
@@ -119,7 +120,7 @@ public class ViagemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return listaFormatada;
     }
@@ -145,7 +146,7 @@ public class ViagemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return null;
     }
@@ -175,7 +176,7 @@ public class ViagemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return null;
     }
@@ -248,7 +249,7 @@ public class ViagemDAO {
         LocalDate dataViagem;
         try {
             dataViagem = LocalDate.parse(dataViagemStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        } catch (Exception e) { System.err.println("ViagemDAO: formato de data invalido: " + dataViagemStr); return null; }
+        } catch (Exception e) { AppLogger.warn("ViagemDAO", "ViagemDAO: formato de data invalido: " + dataViagemStr); return null; }
 
         Integer idEmbarcacaoInt = auxiliaresDAO.obterIdAuxiliar("embarcacoes", "nome", "id_embarcacao", nomeEmbarcacao);
 
@@ -290,7 +291,7 @@ public class ViagemDAO {
             }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return viagens;
     }
@@ -304,7 +305,7 @@ public class ViagemDAO {
             while (rs.next()) {
                 ids.add(rs.getInt("id_horario_saida"));
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage()); }
         return ids;
     }
 
@@ -317,7 +318,7 @@ public class ViagemDAO {
                 return rs.getLong(1);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
         }
         return null;
     }
@@ -338,7 +339,7 @@ public class ViagemDAO {
             stmt.setLong(9, v.getIdRota());
             stmt.setInt(10, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
+        } catch (SQLException e) { AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
     }
 
     public boolean atualizar(Viagem v) {
@@ -358,7 +359,7 @@ public class ViagemDAO {
             stmt.setLong(9, v.getId());
             stmt.setInt(10, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
+        } catch (SQLException e) { AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage()); return false; }
     }
 
     public boolean excluir(long id) {
@@ -398,11 +399,11 @@ public class ViagemDAO {
             conn.commit();
             return resultado;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage());
-            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
+            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { AppLogger.warn("ViagemDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
             return false;
         } finally {
-            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
+            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { AppLogger.warn("ViagemDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
         }
     }
 
@@ -434,7 +435,7 @@ public class ViagemDAO {
             return true;
         } catch (SQLException e) {
             try { if(conn!=null) conn.rollback(); } catch(Exception ex){}
-            System.err.println("Erro SQL em ViagemDAO: " + e.getMessage()); 
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage()); 
             return false;
         } finally {
             if (conn != null) {

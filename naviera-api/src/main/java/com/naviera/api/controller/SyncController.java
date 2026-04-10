@@ -3,6 +3,7 @@ package com.naviera.api.controller;
 import com.naviera.api.config.ApiException;
 import com.naviera.api.dto.SyncRequest;
 import com.naviera.api.service.SyncService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +26,7 @@ public class SyncController {
     }
 
     @PostMapping
-    public ResponseEntity<?> sync(@RequestBody SyncRequest request, Authentication auth) {
+    public ResponseEntity<?> sync(@RequestBody @Valid SyncRequest request, Authentication auth) {
         Integer empresaId = extractEmpresaId(auth);
         return ResponseEntity.ok(service.processar(request, empresaId));
     }

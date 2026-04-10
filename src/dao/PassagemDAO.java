@@ -12,6 +12,7 @@ import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 // DR026: Convencao de retorno de erro neste DAO — metodos que retornam int usam -1 para
 // indicar falha; metodos que retornam Long/Object retornam null em caso de erro.
@@ -29,13 +30,13 @@ public class PassagemDAO {
             if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) {
             // Fallback se sequence não existir ainda (rodar script 005)
-            System.err.println("Sequence seq_numero_bilhete não encontrada. Usando fallback MAX+1. Execute o script 005.");
+            AppLogger.warn("PassagemDAO", "Sequence seq_numero_bilhete não encontrada. Usando fallback MAX+1. Execute o script 005.");
             String fallback = "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens";
             try (Connection conn = ConexaoBD.getConnection();
                  Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(fallback)) {
                 if (rs.next()) return rs.getInt(1);
-            } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); }
+            } catch (SQLException ex) { AppLogger.warn("PassagemDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); }
         }
         return 1;
     }
@@ -75,7 +76,7 @@ public class PassagemDAO {
             stmt.setObject(21, auxiliaresDAO.obterIdAuxiliar("caixas", "nome_caixa", "id_caixa", passagem.getCaixa()));
             Integer sessaoUserId = null;
             try { if(SessaoUsuario.isUsuarioLogado()) sessaoUserId = SessaoUsuario.getUsuarioLogado().getId(); }
-            catch(Exception e) { System.err.println("Erro ao obter usuario da sessao: " + e.getMessage()); }
+            catch(Exception e) { AppLogger.warn("PassagemDAO", "Erro ao obter usuario da sessao: " + e.getMessage()); }
             stmt.setObject(22, sessaoUserId);
             stmt.setString(23, passagem.getStatusPassagem());
             stmt.setString(24, passagem.getObservacoes());
@@ -93,7 +94,7 @@ public class PassagemDAO {
                 }
                 return true;
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return false;
     }
 
@@ -141,7 +142,7 @@ public class PassagemDAO {
 
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
-        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return false;
     }
 
@@ -152,7 +153,7 @@ public class PassagemDAO {
             stmt.setLong(1, id);
             stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return false;
     }
 
@@ -254,7 +255,7 @@ public class PassagemDAO {
             temDataChegada = detectarTemDataChegada(rs);
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
     }
 
@@ -270,7 +271,7 @@ public class PassagemDAO {
                 temDataChegada = detectarTemDataChegada(rs);
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
     }
 
@@ -365,7 +366,7 @@ public class PassagemDAO {
                 temDataChegada = detectarTemDataChegada(rs);
                 while (rs.next()) lista.add(mapResultSetToPassagem(rs));
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em PassagemDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return lista;
     }
     
@@ -393,11 +394,11 @@ public class PassagemDAO {
                 conn.commit();
                 return rows > 0;
             } catch (SQLException ex) {
-                try { conn.rollback(); } catch (SQLException re) { System.err.println("Erro no rollback: " + re.getMessage()); }
+                try { conn.rollback(); } catch (SQLException re) { AppLogger.warn("PassagemDAO", "Erro no rollback: " + re.getMessage()); }
                 throw ex;
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em PassagemDAO.quitarDividaPorId: " + e.getMessage());
+            AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO.quitarDividaPorId: " + e.getMessage());
             return false;
         }
     }
@@ -432,11 +433,11 @@ public class PassagemDAO {
             conn.commit();
             return rows > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em PassagemDAO.quitarDivida: " + e.getMessage());
-            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { System.err.println("Erro no rollback: " + ex.getMessage()); } }
+            AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO.quitarDivida: " + e.getMessage());
+            if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { AppLogger.warn("PassagemDAO", "Erro no rollback: " + ex.getMessage()); } }
             return false;
         } finally {
-            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
+            if (conn != null) { try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { AppLogger.warn("PassagemDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); } }
         }
     }
 }

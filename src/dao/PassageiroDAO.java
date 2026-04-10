@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import dao.AuxiliaresDAO;
+import gui.util.AppLogger;
 
 public class PassageiroDAO {
 
@@ -36,7 +37,7 @@ public class PassageiroDAO {
                 passageiros.add(mapResultSetToPassageiro(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
+            AppLogger.warn("PassageiroDAO", "Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return passageiros;
     }
@@ -79,7 +80,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao inserir passageiro: " + e.getMessage());
+            AppLogger.warn("PassageiroDAO", "Erro ao inserir passageiro: " + e.getMessage());
         }
         return null;
     }
@@ -103,7 +104,7 @@ public class PassageiroDAO {
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro ao atualizar passageiro: " + e.getMessage());
+            AppLogger.warn("PassageiroDAO", "Erro ao atualizar passageiro: " + e.getMessage());
         }
         return false;
     }
@@ -118,7 +119,7 @@ public class PassageiroDAO {
                 nomes.add(rs.getString("nome_passageiro"));
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
+            AppLogger.warn("PassageiroDAO", "Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return nomes;
     }
@@ -134,7 +135,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
+            AppLogger.warn("PassageiroDAO", "Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }
@@ -151,7 +152,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-                System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
+                AppLogger.warn("PassageiroDAO", "Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }
@@ -168,7 +169,7 @@ public class PassageiroDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em PassageiroDAO: " + e.getMessage());
+            AppLogger.warn("PassageiroDAO", "Erro SQL em PassageiroDAO: " + e.getMessage());
         }
         return null;
     }

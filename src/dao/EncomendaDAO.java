@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import model.Encomenda;
+import gui.util.AppLogger;
 
 // DR026: Convencao de retorno de erro neste DAO — metodos que retornam Encomenda retornam
 // null em caso de falha; metodos de busca retornam lista vazia ou null. Veja DR026 em STATUS.md.
@@ -82,7 +83,7 @@ public class EncomendaDAO {
                 conn.rollback();
                 throw ex;
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO.inserirComItens: " + e.getMessage()); return null; }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro SQL em EncomendaDAO.inserirComItens: " + e.getMessage()); return null; }
     }
 
     public List<Encomenda> listarPorViagem(Long idViagem) {
@@ -98,7 +99,7 @@ public class EncomendaDAO {
                     lista.add(mapearEncomenda(rs, cols));
                 }
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
     }
 
@@ -114,7 +115,7 @@ public class EncomendaDAO {
                     lista.add(mapearEncomenda(rs, cols));
                 }
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return lista;
     }
 
@@ -130,7 +131,7 @@ public class EncomendaDAO {
                     return mapearEncomenda(rs, cols);
                 }
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro SQL em EncomendaDAO: " + e.getMessage()); }
         return null;
     }
 
@@ -157,7 +158,7 @@ public class EncomendaDAO {
             stmt.setLong(15, e.getId());
             stmt.setInt(16, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); return false; }
+        } catch (SQLException ex) { AppLogger.warn("EncomendaDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); return false; }
     }
     
     public boolean atualizarFinanceiro(Long idEncomenda, java.math.BigDecimal valorPago, String status) {
@@ -169,7 +170,7 @@ public class EncomendaDAO {
             stmt.setLong(3, idEncomenda);
             stmt.setInt(4, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public boolean excluir(Long id) {
@@ -193,7 +194,7 @@ public class EncomendaDAO {
                 conn.rollback();
                 throw ex;
             }
-        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO.excluir: " + e.getMessage()); return false; }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro SQL em EncomendaDAO.excluir: " + e.getMessage()); return false; }
     }
 
     public boolean registrarEntrega(Long idEncomenda, String docRecebedor, String nomeRecebedor, String statusPagto) {
@@ -212,7 +213,7 @@ public class EncomendaDAO {
             stmt.setLong(4, idEncomenda);
             stmt.setInt(5, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
-        } catch (SQLException e) { System.err.println("Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro SQL em EncomendaDAO: " + e.getMessage()); return false; }
     }
 
     public int obterProximoNumero(Long idViagem, String nomeRota) {
@@ -224,7 +225,7 @@ public class EncomendaDAO {
             if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) {
             // Fallback se sequence não existir ainda (rodar script 005)
-            System.err.println("Sequence seq_numero_encomenda não encontrada. Usando fallback MAX+1. Execute o script 005.");
+            AppLogger.warn("EncomendaDAO", "Sequence seq_numero_encomenda não encontrada. Usando fallback MAX+1. Execute o script 005.");
             // DL023: filtrar apenas registros numericos para evitar CAST crash
             String fallback = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ? AND numero_encomenda ~ '^[0-9]+$'";
             try (Connection conn = ConexaoBD.getConnection();
@@ -234,7 +235,7 @@ public class EncomendaDAO {
                 try (ResultSet rs = stmt2.executeQuery()) {
                     if (rs.next()) return rs.getInt(1) + 1;
                 }
-            } catch (SQLException ex) { System.err.println("Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); }
+            } catch (SQLException ex) { AppLogger.warn("EncomendaDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); }
         }
         return 1;
     }

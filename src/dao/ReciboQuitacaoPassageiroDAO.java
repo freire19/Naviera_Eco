@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import model.ReciboQuitacaoPassageiro;
+import gui.util.AppLogger;
 
 public class ReciboQuitacaoPassageiroDAO {
 
@@ -26,7 +27,7 @@ public class ReciboQuitacaoPassageiroDAO {
             
             stmt.executeUpdate();
         } catch (Exception e) {
-            System.err.println("Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
+            AppLogger.warn("ReciboQuitacaoPassageiroDAO", "Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
         }
     }
 
@@ -54,7 +55,7 @@ public class ReciboQuitacaoPassageiroDAO {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
+            AppLogger.warn("ReciboQuitacaoPassageiroDAO", "Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
         }
         return lista;
     }

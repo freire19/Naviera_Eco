@@ -18,6 +18,7 @@ import java.net.URL;
 import java.security.SecureRandom;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import gui.util.AppLogger;
 
 /**
  * Controller para a tela de Configuração da API
@@ -106,7 +107,7 @@ public class ConfigurarApiController implements Initializable {
                 chkHabilitarVoz.setSelected(Boolean.parseBoolean(config.getProperty("habilitar.voz", "false")));
                 
             } catch (IOException e) {
-                System.err.println("Erro ao carregar configurações: " + e.getMessage());
+                AppLogger.warn("ConfigurarApiController", "Erro ao carregar configurações: " + e.getMessage());
             }
         } else {
             // Valores padrão
@@ -337,7 +338,7 @@ public class ConfigurarApiController implements Initializable {
             stage.showAndWait();
             
         } catch (IOException e) {
-            e.printStackTrace();
+            AppLogger.error("ConfigurarApiController", e.getMessage(), e);
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Erro");
             alert.setContentText("Erro ao abrir tela de configuração: " + e.getMessage());

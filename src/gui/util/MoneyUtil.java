@@ -1,6 +1,7 @@
 package gui.util;
 
 import java.math.BigDecimal;
+import gui.util.AppLogger;
 
 /**
  * Utilitario centralizado para parsing e formatacao de valores monetarios.
@@ -33,7 +34,7 @@ public class MoneyUtil {
         try {
             return parseBigDecimal(text);
         } catch (NumberFormatException e) {
-            System.err.println("Valor monetario invalido: " + text);
+            AppLogger.warn("MoneyUtil", "Valor monetario invalido: " + text);
             return BigDecimal.ZERO;
         }
     }

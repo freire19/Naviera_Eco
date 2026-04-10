@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 public class TarifaDAO {
 
@@ -31,7 +32,7 @@ public class TarifaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
+            AppLogger.warn("TarifaDAO", "Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return tarifa;
     }
@@ -56,7 +57,7 @@ public class TarifaDAO {
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
+            AppLogger.warn("TarifaDAO", "Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return false;
     }
@@ -73,7 +74,7 @@ public class TarifaDAO {
             ps.setInt(6, DAOUtils.empresaId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
+            AppLogger.warn("TarifaDAO", "Erro SQL em TarifaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -86,7 +87,7 @@ public class TarifaDAO {
             ps.setInt(2, DAOUtils.empresaId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
+            AppLogger.warn("TarifaDAO", "Erro SQL em TarifaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -119,7 +120,7 @@ public class TarifaDAO {
                 tarifas.add(tarifa);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em TarifaDAO: " + e.getMessage());
+            AppLogger.warn("TarifaDAO", "Erro SQL em TarifaDAO: " + e.getMessage());
         }
         return tarifas;
     }

@@ -19,9 +19,11 @@ db.properties
 *.env
 .env
 .env.*
+!*.env.example
 **/.env
 *.key
 *.pem
+certs/
 credentials*.json
 api_config.properties
 sync_config.properties

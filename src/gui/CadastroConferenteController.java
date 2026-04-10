@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroConferenteController implements Initializable {
 
@@ -56,7 +57,7 @@ public class CadastroConferenteController implements Initializable {
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar conferentes: " + e.getMessage());
+                AppLogger.warn("CadastroConferenteController", "Erro ao carregar conferentes: " + e.getMessage());
             }
         });
         bg.setDaemon(true);

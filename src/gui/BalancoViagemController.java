@@ -52,6 +52,7 @@ import javafx.scene.transform.Scale;
 import model.DadosBalancoViagem;
 import model.ItemResumoBalanco;
 import model.LinhaDespesaDetalhada;
+import gui.util.AppLogger;
 
 public class BalancoViagemController {
 
@@ -102,8 +103,8 @@ public class BalancoViagemController {
                     carregarRelatorio(idViagem);
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao inicializar BalancoViagemController: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("BalancoViagemController", "Erro ao inicializar BalancoViagemController: " + e.getMessage());
+                AppLogger.error("BalancoViagemController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);
@@ -134,8 +135,8 @@ public class BalancoViagemController {
                     carregarGraficos();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar relatorio BalancoViagem: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("BalancoViagemController", "Erro ao carregar relatorio BalancoViagem: " + e.getMessage());
+                AppLogger.error("BalancoViagemController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);
@@ -193,7 +194,7 @@ public class BalancoViagemController {
                     adicionarLinhaReceitaTela(txt);
                 }
             }
-        } catch(Exception e) { e.printStackTrace(); }
+        } catch(Exception e) { AppLogger.error("BalancoViagemController", e.getMessage(), e); }
 
         // 2. Receitas - CARGAS
         try (Connection con = ConexaoBD.getConnection();
@@ -208,7 +209,7 @@ public class BalancoViagemController {
                     adicionarLinhaReceitaTela(txt);
                 }
             }
-        } catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDetalhamentoTab2Fx (cargas): " + e.getMessage()); }
+        } catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController.carregarDetalhamentoTab2Fx (cargas): " + e.getMessage()); }
 
         // 3. Despesas Agrupadas
         Map<String, List<LinhaDespesaDetalhada>> despesasMap = new TreeMap<>();
@@ -229,7 +230,7 @@ public class BalancoViagemController {
             st0.setInt(1,idViagem); st0.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) { BigDecimal v0=r0.getBigDecimal(1); if(v0!=null) totalPendenteGlobal=totalPendenteGlobal.add(v0); } }
             st1.setInt(1,idViagem); st1.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) { BigDecimal v1=r1.getBigDecimal(1); if(v1!=null) totalPendenteGlobal=totalPendenteGlobal.add(v1); } }
             st2.setInt(1,idViagem); st2.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) { BigDecimal v2=r2.getBigDecimal(1); if(v2!=null) totalPendenteGlobal=totalPendenteGlobal.add(v2); } }
-        } catch(Exception e){ System.err.println("Erro em BalancoViagemController (pendentes Fx): " + e.getMessage()); }
+        } catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController (pendentes Fx): " + e.getMessage()); }
         lblCardPendente.setText(formatar(totalPendenteGlobal));
         BigDecimal recebido = dadosAtuais.getTotalEntradas().subtract(totalPendenteGlobal);
         lblCardRecebido.setText("Caixa: "+formatar(recebido.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : recebido));
@@ -403,7 +404,7 @@ public class BalancoViagemController {
         String sql = "SELECT s.descricao, c.nome, s.valor_total FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE s.id_viagem=? AND s.empresa_id = ? ORDER BY c.nome, s.descricao";
         try(Connection c=ConexaoBD.getConnection(); PreparedStatement s=c.prepareStatement(sql)){ s.setInt(1,idViagemAtual); s.setInt(2, dao.DAOUtils.empresaId()); ResultSet rs=s.executeQuery();
             while(rs.next()){ String cat=rs.getString(2)==null?"OUTROS":rs.getString(2); map.computeIfAbsent(cat,k->new ArrayList<>()).add(new LinhaDespesaDetalhada("-",rs.getString(1),cat,rs.getBigDecimal(3))); }
-        }catch(Exception e){ System.err.println("Erro em BalancoViagemController.carregarDespesasAgrupadas: " + e.getMessage()); }
+        }catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController.carregarDespesasAgrupadas: " + e.getMessage()); }
     }
 
     // --- MONTAGEM LAYOUT ---
@@ -467,7 +468,7 @@ public class BalancoViagemController {
         String d = txt; BigDecimal val = v;
         if(receita && txt.contains("=")) {
              String[] p = txt.split("="); d = p[0];
-             try { val = new BigDecimal(p[1].replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch(Exception e){ System.err.println("BalancoViagemController: erro ao parsear valor monetario '" + p[1] + "' — " + e.getMessage()); }
+             try { val = new BigDecimal(p[1].replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch(Exception e){ AppLogger.warn("BalancoViagemController", "BalancoViagemController: erro ao parsear valor monetario '" + p[1] + "' — " + e.getMessage()); }
         }
 
         h.getChildren().add(new Text(d){{setFont(Font.font("Arial",11));}});
@@ -493,7 +494,7 @@ public class BalancoViagemController {
                 if (emp.getTelefone() != null) this.empresaTelefone = emp.getTelefone();
                 if (emp.getCaminhoFoto() != null) this.empresaLogoPath = emp.getCaminhoFoto();
             }
-        } catch (Exception e) { System.err.println("Erro em BalancoViagemController.carregarDadosEmpresa: " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController.carregarDadosEmpresa: " + e.getMessage()); }
     }
     
     // DR117: versao FX-only chamada do Platform.runLater (faz DB em bg)
@@ -522,12 +523,12 @@ public class BalancoViagemController {
                     if (sel != null) { cmbViagens.setValue(sel); textoViagemSelecionada = sel; }
                 });
             } catch (Exception e) {
-                System.err.println("Erro em BalancoViagemController.carregarComboViagens: " + e.getMessage());
+                AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController.carregarComboViagens: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
         bg.start();
     }
 
-    @FXML private void handleFiltrarViagem(ActionEvent event) { String sel = cmbViagens.getValue(); if (sel != null) { try { int id = Integer.parseInt(sel.substring(sel.lastIndexOf("(ID: ") + 5, sel.lastIndexOf(")"))); this.idViagemAtual = id; this.textoViagemSelecionada = sel; carregarRelatorio(id); } catch (Exception e) { System.err.println("Erro em BalancoViagemController.handleFiltrarViagem: " + e.getMessage()); } } }
+    @FXML private void handleFiltrarViagem(ActionEvent event) { String sel = cmbViagens.getValue(); if (sel != null) { try { int id = Integer.parseInt(sel.substring(sel.lastIndexOf("(ID: ") + 5, sel.lastIndexOf(")"))); this.idViagemAtual = id; this.textoViagemSelecionada = sel; carregarRelatorio(id); } catch (Exception e) { AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController.handleFiltrarViagem: " + e.getMessage()); } } }
 }

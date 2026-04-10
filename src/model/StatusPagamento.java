@@ -2,6 +2,8 @@ package model;
 
 import java.math.BigDecimal;
 
+import gui.util.AppLogger;
+
 /**
  * Enum centralizado para status de pagamento.
  * Substitui as magic strings "PAGO", "PENDENTE", "PARCIAL" etc espalhadas pelo projeto.
@@ -63,7 +65,7 @@ public enum StatusPagamento {
         try {
             return valueOf(status.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            System.err.println("StatusPagamento.fromString: valor desconhecido '" + status + "' — retornando PENDENTE");
+            AppLogger.warn("StatusPagamento", "fromString: valor desconhecido '" + status + "' — retornando PENDENTE");
             return PENDENTE;
         }
     }

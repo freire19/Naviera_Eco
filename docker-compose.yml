@@ -1,16 +1,37 @@
 version: "3.8"
 
 services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=naviera_eco
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database_scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   api:
     build: ./naviera-api
     ports:
       - "8081:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/naviera_eco
-      - DB_USER=${DB_USER}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/naviera_eco
+      - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost}
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/api/actuator/health"]
       interval: 30s
@@ -22,7 +43,15 @@ services:
     build: ./naviera-app
     ports:
       - "8180:80"
+      - "8443:443"
+    volumes:
+      # Montar certificados SSL para producao (Let's Encrypt ou manual)
+      # Criar pasta certs/ com fullchain.pem e privkey.pem
+      - ./certs:/etc/nginx/certs:ro
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  pgdata:

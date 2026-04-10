@@ -20,6 +20,7 @@ import java.util.ResourceBundle;
 
 import dao.AuxiliaresDAO;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 // A classe AuxiliarItem agora é importada implicitamente pois está no mesmo pacote "gui"
 // e definida em seu próprio arquivo AuxiliarItem.java
 
@@ -155,7 +156,7 @@ public class TabelasAuxiliaresController implements Initializable {
             for (String nome : nomes) { listaSexo.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar os dados de Sexo: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
     }
     @FXML private void handleNovoSexo(ActionEvent event) {
@@ -191,7 +192,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Ocorreu um erro ao salvar/atualizar Sexo: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosSexo();
         txtSexoNome.clear();
@@ -216,7 +217,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Ocorreu um erro ao excluir Sexo: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosSexo();
         txtSexoNome.clear();
@@ -231,7 +232,7 @@ public class TabelasAuxiliaresController implements Initializable {
             for (String nome : nomes) { listaTipoDoc.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar os Tipos de Documento: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
     }
     @FXML private void handleNovoTipoDoc(ActionEvent event) {
@@ -267,7 +268,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Tipo de Documento: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosTipoDoc();
         txtTipoDocNome.clear();
@@ -292,7 +293,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Tipo de Documento: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosTipoDoc();
         txtTipoDocNome.clear();
@@ -307,7 +308,7 @@ public class TabelasAuxiliaresController implements Initializable {
             for (String nome : nomes) { listaNacionalidade.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar as Nacionalidades: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
     }
     @FXML private void handleNovoNacionalidade(ActionEvent event) {
@@ -343,7 +344,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Nacionalidade: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosNacionalidade();
         txtNacionalidadeNome.clear();
@@ -368,7 +369,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Nacionalidade: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosNacionalidade();
         txtNacionalidadeNome.clear();
@@ -383,7 +384,7 @@ public class TabelasAuxiliaresController implements Initializable {
             for (String nome : nomes) { listaPassagemAux.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Tipos de Passagem: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
     }
     @FXML private void handleNovoPassagemAux(ActionEvent event) {
@@ -419,7 +420,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Tipo de Passagem: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosPassagemAux();
         txtPassagemAuxNome.clear();
@@ -444,7 +445,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Tipo de Passagem: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosPassagemAux();
         txtPassagemAuxNome.clear();
@@ -459,7 +460,7 @@ public class TabelasAuxiliaresController implements Initializable {
             for (String nome : nomes) { listaAgenteAux.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Agentes: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
     }
     @FXML private void handleNovoAgenteAux(ActionEvent event) {
@@ -495,7 +496,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Agente: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosAgenteAux();
         txtAgenteAuxNome.clear();
@@ -520,7 +521,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Agente: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosAgenteAux();
         txtAgenteAuxNome.clear();
@@ -535,7 +536,7 @@ public class TabelasAuxiliaresController implements Initializable {
             for (String nome : nomes) { listaHorarioSaida.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Horários de Saída: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
     }
     @FXML private void handleNovoHorarioSaida(ActionEvent event) {
@@ -571,7 +572,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Horário de Saída: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosHorarioSaida();
         txtHorarioSaidaNome.clear();
@@ -596,7 +597,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Horário de Saída: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosHorarioSaida();
         txtHorarioSaidaNome.clear();
@@ -611,7 +612,7 @@ public class TabelasAuxiliaresController implements Initializable {
             for (String nome : nomes) { listaAcomodacao.add(new AuxiliarItem(nome)); }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Dados", "Não foi possível carregar Acomodações: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
     }
     @FXML private void handleNovoAcomodacao(ActionEvent event) {
@@ -647,7 +648,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao salvar/atualizar Acomodação: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosAcomodacao();
         txtAcomodacaoNome.clear();
@@ -672,7 +673,7 @@ public class TabelasAuxiliaresController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro na Operação", "Erro ao excluir Acomodação: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("TabelasAuxiliaresController", e.getMessage(), e);
         }
         carregarDadosAcomodacao();
         txtAcomodacaoNome.clear();

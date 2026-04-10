@@ -2,6 +2,7 @@ package com.naviera.api.controller;
 
 import com.naviera.api.dto.*;
 import com.naviera.api.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,12 +12,12 @@ public class AuthController {
     public AuthController(AuthService service) { this.service = service; }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest req) {
         return ResponseEntity.ok(service.login(req));
     }
 
     @PostMapping("/registrar")
-    public ResponseEntity<?> registrar(@RequestBody RegisterRequest req) {
+    public ResponseEntity<?> registrar(@RequestBody @Valid RegisterRequest req) {
         return ResponseEntity.ok(service.registrar(req));
     }
 }

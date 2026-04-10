@@ -68,6 +68,7 @@ import javafx.stage.Stage;
 import model.Empresa;
 import model.ReciboAvulso;
 import model.Viagem;
+import gui.util.AppLogger;
 
 public class GerarReciboAvulsoController implements Initializable {
 
@@ -154,7 +155,7 @@ public class GerarReciboAvulsoController implements Initializable {
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados iniciais GerarReciboAvulso: " + e.getMessage());
+                AppLogger.warn("GerarReciboAvulsoController", "Erro ao carregar dados iniciais GerarReciboAvulso: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -191,7 +192,7 @@ public class GerarReciboAvulsoController implements Initializable {
                 itens.add(id + " - " + saida + " até " + chegada);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("GerarReciboAvulsoController", e.getMessage(), e);
         }
         return itens;
     }
@@ -206,7 +207,7 @@ public class GerarReciboAvulsoController implements Initializable {
                 if (btnLimparFiltro != null) btnLimparFiltro.setVisible(true);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("GerarReciboAvulsoController", e.getMessage(), e);
         }
     }
 
@@ -311,7 +312,7 @@ public class GerarReciboAvulsoController implements Initializable {
 
     private ReciboAvulso criarObjetoRecibo() {
         double val = 0;
-        try { val = Double.parseDouble(txtValor.getText().replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch (Exception e) { System.err.println("Valor invalido no recibo: " + txtValor.getText()); }
+        try { val = Double.parseDouble(txtValor.getText().replace("R$", "").replace(".", "").replace(",", ".").trim()); } catch (Exception e) { AppLogger.warn("GerarReciboAvulsoController", "Valor invalido no recibo: " + txtValor.getText()); }
         
         // ID VIAGEM ATIVA
         int idViagemParaSalvar = (viagemAtiva != null) ? viagemAtiva.getId().intValue() /* #010: IDs < Integer.MAX_VALUE */ : 0;
@@ -597,7 +598,7 @@ public class GerarReciboAvulsoController implements Initializable {
                 if (empresa.getEndereco() != null) empresaEndereco = empresa.getEndereco();
                 if (empresa.getTelefone() != null) empresaTelefone = empresa.getTelefone();
             }
-        } catch (Exception e) { System.err.println("Erro em GerarReciboAvulsoController.carregarDadosEmpresa: " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("GerarReciboAvulsoController", "Erro em GerarReciboAvulsoController.carregarDadosEmpresa: " + e.getMessage()); }
     }
 
     private ImageView carregarLogo(double h) {
@@ -616,7 +617,7 @@ public class GerarReciboAvulsoController implements Initializable {
                 iv.setFitHeight(h); iv.setPreserveRatio(true);
                 return iv;
             }
-        } catch(Exception e) { System.err.println("Erro em GerarReciboAvulsoController.carregarLogo: " + e.getMessage()); }
+        } catch(Exception e) { AppLogger.warn("GerarReciboAvulsoController", "Erro em GerarReciboAvulsoController.carregarLogo: " + e.getMessage()); }
         return new ImageView();
     }
 

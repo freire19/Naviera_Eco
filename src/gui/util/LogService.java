@@ -3,6 +3,7 @@ package gui.util;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import gui.util.AppLogger;
 
 /**
  * ============================================================================
@@ -96,8 +97,8 @@ public class LogService {
             pw.println();
             
         } catch (IOException ex) {
-            System.err.println("Erro ao gravar log: " + ex.getMessage());
-            ex.printStackTrace();
+            AppLogger.warn("LogService", "Erro ao gravar log: " + ex.getMessage());
+            AppLogger.error("LogService", ex.getMessage(), ex);
         }
     }
     
@@ -168,7 +169,7 @@ public class LogService {
             return false;
             
         } catch (IOException e) {
-            System.err.println("Erro ao abrir arquivo de log: " + e.getMessage());
+            AppLogger.warn("LogService", "Erro ao abrir arquivo de log: " + e.getMessage());
             return false;
         }
     }
@@ -206,7 +207,7 @@ public class LogService {
             return true;
             
         } catch (IOException e) {
-            System.err.println("Erro ao limpar log: " + e.getMessage());
+            AppLogger.warn("LogService", "Erro ao limpar log: " + e.getMessage());
             return false;
         }
     }
@@ -224,7 +225,7 @@ public class LogService {
             pw.println("[INFO] " + dataHora + " - " + info);
             
         } catch (IOException ex) {
-            System.err.println("Erro ao gravar log: " + ex.getMessage());
+            AppLogger.warn("LogService", "Erro ao gravar log: " + ex.getMessage());
         }
     }
 }

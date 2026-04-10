@@ -13,6 +13,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import gui.util.AppLogger;
 
 /**
  * DM004: Helpers reutilizaveis para construcao de layouts de impressao.
@@ -303,7 +304,7 @@ public class PrintLayoutHelper {
             iv.setPreserveRatio(true);
             container.getChildren().add(iv);
         } catch (Exception e) {
-            System.err.println("PrintLayoutHelper: erro ao carregar logo '" + pathLogo + "': " + e.getMessage());
+            AppLogger.warn("PrintLayoutHelper", "PrintLayoutHelper: erro ao carregar logo '" + pathLogo + "': " + e.getMessage());
         }
     }
 }

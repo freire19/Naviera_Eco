@@ -43,6 +43,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;          // <<< ADICIONADO
 import javafx.stage.Window;
 import model.ItemEncomendaPadrao;
+import gui.util.AppLogger;
 
 public class TabelaPrecosEncomendaController implements Initializable {
 
@@ -108,7 +109,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
                     tablePrecos.sort();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("TabelaPrecosEncomendaController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -154,7 +155,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
             masterData.addAll(itens);
             tablePrecos.sort();
         } catch (Exception e) { // pega qualquer erro do DAO
-            e.printStackTrace();
+            AppLogger.error("TabelaPrecosEncomendaController", e.getMessage(), e);
             mostrarErro("Erro ao carregar itens da tabela de preços.", e.getMessage());
         }
     }
@@ -316,7 +317,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("TabelaPrecosEncomendaController", e.getMessage(), e);
             mostrarErro("Adicionar item",
                     "Ocorreu um erro ao adicionar o item.\n" + e.getMessage());
         }
@@ -343,7 +344,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
                 tablePrecos.refresh();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("TabelaPrecosEncomendaController", e.getMessage(), e);
             mostrarErro("Editar item",
                     "Ocorreu um erro ao editar o item.\n" + e.getMessage());
         }
@@ -375,7 +376,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
                 masterData.remove(selecionado);
                 tablePrecos.getSelectionModel().clearSelection();
             } catch (Exception e) {
-                e.printStackTrace();
+                AppLogger.error("TabelaPrecosEncomendaController", e.getMessage(), e);
                 mostrarErro("Excluir item",
                         "Ocorreu um erro ao excluir o item.\n" + e.getMessage());
             }
@@ -518,7 +519,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("TabelaPrecosEncomendaController", e.getMessage(), e);
             mostrarErro("Impressão",
                     "Ocorreu um erro ao tentar imprimir a tabela de preços:\n" + e.getMessage());
         }

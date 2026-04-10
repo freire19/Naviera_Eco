@@ -9,6 +9,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import gui.util.AppLogger;
 
 /**
  * Pool de conexoes JDBC simples para PostgreSQL.
@@ -55,7 +56,7 @@ public class ConexaoBD {
 
         // DS006: aviso de senha fraca
         if (senha.length() < 8 || "123456".equals(senha) || "password".equals(senha)) {
-            System.err.println("AVISO SEGURANCA: senha do banco e fraca. Altere em db.properties.");
+            AppLogger.warn("ConexaoBD", "AVISO SEGURANCA: senha do banco e fraca. Altere em db.properties.");
         }
 
         // Multi-tenant: carrega empresa_id do db.properties (default = 1)
@@ -65,9 +66,15 @@ public class ConexaoBD {
         try {
             Class.forName("org.postgresql.Driver");
         } catch (ClassNotFoundException e) {
-            System.err.println("FATAL: Driver JDBC do PostgreSQL nao encontrado.");
+            AppLogger.warn("ConexaoBD", "FATAL: Driver JDBC do PostgreSQL nao encontrado.");
             throw new RuntimeException("Driver PostgreSQL nao encontrado", e);
         }
+
+        // Shutdown hook: fecha conexoes ao encerrar a JVM
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("[ConexaoBD] Shutdown hook: fechando pool de conexoes...");
+            shutdown();
+        }));
     }
 
     /**

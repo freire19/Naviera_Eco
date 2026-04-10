@@ -63,6 +63,7 @@ import model.EncomendaItem;
 import model.Rota;
 import model.Viagem;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class RelatorioEncomendaGeralController implements Initializable {
 
@@ -126,7 +127,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
                     carregarRotasComDados(rotas);
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados iniciais RelatorioEncomendaGeral: " + e.getMessage());
+                AppLogger.warn("RelatorioEncomendaGeralController", "Erro ao carregar dados iniciais RelatorioEncomendaGeral: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -503,7 +504,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
                 dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
                 model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
                 if (empresa != null && empresa.getEmbarcacao() != null) nomeEmp = empresa.getEmbarcacao();
-            } catch(Exception e) { System.err.println("Erro ao carregar nome empresa: " + e.getMessage()); }
+            } catch(Exception e) { AppLogger.warn("RelatorioEncomendaGeralController", "Erro ao carregar nome empresa: " + e.getMessage()); }
 
             Label lEmp = new Label(nomeEmp.toUpperCase()); lEmp.setFont(FONT_EMPRESA); lEmp.setAlignment(Pos.CENTER); lEmp.setMaxWidth(Double.MAX_VALUE);
             Label lTit = new Label("TABELA DE PREÇOS DE ENCOMENDA"); lTit.setFont(Font.font("Arial", FontWeight.BLACK, 14)); lTit.setAlignment(Pos.CENTER); lTit.setMaxWidth(Double.MAX_VALUE);
@@ -587,7 +588,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
                 dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
                 model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
                 if (empresa != null && empresa.getEmbarcacao() != null) nomeEmp = empresa.getEmbarcacao();
-            } catch(Exception e) { System.err.println("Erro ao carregar nome empresa: " + e.getMessage()); }
+            } catch(Exception e) { AppLogger.warn("RelatorioEncomendaGeralController", "Erro ao carregar nome empresa: " + e.getMessage()); }
             Label lEmp = new Label(nomeEmp.toUpperCase()); lEmp.setFont(FONT_EMPRESA);
             
             Label lRota = new Label("ROTA: " + nomeRota);

@@ -2,6 +2,7 @@ package com.naviera.api.controller;
 
 import com.naviera.api.dto.LoginOperadorRequest;
 import com.naviera.api.service.AuthOperadorService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +17,7 @@ public class AuthOperadorController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginOperadorRequest req) {
+    public ResponseEntity<?> login(@RequestBody @Valid LoginOperadorRequest req) {
         return ResponseEntity.ok(service.login(req));
     }
 

@@ -44,6 +44,7 @@ import java.awt.print.PrinterJob;
 import java.io.File;
 import javax.imageio.ImageIO;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class ListarPassageirosViagemController implements Initializable {
 
@@ -98,8 +99,8 @@ public class ListarPassageirosViagemController implements Initializable {
                 final List<Passagem> lista = passageiros;
                 Platform.runLater(() -> preencherPassageiros(va, lista));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados ListarPassageiros: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("ListarPassageirosViagemController", "Erro ao carregar dados ListarPassageiros: " + e.getMessage());
+                AppLogger.error("ListarPassageirosViagemController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);
@@ -139,7 +140,7 @@ public class ListarPassageirosViagemController implements Initializable {
                 if (empresa.getTelefone() != null) empTelefone = empresa.getTelefone();
                 if (empresa.getCaminhoFoto() != null) empPathLogo = empresa.getCaminhoFoto();
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("ListarPassageirosViagemController", e.getMessage(), e); }
     }
 
     private void configurarTabela() {
@@ -190,8 +191,8 @@ public class ListarPassageirosViagemController implements Initializable {
                 final List<Passagem> lista = passageiros;
                 Platform.runLater(() -> preencherPassageiros(va, lista));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar passageiros: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("ListarPassageirosViagemController", "Erro ao carregar passageiros: " + e.getMessage());
+                AppLogger.error("ListarPassageirosViagemController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);
@@ -261,7 +262,7 @@ public class ListarPassageirosViagemController implements Initializable {
                             y += targetH + 25; 
                         }
                     } catch (Exception e) {
-                        System.err.println("ListarPassageirosViagemController.imprimirRelatorioA4: erro ao carregar logo da empresa — " + e.getMessage());
+                        AppLogger.warn("ListarPassageirosViagemController", "ListarPassageirosViagemController.imprimirRelatorioA4: erro ao carregar logo da empresa — " + e.getMessage());
                     }
                 } else {
                     y += 10; 

@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroUsuarioController implements Initializable {
 
@@ -85,7 +86,7 @@ public class CadastroUsuarioController implements Initializable {
                     tabelaUsuarios.refresh();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("CadastroUsuarioController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -229,7 +230,7 @@ public class CadastroUsuarioController implements Initializable {
             u.setSenhaPlana(senha);
         } else if (isInsert) {
             // Esta validação já foi feita acima, mas é uma dupla checagem.
-            System.err.println("Tentativa de inserir novo usuário sem senha, embora já validado.");
+            AppLogger.warn("CadastroUsuarioController", "Tentativa de inserir novo usuário sem senha, embora já validado.");
             return; 
         }
         // Se for atualização e a senha estiver vazia, o DAO (na minha sugestão) não atualizará o hash.
@@ -324,13 +325,13 @@ public class CadastroUsuarioController implements Initializable {
 
     private void adicionarIcone(Button button, String iconPath) {
         if (button == null) { // Verificação para evitar NullPointerException
-            System.err.println("Tentativa de adicionar ícone a um botão nulo. Verifique o fx:id no FXML para o caminho: " + iconPath);
+            AppLogger.warn("CadastroUsuarioController", "Tentativa de adicionar ícone a um botão nulo. Verifique o fx:id no FXML para o caminho: " + iconPath);
             return;
         }
         try {
             URL res = getClass().getResource(iconPath);
             if (res == null) {
-                System.err.println("Ícone não encontrado no classpath: " + iconPath);
+                AppLogger.warn("CadastroUsuarioController", "Ícone não encontrado no classpath: " + iconPath);
                 return;
             }
             Image img = new Image(res.toExternalForm());
@@ -339,8 +340,8 @@ public class CadastroUsuarioController implements Initializable {
             icon.setFitHeight(16);
             button.setGraphic(icon);
         } catch (Exception e) {
-            System.err.println("Erro ao carregar o ícone: " + iconPath);
-            // e.printStackTrace(); // Pode ser muito verboso, System.err já é suficiente
+            AppLogger.warn("CadastroUsuarioController", "Erro ao carregar o ícone: " + iconPath);
+            // AppLogger.error("CadastroUsuarioController", e.getMessage(), e); // Pode ser muito verboso, System.err já é suficiente
         }
     }
 }

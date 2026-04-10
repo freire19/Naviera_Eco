@@ -93,6 +93,7 @@ import java.awt.print.PrinterJob;
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 
 public class VenderPassagemController implements Initializable {
@@ -291,7 +292,7 @@ public class VenderPassagemController implements Initializable {
                         viagensFormatadas.add(v.getId() + " - " + dt + " - Prev: " + prev);
                     }
                 } catch (Exception e) {
-                    System.err.println("Erro ao carregar viagens: " + e.getMessage());
+                    AppLogger.warn("VenderPassagemController", "Erro ao carregar viagens: " + e.getMessage());
                 }
 
                 // Habilitar NOVO e Pesquisar IMEDIATAMENTE (antes de carregar passageiros/rotas)
@@ -317,7 +318,7 @@ public class VenderPassagemController implements Initializable {
                         for (model.Rota r : rotasObjects) rotasStrings.add(r.toString());
                     }
                 } catch (Exception e) {
-                    System.err.println("Erro ao carregar rotas: " + e.getMessage());
+                    AppLogger.warn("VenderPassagemController", "Erro ao carregar rotas: " + e.getMessage());
                 }
 
                 List<String> tipoPassagem = auxiliaresDAO.listarAuxiliar("aux_tipos_passagem", "nome_tipo_passagem");
@@ -342,8 +343,8 @@ public class VenderPassagemController implements Initializable {
                 });
 
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados em background: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("VenderPassagemController", "Erro ao carregar dados em background: " + e.getMessage());
+                AppLogger.error("VenderPassagemController", e.getMessage(), e);
                 Platform.runLater(() -> {
                     if (rootPane != null) rootPane.setDisable(false);
                     if (btnNovo != null) btnNovo.setDisable(false);
@@ -390,7 +391,7 @@ public class VenderPassagemController implements Initializable {
                         LocalDate d = LocalDate.parse(fmt, dateFormatter);
                         dpDataNascimento.setValue(d);
                     } catch (Exception e) {
-                        System.err.println("Erro ao parsear data de nascimento: " + e.getMessage());
+                        AppLogger.warn("VenderPassagemController", "Erro ao parsear data de nascimento: " + e.getMessage());
                     }
                 }
             }
@@ -412,7 +413,7 @@ public class VenderPassagemController implements Initializable {
                 this.empProprietario = this.empCompanhia;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("VenderPassagemController", e.getMessage(), e);
         }
     }
 
@@ -447,7 +448,7 @@ public class VenderPassagemController implements Initializable {
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println("Erro ao parsear selecao de viagem: " + e.getMessage());
+                        AppLogger.warn("VenderPassagemController", "Erro ao parsear selecao de viagem: " + e.getMessage());
                     }
                 }
             });
@@ -484,7 +485,7 @@ public class VenderPassagemController implements Initializable {
             if (descHorario == null || descHorario.isEmpty()) {
                 try {
                     descHorario = new dao.AuxiliaresDAO().obterDescricaoHorario(viagemSelecionada.getIdHorarioSaida());
-                } catch (Exception e) { System.err.println("Erro em VenderPassagemController.selecionarViagem (horario): " + e.getMessage()); }
+                } catch (Exception e) { AppLogger.warn("VenderPassagemController", "Erro em VenderPassagemController.selecionarViagem (horario): " + e.getMessage()); }
             }
             if (txtHorario != null) txtHorario.setText(descHorario);
 
@@ -512,8 +513,8 @@ public class VenderPassagemController implements Initializable {
                     if (txtTotalPassageiros != null) txtTotalPassageiros.setText(String.valueOf(passagensDaViagemAtual.size()));
                 });
             } catch (Exception e) {
-                System.err.println("VenderPassagemController.carregarPassagensDaViagem: erro ao carregar passagens — " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("VenderPassagemController", "VenderPassagemController.carregarPassagensDaViagem: erro ao carregar passagens — " + e.getMessage());
+                AppLogger.error("VenderPassagemController", e.getMessage(), e);
                 Platform.runLater(() -> {
                     if (tablePassagens != null) tablePassagens.getItems().clear();
                     if (txtTotalPassageiros != null) txtTotalPassageiros.setText("0");
@@ -649,7 +650,7 @@ public class VenderPassagemController implements Initializable {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("VenderPassagemController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro Cr\u00edtico", "Ocorreu um erro inesperado ao preparar a venda: " + e.getMessage());
         }
     }
@@ -785,7 +786,7 @@ public class VenderPassagemController implements Initializable {
             try {
                 passagem.setIdade(Integer.parseInt(txtIdade.getText().trim()));
             } catch (NumberFormatException e) {
-                System.err.println("Idade invalida: " + txtIdade.getText());
+                AppLogger.warn("VenderPassagemController", "Idade invalida: " + txtIdade.getText());
             }
         }
         passagem.setNomePassageiro(nomePassageiro);
@@ -1168,8 +1169,8 @@ public class VenderPassagemController implements Initializable {
                 // Na duvida, para novo cadastro, passageiroEmEdicao fica null.
             }
         } catch (Exception e) {
-            System.err.println("VenderPassagemController.preencherPassageiroPorDoc: erro ao buscar passageiro por documento — " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.warn("VenderPassagemController", "VenderPassagemController.preencherPassageiroPorDoc: erro ao buscar passageiro por documento — " + e.getMessage());
+            AppLogger.error("VenderPassagemController", e.getMessage(), e);
         }
     }
 
@@ -1259,7 +1260,7 @@ public class VenderPassagemController implements Initializable {
                 limparCamposTarifa();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("VenderPassagemController", e.getMessage(), e);
             limparCamposTarifa();
         } finally {
             calcularValoresPassagem();
@@ -1579,7 +1580,7 @@ public class VenderPassagemController implements Initializable {
             cmbPassageiroAuto.requestFocus();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("VenderPassagemController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao carregar dados para edi\u00e7\u00e3o: " + e.getMessage());
             configurarEstadoInicialDaTela();
         } finally {
@@ -1641,7 +1642,7 @@ public class VenderPassagemController implements Initializable {
                     }
                 }
             } catch(Exception e) {
-                System.err.println("Erro ao buscar dados complementares do passageiro: " + e.getMessage());
+                AppLogger.warn("VenderPassagemController", "Erro ao buscar dados complementares do passageiro: " + e.getMessage());
             }
         }
 
@@ -1751,7 +1752,7 @@ public class VenderPassagemController implements Initializable {
                     headerBox.getChildren().add(logo);
                 }
             } catch (Exception e) {
-                System.err.println("Erro ao carregar logo para impressao: " + e.getMessage());
+                AppLogger.warn("VenderPassagemController", "Erro ao carregar logo para impressao: " + e.getMessage());
             }
         }
         headerBox.getChildren().add(headerContent);
@@ -1982,7 +1983,7 @@ public class VenderPassagemController implements Initializable {
                 try {
                     finalJob.print();
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    AppLogger.error("VenderPassagemController", ex.getMessage(), ex);
                     javafx.application.Platform.runLater(() ->
                         AlertHelper.show(AlertType.ERROR, "Erro de Impressão", "Falha ao imprimir."));
                 }
@@ -1991,7 +1992,7 @@ public class VenderPassagemController implements Initializable {
             printThread.start();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("VenderPassagemController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro de Impressao", "Falha ao imprimir: " + e.getMessage());
         }
     }
@@ -2023,7 +2024,7 @@ public class VenderPassagemController implements Initializable {
             }
             stage.show();
         } catch (IOException e) {
-            e.printStackTrace();
+            AppLogger.error("VenderPassagemController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro ao Abrir Tela", "Nao foi possivel carregar a tela: " + fxmlPath);
         }
     }

@@ -5,6 +5,7 @@ import model.Embarcacao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 public class EmbarcacaoDAO {
 
@@ -41,7 +42,7 @@ public class EmbarcacaoDAO {
             }
             return buscarPorNome(embarcacao.getNome());
         } catch (SQLException e) {
-            System.err.println("Erro ao inserir/buscar embarcacao: " + e.getMessage());
+            AppLogger.warn("EmbarcacaoDAO", "Erro ao inserir/buscar embarcacao: " + e.getMessage());
         }
         return null;
     }
@@ -68,7 +69,7 @@ public class EmbarcacaoDAO {
                 if (rs.next()) return mapResultSet(rs);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EmbarcacaoDAO.buscarPorNome: " + e.getMessage());
+            AppLogger.warn("EmbarcacaoDAO", "Erro SQL em EmbarcacaoDAO.buscarPorNome: " + e.getMessage());
         }
         return null;
     }
@@ -84,7 +85,7 @@ public class EmbarcacaoDAO {
                 while (rs.next()) lista.add(mapResultSet(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EmbarcacaoDAO.listarTodas: " + e.getMessage());
+            AppLogger.warn("EmbarcacaoDAO", "Erro SQL em EmbarcacaoDAO.listarTodas: " + e.getMessage());
         }
         return lista;
     }
@@ -104,7 +105,7 @@ public class EmbarcacaoDAO {
             ps.setInt(7, DAOUtils.empresaId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EmbarcacaoDAO: " + e.getMessage());
+            AppLogger.warn("EmbarcacaoDAO", "Erro SQL em EmbarcacaoDAO: " + e.getMessage());
         }
         return false;
     }
@@ -118,10 +119,10 @@ public class EmbarcacaoDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             if ("23503".equals(e.getSQLState())) {
-                System.err.println("Embarcacao id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
+                AppLogger.warn("EmbarcacaoDAO", "Embarcacao id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
                 return false;
             }
-            System.err.println("Erro ao excluir embarcacao: " + e.getMessage());
+            AppLogger.warn("EmbarcacaoDAO", "Erro ao excluir embarcacao: " + e.getMessage());
             return false;
         }
     }

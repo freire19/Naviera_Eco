@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import gui.util.AppLogger;
 
 public class CadastroFreteApp extends Application {
 
@@ -23,7 +24,7 @@ public class CadastroFreteApp extends Application {
             primaryStage.show();
 
         } catch(Exception e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteApp", e.getMessage(), e);
         }
     }
 

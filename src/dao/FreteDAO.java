@@ -5,6 +5,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 public class FreteDAO {
 
@@ -105,7 +106,7 @@ public class FreteDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em FreteDAO: " + e.getMessage());
+            AppLogger.warn("FreteDAO", "Erro SQL em FreteDAO: " + e.getMessage());
         }
         return fretes;
     }
@@ -148,7 +149,7 @@ public class FreteDAO {
             return ok;
         } catch (SQLException e) {
             if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { /* ignorado */ } }
-            System.err.println("Erro SQL em FreteDAO.excluir: " + e.getMessage());
+            AppLogger.warn("FreteDAO", "Erro SQL em FreteDAO.excluir: " + e.getMessage());
             return false;
         } finally {
             if (conn != null) {

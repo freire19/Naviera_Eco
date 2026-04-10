@@ -1,13 +1,13 @@
-# STATUS DO PROJETO — SistemaEmbarcacaoProjeto_Novo
-> Ultima atualizacao: 2026-04-09
+# STATUS DO PROJETO — Naviera Eco
+> Ultima atualizacao: 2026-04-10
 > Atualizado por: Claude Code (status-update)
 
 ---
 
-## Estado Geral: APROVADO COM RESSALVAS (0 CRITICAS — 4 categorias 100% limpas, 2 quase limpas)
+## Estado Geral: MVP QUASE PRONTO (93% — 108/116 itens prontos, 0 bloqueadores)
 
 ### Resumo
-Sistema desktop JavaFX de gestao fluvial com **0 issues CRITICAS pendentes**. Categorias Security e Logic foram 100% resolvidas (47 + 75 issues). Restam issues em Resilience (41), Maintainability (31), Performance (10) e Bugs (27 — muitos sobrepostos com categorias ja resolvidas). Total historico: **~305 issues encontradas, ~205 resolvidas (67%)**.
+Plataforma SaaS multi-tenant de gestao fluvial com **4 camadas operacionais**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile). **Todas as 4 fases do MVP concluidas.** 0 issues CRITICAS pendentes. Auditorias: Security e Logic 100% limpas. MVP de 47% para 93% em 2 dias (V1.0 → V3.0).
 
 ---
 
@@ -82,20 +82,20 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 | **Deep Resilience** | **V4.0** | **2026-04-08** | **2 ativas (97% limpo)** | **39 fixadas** | **[DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)** |
 | **Deep Performance** | **V3.0** | **2026-04-09** | **2 (infra only)** | **95% LIMPO — 37/39 fixadas** | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
 | **Deep Maintainability** | **V3.0** | **2026-04-09** | **~5 (estruturais)** | **46 corrigidas (90% reducao)** | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
-| MVP Plan | V1.0 | 2026-04-07 | 22 faltando | Precisa trabalho | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
+| **MVP Plan** | **V3.0** | **2026-04-10** | **0 faltando, 4 incompletos** | **93% pronto — 0 bloqueadores, 4 fases concluidas** | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
 
 ---
 
 ## PROXIMO SPRINT (sugerido)
 
-**Prioridade 1 — Resilience criticas (5 issues):**
-Rodar `audit-5-deep resilience` para reconciliar e corrigir 5 criticas (FX thread violations, connection leaks).
+**Prioridade 1 — Ativar HTTPS em producao:**
+Gerar certificados (Let's Encrypt), colocar em `certs/`, descomentar bloco HTTPS no nginx.conf.
 
-**Prioridade 2 — Reconciliar DEEP_BUGS:**
-Rodar `audit-5-deep bugs` para atualizar — muitas das 27 "ativas" ja foram corrigidas.
+**Prioridade 2 — Testes end-to-end:**
+Testar fluxo completo: Desktop → Sync → API → Web/App. Validar multi-tenant com 2 empresas.
 
-**Prioridade 3 — Maintainability (controllers grandes):**
-#044/#045/#046 — Requer cobertura de testes antes de refatorar.
+**Prioridade 3 — Pos-MVP backlog:**
+GPS real-time, migracao app mobile, CI/CD, EmpresaDAO/BalancoViagemDAO, Swagger.
 
 ---
 
@@ -108,7 +108,14 @@ Rodar `audit-5-deep bugs` para atualizar — muitas das 27 "ativas" ja foram cor
 | Issues pendentes (estimado) | ~82 (muitos sobrepostos) |
 | Taxa de resolucao | 67% |
 | Issues CRITICAS pendentes | **0** |
-| Categorias 100% limpas | **Security, Logic** |
+| Categorias 100% limpas | **Security, Logic, Bugs** |
+| MVP readiness | **93% (108/116 itens)** |
+| MVP bloqueadores | **0** |
+| Paginas Web | **29** (28 funcionais + 1 placeholder) |
+| Telas App | **15** (5 CPF + 5 CNPJ + perfil + login + cadastro + bilhete + encomendas) |
+| Endpoints BFF | **~50** (GET + POST + PUT + DELETE) |
+| Endpoints API | **108+** |
+| Arquivos Desktop modificados (logging) | **87** (491 substituicoes) |
 
 ---
 
@@ -144,6 +151,11 @@ Rodar `audit-5-deep bugs` para atualizar — muitas das 27 "ativas" ja foram cor
 | 2026-04-08 | **DEEP_BUGS V1.0 — Categoria 100% limpa** (35/35: 6 crit + 11 alta + 8 media + 3 baixa + 7 AUDIT pendentes) |
 | 2026-04-09 | DEEP_PERFORMANCE V3.0 — auditoria + fix completo: 37/39 resolvidas (95%) |
 | 2026-04-09 | DEEP_MAINTAINABILITY V3.0 — auditoria + fix completo: 40 corrigidas (3 crit + 13 altas + 20 medias + 4 parciais), ~11 restantes (BAIXAS) |
+| 2026-04-10 | **MVP Fase 1** — HTTPS preparado, BFF multi-tenant (30 queries), JWT secret fix, db.properties protegido |
+| 2026-04-10 | **MVP Fase 2** — 25 write endpoints BFF, 4 paginas com CRUD + modais, @Valid em 7 DTOs |
+| 2026-04-10 | **MVP Fase 3** — logback, logger.js, rate limiting, query timeout 30s, shutdown hook, responsividade, .env.example |
+| 2026-04-10 | **MVP Fase 4** — 22 novas paginas web (29 total), app refatorado (27 arquivos), EncomendaCPF, SyncService (11 tabelas), AppLogger (491 fixes), PostgreSQL no compose |
+| 2026-04-10 | **MVP PLAN V3.0 — 93% pronto (108/116), 0 bloqueadores, 4 fases concluidas** |
 
 ---
 *Atualizado automaticamente por Claude Code (status-update) — Revisao humana recomendada*

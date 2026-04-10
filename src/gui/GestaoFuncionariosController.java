@@ -38,6 +38,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import gui.util.AppLogger;
 
 public class GestaoFuncionariosController {
 
@@ -161,7 +162,7 @@ public class GestaoFuncionariosController {
         else cbMesAno.getSelectionModel().select(0);
     }
     
-    @FXML public void sair() { try { ((Stage) listaFuncionarios.getScene().getWindow()).close(); } catch (Exception e) { System.err.println("Erro em GestaoFuncionariosController.sair: " + e.getMessage()); } }
+    @FXML public void sair() { try { ((Stage) listaFuncionarios.getScene().getWindow()).close(); } catch (Exception e) { AppLogger.warn("GestaoFuncionariosController", "Erro em GestaoFuncionariosController.sair: " + e.getMessage()); } }
     
     @FXML
     public void novoFuncionario() {
@@ -271,7 +272,7 @@ public class GestaoFuncionariosController {
             } else {
                 AlertHelper.info("Erro ao salvar funcionário.");
             }
-        } catch (Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); }
+        } catch (Exception e) { AppLogger.error("GestaoFuncionariosController", e.getMessage(), e); AlertHelper.info("Erro interno. Contate o administrador."); }
     }
 
     /**
@@ -416,7 +417,7 @@ public class GestaoFuncionariosController {
                 AlertHelper.info("Falta registrada no prontuário! Valor: " + nf.format(valorDesconto));
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
-            } catch(Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+            } catch(Exception e) { AppLogger.error("GestaoFuncionariosController", e.getMessage(), e); AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("GestaoFuncionariosController", "Erro: " + e.getMessage()); }
         }
     }
     
@@ -490,7 +491,7 @@ public class GestaoFuncionariosController {
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
                 
-            } catch(Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+            } catch(Exception e) { AppLogger.error("GestaoFuncionariosController", e.getMessage(), e); AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("GestaoFuncionariosController", "Erro: " + e.getMessage()); }
         }
     }
 

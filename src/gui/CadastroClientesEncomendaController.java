@@ -18,6 +18,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
 import model.ClienteEncomenda;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroClientesEncomendaController implements Initializable {
 
@@ -57,7 +58,7 @@ public class CadastroClientesEncomendaController implements Initializable {
                 java.util.List<ClienteEncomenda> dados = clienteDAO.listarTodos();
                 Platform.runLater(() -> obsListaClientes.setAll(dados));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("CadastroClientesEncomendaController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);

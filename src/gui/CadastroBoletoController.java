@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import gui.util.AppLogger;
 
 public class CadastroBoletoController {
 
@@ -64,7 +65,7 @@ public class CadastroBoletoController {
                 ObservableList<String> cats = FXCollections.observableArrayList();
                 try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome").executeQuery()){
                     while(rs.next()) cats.add(rs.getString(1));
-                } catch(Exception e) { System.err.println("Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
+                } catch(Exception e) { AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
                 final ObservableList<String> finalCats = cats;
                 javafx.application.Platform.runLater(() -> {
                     cmbCategoria.setItems(finalCats);
@@ -72,7 +73,7 @@ public class CadastroBoletoController {
                     filtrar();
                 });
             } catch (Exception e) {
-                e.printStackTrace();
+                AppLogger.error("CadastroBoletoController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);
@@ -101,7 +102,7 @@ public class CadastroBoletoController {
             pst.setInt(1, dao.DAOUtils.empresaId());
             ResultSet rs = pst.executeQuery();
             if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
-        } catch(Exception e){ System.err.println("Erro em CadastroBoletoController.buscarUltimaViagem: " + e.getMessage()); }
+        } catch(Exception e){ AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.buscarUltimaViagem: " + e.getMessage()); }
     }
 
     private void gerarCamposData(int qtd) {
@@ -122,7 +123,7 @@ public class CadastroBoletoController {
         ObservableList<String> cats = FXCollections.observableArrayList();
         try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome").executeQuery()){
             while(rs.next()) cats.add(rs.getString(1));
-        } catch(Exception e) { System.err.println("Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
+        } catch(Exception e) { AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(cats);
         configurarAutocomplete(cmbCategoria, cats);
     }
@@ -201,11 +202,11 @@ public class CadastroBoletoController {
 
                 } catch (Exception ex) {
                     con.rollback();
-                    ex.printStackTrace();
+                    AppLogger.error("CadastroBoletoController", ex.getMessage(), ex);
                 }
             }
             
-        } catch (Exception e) { e.printStackTrace(); AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.error("CadastroBoletoController", e.getMessage(), e); AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("CadastroBoletoController", "Erro: " + e.getMessage()); }
     }
     
     private int buscarOuCriarCategoria(String nome) throws SQLException {
@@ -249,7 +250,7 @@ public class CadastroBoletoController {
         });
         
         // Tenta carregar o CSS
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em CadastroBoletoController.configurarTabela (CSS): " + e.getMessage()); }
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.configurarTabela (CSS): " + e.getMessage()); }
     }
     
     @FXML
@@ -289,7 +290,7 @@ public class CadastroBoletoController {
                 ));
             }
             tabela.setItems(lista);
-        } catch(Exception e){e.printStackTrace();}
+        } catch(Exception e){AppLogger.error("CadastroBoletoController", e.getMessage(), e);}
     }
     
     @FXML public void limparFiltros() { dpFiltroData.setValue(null); filtrar(); }
@@ -314,7 +315,7 @@ public class CadastroBoletoController {
                 s.setInt(3, dao.DAOUtils.empresaId());
                 s.executeUpdate();
                 filtrar();
-            } catch(Exception e) { e.printStackTrace(); }
+            } catch(Exception e) { AppLogger.error("CadastroBoletoController", e.getMessage(), e); }
         }
     }
     
@@ -343,7 +344,7 @@ public class CadastroBoletoController {
                     s.executeUpdate();
                 }
                 filtrar();
-            } catch(Exception e) { e.printStackTrace(); }
+            } catch(Exception e) { AppLogger.error("CadastroBoletoController", e.getMessage(), e); }
         }
     }
 

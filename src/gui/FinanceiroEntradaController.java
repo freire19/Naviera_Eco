@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import model.OpcaoViagem;
+import gui.util.AppLogger;
 
 public class FinanceiroEntradaController {
 
@@ -244,8 +245,8 @@ public class FinanceiroEntradaController {
 
             }
         } catch (SQLException e) {
-            e.printStackTrace();
-            System.err.println("Erro SQL Dashboard: " + e.getMessage());
+            AppLogger.error("FinanceiroEntradaController", e.getMessage(), e);
+            AppLogger.warn("FinanceiroEntradaController", "Erro SQL Dashboard: " + e.getMessage());
         }
     }
 
@@ -315,7 +316,7 @@ public class FinanceiroEntradaController {
             atualizarDashboard(); 
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("FinanceiroEntradaController", e.getMessage(), e);
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setContentText("Erro ao abrir tela: " + e.getMessage());
             alert.showAndWait();

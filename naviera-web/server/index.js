@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import log from './logger.js'
 import authRoutes from './routes/auth.js'
 import viagemRoutes from './routes/viagens.js'
 import rotaRoutes from './routes/rotas.js'
@@ -17,6 +18,17 @@ const PORT = process.env.SERVER_PORT || 3001
 
 app.use(cors())
 app.use(express.json())
+
+// Request logging
+app.use((req, res, next) => {
+  const start = Date.now()
+  res.on('finish', () => {
+    const ms = Date.now() - start
+    const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'
+    log[level]('HTTP', `${req.method} ${req.originalUrl} ${res.statusCode} ${ms}ms`)
+  })
+  next()
+})
 
 // Routes
 app.use('/api/auth', authRoutes)
@@ -35,5 +47,5 @@ app.get('/api/health', (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(`[naviera-web] Server running on http://localhost:${PORT}`)
+  log.info('Server', `Naviera Web BFF running on http://localhost:${PORT}`)
 })

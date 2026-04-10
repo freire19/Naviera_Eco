@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import gui.util.AppLogger;
 
 public class BaixaPagamentoController {
 
@@ -97,7 +98,7 @@ public class BaixaPagamentoController {
             if (valor.signum() < 0) throw new IllegalArgumentException("Valor nao pode ser negativo");
             return valor;
         } catch (IllegalArgumentException e) {
-            System.err.println("Valor invalido para conversao monetaria: " + texto);
+            AppLogger.warn("BaixaPagamentoController", "Valor invalido para conversao monetaria: " + texto);
             return BigDecimal.ZERO;
         }
     }
@@ -124,7 +125,7 @@ public class BaixaPagamentoController {
             ResultSet rs = ps.executeQuery();
             while(rs.next()) users.add(rs.getString(1));
         } catch (SQLException e) {
-            System.err.println("Erro ao carregar caixas: " + e.getMessage());
+            AppLogger.warn("BaixaPagamentoController", "Erro ao carregar caixas: " + e.getMessage());
         }
         javafx.application.Platform.runLater(() -> {
             if (!users.isEmpty()) {

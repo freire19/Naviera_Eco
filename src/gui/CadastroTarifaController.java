@@ -32,6 +32,7 @@ import java.sql.SQLException;
 import java.util.Objects;
 import javafx.application.Platform;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroTarifaController implements Initializable {
 
@@ -91,7 +92,7 @@ public class CadastroTarifaController implements Initializable {
                     observableListTarifas.setAll(tarifas);
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("CadastroTarifaController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -125,7 +126,7 @@ public class CadastroTarifaController implements Initializable {
             observableListTarifas.setAll(tarifas);
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Tarifas", "Não foi possível carregar os dados das tarifas: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroTarifaController", e.getMessage(), e);
         }
     }
 
@@ -142,7 +143,7 @@ public class CadastroTarifaController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Tipos de Passageiro", "Falha: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroTarifaController", e.getMessage(), e);
         }
 
         // Popular cmbRota com objetos Rota
@@ -156,7 +157,7 @@ public class CadastroTarifaController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Rotas", "Falha: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroTarifaController", e.getMessage(), e);
         }
     }
 
@@ -232,7 +233,7 @@ public class CadastroTarifaController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro ao Buscar ID", "Erro ao buscar ID para o tipo de passageiro '" + tipoPassageiroSelecionadoStr + "': " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroTarifaController", e.getMessage(), e);
             return;
         }
 
@@ -285,7 +286,7 @@ public class CadastroTarifaController implements Initializable {
             AlertHelper.show(AlertType.ERROR, "Erro de ID", "ID da tarifa inválido para atualização.");
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro inesperado ao salvar a tarifa: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroTarifaController", e.getMessage(), e);
         }
     }
 
@@ -314,7 +315,7 @@ public class CadastroTarifaController implements Initializable {
                 }
             } catch (Exception e) {
                 AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro inesperado ao excluir a tarifa: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.error("CadastroTarifaController", e.getMessage(), e);
             }
         }
     }
@@ -336,7 +337,7 @@ public class CadastroTarifaController implements Initializable {
         try {
             return new BigDecimal(cleanedText);
         } catch (NumberFormatException e) {
-            System.err.println("Erro de formato numérico ao parsear BigDecimal: " + text + " -> " + e.getMessage());
+            AppLogger.warn("CadastroTarifaController", "Erro de formato numérico ao parsear BigDecimal: " + text + " -> " + e.getMessage());
             return BigDecimal.ZERO;
         }
     }

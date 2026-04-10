@@ -5,6 +5,7 @@ package dao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 /**
  * DAO para a tabela conferentes.
@@ -29,7 +30,7 @@ public class ConferenteDAO {
                 // Recria como lista de objetos abaixo — usado via listarNomes()
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ConferenteDAO.listarTodos: " + e.getMessage());
+            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.listarTodos: " + e.getMessage());
         }
         return lista;
     }
@@ -49,7 +50,7 @@ public class ConferenteDAO {
                 if (nome != null) lista.add(nome);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ConferenteDAO.listarNomes: " + e.getMessage());
+            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.listarNomes: " + e.getMessage());
         }
         return lista;
     }
@@ -78,7 +79,7 @@ public class ConferenteDAO {
                 lista.add(new ConferenteRow(rs.getLong("id_conferente"), rs.getString("nome_conferente")));
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ConferenteDAO.listarComId: " + e.getMessage());
+            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.listarComId: " + e.getMessage());
         }
         return lista;
     }
@@ -105,7 +106,7 @@ public class ConferenteDAO {
                 return rs.next();
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ConferenteDAO.existe: " + e.getMessage());
+            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.existe: " + e.getMessage());
             return false;
         }
     }
@@ -120,7 +121,7 @@ public class ConferenteDAO {
             stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ConferenteDAO.inserir: " + e.getMessage());
+            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.inserir: " + e.getMessage());
             return false;
         }
     }
@@ -135,7 +136,7 @@ public class ConferenteDAO {
             stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ConferenteDAO.atualizar: " + e.getMessage());
+            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.atualizar: " + e.getMessage());
             return false;
         }
     }
@@ -149,7 +150,7 @@ public class ConferenteDAO {
             stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ConferenteDAO.excluir: " + e.getMessage());
+            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.excluir: " + e.getMessage());
             return false;
         }
     }

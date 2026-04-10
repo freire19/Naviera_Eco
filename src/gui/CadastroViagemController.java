@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroViagemController implements Initializable {
 
@@ -191,7 +192,7 @@ public class CadastroViagemController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(Alert.AlertType.ERROR, "Erro de Carregamento", "Falha ao carregar horários de saída: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroViagemController", e.getMessage(), e);
             cmbHorarioSaida.getItems().clear();
         }
     }
@@ -258,7 +259,7 @@ public class CadastroViagemController implements Initializable {
                 cmbHorarioSaida.setValue(v.getDescricaoHorarioSaida());
             } else {
                 cmbHorarioSaida.setValue(null);
-                System.err.println("Aviso: Horário de saída '" + v.getDescricaoHorarioSaida() + "' da viagem ID " + v.getId() + " não encontrado nos cadastros auxiliares.");
+                AppLogger.warn("CadastroViagemController", "Aviso: Horário de saída '" + v.getDescricaoHorarioSaida() + "' da viagem ID " + v.getId() + " não encontrado nos cadastros auxiliares.");
             }
         } else {
             cmbHorarioSaida.setValue(null);
@@ -356,7 +357,7 @@ public class CadastroViagemController implements Initializable {
             }
         } catch (SQLException e) {
             AlertHelper.show(Alert.AlertType.ERROR, "Erro de Banco de Dados", "Falha ao obter ID do horário de saída: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroViagemController", e.getMessage(), e);
             return;
         }
 

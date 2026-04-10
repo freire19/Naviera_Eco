@@ -1,3 +1,11 @@
 package com.naviera.api.dto;
 
-public record LoginOperadorRequest(String login, String senha) {}
+import jakarta.validation.constraints.NotBlank;
+
+public record LoginOperadorRequest(
+    @NotBlank(message = "Login e obrigatorio")
+    String login,
+
+    @NotBlank(message = "Senha e obrigatoria")
+    String senha
+) {}

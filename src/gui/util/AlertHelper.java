@@ -3,6 +3,7 @@ package gui.util;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import gui.util.AppLogger;
 
 /**
  * Utilitario centralizado para exibicao de alertas JavaFX.
@@ -57,7 +58,7 @@ public class AlertHelper {
     public static void errorSafe(String contexto, Exception e) {
         // DR131: registrar no log de erros alem de imprimir em stderr
         LogService.registrarErro(contexto, e);
-        System.err.println("Erro em " + contexto + ": " + e.getMessage());
+        AppLogger.warn("AlertHelper", "Erro em " + contexto + ": " + e.getMessage());
         show(AlertType.ERROR, "Erro", "Ocorreu um erro ao " + contexto.toLowerCase() + ". Tente novamente ou contate o suporte.");
     }
 

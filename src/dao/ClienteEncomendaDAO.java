@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 public class ClienteEncomendaDAO {
 
@@ -31,7 +32,7 @@ public class ClienteEncomendaDAO {
                 clientes.add(cliente);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
+            AppLogger.warn("ClienteEncomendaDAO", "Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
         }
         return clientes;
     }
@@ -54,7 +55,7 @@ public class ClienteEncomendaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
+            AppLogger.warn("ClienteEncomendaDAO", "Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
             return null;
         }
     }
@@ -75,7 +76,7 @@ public class ClienteEncomendaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar cliente por nome: " + e.getMessage());
+            AppLogger.warn("ClienteEncomendaDAO", "Erro ao buscar cliente por nome: " + e.getMessage());
         }
         return null;
     }
@@ -97,7 +98,7 @@ public class ClienteEncomendaDAO {
             stmt.setInt(3, empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
+            AppLogger.warn("ClienteEncomendaDAO", "Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -118,7 +119,7 @@ public class ClienteEncomendaDAO {
             stmt.setInt(2, empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
+            AppLogger.warn("ClienteEncomendaDAO", "Erro SQL em ClienteEncomendaDAO: " + e.getMessage());
             return false;
         }
     }

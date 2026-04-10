@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import gui.util.AppLogger;
 
 public class CadastroUsuarioApp extends Application {
 
@@ -19,7 +20,7 @@ public class CadastroUsuarioApp extends Application {
             primaryStage.show();
         } catch (Exception e) {
             System.out.println("Erro ao carregar a tela de Cadastro de Usuário.");
-            e.printStackTrace();
+            AppLogger.error("CadastroUsuarioApp", e.getMessage(), e);
         }
     }
 

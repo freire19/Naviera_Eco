@@ -2,6 +2,7 @@ package com.naviera.api.controller;
 
 import com.naviera.api.dto.CompraPassagemRequest;
 import com.naviera.api.service.PassagemService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class PassagemController {
     }
 
     @PostMapping("/comprar")
-    public ResponseEntity<?> comprar(Authentication auth, @RequestBody CompraPassagemRequest req) {
+    public ResponseEntity<?> comprar(Authentication auth, @RequestBody @Valid CompraPassagemRequest req) {
         Long id = (Long) auth.getPrincipal();
         return ResponseEntity.ok(service.comprar(id, req));
     }

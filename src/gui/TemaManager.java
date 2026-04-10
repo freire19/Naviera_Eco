@@ -3,6 +3,7 @@ package gui;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import gui.util.AppLogger;
 
 public class TemaManager {
     private static boolean isModoEscuro = false;
@@ -28,10 +29,10 @@ public class TemaManager {
             if (cssUrl != null) {
                 scene.getStylesheets().add(cssUrl.toExternalForm());
             } else {
-                System.err.println("CSS nao encontrado no classpath: " + cssParaCarregar);
+                AppLogger.warn("TemaManager", "CSS nao encontrado no classpath: " + cssParaCarregar);
             }
         } catch (Exception e) {
-            System.err.println("Erro ao carregar CSS: " + cssParaCarregar + " - " + e.getMessage());
+            AppLogger.warn("TemaManager", "Erro ao carregar CSS: " + cssParaCarregar + " - " + e.getMessage());
         }
     }
     

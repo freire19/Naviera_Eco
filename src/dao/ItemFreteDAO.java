@@ -9,6 +9,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.math.BigDecimal;
+import gui.util.AppLogger;
 
 public class ItemFreteDAO {
 
@@ -35,7 +36,7 @@ public class ItemFreteDAO {
                 return true;
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
+            AppLogger.warn("ItemFreteDAO", "Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
         return false;
     }
@@ -55,7 +56,7 @@ public class ItemFreteDAO {
             stmt.setInt(8, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
+            AppLogger.warn("ItemFreteDAO", "Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
         return false;
     }
@@ -70,7 +71,7 @@ public class ItemFreteDAO {
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
+            AppLogger.warn("ItemFreteDAO", "Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
         return false;
     }
@@ -103,7 +104,7 @@ public class ItemFreteDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemFreteDAO: " + e.getMessage());
+            AppLogger.warn("ItemFreteDAO", "Erro SQL em ItemFreteDAO: " + e.getMessage());
         }
         return itens;
     }

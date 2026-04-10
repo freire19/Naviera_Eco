@@ -1,3 +1,8 @@
 package com.naviera.api.dto;
 
-public record AmigoRequest(String documento) {}
+import jakarta.validation.constraints.NotBlank;
+
+public record AmigoRequest(
+    @NotBlank(message = "Documento e obrigatorio")
+    String documento
+) {}

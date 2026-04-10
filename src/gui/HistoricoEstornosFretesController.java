@@ -14,6 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import gui.util.AppLogger;
 
 public class HistoricoEstornosFretesController {
 
@@ -86,7 +87,7 @@ public class HistoricoEstornosFretesController {
             javafx.application.Platform.runLater(() -> tabela.setItems(lista));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("HistoricoEstornosFretesController", e.getMessage(), e);
             // DR113: Alert via Platform.runLater (filtrar() pode ser chamado de bg thread)
             javafx.application.Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Erro ao buscar histórico de estornos de fretes: " + e.getMessage()).show());
         }

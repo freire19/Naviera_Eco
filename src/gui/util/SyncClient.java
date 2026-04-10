@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import gui.util.AppLogger;
 
 /**
  * Cliente de sincronizacao bidirecional.
@@ -77,7 +78,7 @@ public class SyncClient {
                     this.ultimaSincronizacao = LocalDateTime.parse(ultimaSync);
                 }
             } catch (Exception e) {
-                System.err.println("Erro ao carregar configurações de sync: " + e.getMessage());
+                AppLogger.warn("SyncClient", "Erro ao carregar configurações de sync: " + e.getMessage());
             }
         }
     }
@@ -104,7 +105,7 @@ public class SyncClient {
             }
             props.store(fos, "Configurações de Sincronização - Naviera");
         } catch (Exception e) {
-            System.err.println("Erro ao salvar configurações de sync: " + e.getMessage());
+            AppLogger.warn("SyncClient", "Erro ao salvar configurações de sync: " + e.getMessage());
         }
     }
     
@@ -203,8 +204,8 @@ public class SyncClient {
                     resultadoGeral.registrosEnviados += resultado.registrosEnviados;
                     resultadoGeral.registrosRecebidos += resultado.registrosRecebidos;
                 } catch (Exception e) {
-                    System.err.println("[SYNC ERROR] Erro em " + tabela + ": " + e.getMessage());
-                    e.printStackTrace();
+                    AppLogger.warn("SyncClient", "[SYNC ERROR] Erro em " + tabela + ": " + e.getMessage());
+                    AppLogger.error("SyncClient", e.getMessage(), e);
                     resultadoGeral.erros.add(tabela + ": " + e.getMessage());
                 }
             }
@@ -274,8 +275,8 @@ public class SyncClient {
                 marcarComoSincronizados(tabela, pendentes);
                 
             } catch (Exception e) {
-                System.err.println("[SYNC ERROR] " + tabela + " - Exceção: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("SyncClient", "[SYNC ERROR] " + tabela + " - Exceção: " + e.getMessage());
+                AppLogger.error("SyncClient", e.getMessage(), e);
                 resultado.sucesso = false;
                 resultado.mensagem = "Erro: " + e.getMessage();
                 resultado.erros.add(e.getMessage());
@@ -335,8 +336,8 @@ public class SyncClient {
             }
             
         } catch (Exception e) {
-            System.err.println("Erro ao buscar pendentes de " + tabela + ": " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.warn("SyncClient", "Erro ao buscar pendentes de " + tabela + ": " + e.getMessage());
+            AppLogger.error("SyncClient", e.getMessage(), e);
         }
         
         return pendentes;
@@ -471,8 +472,8 @@ public class SyncClient {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Erro ao processar registro de " + tabela + ": " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.warn("SyncClient", "Erro ao processar registro de " + tabela + ": " + e.getMessage());
+            AppLogger.error("SyncClient", e.getMessage(), e);
         }
     }
     
@@ -511,7 +512,7 @@ public class SyncClient {
             }
             
         } catch (Exception e) {
-            System.err.println("Erro ao marcar como sincronizados: " + e.getMessage());
+            AppLogger.warn("SyncClient", "Erro ao marcar como sincronizados: " + e.getMessage());
         }
     }
     
@@ -521,7 +522,7 @@ public class SyncClient {
     private String enviarPOST(String endpoint, String jsonBody) throws Exception {
         // D023: aviso se usando HTTP em servidor remoto (nao-localhost)
         if (serverUrl != null && serverUrl.startsWith("http://") && !serverUrl.contains("localhost") && !serverUrl.contains("127.0.0.1")) {
-            System.err.println("AVISO SEGURANCA: Sync usando HTTP sem TLS para servidor remoto: " + serverUrl);
+            AppLogger.warn("SyncClient", "AVISO SEGURANCA: Sync usando HTTP sem TLS para servidor remoto: " + serverUrl);
         }
         URL url = new URL(serverUrl + endpoint);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -699,7 +700,7 @@ public class SyncClient {
         } catch (Exception e) {
             result.put("sucesso", false);
             result.put("mensagem", "Erro ao processar resposta: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("SyncClient", e.getMessage(), e);
         }
         
         return result;
@@ -764,7 +765,7 @@ public class SyncClient {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Erro ao parsear array JSON: " + e.getMessage());
+            AppLogger.warn("SyncClient", "Erro ao parsear array JSON: " + e.getMessage());
         }
         
         return lista;
@@ -790,7 +791,7 @@ public class SyncClient {
             obj.put("ultimaAtualizacao", extrairString(objJson, "\"ultimaAtualizacao\":"));
             
         } catch (Exception e) {
-            System.err.println("Erro ao parsear objeto JSON: " + e.getMessage());
+            AppLogger.warn("SyncClient", "Erro ao parsear objeto JSON: " + e.getMessage());
         }
         
         return obj;
@@ -969,7 +970,7 @@ public class SyncClient {
     public CompletableFuture<SyncResult> receberDadosDoServidor() {
         return CompletableFuture.supplyAsync(() -> {
             notificarListeners(SyncEvent.INFO, "Recebimento de dados nao implementado.");
-            System.err.println("SyncClient.receberDadosDoServidor: fluxo de recebimento ainda nao implementado (issue #035).");
+            AppLogger.warn("SyncClient", "SyncClient.receberDadosDoServidor: fluxo de recebimento ainda nao implementado (issue #035).");
             notificarListeners(SyncEvent.ERRO, "Funcionalidade de recebimento pendente de implementacao.");
             return new SyncResult(false, "Recebimento de dados do servidor ainda nao implementado.");
         });
@@ -988,7 +989,7 @@ public class SyncClient {
             try {
                 listener.onSyncEvent(evento, mensagem);
             } catch (Exception e) {
-                e.printStackTrace();
+                AppLogger.error("SyncClient", e.getMessage(), e);
             }
         }
     }

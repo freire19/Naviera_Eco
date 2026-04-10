@@ -4,6 +4,7 @@ import model.Rota;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 public class RotaDAO {
 
@@ -23,7 +24,7 @@ public class RotaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
+            AppLogger.warn("RotaDAO", "Erro SQL em RotaDAO: " + e.getMessage());
         }
         return rotas;
     }
@@ -44,7 +45,7 @@ public class RotaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
+            AppLogger.warn("RotaDAO", "Erro SQL em RotaDAO: " + e.getMessage());
         }
         return null;
     }
@@ -56,7 +57,7 @@ public class RotaDAO {
              ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) return rs.getLong(1);
         } catch (SQLException e) {
-            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
+            AppLogger.warn("RotaDAO", "Erro SQL em RotaDAO: " + e.getMessage());
         }
         return -1;
     }
@@ -71,7 +72,7 @@ public class RotaDAO {
             stmt.setInt(4, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
+            AppLogger.warn("RotaDAO", "Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -86,7 +87,7 @@ public class RotaDAO {
             stmt.setInt(4, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em RotaDAO: " + e.getMessage());
+            AppLogger.warn("RotaDAO", "Erro SQL em RotaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -103,10 +104,10 @@ public class RotaDAO {
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             if ("23503".equals(e.getSQLState())) {
-                System.err.println("Rota id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
+                AppLogger.warn("RotaDAO", "Rota id=" + id + " nao pode ser excluida: possui viagens vinculadas.");
                 return false;
             }
-            System.err.println("Erro ao excluir rota: " + e.getMessage());
+            AppLogger.warn("RotaDAO", "Erro ao excluir rota: " + e.getMessage());
             return false;
         }
     }

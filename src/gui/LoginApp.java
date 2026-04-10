@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.Parent;
 import javafx.stage.Stage;
+import gui.util.AppLogger;
 
 public class LoginApp extends Application {
 
@@ -19,7 +20,7 @@ public class LoginApp extends Application {
             primaryStage.setResizable(false);
             primaryStage.show();
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("LoginApp", e.getMessage(), e);
         }
     }
 

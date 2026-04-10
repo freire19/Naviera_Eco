@@ -9,11 +9,13 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000
+  connectionTimeoutMillis: 5000,
+  statement_timeout: 30000,   // 30s max por query
+  query_timeout: 30000        // 30s max por query
 })
 
 pool.on('error', (err) => {
-  console.error('[DB] Pool error:', err.message)
+  console.error(`${new Date().toISOString().slice(0,23)} ERROR [DB] Pool error: ${err.message}`)
 })
 
 export default pool

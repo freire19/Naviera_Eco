@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 // import java.sql.SQLException; // Não é mais necessário importar explicitamente se não for lançado
 import java.util.List;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroProdutoController {
 
@@ -76,7 +77,7 @@ public class CadastroProdutoController {
                     if (itensE != null) listaEncomenda.addAll(itensE);
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("CadastroProdutoController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -113,7 +114,7 @@ public class CadastroProdutoController {
             List<ItemFrete> itens = new ItemFreteDAO().listarTodos(false);
             if (itens != null) listaFrete.addAll(itens);
         } catch (Exception ex) { // CORREÇÃO: Mudado de SQLException para Exception
-            ex.printStackTrace();
+            AppLogger.error("CadastroProdutoController", ex.getMessage(), ex);
             AlertHelper.warn("Erro ao carregar Itens de Frete:\n" + ex.getMessage());
         }
     }
@@ -124,7 +125,7 @@ public class CadastroProdutoController {
             List<ItemEncomendaPadrao> itens = new ItemEncomendaPadraoDAO().listarTodos(false);
             if (itens != null) listaEncomenda.addAll(itens);
         } catch (Exception ex) { // CORREÇÃO: Mudado de SQLException para Exception
-            ex.printStackTrace();
+            AppLogger.error("CadastroProdutoController", ex.getMessage(), ex);
             AlertHelper.warn("Erro ao carregar Itens de Encomenda:\n" + ex.getMessage());
         }
     }
@@ -152,7 +153,7 @@ public class CadastroProdutoController {
             limparCamposFrete();
             carregarFrete();
         } catch (Exception ex) {
-            ex.printStackTrace();
+            AppLogger.error("CadastroProdutoController", ex.getMessage(), ex);
             AlertHelper.error("Erro ao salvar Frete:\n" + ex.getMessage());
         }
     }
@@ -177,7 +178,7 @@ public class CadastroProdutoController {
             limparCamposEncomenda();
             carregarEncomenda();
         } catch (Exception ex) {
-            ex.printStackTrace();
+            AppLogger.error("CadastroProdutoController", ex.getMessage(), ex);
             AlertHelper.error("Erro ao salvar Encomenda:\n" + ex.getMessage());
         }
     }

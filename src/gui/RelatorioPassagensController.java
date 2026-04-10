@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class RelatorioPassagensController implements Initializable {
 
@@ -114,7 +115,7 @@ public class RelatorioPassagensController implements Initializable {
                     if (rotasObjects != null) {
                         for (Rota r : rotasObjects) rotasStrings.add(r.toString());
                     }
-                } catch (Exception e) { System.err.println("RelatorioPassagensController.initialize: erro ao listar rotas — " + e.getMessage()); }
+                } catch (Exception e) { AppLogger.warn("RelatorioPassagensController", "RelatorioPassagensController.initialize: erro ao listar rotas — " + e.getMessage()); }
 
                 List<String> tiposPagamento = new ArrayList<>();
                 tiposPagamento.add("Todos");
@@ -151,7 +152,7 @@ public class RelatorioPassagensController implements Initializable {
                         null, null, viagemAtivaComboStr, null, null, null, null, null, null, "Todos");
                 } catch (SQLException e) {
                     dadosIniciais = new ArrayList<>();
-                    e.printStackTrace();
+                    AppLogger.error("RelatorioPassagensController", e.getMessage(), e);
                 }
 
                 // --- Fase 3: Atualizar UI no thread do JavaFX ---
@@ -191,7 +192,7 @@ public class RelatorioPassagensController implements Initializable {
                 });
 
             } catch (Exception e) {
-                e.printStackTrace();
+                AppLogger.error("RelatorioPassagensController", e.getMessage(), e);
                 Platform.runLater(() -> {
                     inicializando = false;
                     AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao carregar dados do relat\u00f3rio: " + e.getMessage());
@@ -238,10 +239,10 @@ public class RelatorioPassagensController implements Initializable {
                 java.lang.reflect.Method m = Passagem.class.getMethod("get" + propertyName);
                 return new SimpleObjectProperty<>((BigDecimal) m.invoke(cellData.getValue()));
             } catch (NoSuchMethodException e) {
-                System.err.println("Metodo get" + propertyName + " nao encontrado em Passagem: " + e.getMessage());
+                AppLogger.warn("RelatorioPassagensController", "Metodo get" + propertyName + " nao encontrado em Passagem: " + e.getMessage());
                 return new SimpleObjectProperty<>(null);
             } catch (Exception e) {
-                System.err.println("RelatorioPassagensController.formatarColunaDecimal: erro ao invocar get" + propertyName + " — " + e.getMessage());
+                AppLogger.warn("RelatorioPassagensController", "RelatorioPassagensController.formatarColunaDecimal: erro ao invocar get" + propertyName + " — " + e.getMessage());
                 return new SimpleObjectProperty<>(null);
             }
         });
@@ -286,7 +287,7 @@ public class RelatorioPassagensController implements Initializable {
                     dataInicio, dataFim, viagemStr, rotaStr, tipoPagamento, caixa, agente, tipoPassagem, null, statusPagamento);
                 Platform.runLater(() -> exibirDados(resultado));
             } catch (SQLException e) {
-                e.printStackTrace();
+                AppLogger.error("RelatorioPassagensController", e.getMessage(), e);
                 Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao filtrar: " + e.getMessage()));
             }
         }).start();

@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import gui.util.StatusPagamentoView;
 import model.FreteFinanceiro;
 import model.OpcaoViagem;
+import gui.util.AppLogger;
 public class FinanceiroFretesController {
     @FXML private ComboBox<OpcaoViagem> cmbViagem;
     @FXML private TextField txtBusca;
@@ -51,7 +52,7 @@ public class FinanceiroFretesController {
             try {
                 carregarComboViagens();
             } catch (Exception e) {
-                System.err.println("Erro em FinanceiroFretesController (bg init): " + e.getMessage());
+                AppLogger.warn("FinanceiroFretesController", "Erro em FinanceiroFretesController (bg init): " + e.getMessage());
                 javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("FinanceiroFretesController", e));
             }
         });
@@ -72,7 +73,7 @@ public class FinanceiroFretesController {
             stage.setMaximized(true);
             stage.showAndWait();
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("FinanceiroFretesController", e.getMessage(), e);
             AlertHelper.info("Histórico de estornos de fretes ainda não implementado.");
         }
     public void setViagemInicial(int idViagem) {
@@ -187,7 +188,7 @@ public class FinanceiroFretesController {
             stage.setResizable(false);
             if (controller.isConfirmado()) {
                 salvarPagamento(selecionada.getId(), controller, selecionada.getPago());
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao abrir tela de pagamento: " + e.getMessage());
     private void salvarPagamento(long idFrete, BaixaPagamentoController dados, java.math.BigDecimal jaPago) {
         // DL040: usar transacao unica para buscar desconto + atualizar (evita race condition)
         try (Connection con = ConexaoBD.getConnection()) {
@@ -221,7 +222,7 @@ public class FinanceiroFretesController {
             } catch (SQLException ex) {
                 con.rollback();
                 throw ex;
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao salvar no banco: " + e.getMessage());
     public void estornarPagamento() {
             AlertHelper.info("Selecione um frete para estornar.");
         if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
@@ -263,10 +264,10 @@ public class FinanceiroFretesController {
                         AlertHelper.info("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
                         carregarDados();
                     } catch (Exception ex) {
-                        try { con.rollback(); } catch (Exception re) { re.printStackTrace(); }
-                        ex.printStackTrace();
+                        try { con.rollback(); } catch (Exception re) { AppLogger.error("FinanceiroFretesController", re.getMessage(), re); }
+                        AppLogger.error("FinanceiroFretesController", ex.getMessage(), ex);
                         AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao abrir tela de estorno: " + e.getMessage());
     public void abrirNotaFrete() {
             AlertHelper.info("Selecione um frete para visualizar a nota.");
             // Buscar dados completos do frete no banco
@@ -316,5 +317,5 @@ public class FinanceiroFretesController {
             controller.setDadosNotaFrete(remetente, destinatario, conferente, rota, dataHora, pagamento, total, itens);
             stage.setTitle("Nota do Frete - " + selecionada.getNumero());
             stage.setResizable(true);
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir nota do frete: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao abrir nota do frete: " + e.getMessage());
 }

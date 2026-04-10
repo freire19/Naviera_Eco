@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import model.OpcaoViagem;
+import gui.util.AppLogger;
 
 public class AuditoriaExclusoesSaida {
 
@@ -120,7 +121,7 @@ public class AuditoriaExclusoesSaida {
                     carregarDados();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar viagens AuditoriaExclusoesSaida: " + e.getMessage());
+                AppLogger.warn("AuditoriaExclusoesSaida", "Erro ao carregar viagens AuditoriaExclusoesSaida: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -175,7 +176,7 @@ public class AuditoriaExclusoesSaida {
                 if (dt != null) desc += " (" + sdf.format(dt) + ")";
                 lista.add(new OpcaoViagem(id, desc));
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("AuditoriaExclusoesSaida", e.getMessage(), e); }
         return lista;
     }
 
@@ -194,7 +195,7 @@ public class AuditoriaExclusoesSaida {
                     else if (!lista.isEmpty()) cmbSelecaoViagem.getSelectionModel().selectFirst();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar viagens AuditoriaExclusoesSaida: " + e.getMessage());
+                AppLogger.warn("AuditoriaExclusoesSaida", "Erro ao carregar viagens AuditoriaExclusoesSaida: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -236,8 +237,8 @@ public class AuditoriaExclusoesSaida {
                 }
                 Platform.runLater(() -> tabela.setItems(lista));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar auditoria: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("AuditoriaExclusoesSaida", "Erro ao carregar auditoria: " + e.getMessage());
+                AppLogger.error("AuditoriaExclusoesSaida", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);

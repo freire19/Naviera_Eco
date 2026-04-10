@@ -9,6 +9,7 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal; // Nova importação
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class CadastroItemController {
     @FXML private TextField txtDescricaoItem; // Este será o "nome_item"
@@ -61,7 +62,7 @@ public class CadastroItemController {
             AlertHelper.error("Erro de Formato: Os valores de preço devem ser numéricos válidos (ex: 10.50).");
         } catch (Exception e) { // Captura genérica para outros erros inesperados
             AlertHelper.error("Ocorreu um erro: " + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroItemController", e.getMessage(), e);
         }
     }
 

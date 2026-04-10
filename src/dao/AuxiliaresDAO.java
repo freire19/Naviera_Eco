@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import gui.util.AppLogger;
 
 /**
  * DAO para tabelas auxiliares com cache em memoria.
@@ -260,7 +261,7 @@ public class AuxiliaresDAO {
         } catch (SQLException e) {
             // FK violation (23503) = registro em uso por outra tabela
             if ("23503".equals(e.getSQLState())) {
-                System.err.println("Registro id=" + id + " da tabela " + tabela + " nao pode ser excluido: em uso por outra tabela.");
+                AppLogger.warn("AuxiliaresDAO", "Registro id=" + id + " da tabela " + tabela + " nao pode ser excluido: em uso por outra tabela.");
                 return false;
             }
             throw e;

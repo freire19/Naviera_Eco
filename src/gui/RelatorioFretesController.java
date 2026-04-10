@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class RelatorioFretesController implements Initializable {
 
@@ -118,7 +119,7 @@ public class RelatorioFretesController implements Initializable {
                     configurarListeners();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados iniciais RelatorioFretes: " + e.getMessage());
+                AppLogger.warn("RelatorioFretesController", "Erro ao carregar dados iniciais RelatorioFretes: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -165,7 +166,7 @@ public class RelatorioFretesController implements Initializable {
             Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
             Platform.runLater(() -> preencherViagens(viagens, viagemAtiva));
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("RelatorioFretesController", e.getMessage(), e);
         }
     }
 
@@ -185,7 +186,7 @@ public class RelatorioFretesController implements Initializable {
             List<Rota> rotasList = rotaDAO.listarTodasAsRotasComoObjects();
             Platform.runLater(() -> preencherRotas(rotasList));
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("RelatorioFretesController", e.getMessage(), e);
         }
     }
 
@@ -234,7 +235,7 @@ public class RelatorioFretesController implements Initializable {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("RelatorioFretesController", e.getMessage(), e);
         }
         cmbCliente.setItems(FXCollections.observableArrayList(clientes));
         cmbCliente.setValue("Todos os Clientes");
@@ -259,7 +260,7 @@ public class RelatorioFretesController implements Initializable {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("RelatorioFretesController", e.getMessage(), e);
         }
         cmbDevedores.setItems(FXCollections.observableArrayList(devedores));
     }
@@ -313,7 +314,7 @@ public class RelatorioFretesController implements Initializable {
                 totalItens += total;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("RelatorioFretesController", e.getMessage(), e);
         }
         
         lblTotalItens.setText(String.format("R$ %.2f", totalItens));
@@ -350,7 +351,7 @@ public class RelatorioFretesController implements Initializable {
                 totalEmAberto += devedor;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("RelatorioFretesController", e.getMessage(), e);
         }
         
         lblEmAberto.setText(String.format("R$ %.2f", totalEmAberto));
@@ -444,7 +445,7 @@ public class RelatorioFretesController implements Initializable {
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
-                } catch (Exception e) { System.err.println("Erro ao carregar logo: " + e.getMessage()); }
+                } catch (Exception e) { AppLogger.warn("RelatorioFretesController", "Erro ao carregar logo: " + e.getMessage()); }
             }
             Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
@@ -644,7 +645,7 @@ public class RelatorioFretesController implements Initializable {
             stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getString("numero_frete");
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return "---";
     }
     
@@ -657,7 +658,7 @@ public class RelatorioFretesController implements Initializable {
             stmt.setString(3, cliente);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getString("remetente_nome_temp");
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return "";
     }
     
@@ -669,7 +670,7 @@ public class RelatorioFretesController implements Initializable {
             stmt.setInt(2, dao.DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getString("origem") + " - " + rs.getString("destino");
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return "--";
     }
     
@@ -688,7 +689,7 @@ public class RelatorioFretesController implements Initializable {
                 pago = rs.getDouble("pago");
                 devedor = rs.getDouble("devedor");
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return new double[]{total, pago, devedor};
     }
 
@@ -1147,7 +1148,7 @@ public class RelatorioFretesController implements Initializable {
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
-                } catch (Exception e) { System.err.println("Erro ao carregar logo: " + e.getMessage()); }
+                } catch (Exception e) { AppLogger.warn("RelatorioFretesController", "Erro ao carregar logo: " + e.getMessage()); }
             }
             Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
@@ -1529,7 +1530,7 @@ public class RelatorioFretesController implements Initializable {
                     logo.setFitWidth(50);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);
-                } catch (Exception e) { System.err.println("Erro ao carregar logo: " + e.getMessage()); }
+                } catch (Exception e) { AppLogger.warn("RelatorioFretesController", "Erro ao carregar logo: " + e.getMessage()); }
             }
             Label lblEmpresa = new Label(empresa.getEmbarcacao() != null ? empresa.getEmbarcacao() : "EMBARCAÃ‡ÃƒO");
             lblEmpresa.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-font-family: 'Courier New'; -fx-text-fill: black;");
@@ -1698,7 +1699,7 @@ public class RelatorioFretesController implements Initializable {
      * Mostra tipo do erro, mensagem e stack trace completo.
      */
     private void showErroDetalhado(String operacao, Exception ex) {
-        ex.printStackTrace(); // Manter log no console também
+        AppLogger.error("RelatorioFretesController", ex.getMessage(), ex); // Manter log no console também
 
         String tipoErro = ex.getClass().getSimpleName();
         String mensagem = ex.getMessage() != null ? ex.getMessage() : "Sem mensagem de erro";

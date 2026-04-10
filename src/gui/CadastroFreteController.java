@@ -70,6 +70,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import gui.util.AlertHelper;
 import gui.util.MoneyUtil;
+import gui.util.AppLogger;
 
 /**
  * Controller da tela CadastroFrete.fxml.
@@ -175,7 +176,7 @@ public class CadastroFreteController implements Initializable {
                 carregarDadosIniciaisComboBoxes();
                 javafx.application.Platform.runLater(this::setComboBoxItems);
             } catch (Exception e) {
-                System.err.println("Erro em CadastroFreteController (bg init): " + e.getMessage());
+                AppLogger.warn("CadastroFreteController", "Erro em CadastroFreteController (bg init): " + e.getMessage());
                 javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("CadastroFreteController", e));
             }
         });
@@ -771,7 +772,7 @@ public class CadastroFreteController implements Initializable {
             // --------------------------------------------------
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro ao Carregar Frete", "NÃ£o foi possÃ­vel carregar o frete:\n" + e.getMessage());
             configurarParaNovoFrete();
         }
@@ -990,7 +991,7 @@ public class CadastroFreteController implements Initializable {
                         double v = MoneyUtil.parseDouble(txtpreco.getText());
                         txtpreco.setText(df.format(v));
                     } catch (NumberFormatException e) {
-                        System.err.println("CadastroFreteController: erro ao formatar valor monetario '" + txtpreco.getText() + "' — " + e.getMessage());
+                        AppLogger.warn("CadastroFreteController", "CadastroFreteController: erro ao formatar valor monetario '" + txtpreco.getText() + "' — " + e.getMessage());
                     }
                 }
             });
@@ -1216,7 +1217,7 @@ public class CadastroFreteController implements Initializable {
                             });
                         }
                     } catch (SQLException e) {
-                        e.printStackTrace();
+                        AppLogger.error("CadastroFreteController", e.getMessage(), e);
                     }
                 } else {
                     if (comboBox.isEditable() && comboBox.getEditor() != null) {
@@ -1316,7 +1317,7 @@ public class CadastroFreteController implements Initializable {
                 if (nome != null) lista.add(nome);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
         }
     }
 
@@ -1340,7 +1341,7 @@ public class CadastroFreteController implements Initializable {
                 if (!rd.isEmpty()) listaRotasOriginal.add(rd);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
         }
     }
 
@@ -1357,7 +1358,7 @@ public class CadastroFreteController implements Initializable {
                 if (nome != null) listaConferentesOriginal.add(nome);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
         }
     }
 
@@ -1424,7 +1425,7 @@ public class CadastroFreteController implements Initializable {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
         }
     }
 
@@ -1437,7 +1438,7 @@ public class CadastroFreteController implements Initializable {
             if (rs.next()) return rs.getLong(1);
         } catch (SQLException e) {
             // Fallback se sequence nao existir ainda (rodar script 010)
-            System.err.println("Sequence seq_numero_frete nao encontrada. Usando fallback MAX+1. Execute o script 010_criar_sequence_frete.sql.");
+            AppLogger.warn("CadastroFreteController", "Sequence seq_numero_frete nao encontrada. Usando fallback MAX+1. Execute o script 010_criar_sequence_frete.sql.");
             String fallback = "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes WHERE empresa_id = ?";
             try (Connection conn = ConexaoBD.getConnection();
                  PreparedStatement stmt = conn.prepareStatement(fallback)) {
@@ -1674,11 +1675,11 @@ public class CadastroFreteController implements Initializable {
             }
 
         } catch (SQLException e) {
-            try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            e.printStackTrace();
+            try { if (conn != null) conn.rollback(); } catch (SQLException ex) { AppLogger.error("CadastroFreteController", ex.getMessage(), ex); }
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro na OperaÃ§Ã£o do Frete", "Ocorreu um erro no banco de dados:\n" + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro geral na operaÃ§Ã£o:\n" + e.getMessage());
         } finally {
             try {
@@ -1686,7 +1687,7 @@ public class CadastroFreteController implements Initializable {
                     conn.setAutoCommit(true);
                     conn.close();
                 }
-            } catch (SQLException ex) { ex.printStackTrace(); }
+            } catch (SQLException ex) { AppLogger.error("CadastroFreteController", ex.getMessage(), ex); }
         }
     }
 
@@ -1788,7 +1789,7 @@ public class CadastroFreteController implements Initializable {
                 if (btnExcluir != null) btnExcluir.setDisable(true);
                 freteAtualId = -1;
             } catch (SQLException e) {
-                try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+                try { if (conn != null) conn.rollback(); } catch (SQLException ex) { AppLogger.error("CadastroFreteController", ex.getMessage(), ex); }
                 AlertHelper.show(AlertType.ERROR, "Erro ao Excluir Frete", "NÃ£o foi possÃ­vel excluir o frete:\n" + e.getMessage());
             } finally {
                 try {
@@ -1796,7 +1797,7 @@ public class CadastroFreteController implements Initializable {
                         conn.setAutoCommit(true);
                         conn.close();
                     }
-                } catch (SQLException ex) { ex.printStackTrace(); }
+                } catch (SQLException ex) { AppLogger.error("CadastroFreteController", ex.getMessage(), ex); }
             }
         }
     }
@@ -1822,7 +1823,7 @@ public class CadastroFreteController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao abrir seletor de foto:\n" + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
         }
     }
 
@@ -1924,7 +1925,7 @@ public class CadastroFreteController implements Initializable {
                                 }
                             }
                         }
-                    } catch (Exception e) { System.err.println("Erro em CadastroFreteController.processarIA (item): " + e.getMessage()); }
+                    } catch (Exception e) { AppLogger.warn("CadastroFreteController", "Erro em CadastroFreteController.processarIA (item): " + e.getMessage()); }
                 }
             }
 
@@ -2017,7 +2018,7 @@ public class CadastroFreteController implements Initializable {
             }
         } catch (Exception e) {
             AlertHelper.show(AlertType.ERROR, "Erro XML", "Erro ao processar o arquivo XML:\n" + e.getMessage());
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
         }
     }
 
@@ -2272,10 +2273,10 @@ public class CadastroFreteController implements Initializable {
                 stage.show();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro ao Abrir Tela", "NÃ£o foi possÃ­vel carregar a tela: " + fxmlFileRelative + "\nDetalhes: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro CrÃ­tico", "Ocorreu um erro inesperado ao tentar abrir a tela '" + title + "'.");
         }
     }

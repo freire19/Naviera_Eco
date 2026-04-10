@@ -19,6 +19,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 import model.Passagem;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class FinalizarPagamentoPassagemController implements Initializable {
 
@@ -54,8 +55,8 @@ public class FinalizarPagamentoPassagemController implements Initializable {
                     if (!caixas.isEmpty()) cmbCaixa.getSelectionModel().selectFirst();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar caixas FinalizarPagamentoPassagem: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("FinalizarPagamentoPassagemController", "Erro ao carregar caixas FinalizarPagamentoPassagem: " + e.getMessage());
+                AppLogger.error("FinalizarPagamentoPassagemController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);
@@ -160,8 +161,8 @@ public class FinalizarPagamentoPassagemController implements Initializable {
                     if (!caixas.isEmpty()) cmbCaixa.getSelectionModel().selectFirst();
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar caixas FinalizarPagamentoPassagem: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("FinalizarPagamentoPassagemController", "Erro ao carregar caixas FinalizarPagamentoPassagem: " + e.getMessage());
+                AppLogger.error("FinalizarPagamentoPassagemController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);

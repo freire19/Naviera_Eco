@@ -1,10 +1,14 @@
 import jwt from 'jsonwebtoken'
 
-const SECRET = process.env.JWT_SECRET || 'naviera-web-secret'
+const SECRET = process.env.JWT_SECRET
+if (!SECRET) {
+  console.error('[Auth] ERRO FATAL: JWT_SECRET nao configurado. Defina a variavel de ambiente JWT_SECRET.')
+  process.exit(1)
+}
 
 export function generateToken(user) {
   return jwt.sign(
-    { id: user.id, login: user.login_usuario, funcao: user.funcao },
+    { id: user.id, login: user.login_usuario, funcao: user.funcao, empresa_id: user.empresa_id },
     SECRET,
     { expiresIn: '8h' }
   )

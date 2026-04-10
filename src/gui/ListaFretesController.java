@@ -50,6 +50,7 @@ import java.text.DecimalFormatSymbols;
 import gui.util.AlertHelper;
 import gui.util.CompanyDataLoader;
 import gui.util.PrintLayoutHelper;
+import gui.util.AppLogger;
 
 public class ListaFretesController {
 
@@ -108,7 +109,7 @@ public class ListaFretesController {
                     recarregarDadosDoBanco();
                 });
             } catch (Exception e) {
-                e.printStackTrace();
+                AppLogger.error("ListaFretesController", e.getMessage(), e);
                 javafx.application.Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao carregar dados iniciais."));
             }
         });
@@ -214,7 +215,7 @@ public class ListaFretesController {
             
             recarregarDadosDoBanco();
         } catch (IOException e) {
-            e.printStackTrace();
+            AppLogger.error("ListaFretesController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao abrir tela de frete: " + e.getMessage());
         }
     }

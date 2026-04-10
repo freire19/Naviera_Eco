@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat;
 import gui.util.StatusPagamentoView;
 import model.PassagemFinanceiro;
 import model.OpcaoViagem;
+import gui.util.AppLogger;
 public class FinanceiroPassagensController {
     @FXML private ComboBox<OpcaoViagem> cmbViagem;
     @FXML private TextField txtBusca;
@@ -57,7 +58,7 @@ public class FinanceiroPassagensController {
         
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        } catch (Exception e) { System.err.println("Erro em FinanceiroPassagensController.initialize (CSS): " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("FinanceiroPassagensController", "Erro em FinanceiroPassagensController.initialize (CSS): " + e.getMessage()); }
     }
     public void sair() {
         Stage stage = (Stage) btnSair.getScene().getWindow();
@@ -73,8 +74,8 @@ public class FinanceiroPassagensController {
             stage.setMaximized(true);
             stage.showAndWait();
         } catch(Exception e) { 
-            e.printStackTrace(); 
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
+            AppLogger.error("FinanceiroPassagensController", e.getMessage(), e); 
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro ao abrir histórico: " + e.getMessage()); 
         }
     public void setViagemInicial(int idViagem) {
         for (OpcaoViagem op : cmbViagem.getItems()) {
@@ -179,8 +180,8 @@ public class FinanceiroPassagensController {
             tabela.setItems(resultado.lista);
             lblTotalPendente.setText(String.format("R$ %,.2f", resultado.somaPendente));
         } catch (SQLException e) {
-            e.printStackTrace();
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao buscar dados: " + e.getMessage());
+            AppLogger.error("FinanceiroPassagensController", e.getMessage(), e);
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro ao buscar dados: " + e.getMessage());
     // DR102: captura valores UI na FX thread, busca dados em bg, atualiza UI via Platform.runLater
     private void carregarDadosEmBackground() {
         final OpcaoViagem viagemSel = cmbViagem.getValue();
@@ -196,7 +197,7 @@ public class FinanceiroPassagensController {
             ResultadoQueryPassagens resultado = task.getValue();
         task.setOnFailed(event -> {
             Throwable ex = task.getException();
-            if (ex != null) ex.printStackTrace();
+            if (ex != null) AppLogger.error("FinanceiroPassagensController", ex.getMessage(), ex);
             javafx.application.Platform.runLater(() -> AlertHelper.info("Erro ao carregar dados financeiros."));
         Thread t = new Thread(task);
         t.setDaemon(true);
@@ -264,7 +265,7 @@ public class FinanceiroPassagensController {
                     carregarDados(); // Atualiza a tabela
                     AlertHelper.info("Erro ao salvar o pagamento no banco.");
         } catch (Exception e) {
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro: " + e.getMessage());
     
     // Método auxiliar para buscar a passagem completa (necessário pois a tabela usa modelo simplificado)
     private Passagem buscarPassagemCompletaPorId(long id) {
@@ -310,7 +311,7 @@ public class FinanceiroPassagensController {
                 p.setObservacoes(rs.getString("observacoes"));
                 return p;
             } // fecha try(ResultSet)
-            System.err.println("FinanceiroPassagensController.buscarPassagemCompletaPorId: erro ao buscar passagem id=" + id + " — " + e.getMessage());
+            AppLogger.warn("FinanceiroPassagensController", "FinanceiroPassagensController.buscarPassagemCompletaPorId: erro ao buscar passagem id=" + id + " — " + e.getMessage());
         return null;
     private Integer getObjectInt(ResultSet rs, String col) throws SQLException {
         Object o = rs.getObject(col);
@@ -382,15 +383,15 @@ public class FinanceiroPassagensController {
                     AlertHelper.info("Estorno realizado com sucesso!");
                     carregarDados();
                     } catch (Exception ex) {
-                        try { con.rollback(); } catch (Exception re) { re.printStackTrace(); }
-                        ex.printStackTrace();
+                        try { con.rollback(); } catch (Exception re) { AppLogger.error("FinanceiroPassagensController", re.getMessage(), re); }
+                        AppLogger.error("FinanceiroPassagensController", ex.getMessage(), ex);
                         AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
         } catch (Exception e) { 
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro ao abrir tela de estorno: " + e.getMessage());
     public void gerarRelatorioCliente() {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/ExtratoPassageiro.fxml"));
             stage.setTitle("Extrato Financeiro - Passageiro");
             stage.show();
-            System.err.println("FinanceiroPassagensController.gerarRelatorioCliente: erro ao abrir tela de extrato — " + e.getMessage());
+            AppLogger.warn("FinanceiroPassagensController", "FinanceiroPassagensController.gerarRelatorioCliente: erro ao abrir tela de extrato — " + e.getMessage());
             AlertHelper.info("Tela de Extrato ainda não criada ou com erro: " + e.getMessage());
 }

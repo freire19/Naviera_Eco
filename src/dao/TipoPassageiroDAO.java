@@ -6,6 +6,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import model.TipoPassageiro;
+import gui.util.AppLogger;
 
 public class TipoPassageiroDAO {
 
@@ -24,7 +25,7 @@ public class TipoPassageiroDAO {
             return true;
 
         } catch(SQLException e){
-            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
+            AppLogger.warn("TipoPassageiroDAO", "Erro SQL em TipoPassageiroDAO: " + e.getMessage());
             return false;
         }
     }
@@ -50,7 +51,7 @@ public class TipoPassageiroDAO {
                 lista.add(tp);
             }
         } catch(SQLException e){
-            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
+            AppLogger.warn("TipoPassageiroDAO", "Erro SQL em TipoPassageiroDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -75,7 +76,7 @@ public class TipoPassageiroDAO {
                 if(rs.next()) return rs.getInt("id");
             }
         } catch(SQLException e){
-            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
+            AppLogger.warn("TipoPassageiroDAO", "Erro SQL em TipoPassageiroDAO: " + e.getMessage());
         }
         return 0;
     }
@@ -90,7 +91,7 @@ public class TipoPassageiroDAO {
                 if(rs.next()) return rs.getString("nome");
             }
         } catch(SQLException e){
-            System.err.println("Erro SQL em TipoPassageiroDAO: " + e.getMessage());
+            AppLogger.warn("TipoPassageiroDAO", "Erro SQL em TipoPassageiroDAO: " + e.getMessage());
         }
         return null;
     }

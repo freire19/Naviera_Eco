@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
+import gui.util.AppLogger;
 
 public class CadastroViagemApp extends Application {
 
@@ -19,7 +20,7 @@ public class CadastroViagemApp extends Application {
             primaryStage.setMaximized(true); // Abre a tela maximizada
             primaryStage.show();
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroViagemApp", e.getMessage(), e);
         }
     }
 

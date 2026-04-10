@@ -27,6 +27,7 @@ import javafx.stage.Stage;
 import model.Caixa; 
 import model.Encomenda;
 import model.EncomendaItem;
+import gui.util.AppLogger;
 
 public class RegistrarPagamentoEncomendaController implements Initializable {
 
@@ -74,8 +75,8 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao carregar caixas RegistrarPagamentoEncomenda: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.warn("RegistrarPagamentoEncomendaController", "Erro ao carregar caixas RegistrarPagamentoEncomenda: " + e.getMessage());
+                AppLogger.error("RegistrarPagamentoEncomendaController", e.getMessage(), e);
             }
         });
         bg.setDaemon(true);
@@ -280,8 +281,8 @@ public class RegistrarPagamentoEncomendaController implements Initializable {
             }
             
         } catch (Exception e) {
-            e.printStackTrace();
-            AlertHelper.error("Erro interno. Contate o administrador."); System.err.println("Erro técnico: " + e.getMessage());
+            AppLogger.error("RegistrarPagamentoEncomendaController", e.getMessage(), e);
+            AlertHelper.error("Erro interno. Contate o administrador."); AppLogger.warn("RegistrarPagamentoEncomendaController", "Erro técnico: " + e.getMessage());
         }
     }
 

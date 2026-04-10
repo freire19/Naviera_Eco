@@ -10,6 +10,7 @@ import javafx.stage.Stage;
 import java.io.*;
 import java.util.Optional;
 import java.util.Properties;
+import gui.util.AppLogger;
 
 /**
  * ============================================================================
@@ -55,7 +56,7 @@ public class PrinterConfig {
                 nomeImpressoraTermica = props.getProperty(KEY_IMPRESSORA_TERMICA);
                 nomeImpressoraA4 = props.getProperty(KEY_IMPRESSORA_A4);
             } catch (IOException e) {
-                e.printStackTrace();
+                AppLogger.error("PrinterConfig", e.getMessage(), e);
             }
         }
         configCarregada = true;
@@ -71,7 +72,7 @@ public class PrinterConfig {
             if (nomeImpressoraA4 != null) props.setProperty(KEY_IMPRESSORA_A4, nomeImpressoraA4);
             props.store(fos, "Configuração de Impressoras do Sistema");
         } catch (IOException e) {
-            e.printStackTrace();
+            AppLogger.error("PrinterConfig", e.getMessage(), e);
         }
     }
 
@@ -163,7 +164,7 @@ public class PrinterConfig {
                 return selecionada;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("PrinterConfig", e.getMessage(), e);
             mostrarAlertaNoTopo(Alert.AlertType.ERROR, "Erro",
                 "Erro ao buscar impressoras", "Detalhes: " + e.getMessage());
         }

@@ -49,6 +49,7 @@ import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
 import javax.imageio.ImageIO;
+import gui.util.AppLogger;
 
 public class ExtratoPassageiroController implements Initializable {
 
@@ -101,7 +102,7 @@ public class ExtratoPassageiroController implements Initializable {
 
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.initialize (CSS): " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("ExtratoPassageiroController", "Erro em ExtratoPassageiroController.initialize (CSS): " + e.getMessage()); }
     }
 
     // #034: carregamento sincrono — evita race condition com impressao
@@ -115,7 +116,7 @@ public class ExtratoPassageiroController implements Initializable {
                 if (empresa.getTelefone() != null) empTelefone = empresa.getTelefone();
                 if (empresa.getCaminhoFoto() != null) empPathLogo = empresa.getCaminhoFoto();
             }
-        } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.carregarDadosEmpresa: " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("ExtratoPassageiroController", "Erro em ExtratoPassageiroController.carregarDadosEmpresa: " + e.getMessage()); }
     }
 
     private void configuringAutocomplete(ComboBox<String> comboBox, List<String> data) {
@@ -176,7 +177,7 @@ public class ExtratoPassageiroController implements Initializable {
                     cmbPassageiro.setItems(FXCollections.observableArrayList(todosNomesPassageiros));
                     configuringAutocomplete(cmbPassageiro, todosNomesPassageiros);
                 });
-            } catch(Exception e) { e.printStackTrace(); }
+            } catch(Exception e) { AppLogger.error("ExtratoPassageiroController", e.getMessage(), e); }
         }).start();
     }
 
@@ -294,7 +295,7 @@ public class ExtratoPassageiroController implements Initializable {
                     btnQuitarTudo.setDisable(finalDivida <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
                 });
             } catch (Exception e) {
-                System.err.println("Erro em ExtratoPassageiroController (bg buscar): " + e.getMessage());
+                AppLogger.warn("ExtratoPassageiroController", "Erro em ExtratoPassageiroController (bg buscar): " + e.getMessage());
                 javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("ExtratoPassageiroController", e));
             }
         }).start();
@@ -355,7 +356,7 @@ public class ExtratoPassageiroController implements Initializable {
                     // partes[0]=descricao, partes[1]=data, partes[2]=valor pago
                     lista.add(new ItemExtrato(partes[1], "--", partes[0], partes[2], partes[2], "R$ 0,00", "QUITADO"));
                 }
-            } catch (Exception e) { System.err.println("Erro em ExtratoPassageiroController.reconstruirItensDoRecibo: " + e.getMessage()); }
+            } catch (Exception e) { AppLogger.warn("ExtratoPassageiroController", "Erro em ExtratoPassageiroController.reconstruirItensDoRecibo: " + e.getMessage()); }
         }
         return lista;
     }
@@ -439,7 +440,7 @@ public class ExtratoPassageiroController implements Initializable {
                     new Alert(Alert.AlertType.ERROR, "Erro ao atualizar status.").showAndWait();
                 }
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) { AppLogger.error("ExtratoPassageiroController", e.getMessage(), e); }
     }
 
     // ===========================================================================================
@@ -481,7 +482,7 @@ public class ExtratoPassageiroController implements Initializable {
                                 g2d.drawImage(logo, centerX, y, targetW, targetH, null);
                                 y += targetH + 10;
                             }
-                        } catch (Exception e) { System.err.println("ExtratoPassageiroController: erro ao carregar logo da empresa para impressao — " + e.getMessage()); }
+                        } catch (Exception e) { AppLogger.warn("ExtratoPassageiroController", "ExtratoPassageiroController: erro ao carregar logo da empresa para impressao — " + e.getMessage()); }
                     }
                     g2d.setColor(Color.BLACK);
                     g2d.setFont(new Font("Arial", Font.BOLD, 10));

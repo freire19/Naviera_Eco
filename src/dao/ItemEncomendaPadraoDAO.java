@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import model.ItemEncomendaPadrao;
+import gui.util.AppLogger;
 
 public class ItemEncomendaPadraoDAO {
 
@@ -49,7 +50,7 @@ public class ItemEncomendaPadraoDAO {
                 lista.add(item);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
+            AppLogger.warn("ItemEncomendaPadraoDAO", "Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -72,7 +73,7 @@ public class ItemEncomendaPadraoDAO {
             }
             return true;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
+            AppLogger.warn("ItemEncomendaPadraoDAO", "Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
             return false;
         }
     }
@@ -91,7 +92,7 @@ public class ItemEncomendaPadraoDAO {
             stmt.setInt(8, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
+            AppLogger.warn("ItemEncomendaPadraoDAO", "Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
             return false;
         }
     }
@@ -103,7 +104,7 @@ public class ItemEncomendaPadraoDAO {
             stmt.setLong(1, id);
             stmt.setInt(2, DAOUtils.empresaId());            return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
+            AppLogger.warn("ItemEncomendaPadraoDAO", "Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());
             return false;
         }
     }

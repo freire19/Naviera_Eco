@@ -91,6 +91,7 @@ import javafx.stage.Window;
 import javafx.util.Pair;
 import javafx.util.StringConverter;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class InserirEncomendaController implements Initializable {
 
@@ -220,7 +221,7 @@ public class InserirEncomendaController implements Initializable {
             atualizarLabelViagem();
         });
         taskInit.setOnFailed(ev -> {
-            System.err.println("Erro ao carregar dados iniciais: " + taskInit.getException().getMessage());
+            AppLogger.warn("InserirEncomendaController", "Erro ao carregar dados iniciais: " + taskInit.getException().getMessage());
         });
         Thread tInit = new Thread(taskInit);
         tInit.setDaemon(true);
@@ -391,7 +392,7 @@ public class InserirEncomendaController implements Initializable {
                                 obsListaItens.add(item);
                             }
                         }
-                    } catch (Exception e) { System.err.println("Erro em InserirEncomendaController.processarIA (item): " + e.getMessage()); }
+                    } catch (Exception e) { AppLogger.warn("InserirEncomendaController", "Erro em InserirEncomendaController.processarIA (item): " + e.getMessage()); }
                 }
             }
             atualizarTotaisEncomenda(); 
@@ -845,7 +846,7 @@ public class InserirEncomendaController implements Initializable {
                 finalizarEntrega(enc, nome, doc, totalFinal, event);
             });
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("InserirEncomendaController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro Crítico", "Erro ao processar entrega: " + e.getMessage());
         }
     }
@@ -1244,11 +1245,11 @@ public class InserirEncomendaController implements Initializable {
             stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setMaximized(true);
             stage.show();
-        } catch (IOException e) { e.printStackTrace(); }
+        } catch (IOException e) { AppLogger.error("InserirEncomendaController", e.getMessage(), e); }
     }
 
     private void carregarCatalogoProdutos() {
-        try { this.listaMestraProdutosObjetos = itemPadraoDAO.listarTodos(true); } catch (Exception e) { System.err.println("Erro em InserirEncomendaController.carregarCatalogoProdutos: " + e.getMessage()); }
+        try { this.listaMestraProdutosObjetos = itemPadraoDAO.listarTodos(true); } catch (Exception e) { AppLogger.warn("InserirEncomendaController", "Erro em InserirEncomendaController.carregarCatalogoProdutos: " + e.getMessage()); }
     }
 
     private void configurarValidacaoFocoClientes() {
@@ -1523,7 +1524,7 @@ public class InserirEncomendaController implements Initializable {
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setScene(TemaManager.criarSceneComTema(root));
             stage.showAndWait();
-        } catch (IOException e) { e.printStackTrace(); }
+        } catch (IOException e) { AppLogger.error("InserirEncomendaController", e.getMessage(), e); }
     }
     
     public void finalizarSalvamento(Encomenda encomendaFinal) {
@@ -1715,7 +1716,7 @@ public class InserirEncomendaController implements Initializable {
                     carregarComboBoxes();
                     if(tipo.equals("Remetente")) cmbRemetente.setValue(nome.toUpperCase());
                     else cmbDestinatario.setValue(nome.toUpperCase());
-                } catch (Exception e) { System.err.println("Erro em InserirEncomendaController.verificarEProporCadastroRapidoCliente: " + e.getMessage()); }
+                } catch (Exception e) { AppLogger.warn("InserirEncomendaController", "Erro em InserirEncomendaController.verificarEProporCadastroRapidoCliente: " + e.getMessage()); }
             }
         });
     }
@@ -1764,7 +1765,7 @@ public class InserirEncomendaController implements Initializable {
                 return true;
             } catch (Exception e) {
                 AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao cadastrar item: " + e.getMessage());
-                e.printStackTrace();
+                AppLogger.error("InserirEncomendaController", e.getMessage(), e);
                 return false;
             }
         }

@@ -9,6 +9,7 @@ import javafx.stage.Stage;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import gui.util.AppLogger;
 
 public class QuitarDividaEncomendaTotalController {
 
@@ -40,7 +41,7 @@ public class QuitarDividaEncomendaTotalController {
                 carregarFormas();
                 carregarCaixas();
             } catch (Exception e) {
-                System.err.println("Erro em QuitarDividaEncomendaTotalController (bg init): " + e.getMessage());
+                AppLogger.warn("QuitarDividaEncomendaTotalController", "Erro em QuitarDividaEncomendaTotalController (bg init): " + e.getMessage());
                 javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("QuitarDividaEncomendaTotalController", e));
             }
         });
@@ -61,7 +62,7 @@ public class QuitarDividaEncomendaTotalController {
             lblTotalFinal.setText(String.format("R$ %.2f", finalVal));
         } catch (Exception e) {
             lblTotalFinal.setText("ERRO");
-            System.err.println("Erro ao calcular total: " + e.getMessage());
+            AppLogger.warn("QuitarDividaEncomendaTotalController", "Erro ao calcular total: " + e.getMessage());
         }
     }
 
@@ -74,7 +75,7 @@ public class QuitarDividaEncomendaTotalController {
         try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome_forma_pagamento FROM aux_formas_pagamento").executeQuery()){
             while(rs.next()) l.add(rs.getString(1));
         } catch(Exception e) {
-            System.err.println("Erro ao carregar formas de pagamento: " + e.getMessage());
+            AppLogger.warn("QuitarDividaEncomendaTotalController", "Erro ao carregar formas de pagamento: " + e.getMessage());
             l.addAll("DINHEIRO","PIX");
         }
         javafx.application.Platform.runLater(() -> {
@@ -91,7 +92,7 @@ public class QuitarDividaEncomendaTotalController {
             ResultSet rs = ps.executeQuery();
             while(rs.next()) l.add(rs.getString(1));
         } catch(Exception e) {
-            System.err.println("Erro ao carregar caixas: " + e.getMessage());
+            AppLogger.warn("QuitarDividaEncomendaTotalController", "Erro ao carregar caixas: " + e.getMessage());
             l.add("CAIXA PRINCIPAL");
         }
         javafx.application.Platform.runLater(() -> {

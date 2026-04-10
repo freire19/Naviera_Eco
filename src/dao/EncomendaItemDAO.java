@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import model.EncomendaItem;
+import gui.util.AppLogger;
 
 public class EncomendaItemDAO {
 
@@ -26,7 +27,7 @@ public class EncomendaItemDAO {
             stmt.setString(6, item.getLocalArmazenamento());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EncomendaItemDAO: " + e.getMessage());
+            AppLogger.warn("EncomendaItemDAO", "Erro SQL em EncomendaItemDAO: " + e.getMessage());
             return false;
         }
     }
@@ -80,7 +81,7 @@ public class EncomendaItemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EncomendaItemDAO: " + e.getMessage());
+            AppLogger.warn("EncomendaItemDAO", "Erro SQL em EncomendaItemDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -107,7 +108,7 @@ public class EncomendaItemDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EncomendaItemDAO.listarItensPorViagem: " + e.getMessage());
+            AppLogger.warn("EncomendaItemDAO", "Erro SQL em EncomendaItemDAO.listarItensPorViagem: " + e.getMessage());
         }
         return mapa;
     }
@@ -123,7 +124,7 @@ public class EncomendaItemDAO {
             return true; 
             
         } catch (SQLException e) {
-            System.err.println("Erro SQL em EncomendaItemDAO: " + e.getMessage());
+            AppLogger.warn("EncomendaItemDAO", "Erro SQL em EncomendaItemDAO: " + e.getMessage());
             return false;
         }
     }

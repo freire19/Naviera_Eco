@@ -47,6 +47,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import model.OpcaoViagem;
+import gui.util.AppLogger;
 public class FinanceiroSaidaController {
     @FXML private TextField txtDescricao;
     @FXML private TextField txtValor;
@@ -140,9 +141,9 @@ public class FinanceiroSaidaController {
                 } else {
                     cmbFiltroViagem.getSelectionModel().selectFirst();
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("FinanceiroSaidaController", e.getMessage(), e);
             javafx.application.Platform.runLater(() -> AlertHelper.info("Erro interno. Contate o administrador."));
-            System.err.println("Erro ao carregar viagens: " + e.getMessage());
+            AppLogger.warn("FinanceiroSaidaController", "Erro ao carregar viagens: " + e.getMessage());
     public void filtrar() {
         // Se o combo estiver nulo (ainda carregando), não faz nada
         if(cmbFiltroViagem.getValue() == null) return;
@@ -184,7 +185,7 @@ public class FinanceiroSaidaController {
             stage.setMaximized(true);
             stage.showAndWait();
             filtrar(); 
-            System.err.println("FinanceiroSaidaController.abrirGestaoFuncionarios: erro ao abrir tela — " + e.getMessage());
+            AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.abrirGestaoFuncionarios: erro ao abrir tela — " + e.getMessage());
             AlertHelper.info("Erro interno. Contate o administrador.");
     private void configurarAutoComplete(ComboBox<String> cmb) {
         cmb.setEditable(true);
@@ -248,7 +249,7 @@ public class FinanceiroSaidaController {
                 cmbCategoria.setItems(listaCategoriasOriginal);
                 dpDataGasto.setValue(LocalDate.now());
                 dpDataPrimeiroPagamento.setValue(LocalDate.now());
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroSaidaController", "Erro ao salvar: " + e.getMessage());
     public void excluir() {
         Despesa sel = tabela.getSelectionModel().getSelectedItem();
         if (sel == null) return;
@@ -318,8 +319,8 @@ public class FinanceiroSaidaController {
                 con.commit();
                 AlertHelper.info("Registro marcado como excluído com sucesso!");
             } catch (Exception e) {
-                e.printStackTrace();
-                AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao excluir: " + e.getMessage());
+                AppLogger.error("FinanceiroSaidaController", e.getMessage(), e);
+                AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroSaidaController", "Erro ao excluir: " + e.getMessage());
     private String validarPermissaoGerente(String senha) {
         String sql = "SELECT login_usuario, senha_hash FROM usuarios WHERE empresa_id = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND ativo = true";
         try (Connection con = ConexaoBD.getConnection();
@@ -337,8 +338,8 @@ public class FinanceiroSaidaController {
                         }
                 } catch (IllegalArgumentException ex) {
                     // Hash nao e BCrypt valido — ignora este usuario
-                    System.err.println("Hash invalido para usuario " + login + ": formato nao-BCrypt");
-        } catch (Exception e) { System.err.println("FinanceiroSaidaController.validarPermissaoGerente: erro ao consultar usuarios — " + e.getMessage()); e.printStackTrace(); }
+                    AppLogger.warn("FinanceiroSaidaController", "Hash invalido para usuario " + login + ": formato nao-BCrypt");
+        } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.validarPermissaoGerente: erro ao consultar usuarios — " + e.getMessage()); AppLogger.error("FinanceiroSaidaController", e.getMessage(), e); }
         return null;
     private String buscarInfoViagem(int idDespesa, Connection con) {
         String info = "VIAGEM N/D";
@@ -354,12 +355,12 @@ public class FinanceiroSaidaController {
                 String sIda = (dtIda != null) ? sdf.format(dtIda) : "?";
                 String sVolta = (dtVolta != null) ? sdf.format(dtVolta) : "?";
                 info = "REF. VIAGEM: " + sIda + " A " + sVolta;
-        } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.buscarInfoViagem: " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.buscarInfoViagem: " + e.getMessage()); }
         return info;
     private int buscarIdViagemDaDespesa(int idDespesa, Connection con) {
         String sql = "SELECT id_viagem FROM financeiro_saidas WHERE id = ? AND empresa_id = ?";
             if (rs.next()) return rs.getInt("id_viagem");
-        } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.buscarIdViagemDaDespesa: " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.buscarIdViagemDaDespesa: " + e.getMessage()); }
         return 0;
     public void imprimirRelatorio() {
         PrinterJob job = PrinterJob.createPrinterJob();
@@ -460,7 +461,7 @@ public class FinanceiroSaidaController {
                     imgLogo.setFitHeight(60); 
                     imgLogo.setPreserveRatio(true);
                     cabecalho.getChildren().add(imgLogo);
-            } catch (Exception e) { System.err.println("Erro em FinanceiroSaidaController.criarCabecalhoEmpresa (logo): " + e.getMessage()); }
+            } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.criarCabecalhoEmpresa (logo): " + e.getMessage()); }
         String nomeEmpresa = (dados.nome != null && !dados.nome.isEmpty()) ? dados.nome : "F/B DEUS DE ALIANÇA V";
         Label lblEmpresa = new Label(nomeEmpresa.toUpperCase());
         lblEmpresa.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #059669;"); 
@@ -530,7 +531,7 @@ public class FinanceiroSaidaController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/CadastroBoleto.fxml"));
             stage.setTitle("Gestão de Boletos e Prazos");
             stage.initModality(Modality.APPLICATION_MODAL);
-            System.err.println("FinanceiroSaidaController.abrirBoletos: erro ao abrir tela de boletos — " + e.getMessage());
+            AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.abrirBoletos: erro ao abrir tela de boletos — " + e.getMessage());
     public void novaCategoria() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Nova Categoria");
@@ -542,7 +543,7 @@ public class FinanceiroSaidaController {
                 stmt.setString(1, res.get().toUpperCase());
                 stmt.setInt(2, dao.DAOUtils.empresaId());
                 carregarCategorias(); 
-            } catch(Exception e) { AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro: " + e.getMessage()); }
+            } catch(Exception e) { AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroSaidaController", "Erro: " + e.getMessage()); }
     @FXML public void limparFiltros() {
         dpFiltroData.getEditor().clear(); 
         cmbFiltroCategoria.getSelectionModel().clearSelection();
@@ -566,7 +567,7 @@ public class FinanceiroSaidaController {
                 String nome = rs.getString(1);
                 listaCategoriasOriginal.add(nome);
                 catsParaCadastro.add(nome);
-        } catch(Exception e) { System.err.println("Erro em FinanceiroSaidaController.carregarCategorias: " + e.getMessage()); }
+        } catch(Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(catsParaCadastro);
         this.listaCategoriasOriginal = catsParaCadastro; 
         configurarAutoComplete(cmbCategoria); 
@@ -598,7 +599,7 @@ public class FinanceiroSaidaController {
                     } else {
                         setText(item);
                         setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
-        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ System.err.println("Erro em FinanceiroSaidaController.configuringTabela (CSS): " + e.getMessage()); }
+        try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.configuringTabela (CSS): " + e.getMessage()); }
     private void configurarTabela() { configuringTabela(); }
     private static class DadosEmpresa {
         String nome;
@@ -610,6 +611,6 @@ public class FinanceiroSaidaController {
             if (empresa != null) {
                 d.nome = empresa.getEmbarcacao();
                 d.pathLogo = empresa.getCaminhoFoto();
-            System.err.println("FinanceiroSaidaController.buscarDadosEmpresa: erro ao buscar dados empresa — " + e.getMessage());
+            AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.buscarDadosEmpresa: erro ao buscar dados empresa — " + e.getMessage());
         return d;
 }

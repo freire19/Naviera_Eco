@@ -24,6 +24,7 @@ import java.util.Optional;
 import gui.util.StatusPagamentoView;
 import model.EncomendaFinanceiro;
 import model.OpcaoViagem;
+import gui.util.AppLogger;
 public class FinanceiroEncomendasController {
     @FXML private ComboBox<OpcaoViagem> cmbViagem;
     @FXML private TextField txtBusca;
@@ -51,7 +52,7 @@ public class FinanceiroEncomendasController {
             try {
                 carregarComboViagens();
             } catch (Exception e) {
-                System.err.println("Erro em FinanceiroEncomendasController (bg init): " + e.getMessage());
+                AppLogger.warn("FinanceiroEncomendasController", "Erro em FinanceiroEncomendasController (bg init): " + e.getMessage());
                 javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("FinanceiroEncomendasController", e));
             }
         });
@@ -60,7 +61,7 @@ public class FinanceiroEncomendasController {
         
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
-        } catch (Exception e) { System.err.println("Erro em FinanceiroEncomendasController.initialize (CSS): " + e.getMessage()); }
+        } catch (Exception e) { AppLogger.warn("FinanceiroEncomendasController", "Erro em FinanceiroEncomendasController.initialize (CSS): " + e.getMessage()); }
     }
     public void sair() {
         Stage stage = (Stage) btnSair.getScene().getWindow();
@@ -76,8 +77,8 @@ public class FinanceiroEncomendasController {
             stage.setMaximized(true);
             stage.showAndWait();
         } catch(Exception e) { 
-            e.printStackTrace(); 
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir histórico: " + e.getMessage()); 
+            AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e); 
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir histórico: " + e.getMessage()); 
         }
     public void setViagemInicial(int idViagem) {
         for (OpcaoViagem op : cmbViagem.getItems()) {
@@ -164,7 +165,7 @@ public class FinanceiroEncomendasController {
                 if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
             tabela.setItems(lista);
             lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e); }
     public void darBaixa() {
         EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
@@ -184,8 +185,8 @@ public class FinanceiroEncomendasController {
             if (controller.isConfirmado()) {
                 salvarPagamento(selecionada.getId(), controller, selecionada.getPago());
         } catch (Exception e) {
-            e.printStackTrace();
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de pagamento: " + e.getMessage());
+            AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e);
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir tela de pagamento: " + e.getMessage());
     
     // DL003: operacao de pagamento em transacao atomica (SELECT + UPDATE na mesma conexao)
     private void salvarPagamento(int idEncomenda, BaixaPagamentoController dados, java.math.BigDecimal jaPago) {
@@ -219,7 +220,7 @@ public class FinanceiroEncomendasController {
                 con.rollback();
                 throw ex;
         } catch (SQLException e) {
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao salvar no banco: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao salvar no banco: " + e.getMessage());
     // --- MÉTODO ESTORNAR (AGORA PRESENTE E CORRIGIDO) ---
     public void estornarPagamento() {
         if (selecionada == null) { AlertHelper.info("Selecione um item para estornar."); return; }
@@ -256,10 +257,10 @@ public class FinanceiroEncomendasController {
                     AlertHelper.info("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
                     carregarDados();
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    AppLogger.error("FinanceiroEncomendasController", ex.getMessage(), ex);
                     AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
         } catch (Exception e) { 
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir tela de estorno: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir tela de estorno: " + e.getMessage());
     // --- GERA EXTRATO (AGORA ABRE MESMO SEM SELEÇÃO) ---
     public void gerarRelatorioCliente() {
         String nomeCliente = "";
@@ -275,5 +276,5 @@ public class FinanceiroEncomendasController {
                 controller.carregarExtrato(""); // Abre vazio para pesquisar lá
             stage.setTitle("Extrato Financeiro");
             stage.show();
-            AlertHelper.info("Erro interno. Contate o administrador."); System.err.println("Erro ao abrir extrato: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir extrato: " + e.getMessage());
 }

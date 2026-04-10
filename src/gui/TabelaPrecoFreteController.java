@@ -52,6 +52,7 @@ import model.ItemFrete;
 import gui.util.AlertHelper;
 import gui.util.CompanyDataLoader;
 import gui.util.PrintLayoutHelper;
+import gui.util.AppLogger;
 
 public class TabelaPrecoFreteController implements Initializable {
 
@@ -110,7 +111,7 @@ public class TabelaPrecoFreteController implements Initializable {
                 }
                 Platform.runLater(() -> listaItens.setAll(dados));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("TabelaPrecoFreteController", "Erro ao carregar dados: " + e.getMessage());
             }
         });
         bg.setDaemon(true);
@@ -161,7 +162,7 @@ public class TabelaPrecoFreteController implements Initializable {
                 listaItens.add(item);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("TabelaPrecoFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro ao carregar", "Falha ao buscar itens: \n" + e.getMessage());
         }
     }
@@ -226,7 +227,7 @@ public class TabelaPrecoFreteController implements Initializable {
             stmt.executeUpdate();
             AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item adicionado com sucesso!");
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("TabelaPrecoFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao inserir: " + e.getMessage());
         }
     }
@@ -243,7 +244,7 @@ public class TabelaPrecoFreteController implements Initializable {
             stmt.executeUpdate();
             AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Item editado com sucesso!");
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("TabelaPrecoFreteController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao atualizar: " + e.getMessage());
         }
     }
@@ -267,7 +268,7 @@ public class TabelaPrecoFreteController implements Initializable {
                 limparCampos();
                 carregarDados();
             } catch (SQLException e) {
-                e.printStackTrace();
+                AppLogger.error("TabelaPrecoFreteController", e.getMessage(), e);
                 AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível excluir.\n" + e.getMessage());
             }
         }

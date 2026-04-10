@@ -63,6 +63,7 @@ import javafx.scene.control.TabPane;
 import java.util.Collections;
 import java.util.Map;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class TelaPrincipalController implements Initializable {
 
@@ -157,7 +158,7 @@ public class TelaPrincipalController implements Initializable {
 
             @Override
             protected void failed() {
-                System.err.println("Erro ao carregar dados iniciais: " + getException().getMessage());
+                AppLogger.warn("TelaPrincipalController", "Erro ao carregar dados iniciais: " + getException().getMessage());
             }
         };
         Thread t = new Thread(taskInit);
@@ -327,7 +328,7 @@ public class TelaPrincipalController implements Initializable {
         if (url != null) {
             scene.getStylesheets().add(url.toExternalForm());
         } else {
-            System.err.println("Erro crítico: CSS não encontrado em " + cssParaCarregar);
+            AppLogger.warn("TelaPrincipalController", "Erro crítico: CSS não encontrado em " + cssParaCarregar);
         }
     }
 
@@ -370,7 +371,7 @@ public class TelaPrincipalController implements Initializable {
                 Map<LocalDate, List<String>> notasDoMes = agendaDAO.buscarAnotacoesDoMes(mesAtualCalendario.getMonthValue(), mesAtualCalendario.getYear());
                 Platform.runLater(() -> construirCalendarioComDados(viagensDoMes, boletosDoMes, notasDoMes));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar calendario: " + e.getMessage());
+                AppLogger.warn("TelaPrincipalController", "Erro ao carregar calendario: " + e.getMessage());
             }
         });
         bgCal.setDaemon(true);
@@ -666,7 +667,7 @@ public class TelaPrincipalController implements Initializable {
             combo.setItems(itens);
             if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("TelaPrincipalController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro ao carregar lista", 
                 "Não foi possível carregar os dados. Verifique o banco.\nErro: " + e.getMessage());
         }
@@ -695,7 +696,7 @@ public class TelaPrincipalController implements Initializable {
             AlertHelper.show(AlertType.INFORMATION, "Sucesso", contador + " lembretes de saída agendados!");
             
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("TelaPrincipalController", e.getMessage(), e);
             AlertHelper.show(AlertType.ERROR, "Erro SQL", e.getMessage());
         }
     }
@@ -733,7 +734,7 @@ public class TelaPrincipalController implements Initializable {
                     txtTotalPassageiros.setText(String.valueOf(counts[2]));
                 });
             } catch (Exception e) {
-                System.err.println("Erro ao atualizar dashboard: " + e.getMessage());
+                AppLogger.warn("TelaPrincipalController", "Erro ao atualizar dashboard: " + e.getMessage());
             }
         });
         bgDash.setDaemon(true);
@@ -759,7 +760,7 @@ public class TelaPrincipalController implements Initializable {
                     }
                 }
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) { AppLogger.error("TelaPrincipalController", e.getMessage(), e); }
         return counts;
     }
 
@@ -787,7 +788,7 @@ public class TelaPrincipalController implements Initializable {
         try {
             return viagemDAO.definirViagemAtiva(idViagemSelecionada);
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLogger.error("TelaPrincipalController", e.getMessage(), e);
             return false;
         }
     }
@@ -835,7 +836,7 @@ public class TelaPrincipalController implements Initializable {
             stage.showAndWait();
             
             atualizarDashboard(); construirCalendario();
-        } catch (IOException e) { e.printStackTrace(); AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); }
+        } catch (IOException e) { AppLogger.error("TelaPrincipalController", e.getMessage(), e); AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); }
     }
 
     // 2. Abertura em ABA (Sistema de abas dentro da janela principal)
@@ -882,7 +883,7 @@ public class TelaPrincipalController implements Initializable {
                     });
                 });
             } catch (IOException e) {
-                e.printStackTrace();
+                AppLogger.error("TelaPrincipalController", e.getMessage(), e);
                 Platform.runLater(() -> {
                     tabPanePrincipal.getTabs().remove(novaAba);
                     AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage());
@@ -929,7 +930,7 @@ public class TelaPrincipalController implements Initializable {
                 stage.close();
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            AppLogger.error("TelaPrincipalController", ex.getMessage(), ex);
         }
     }
     
@@ -955,7 +956,7 @@ public class TelaPrincipalController implements Initializable {
             stage.setMaximized(true); 
             stage.show(); 
             
-        } catch (IOException e) { e.printStackTrace(); AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); }
+        } catch (IOException e) { AppLogger.error("TelaPrincipalController", e.getMessage(), e); AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); }
     }
     
     // Método específico para telas que precisam da viagem ativa (Venda de passagem, encomenda...)
@@ -1019,7 +1020,7 @@ public class TelaPrincipalController implements Initializable {
             stage.show();
 
         } catch (IOException ex) {
-            ex.printStackTrace();
+            AppLogger.error("TelaPrincipalController", ex.getMessage(), ex);
             AlertHelper.show(AlertType.ERROR, "Erro ao abrir Relatório", "Não foi possível carregar a tela de Balanço.\nErro: " + ex.getMessage());
         }
     }
@@ -1114,7 +1115,7 @@ public class TelaPrincipalController implements Initializable {
                 usuario = dbProps.getProperty("db.usuario", usuario);
                 senha = dbProps.getProperty("db.senha", senha);
             } catch (Exception ex) {
-                System.err.println("Aviso: nao foi possivel ler db.properties para backup. Usando defaults.");
+                AppLogger.warn("TelaPrincipalController", "Aviso: nao foi possivel ler db.properties para backup. Usando defaults.");
             }
 
             final String fHost = host;
@@ -1484,7 +1485,7 @@ public class TelaPrincipalController implements Initializable {
             atualizarDashboard();
             
         } catch (Exception e) { 
-            e.printStackTrace(); 
+            AppLogger.error("TelaPrincipalController", e.getMessage(), e); 
             AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao abrir tela: " + e.getMessage()); 
         }
     }

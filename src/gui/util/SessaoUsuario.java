@@ -2,6 +2,7 @@
 package gui.util; // Adapte o nome do pacote para onde você criou o arquivo!
 
 import model.Usuario; // Adapte para o pacote onde sua classe Usuario.java está!
+import gui.util.AppLogger;
 
 public class SessaoUsuario {
     // #DB018: volatile para visibilidade entre threads (SyncClient roda em background)
@@ -16,7 +17,7 @@ public class SessaoUsuario {
 
     public static Usuario getUsuarioLogado() {
         if (usuarioLogado != null && isSessionExpired()) {
-            System.err.println("Sessao expirada apos " + (TIMEOUT_MS / 3600000) + "h de inatividade.");
+            AppLogger.warn("SessaoUsuario", "Sessao expirada apos " + (TIMEOUT_MS / 3600000) + "h de inatividade.");
             clearSession();
             return null;
         }

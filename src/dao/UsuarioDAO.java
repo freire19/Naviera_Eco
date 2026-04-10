@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import gui.util.AppLogger;
 
 public class UsuarioDAO {
 
@@ -46,7 +47,7 @@ public class UsuarioDAO {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return 0;
     }
@@ -76,7 +77,7 @@ public class UsuarioDAO {
             }
             return false;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
     }
@@ -111,7 +112,7 @@ public class UsuarioDAO {
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
     }
@@ -124,7 +125,7 @@ public class UsuarioDAO {
             ps.setInt(2, empresaId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
             return false;
         }
     }
@@ -141,7 +142,7 @@ public class UsuarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
     }
@@ -157,7 +158,7 @@ public class UsuarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
     }
@@ -178,7 +179,7 @@ public class UsuarioDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return null;
     }
@@ -195,7 +196,7 @@ public class UsuarioDAO {
             }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -213,7 +214,7 @@ public class UsuarioDAO {
             }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
         }
         return nomesUsuarios;
     }
@@ -231,7 +232,7 @@ public class UsuarioDAO {
             }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em UsuarioDAO.listarLoginsAtivos: " + e.getMessage());
+            AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO.listarLoginsAtivos: " + e.getMessage());
         }
         return logins;
     }

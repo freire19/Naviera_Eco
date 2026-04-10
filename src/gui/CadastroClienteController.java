@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import gui.util.AppLogger;
 
 /**
  * Controlador da tela CadastroCliente.fxml
@@ -102,7 +103,7 @@ public class CadastroClienteController {
             }
             fecharJanela();
         } catch (SQLException e) {
-            e.printStackTrace();
+            AppLogger.error("CadastroClienteController", e.getMessage(), e);
             JOptionPane.showMessageDialog(null, "Erro ao salvar cliente: " + e.getMessage());
         }
     }

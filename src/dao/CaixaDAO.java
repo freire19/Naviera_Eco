@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import model.Caixa;
+import gui.util.AppLogger;
 
 public class CaixaDAO {
 
@@ -25,7 +26,7 @@ public class CaixaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
+            AppLogger.warn("CaixaDAO", "Erro SQL em CaixaDAO: " + e.getMessage());
         }
         return lista;
     }
@@ -38,7 +39,7 @@ public class CaixaDAO {
             stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
+            AppLogger.warn("CaixaDAO", "Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -52,7 +53,7 @@ public class CaixaDAO {
             stmt.setInt(3, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
+            AppLogger.warn("CaixaDAO", "Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }
@@ -65,7 +66,7 @@ public class CaixaDAO {
             stmt.setInt(2, DAOUtils.empresaId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Erro SQL em CaixaDAO: " + e.getMessage());
+            AppLogger.warn("CaixaDAO", "Erro SQL em CaixaDAO: " + e.getMessage());
             return false;
         }
     }

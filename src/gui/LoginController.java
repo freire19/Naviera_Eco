@@ -16,6 +16,7 @@ import java.net.URL;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import gui.util.AlertHelper;
+import gui.util.AppLogger;
 
 public class LoginController implements Initializable {
 
@@ -38,7 +39,7 @@ public class LoginController implements Initializable {
                 java.util.List<String> logins = usuarioDAO.listarLoginsAtivos();
                 Platform.runLater(() -> cmbUsuario.setItems(FXCollections.observableArrayList(logins)));
             } catch (Exception e) {
-                System.err.println("Erro ao carregar dados: " + e.getMessage());
+                AppLogger.warn("LoginController", "Erro ao carregar dados: " + e.getMessage());
                 Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao carregar usuarios."));
             }
         });
@@ -79,7 +80,7 @@ public class LoginController implements Initializable {
                 return true;
             }
         } catch (Exception e) {
-            System.err.println("Erro no login: " + e.getMessage());
+            AppLogger.warn("LoginController", "Erro no login: " + e.getMessage());
             AlertHelper.show(AlertType.ERROR, "Erro de Banco", "Erro ao verificar credenciais.");
         }
         return false;
@@ -89,7 +90,7 @@ public class LoginController implements Initializable {
         try {
             new TelaPrincipalApp().start(new Stage());
         } catch (Exception e) {
-            System.err.println("Erro ao abrir tela principal: " + e.getMessage());
+            AppLogger.warn("LoginController", "Erro ao abrir tela principal: " + e.getMessage());
             AlertHelper.show(AlertType.ERROR, "Erro Fatal", "Nao foi possivel abrir a tela principal.");
         }
     }
