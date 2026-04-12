@@ -84,6 +84,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- WebSocket (STOMP + SockJS) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Actuator (health check) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -37,6 +37,7 @@ impressoras.config
 # Logs e temporarios
 log_erros.txt
 *.log
+logs/
 *.tmp
 
 # Node

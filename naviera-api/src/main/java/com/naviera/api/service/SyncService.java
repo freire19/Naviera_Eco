@@ -24,6 +24,7 @@ public class SyncService {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final NotificationService notificationService;
 
     // ---- Tabelas permitidas para sync bidirecional ----
     private static final Set<String> TABELAS_PERMITIDAS = Set.of(
@@ -77,8 +78,9 @@ public class SyncService {
         "financeiro_saidas"
     );
 
-    public SyncService(JdbcTemplate jdbc) {
+    public SyncService(JdbcTemplate jdbc, NotificationService notificationService) {
         this.jdbc = jdbc;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -120,6 +122,7 @@ public class SyncService {
             ? String.format("OK com %d erro(s)", erros)
             : "OK";
 
+        notificationService.syncCompleto(empresaId, tabela, recebidos, paraDownload.size());
         return new SyncResponse(erros == 0, mensagem, recebidos, paraDownload.size(), paraDownload);
     }
 

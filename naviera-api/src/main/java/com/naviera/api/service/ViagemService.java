@@ -4,6 +4,7 @@ import com.naviera.api.dto.ViagemDTO;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ViagemService {
@@ -31,6 +32,22 @@ public class ViagemService {
             rs.getString("horario_saida"),
             rs.getBoolean("ativa"), rs.getBoolean("is_atual")
         ));
+    }
+
+    /** Viagens ativas de todas as empresas — cross-tenant para o app mobile */
+    public List<Map<String, Object>> buscarPublicas() {
+        String sql = """
+            SELECT v.id_viagem, v.data_viagem, v.data_chegada, v.descricao,
+                   emb.nome AS nome_embarcacao, r.origem, r.destino,
+                   emp.nome AS empresa_nome
+            FROM viagens v
+            JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
+            JOIN rotas r ON v.id_rota = r.id
+            LEFT JOIN empresas emp ON emb.empresa_id = emp.id
+            WHERE v.ativa = TRUE
+            ORDER BY v.data_viagem ASC
+            """;
+        return jdbc.queryForList(sql);
     }
 
     public List<ViagemDTO> buscarPorEmbarcacao(Long embarcacaoId) {

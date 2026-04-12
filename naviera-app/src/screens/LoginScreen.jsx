@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { API } from "../api.js";
 import { maskDoc } from "../helpers.js";
-import { IconMoon, IconSun } from "../icons.jsx";
+import { IconMoon, IconSun, IconEye, IconEyeOff } from "../icons.jsx";
 import Logo from "../components/Logo.jsx";
 import TelaCadastro from "./TelaCadastro.jsx";
 
@@ -13,6 +13,7 @@ export default function LoginScreen({ t, mode, setMode, onLogin }) {
   const [loginErro, setLoginErro] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginTipo, setLoginTipo] = useState("CPF");
+  const [showSenha, setShowSenha] = useState(false);
 
   const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", boxSizing: "border-box" };
 
@@ -51,7 +52,12 @@ export default function LoginScreen({ t, mode, setMode, onLogin }) {
               setLoginDoc(maskDoc(e.target.value, tp));
             }} placeholder="000.000.000-00" className="input-field" style={inputStyle} onKeyDown={e => e.key === "Enter" && doLogin()} /></div>
           <div><label style={{ fontSize: 12, fontWeight: 600, color: t.txSoft, marginBottom: 4, display: "block" }}>Senha</label>
-            <input value={loginSenha} onChange={e => setLoginSenha(e.target.value)} type="password" placeholder="Sua senha" className="input-field" style={inputStyle} onKeyDown={e => e.key === "Enter" && doLogin()} /></div>
+            <div style={{ position: "relative" }}>
+              <input value={loginSenha} onChange={e => setLoginSenha(e.target.value)} type={showSenha ? "text" : "password"} placeholder="Sua senha" className="input-field" style={{ ...inputStyle, paddingRight: 42 }} onKeyDown={e => e.key === "Enter" && doLogin()} />
+              <button type="button" onClick={() => setShowSenha(s => !s)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
+                {showSenha ? <IconEyeOff size={16} color={t.txMuted} /> : <IconEye size={16} color={t.txMuted} />}
+              </button>
+            </div></div>
           {loginErro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12, fontWeight: 500 }}>{loginErro}</div>}
           <button onClick={doLogin} disabled={loginLoading} className="btn-primary" style={{ background: loginLoading ? t.txMuted : t.priGrad, color: "#fff", marginTop: 4 }}>{loginLoading ? "Entrando..." : "Entrar"}</button>
         </div>

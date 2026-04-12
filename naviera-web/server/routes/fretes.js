@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -43,7 +44,7 @@ router.get('/resumo', async (req, res) => {
 })
 
 // POST /api/fretes
-router.post('/', async (req, res) => {
+router.post('/', validate({ id_viagem: 'required|integer', valor_total_itens: 'required|number' }), async (req, res) => {
   const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id

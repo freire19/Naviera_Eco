@@ -2,6 +2,7 @@ import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -90,6 +91,20 @@ router.get('/clientes-encomenda', async (req, res) => {
     res.json(result.rows)
   } catch (err) {
     res.status(500).json({ error: 'Erro ao listar clientes' })
+  }
+})
+
+// --- Funcionarios ---
+router.get('/funcionarios', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'SELECT * FROM funcionarios WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome',
+      [empresaId]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar funcionarios' })
   }
 })
 
@@ -284,7 +299,7 @@ router.put('/clientes-encomenda/:id', async (req, res) => {
 })
 
 // --- Usuarios CRUD ---
-router.post('/usuarios', async (req, res) => {
+router.post('/usuarios', validate({ nome: 'required|string|min:2', senha: 'required|string|min:4' }), async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome, email, senha, funcao, permissao } = req.body
@@ -324,7 +339,7 @@ router.put('/usuarios/:id', async (req, res) => {
 })
 
 // --- Tarifas CRUD ---
-router.post('/tarifas', async (req, res) => {
+router.post('/tarifas', validate({ id_rota: 'required|integer', id_tipo_passagem: 'required|integer' }), async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao, valor_cargas, valor_desconto } = req.body
@@ -352,6 +367,56 @@ router.put('/tarifas/:id', async (req, res) => {
     res.json(result.rows[0])
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar tarifa' })
+  }
+})
+
+// --- Funcionarios CRUD ---
+router.post('/funcionarios', validate({ nome: 'required|string|min:2' }), async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro } = req.body
+    const result = await pool.query(`
+      INSERT INTO funcionarios (nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro, ativo, empresa_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE, $13) RETURNING *
+    `, [nome, cpf || null, rg || null, ctps || null, telefone || null, endereco || null, cargo || null,
+        parseFloat(salario) || 0, data_admissao || null, data_nascimento || null,
+        is_clt || false, recebe_decimo_terceiro || false, empresaId])
+    res.status(201).json(result.rows[0])
+  } catch (err) {
+    console.error('[Cadastros] Erro ao criar funcionario:', err.message)
+    res.status(500).json({ error: 'Erro ao criar funcionario' })
+  }
+})
+
+router.put('/funcionarios/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro } = req.body
+    const result = await pool.query(`
+      UPDATE funcionarios SET nome = $1, cpf = $2, rg = $3, ctps = $4, telefone = $5, endereco = $6,
+        cargo = $7, salario = $8, data_admissao = $9, data_nascimento = $10, is_clt = $11, recebe_decimo_terceiro = $12
+      WHERE id = $13 AND empresa_id = $14 RETURNING *
+    `, [nome, cpf || null, rg || null, ctps || null, telefone || null, endereco || null, cargo || null,
+        parseFloat(salario) || 0, data_admissao || null, data_nascimento || null,
+        is_clt || false, recebe_decimo_terceiro || false, req.params.id, empresaId])
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
+    res.json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar funcionario' })
+  }
+})
+
+router.delete('/funcionarios/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'UPDATE funcionarios SET ativo = FALSE WHERE id = $1 AND empresa_id = $2 RETURNING *',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao desativar funcionario' })
   }
 })
 

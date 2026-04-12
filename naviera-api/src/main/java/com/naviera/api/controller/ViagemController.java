@@ -16,4 +16,8 @@ public class ViagemController {
     public ResponseEntity<?> porEmbarcacao(@PathVariable Long id) {
         return ResponseEntity.ok(service.buscarPorEmbarcacao(id));
     }
+
+    /** Viagens ativas de todas as empresas (público, sem autenticação) */
+    @GetMapping("/publicas")
+    public ResponseEntity<?> publicas() { return ResponseEntity.ok(service.buscarPublicas()); }
 }

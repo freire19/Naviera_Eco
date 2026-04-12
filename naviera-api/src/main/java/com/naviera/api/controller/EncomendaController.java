@@ -15,4 +15,11 @@ public class EncomendaController {
         Long id = (Long) auth.getPrincipal();
         return ResponseEntity.ok(service.buscarPorCliente(id));
     }
+
+    /** Rastreio cross-tenant — encomendas do cliente logado em todas as empresas */
+    @GetMapping("/rastreio")
+    public ResponseEntity<?> rastreio(Authentication auth) {
+        Long id = (Long) auth.getPrincipal();
+        return ResponseEntity.ok(service.rastreioCrossTenant(id));
+    }
 }

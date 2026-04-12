@@ -36,13 +36,17 @@ import CadastroConferente from '../pages/CadastroConferente.jsx'
 import CadastroCaixa from '../pages/CadastroCaixa.jsx'
 import CadastroClienteEncomenda from '../pages/CadastroClienteEncomenda.jsx'
 
+// Admin
+import AdminEmpresas from '../pages/AdminEmpresas.jsx'
+import AdminMetricas from '../pages/AdminMetricas.jsx'
+
 // Outros
 import EstornoPassagem from '../pages/EstornoPassagem.jsx'
 import HistoricoEstornos from '../pages/HistoricoEstornos.jsx'
 import ReciboAvulso from '../pages/ReciboAvulso.jsx'
+import GestaoFuncionarios from '../pages/GestaoFuncionarios.jsx'
 import Agenda from '../pages/Agenda.jsx'
 import ConfigurarApi from '../pages/ConfigurarApi.jsx'
-import Placeholder from '../pages/Placeholder.jsx'
 
 const PAGES = {
   inicio: { component: Dashboard, label: 'Inicio', section: 'principal' },
@@ -67,12 +71,14 @@ const PAGES = {
   'cadastro-conferente': { component: CadastroConferente, label: 'Conferentes', section: 'cadastros' },
   'cadastro-caixa': { component: CadastroCaixa, label: 'Caixas', section: 'cadastros' },
   'cadastro-produto': { component: CadastroClienteEncomenda, label: 'Clientes Encomenda', section: 'cadastros' },
-  'gestao-funcionarios': { component: Placeholder, label: 'Gestao Funcionarios', section: 'cadastros' },
+  'gestao-funcionarios': { component: GestaoFuncionarios, label: 'Gestao Funcionarios', section: 'cadastros' },
   'estorno-passagem': { component: EstornoPassagem, label: 'Estorno Passagem', section: 'pagamentos' },
   'historico-estornos': { component: HistoricoEstornos, label: 'Historico Estornos', section: 'pagamentos' },
   'recibo-avulso': { component: ReciboAvulso, label: 'Recibo Avulso', section: 'recibos' },
   agenda: { component: Agenda, label: 'Agenda', section: 'sistema' },
-  'configurar-api': { component: ConfigurarApi, label: 'Configurar API', section: 'sistema' }
+  'configurar-api': { component: ConfigurarApi, label: 'Configurar API', section: 'sistema' },
+  'admin-empresas': { component: AdminEmpresas, label: 'Gestao de Empresas', section: 'admin' },
+  'admin-metricas': { component: AdminMetricas, label: 'Metricas da Plataforma', section: 'admin' }
 }
 
 export default function Layout() {

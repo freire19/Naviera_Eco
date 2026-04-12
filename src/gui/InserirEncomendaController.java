@@ -92,6 +92,7 @@ import javafx.util.Pair;
 import javafx.util.StringConverter;
 import gui.util.AlertHelper;
 import gui.util.AppLogger;
+import gui.util.ValidationHelper;
 
 public class InserirEncomendaController implements Initializable {
 
@@ -1398,32 +1399,24 @@ public class InserirEncomendaController implements Initializable {
 
     @FXML
     public void handleAdicionarItem(ActionEvent event) {
-        if (txtQuantidade.getText().isEmpty() || cmbDescricao.getEditor().getText().isEmpty() || txtValorUnit.getText().isEmpty()) {
-            AlertHelper.show(AlertType.WARNING, "Atenção", "Preencha Quantidade, Descrição e Valor Unitário.");
-            return;
-        }
+        if (!ValidationHelper.positiveInt(txtQuantidade, "Quantidade")) return;
+        if (!ValidationHelper.requiredCombo(cmbDescricao, "Descrição do Item")) return;
+        if (!ValidationHelper.requiredText(txtValorUnit, "Valor Unitário")) return;
+
         String descricao = cmbDescricao.getEditor().getText().toUpperCase().trim();
         BigDecimal valorUnitario = parseBigDecimal(txtValorUnit.getText());
-        
+
         // Opcional: Sugerir cadastro de produto, mas não bloquear a adição
         boolean produtoExiste = listaMestraProdutosObjetos.stream().anyMatch(p -> p.getNomeItem().equalsIgnoreCase(descricao));
-        
+
         // ATIVADO: Verificar e propor cadastro rápido de produto
         if (!produtoExiste) {
             verificarEProporCadastroRapidoProduto(descricao, valorUnitario);
         }
 
         EncomendaItem item = new EncomendaItem();
-        // DL060: validar quantidade em vez de fallback silencioso
-        try {
-            int qtd = Integer.parseInt(txtQuantidade.getText().trim());
-            if (qtd <= 0) throw new NumberFormatException("Quantidade deve ser positiva");
-            item.setQuantidade(qtd);
-        } catch (NumberFormatException e) {
-            AlertHelper.show(AlertType.WARNING, "Quantidade Invalida", "A quantidade informada nao e um numero valido. Verifique e tente novamente.");
-            txtQuantidade.requestFocus();
-            return;
-        }
+        // DL060: quantidade ja validada pelo positiveInt acima
+        item.setQuantidade(Integer.parseInt(txtQuantidade.getText().trim()));
         item.setDescricao(descricao);
         item.setValorUnitario(valorUnitario);
         item.setValorTotal(item.getValorUnitario().multiply(new BigDecimal(item.getQuantidade())));
@@ -1484,10 +1477,8 @@ public class InserirEncomendaController implements Initializable {
     @FXML
     public void handleSalvar(ActionEvent event) {
         if (viagemAtiva == null) { AlertHelper.show(AlertType.WARNING, "Aviso", "Não há viagem ativa."); return; }
-        if (cmbDestinatario.getEditor().getText().trim().isEmpty() || obsListaItens.isEmpty()) {
-            AlertHelper.show(AlertType.WARNING, "Atenção", "Preencha o Destinatário e adicione itens.");
-            return;
-        }
+        if (!ValidationHelper.requiredCombo(cmbDestinatario, "Destinatário")) return;
+        if (!ValidationHelper.requiredList(obsListaItens, cmbDescricao, "Itens da Encomenda")) return;
         abrirTelaPagamento();
     }
 

@@ -9,9 +9,11 @@ import java.util.Map;
 @Service
 public class OpViagemWriteService {
     private final JdbcTemplate jdbc;
+    private final NotificationService notificationService;
 
-    public OpViagemWriteService(JdbcTemplate jdbc) {
+    public OpViagemWriteService(JdbcTemplate jdbc, NotificationService notificationService) {
         this.jdbc = jdbc;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -29,6 +31,7 @@ public class OpViagemWriteService {
             VALUES (?, ?::date, ?::date, ?, TRUE, FALSE, ?, ?, ?, ?)""",
             idViagem, dataViagem, dataChegada, descricao, idEmbarcacao, idRota, idHorarioSaida, empresaId);
 
+        notificationService.viagemCriada(empresaId, idViagem);
         return Map.of("mensagem", "Viagem criada", "id_viagem", idViagem);
     }
 
@@ -53,6 +56,9 @@ public class OpViagemWriteService {
         int rows = jdbc.update("UPDATE viagens SET ativa = ? WHERE id_viagem = ? AND empresa_id = ?",
             ativa, id, empresaId);
         if (rows == 0) throw ApiException.notFound("Viagem nao encontrada");
+        if (ativa) {
+            notificationService.viagemAtivada(empresaId, id);
+        }
         return Map.of("mensagem", ativa ? "Viagem ativada" : "Viagem desativada");
     }
 }

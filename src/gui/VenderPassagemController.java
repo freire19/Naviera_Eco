@@ -94,6 +94,7 @@ import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 import gui.util.AlertHelper;
 import gui.util.AppLogger;
+import gui.util.ValidationHelper;
 
 
 public class VenderPassagemController implements Initializable {
@@ -612,14 +613,15 @@ public class VenderPassagemController implements Initializable {
         String acomodacao = obterValorCombo(cmbAcomodacao);
         String agente = obterValorCombo(cmbAgenteAux);
 
-        if (nomePassageiroDigitado.isEmpty() ||
-            dpDataNascimento.getValue() == null || tipoPassagem == null ||
-            acomodacao == null || selectedRotaStr == null ||
-            agente == null || (txtAPagar != null && MoneyUtil.parseBigDecimal(txtAPagar.getText()).compareTo(BigDecimal.ZERO) < 0)) {
-            // DL032: permite valor zero (passagem gratuita) — bloqueia apenas negativo
-            AlertHelper.show(AlertType.WARNING, "Campos Obrigat\u00f3rios", "Por favor, preencha todos os campos obrigat\u00f3rios.");
-            return;
-        }
+        // Validacao campo a campo com mensagem especifica
+        if (!ValidationHelper.requiredCombo(cmbPassageiroAuto, "Passageiro")) return;
+        if (!ValidationHelper.requiredDate(dpDataNascimento, "Data de Nascimento")) return;
+        if (tipoPassagem == null) { AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "Tipo de Passagem deve ser informado."); if (cmbTipoPassagemAux != null) cmbTipoPassagemAux.requestFocus(); return; }
+        if (acomodacao == null) { AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "Acomodação deve ser informada."); if (cmbAcomodacao != null) cmbAcomodacao.requestFocus(); return; }
+        if (selectedRotaStr == null) { AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "Rota deve ser informada."); if (cmbRota != null) cmbRota.requestFocus(); return; }
+        if (agente == null) { AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "Agente deve ser informado."); if (cmbAgenteAux != null) cmbAgenteAux.requestFocus(); return; }
+        // DL032: permite valor zero (passagem gratuita) — bloqueia apenas negativo
+        if (!ValidationHelper.nonNegativeMoney(txtAPagar, "Valor a Pagar")) return;
 
         if (this.viagemSelecionada == null || this.viagemSelecionada.getId() == null) {
             AlertHelper.show(AlertType.ERROR, "Erro de Viagem", "Nenhuma viagem selecionada.");

@@ -16,16 +16,28 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 
   try {
-    // Login by nome or email
-    // empresa_id pode nao existir se migration 013 nao foi rodada
-    const hasEmpresaId = await pool.query(
-      "SELECT column_name FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name = 'empresa_id'"
-    )
-    const empresaCol = hasEmpresaId.rows.length > 0 ? ', empresa_id' : ''
-    const result = await pool.query(
-      `SELECT id, nome, email, senha, funcao, permissao${empresaCol} FROM usuarios WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1)) AND (excluido = FALSE OR excluido IS NULL)`,
-      [login]
-    )
+    // Se o tenant foi resolvido pelo subdominio, filtrar por empresa_id
+    const tenantId = req.tenant?.id || null
+
+    let sql, params
+    if (tenantId) {
+      // Producao: filtrar usuario pela empresa do subdominio
+      sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id
+             FROM usuarios
+             WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1))
+               AND (excluido = FALSE OR excluido IS NULL)
+               AND empresa_id = $2`
+      params = [login, tenantId]
+    } else {
+      // Dev (localhost): aceitar qualquer empresa
+      sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id
+             FROM usuarios
+             WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1))
+               AND (excluido = FALSE OR excluido IS NULL)`
+      params = [login]
+    }
+
+    const result = await pool.query(sql, params)
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Credenciais invalidas' })
@@ -52,8 +64,10 @@ router.post('/login', loginLimiter, async (req, res) => {
         login: user.nome,
         email: user.email,
         funcao: user.funcao,
-        permissoes: user.permissao
-      }
+        permissoes: user.permissao,
+        empresa_id: user.empresa_id
+      },
+      empresa: req.tenant || null
     })
   } catch (err) {
     console.error('[Auth] Erro no login:', err.message)

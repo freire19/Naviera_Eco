@@ -62,6 +62,14 @@ const NAV = [
   }
 ]
 
+const NAV_ADMIN = {
+  title: 'Admin',
+  items: [
+    { key: 'admin-empresas', icon: '\uD83C\uDFE2', label: 'Empresas' },
+    { key: 'admin-metricas', icon: '\uD83D\uDCCA', label: 'Metricas' }
+  ]
+}
+
 export default function Sidebar({ currentPage, onNavigate, pages }) {
   const { usuario, logout, theme, toggleTheme } = useAuth()
 
@@ -72,6 +80,9 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
     .join('')
     .toUpperCase()
 
+  const isAdmin = usuario?.funcao === 'Administrador'
+  const sections = isAdmin ? [...NAV, NAV_ADMIN] : NAV
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -80,7 +91,7 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
       </div>
 
       <nav className="sidebar-nav">
-        {NAV.map(section => (
+        {sections.map(section => (
           <div className="nav-section" key={section.title}>
             <div className="nav-section-title">{section.title}</div>
             {section.items.map(item => (

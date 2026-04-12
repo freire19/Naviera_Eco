@@ -42,4 +42,16 @@ public class GpsService {
             WHERE id_viagem = ?
             ORDER BY timestamp""", idViagem);
     }
+
+    /** Última posição de cada embarcação — para mapa público de tracking */
+    public List<Map<String, Object>> todasUltimasPosicoes() {
+        return jdbc.queryForList("""
+            SELECT DISTINCT ON (g.id_embarcacao)
+                   g.id_embarcacao AS embarcacao_id, e.nome,
+                   g.latitude, g.longitude, g.timestamp AS ultima_atualizacao
+            FROM embarcacao_gps g
+            JOIN embarcacoes e ON g.id_embarcacao = e.id_embarcacao
+            ORDER BY g.id_embarcacao, g.timestamp DESC
+            """);
+    }
 }

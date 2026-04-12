@@ -11,9 +11,11 @@ import java.util.Map;
 @Service
 public class OpPassagemWriteService {
     private final JdbcTemplate jdbc;
+    private final NotificationService notificationService;
 
-    public OpPassagemWriteService(JdbcTemplate jdbc) {
+    public OpPassagemWriteService(JdbcTemplate jdbc, NotificationService notificationService) {
         this.jdbc = jdbc;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -46,6 +48,7 @@ public class OpPassagemWriteService {
             valorDevedor.compareTo(BigDecimal.ZERO) <= 0 ? "PAGO" : "PENDENTE",
             dados.get("observacoes"), empresaId);
 
+        notificationService.passagemCriada(empresaId, numBilhete, numBilhete);
         return Map.of("mensagem", "Passagem criada", "numero_bilhete", numBilhete);
     }
 
@@ -57,6 +60,7 @@ public class OpPassagemWriteService {
             dados.get("assento"), dados.get("observacoes"),
             dados.get("id_acomodacao"), dados.get("id_rota"), id, empresaId);
         if (rows == 0) throw ApiException.notFound("Passagem nao encontrada");
+        notificationService.passagemAtualizada(empresaId, id);
         return Map.of("mensagem", "Passagem atualizada");
     }
 

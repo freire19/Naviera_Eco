@@ -4,10 +4,10 @@
 
 ---
 
-## Estado Geral: MVP QUASE PRONTO (93% — 108/116 itens prontos, 0 bloqueadores)
+## Estado Geral: MVP QUASE PRONTO (77% — 95/124 itens prontos, 3 bloqueadores)
 
 ### Resumo
-Plataforma SaaS multi-tenant de gestao fluvial com **4 camadas operacionais**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile). **Todas as 4 fases do MVP concluidas.** 0 issues CRITICAS pendentes. Auditorias: Security e Logic 100% limpas. MVP de 47% para 93% em 2 dias (V1.0 → V3.0).
+Plataforma SaaS multi-tenant de gestao fluvial com **4 camadas operacionais**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile). Features core completas em todas as camadas. **3 bloqueadores de seguranca/infra** impedem deploy em producao: CORS aberto no BFF, SyncService SQL injection, HTTPS desativado. 0 issues CRITICAS de codigo. Auditorias: Security e Logic 100% limpas. MVP V4.0 aprofundou analise em infra/seguranca (124 itens vs 116 da V3.0).
 
 ---
 
@@ -82,20 +82,23 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 | **Deep Resilience** | **V4.0** | **2026-04-08** | **2 ativas (97% limpo)** | **39 fixadas** | **[DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)** |
 | **Deep Performance** | **V3.0** | **2026-04-09** | **2 (infra only)** | **95% LIMPO — 37/39 fixadas** | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
 | **Deep Maintainability** | **V3.0** | **2026-04-09** | **~5 (estruturais)** | **46 corrigidas (90% reducao)** | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
-| **MVP Plan** | **V3.0** | **2026-04-10** | **0 faltando, 4 incompletos** | **93% pronto — 0 bloqueadores, 4 fases concluidas** | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
+| MVP Plan | V3.0 | 2026-04-10 | 0 faltando, 4 incompletos | 93% pronto (features only) | [MVP_PLAN V3.0](mvp/archive/MVP_PLAN_V3.0.md) |
+| **MVP Plan** | **V4.0** | **2026-04-10** | **10 faltando, 17 incompletos** | **77% pronto — 3 bloqueadores (CORS, injection, HTTPS)** | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
 
 ---
 
 ## PROXIMO SPRINT (sugerido)
 
-**Prioridade 1 — Ativar HTTPS em producao:**
-Gerar certificados (Let's Encrypt), colocar em `certs/`, descomentar bloco HTTPS no nginx.conf.
+**Prioridade 1 — Resolver 3 bloqueadores (~3h):**
+1. CORS restrito no BFF (`naviera-web/server/index.js` — 1 linha)
+2. SyncService SQL injection — whitelist de tabelas (`naviera-api/.../SyncService.java`)
+3. HTTPS — descomentar nginx.conf + gerar certificados
 
-**Prioridade 2 — Testes end-to-end:**
-Testar fluxo completo: Desktop → Sync → API → Web/App. Validar multi-tenant com 2 empresas.
+**Prioridade 2 — Incompletos criticos (~4h):**
+Rate limiting API + BFF geral, secrets fortes em prod, graceful shutdown BFF, BFF npm script.
 
-**Prioridade 3 — Pos-MVP backlog:**
-GPS real-time, migracao app mobile, CI/CD, EmpresaDAO/BalancoViagemDAO, Swagger.
+**Prioridade 3 — Estabilidade (antes do lancamento):**
+Testes API (fluxos core), input validation BFF (Zod/Joi), migrations avulsas numeradas.
 
 ---
 
@@ -109,8 +112,8 @@ GPS real-time, migracao app mobile, CI/CD, EmpresaDAO/BalancoViagemDAO, Swagger.
 | Taxa de resolucao | 67% |
 | Issues CRITICAS pendentes | **0** |
 | Categorias 100% limpas | **Security, Logic, Bugs** |
-| MVP readiness | **93% (108/116 itens)** |
-| MVP bloqueadores | **0** |
+| MVP readiness | **77% (95/124 itens)** |
+| MVP bloqueadores | **3 (CORS, SQL injection, HTTPS)** |
 | Paginas Web | **29** (28 funcionais + 1 placeholder) |
 | Telas App | **15** (5 CPF + 5 CNPJ + perfil + login + cadastro + bilhete + encomendas) |
 | Endpoints BFF | **~50** (GET + POST + PUT + DELETE) |
@@ -156,6 +159,7 @@ GPS real-time, migracao app mobile, CI/CD, EmpresaDAO/BalancoViagemDAO, Swagger.
 | 2026-04-10 | **MVP Fase 3** — logback, logger.js, rate limiting, query timeout 30s, shutdown hook, responsividade, .env.example |
 | 2026-04-10 | **MVP Fase 4** — 22 novas paginas web (29 total), app refatorado (27 arquivos), EncomendaCPF, SyncService (11 tabelas), AppLogger (491 fixes), PostgreSQL no compose |
 | 2026-04-10 | **MVP PLAN V3.0 — 93% pronto (108/116), 0 bloqueadores, 4 fases concluidas** |
+| 2026-04-10 | **MVP PLAN V4.0 — 77% pronto (95/124), 3 bloqueadores (CORS, SyncService injection, HTTPS). Analise aprofundada em infra/seguranca (+8 itens avaliados)** |
 
 ---
 *Atualizado automaticamente por Claude Code (status-update) — Revisao humana recomendada*

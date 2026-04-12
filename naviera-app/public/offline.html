@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#059669" />
+  <title>Naviera — Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Sora', system-ui, sans-serif;
+      background: #040D0A;
+      color: #F0FDF4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 24px;
+    }
+    .container { max-width: 320px; }
+    .icon {
+      width: 64px; height: 64px; margin: 0 auto 24px;
+      border-radius: 50%;
+      background: rgba(5,150,105,0.15);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .icon svg { width: 32px; height: 32px; }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    p { font-size: 14px; color: #6EE7B7; line-height: 1.5; margin-bottom: 24px; }
+    button {
+      background: #059669; color: white; border: none;
+      padding: 12px 32px; border-radius: 12px;
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg viewBox="0 0 60 60" fill="none">
+        <path d="M14 48 L14 14 Q14 10, 18 14 L30 30 Q34 35, 34 30 L34 14" stroke="#059669" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <h1>Sem conexao</h1>
+    <p>Voce esta offline. Verifique sua internet e tente novamente.</p>
+    <button onclick="location.reload()">Tentar novamente</button>
+  </div>
+</body>
+</html>

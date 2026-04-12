@@ -1,116 +1,359 @@
-import { useState } from "react";
-import { API, useApi } from "../api.js";
-import { fmt } from "../helpers.js";
-import { IconBack, IconUsers, IconMapPin } from "../icons.jsx";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { API } from "../api.js";
+import { IconRefresh, IconShip, IconMapPin, IconClock } from "../icons.jsx";
 import Badge from "../components/Badge.jsx";
-import Bar from "../components/Bar.jsx";
 import Cd from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ErrorRetry from "../components/ErrorRetry.jsx";
 
+/* ═══ CONFIG ═══ */
+const REFRESH_MS = 30_000;
+const BOUNDS = { latMin: -5, latMax: 0, lonMin: -70, lonMax: -50 };
+
+/* ═══ HELPERS ═══ */
+function latLonToPercent(lat, lon) {
+  const x = ((lon - BOUNDS.lonMin) / (BOUNDS.lonMax - BOUNDS.lonMin)) * 100;
+  const y = ((BOUNDS.latMax - lat) / (BOUNDS.latMax - BOUNDS.latMin)) * 100;
+  return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+}
+
+function tempoRelativo(iso) {
+  if (!iso) return "sem dados";
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `ha ${min} min`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `ha ${hrs}h`;
+  const dias = Math.floor(hrs / 24);
+  return `ha ${dias}d`;
+}
+
+function statusCor(iso) {
+  if (!iso) return "gray";
+  const min = (Date.now() - new Date(iso).getTime()) / 60000;
+  if (min < 5) return "#22C55E";
+  if (min < 30) return "#F59E0B";
+  return "#9CA3AF";
+}
+
+/* ═══ HOOK: fetch GPS positions ═══ */
+function useGps(authHeaders) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+  const timerRef = useRef(null);
+
+  const fetchGps = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setErro("");
+    try {
+      const headers = authHeaders?.Authorization ? { ...authHeaders } : {};
+      const r = await fetch(`${API}/gps/embarcacoes`, { headers });
+      if (!r.ok) throw new Error("Erro ao carregar posicoes GPS");
+      const d = await r.json();
+      setData(d);
+    } catch (e) {
+      setErro(e.message || "Erro ao carregar dados GPS.");
+    } finally {
+      setLoading(false);
+    }
+  }, [authHeaders?.Authorization]);
+
+  useEffect(() => {
+    fetchGps();
+    timerRef.current = setInterval(() => fetchGps(true), REFRESH_MS);
+    return () => clearInterval(timerRef.current);
+  }, [fetchGps]);
+
+  const refresh = useCallback(() => fetchGps(false), [fetchGps]);
+  return { data, loading, erro, refresh };
+}
+
+/* ═══ SVG RIVER MAP ═══ */
+function RiverMap({ boats, t, onSelectBoat }) {
+  return (
+    <div style={{
+      position: "relative", width: "100%", paddingBottom: "56%",
+      borderRadius: 14, overflow: "hidden",
+      border: `1px solid ${t.border}`,
+      background: "linear-gradient(160deg, #040D0A 0%, #0F2D24 30%, #040D0A 70%, #0A1F18 100%)"
+    }}>
+      <svg width="100%" height="100%" viewBox="0 0 1000 560" preserveAspectRatio="none"
+        style={{ position: "absolute", top: 0, left: 0 }}>
+        {/* Amazon river main channel */}
+        <path d="M0 320 Q80 290, 180 310 Q280 340, 380 300 Q450 270, 520 280 Q600 295, 680 270 Q760 245, 840 260 Q920 280, 1000 250"
+          fill="none" stroke="rgba(5,150,105,0.3)" strokeWidth="50" />
+        <path d="M0 320 Q80 290, 180 310 Q280 340, 380 300 Q450 270, 520 280 Q600 295, 680 270 Q760 245, 840 260 Q920 280, 1000 250"
+          fill="none" stroke="rgba(52,211,153,0.4)" strokeWidth="18" />
+        <path d="M0 322 Q80 292, 180 312 Q280 342, 380 302 Q450 272, 520 282 Q600 297, 680 272 Q760 247, 840 262 Q920 282, 1000 252"
+          fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" strokeDasharray="6 5" />
+        {/* Solimoes tributary */}
+        <path d="M0 280 Q100 260, 200 275 Q300 295, 380 300"
+          fill="none" stroke="rgba(5,150,105,0.15)" strokeWidth="25" />
+        {/* Negro tributary */}
+        <path d="M420 100 Q440 180, 450 240 Q460 280, 520 280"
+          fill="none" stroke="rgba(5,150,105,0.15)" strokeWidth="20" />
+        {/* Reference cities */}
+        <circle cx={latLonToPercent(-3.119, -60.021).x * 10} cy={latLonToPercent(-3.119, -60.021).y * 5.6} r="5" fill="rgba(255,255,255,0.5)" />
+        <text x={latLonToPercent(-3.119, -60.021).x * 10} y={latLonToPercent(-3.119, -60.021).y * 5.6 - 10}
+          textAnchor="middle" fill="rgba(255,255,255,0.6)" fontSize="12" fontWeight="500">Manaus</text>
+        <circle cx={latLonToPercent(-3.367, -64.72).x * 10} cy={latLonToPercent(-3.367, -64.72).y * 5.6} r="4" fill="rgba(255,255,255,0.35)" />
+        <text x={latLonToPercent(-3.367, -64.72).x * 10} y={latLonToPercent(-3.367, -64.72).y * 5.6 - 9}
+          textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="10">Tefe</text>
+        <circle cx={latLonToPercent(-2.516, -66.063).x * 10} cy={latLonToPercent(-2.516, -66.063).y * 5.6} r="4" fill="rgba(255,255,255,0.35)" />
+        <text x={latLonToPercent(-2.516, -66.063).x * 10} y={latLonToPercent(-2.516, -66.063).y * 5.6 - 9}
+          textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="10">Fonte Boa</text>
+        <circle cx={latLonToPercent(-2.631, -56.737).x * 10} cy={latLonToPercent(-2.631, -56.737).y * 5.6} r="4" fill="rgba(255,255,255,0.35)" />
+        <text x={latLonToPercent(-2.631, -56.737).x * 10} y={latLonToPercent(-2.631, -56.737).y * 5.6 - 9}
+          textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="10">Parintins</text>
+        {/* Grid lines */}
+        {[-65, -60, -55].map(lon => {
+          const x = ((lon - BOUNDS.lonMin) / (BOUNDS.lonMax - BOUNDS.lonMin)) * 1000;
+          return <line key={lon} x1={x} y1="0" x2={x} y2="560" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />;
+        })}
+        {[-4, -3, -2, -1].map(lat => {
+          const y = ((BOUNDS.latMax - lat) / (BOUNDS.latMax - BOUNDS.latMin)) * 560;
+          return <line key={lat} x1="0" y1={y} x2="1000" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />;
+        })}
+      </svg>
+
+      {/* Boat markers as absolutely positioned divs */}
+      {boats?.map((b) => {
+        const { x, y } = latLonToPercent(b.latitude, b.longitude);
+        const cor = statusCor(b.ultima_atualizacao);
+        return (
+          <div key={b.id_embarcacao}
+            onClick={() => onSelectBoat?.(b)}
+            style={{
+              position: "absolute", left: `${x}%`, top: `${y}%`,
+              transform: "translate(-50%, -50%)", cursor: "pointer",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+              zIndex: 10
+            }}>
+            <div style={{
+              width: 14, height: 14, borderRadius: "50%",
+              background: cor, border: "2px solid white",
+              boxShadow: `0 0 8px ${cor}`,
+              animation: cor === "#22C55E" ? "pulse-gps 2s infinite" : undefined
+            }} />
+            <div style={{
+              fontSize: 9, color: "white", fontWeight: 600,
+              background: "rgba(0,0,0,0.65)", borderRadius: 4,
+              padding: "1px 5px", whiteSpace: "nowrap", maxWidth: 90,
+              overflow: "hidden", textOverflow: "ellipsis"
+            }}>
+              {b.nome}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Legend */}
+      <div style={{
+        position: "absolute", bottom: 8, left: 8,
+        background: "rgba(0,0,0,0.6)", borderRadius: 8,
+        padding: "5px 10px", display: "flex", gap: 12, alignItems: "center"
+      }}>
+        {[["#22C55E", "< 5 min"], ["#F59E0B", "< 30 min"], ["#9CA3AF", "> 30 min"]].map(([c, label]) => (
+          <div key={c} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.7)" }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Boat count */}
+      <div style={{
+        position: "absolute", top: 8, right: 8,
+        background: "rgba(0,0,0,0.6)", borderRadius: 8,
+        padding: "4px 10px", fontSize: 10, color: "rgba(255,255,255,0.7)"
+      }}>
+        {boats?.length || 0} embarcacoes
+      </div>
+    </div>
+  );
+}
+
+/* ═══ BOAT LIST CARD ═══ */
+function BoatCard({ boat, t, onClick }) {
+  const cor = statusCor(boat.ultima_atualizacao);
+  const tempo = tempoRelativo(boat.ultima_atualizacao);
+  return (
+    <Cd t={t} onClick={onClick} style={{ padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: t.soft, display: "flex", alignItems: "center", justifyContent: "center",
+            border: `2px solid ${cor}`, flexShrink: 0
+          }}>
+            <IconShip size={18} color={cor} />
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: t.tx }}>{boat.nome}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
+              <IconMapPin size={11} color={t.txMuted} />
+              <span style={{ fontSize: 11, color: t.txMuted }}>
+                {boat.latitude?.toFixed(4)}, {boat.longitude?.toFixed(4)}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            fontSize: 11, fontWeight: 600, color: cor,
+            background: `${cor}18`, padding: "2px 8px", borderRadius: 12
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: cor }} />
+            {tempo}
+          </div>
+        </div>
+      </div>
+    </Cd>
+  );
+}
+
+/* ═══ MAIN SCREEN ═══ */
 export default function MapaCPF({ t, authHeaders }) {
-  const { data: boats, loading, erro, refresh } = useApi("/embarcacoes", authHeaders);
-  const [sel, setSel] = useState(null);
-  const embId = sel !== null ? boats?.[sel]?.id : null;
-  const { data: viagensEmb } = useApi(embId ? `/viagens/embarcacao/${embId}` : null, embId ? authHeaders : null);
+  const { data: boats, loading, erro, refresh } = useGps(authHeaders);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedBoat, setSelectedBoat] = useState(null);
 
-  if (loading) return <Skeleton t={t} height={80} count={3} />;
-  if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setTimeout(() => setRefreshing(false), 500);
+  };
 
-  if (sel !== null) {
-    const detalhe = boats?.[sel];
-    if (!detalhe) { setSel(null); return null; }
+  if (loading && !boats) return <Skeleton t={t} height={80} count={4} />;
+  if (erro && !boats) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
 
-    const emViagem = detalhe.status === "EM_VIAGEM";
+  const isEmpty = !boats || boats.length === 0;
 
-    return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <button onClick={() => setSel(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
-
+  return (
+    <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{detalhe.nome}</h3>
-        <Badge status={detalhe.status || "NO_PORTO"} t={t} />
-      </div>
-
-      {/* MAP — SVG river route */}
-      {emViagem && <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${t.border}` }}>
-        <div style={{ position: "relative", height: 180, background: "linear-gradient(160deg, #040D0A 0%, #0F2D24 30%, #040D0A 70%, #0A1F18 100%)" }}>
-          <svg width="100%" height="100%" viewBox="0 0 400 180" style={{ position: "absolute", top: 0, left: 0 }}>
-            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="rgba(5,150,105,0.5)" strokeWidth="20" opacity="0.35"/>
-            <path d="M20 80 Q60 95, 110 75 Q160 55, 210 82 Q260 105, 310 70 Q350 48, 390 85" fill="none" stroke="rgba(52,211,153,0.6)" strokeWidth="9" opacity="0.4"/>
-            <path d="M25 82 Q65 96, 115 76 Q165 56, 215 83 Q265 106, 315 71 Q355 50, 392 86" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" strokeDasharray="5 4"/>
-            <circle cx="25" cy="82" r="4.5" fill="#34D399" stroke="white" strokeWidth="1.5"/>
-            <text x="25" y="100" textAnchor="middle" fill="white" fontSize="8.5" fontWeight="500">Manaus</text>
-            <circle cx="215" cy="83" r="6" fill="#F59E0B" stroke="white" strokeWidth="2" className="boat-marker"/>
-            <circle cx="215" cy="83" r="14" fill="none" stroke="#F59E0B" strokeWidth="1" className="boat-ring"/>
-            <circle cx="115" cy="75" r="2.5" fill="rgba(255,255,255,0.4)"/>
-            <text x="115" y="66" textAnchor="middle" fill="rgba(255,255,255,0.55)" fontSize="7.5">Codaj\u00e1s</text>
-            <circle cx="315" cy="70" r="2.5" fill="rgba(255,255,255,0.4)"/>
-            <text x="315" y="61" textAnchor="middle" fill="rgba(255,255,255,0.55)" fontSize="7.5">Fonte Boa</text>
-            <circle cx="392" cy="86" r="4.5" fill="#EF4444" stroke="white" strokeWidth="1.5"/>
-            <text x="392" y="104" textAnchor="middle" fill="white" fontSize="8.5" fontWeight="500">Juta\u00ed</text>
-          </svg>
-          <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, background: "rgba(0,0,0,0.55)", borderRadius: 10, padding: "8px 12px", display: "flex", justifyContent: "space-between" }}>
-            <div><div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>Velocidade</div><div style={{ fontSize: 12, color: "white", fontWeight: 600 }}>12.4 n\u00f3s</div></div>
-            <div><div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>ETA</div><div style={{ fontSize: 12, color: "white", fontWeight: 600 }}>17/04 14h</div></div>
-            <div><div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>Percorrido</div><div style={{ fontSize: 12, color: "white", fontWeight: 600 }}>58%</div></div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.tx }}>Mapa GPS</h3>
+          <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>
+            Posicao em tempo real das embarcacoes
           </div>
         </div>
-        <div style={{ padding: "8px 14px", background: t.card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: t.txMuted, marginBottom: 4 }}><span>Manaus</span><span>Juta\u00ed</span></div>
-          <Bar value={58} t={t} />
-          <div style={{ fontSize: 10, color: t.txMuted, marginTop: 4, textAlign: "center" }}>Atualizado h\u00e1 3 min</div>
-        </div>
-      </div>}
-
-      {detalhe.descricao && <Cd t={t} style={{ padding: 14 }}><div style={{ fontSize: 13, color: t.txSoft, lineHeight: 1.7 }}>{detalhe.descricao}</div></Cd>}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Cd t={t} style={{ padding: 12, textAlign: "center" }}>
-          <IconUsers size={20} color={t.pri} /><div style={{ fontSize: 18, fontWeight: 700, color: t.pri, marginTop: 4 }}>{detalhe.capacidadePassageiros || "\u2014"}</div><div style={{ fontSize: 11, color: t.txMuted }}>Passageiros</div>
-        </Cd>
-        <Cd t={t} style={{ padding: 12, textAlign: "center" }}>
-          <IconMapPin size={20} color={t.info} /><div style={{ fontSize: 14, fontWeight: 700, color: t.info, marginTop: 4 }}>{emViagem ? "Em viagem" : "No porto"}</div><div style={{ fontSize: 11, color: t.txMuted }}>Status</div>
-        </Cd>
+        <button onClick={handleRefresh} style={{
+          background: t.soft, border: `1px solid ${t.border}`, borderRadius: 10,
+          padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center",
+          gap: 6, color: t.pri, fontSize: 12, fontWeight: 600
+        }}>
+          <IconRefresh size={14} color={t.pri} style={refreshing ? { animation: "spin 0.6s linear infinite" } : undefined} />
+          Atualizar
+        </button>
       </div>
 
-      {detalhe.horarioSaidaPadrao && <Cd t={t} style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.pri, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Hor\u00e1rios</div>
-        {detalhe.horarioSaidaPadrao.split("\n").map((line, i) =>
-          line.trim() === "" ? <div key={i} style={{ height: 8 }} /> :
-          line === line.toUpperCase() && line.includes("\u2192") ? <div key={i} style={{ fontSize: 13, fontWeight: 700, color: t.tx, marginTop: i > 0 ? 4 : 0 }}>{line}</div> :
-          <div key={i} style={{ fontSize: 12, color: t.txSoft, lineHeight: 1.6, paddingLeft: 8 }}>{line}</div>
-        )}
-      </Cd>}
+      {/* Error banner (non-blocking, when we have stale data) */}
+      {erro && boats && (
+        <div style={{
+          padding: "8px 14px", borderRadius: 10,
+          background: t.warnBg, color: t.warnTx,
+          fontSize: 12, display: "flex", alignItems: "center", gap: 6
+        }}>
+          <IconClock size={14} color={t.warnTx} />
+          Falha ao atualizar. Mostrando dados anteriores.
+        </div>
+      )}
 
-      {detalhe.telefone && <Cd t={t} style={{ padding: 12 }}>
-        <div style={{ fontSize: 12, color: t.txMuted }}>Telefone</div><div style={{ fontSize: 14, fontWeight: 600 }}>{detalhe.telefone}</div>
-      </Cd>}
-
-      {viagensEmb?.length > 0 && <>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.pri, textTransform: "uppercase", letterSpacing: 1 }}>Pr\u00f3ximas viagens</div>
-        {viagensEmb.map(v => <Cd key={v.id} t={t} style={{ padding: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div><div style={{ fontSize: 13, fontWeight: 600 }}>{v.origem} \u2192 {v.destino}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>Sa\u00edda: {fmt(v.dataViagem)} \u2022 Chegada: {fmt(v.previsaoChegada || v.dataChegada)}</div></div>
-            <Badge status={v.atual ? "Em viagem" : "Confirmada"} t={t} />
+      {/* Empty state */}
+      {isEmpty && (
+        <Cd t={t} style={{ padding: 32, textAlign: "center" }}>
+          <IconShip size={40} color={t.txMuted} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: t.tx, marginTop: 12 }}>
+            Nenhuma embarcacao com GPS
           </div>
-        </Cd>)}
-      </>}
-    </div>;
-  }
+          <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>
+            Os dados aparecerao aqui quando as embarcacoes reportarem sua posicao.
+          </div>
+        </Cd>
+      )}
 
-  return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Embarca\u00e7\u00f5es</h3>
-    {(!boats || boats.length === 0) && <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma embarca\u00e7\u00e3o encontrada.</div></Cd>}
-    {boats?.map((b, i) => <Cd key={b.id || i} t={t} style={{ padding: 0, overflow: "hidden" }} onClick={() => setSel(i)}>
-      {b.fotoUrl && <img src={`${API}${b.fotoUrl}`} alt={b.nome} style={{ width: "100%", height: 120, objectFit: "cover" }} />}
-      <div style={{ padding: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div><div style={{ fontSize: 15, fontWeight: 600 }}>{b.nome}</div><div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{b.rotaPrincipal || b.rotaAtual || ""}</div></div>
-          <Badge status={b.status || "NO_PORTO"} t={t} />
+      {/* Map */}
+      {!isEmpty && (
+        <RiverMap boats={boats} t={t} onSelectBoat={setSelectedBoat} />
+      )}
+
+      {/* Selected boat detail */}
+      {selectedBoat && (
+        <Cd t={t} style={{ padding: 14, border: `2px solid ${statusCor(selectedBoat.ultima_atualizacao)}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: t.tx }}>{selectedBoat.nome}</div>
+            <button onClick={() => setSelectedBoat(null)} style={{
+              background: "none", border: "none", fontSize: 18, cursor: "pointer",
+              color: t.txMuted, padding: "0 4px", lineHeight: 1
+            }}>x</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.txMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Latitude</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: t.tx }}>{selectedBoat.latitude?.toFixed(6)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: t.txMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Longitude</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: t.tx }}>{selectedBoat.longitude?.toFixed(6)}</div>
+            </div>
+            <div style={{ gridColumn: "span 2" }}>
+              <div style={{ fontSize: 10, color: t.txMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Ultima atualizacao</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: statusCor(selectedBoat.ultima_atualizacao) }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: t.tx }}>
+                  {tempoRelativo(selectedBoat.ultima_atualizacao)}
+                </span>
+                {selectedBoat.ultima_atualizacao && (
+                  <span style={{ fontSize: 11, color: t.txMuted }}>
+                    ({new Date(selectedBoat.ultima_atualizacao).toLocaleString("pt-BR")})
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </Cd>
+      )}
+
+      {/* Boat list */}
+      {!isEmpty && (
+        <>
+          <div style={{
+            fontSize: 12, fontWeight: 700, color: t.pri,
+            textTransform: "uppercase", letterSpacing: 1, marginTop: 4
+          }}>
+            Embarcacoes ({boats.length})
+          </div>
+          {boats.map((b) => (
+            <BoatCard key={b.id_embarcacao} boat={b} t={t} onClick={() => setSelectedBoat(b)} />
+          ))}
+        </>
+      )}
+
+      {/* Auto-refresh indicator */}
+      {!isEmpty && (
+        <div style={{
+          textAlign: "center", fontSize: 10, color: t.txMuted, padding: "4px 0"
+        }}>
+          Atualizacao automatica a cada 30s
         </div>
-        {b.horarioSaidaPadrao && <div style={{ fontSize: 11, color: t.txMuted, marginTop: 6, lineHeight: 1.5 }}>{b.horarioSaidaPadrao.split("\n").find(l => l.includes("Sa\u00edda de Manaus"))?.trim() || ""}</div>}
-        <div style={{ fontSize: 12, color: t.pri, fontWeight: 600, marginTop: 8 }}>Ver detalhes \u2192</div>
-      </div>
-    </Cd>)}
-  </div>;
+      )}
+
+      {/* CSS animations */}
+      <style>{`
+        @keyframes pulse-gps {
+          0%, 100% { box-shadow: 0 0 4px #22C55E; }
+          50% { box-shadow: 0 0 14px #22C55E, 0 0 24px rgba(34,197,94,0.3); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
 }

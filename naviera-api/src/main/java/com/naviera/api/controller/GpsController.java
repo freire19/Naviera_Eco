@@ -38,4 +38,10 @@ public class GpsController {
     public ResponseEntity<?> rastreio(@PathVariable Long id) {
         return ResponseEntity.ok(service.historicoViagem(id));
     }
+
+    /** Última posição de todas as embarcações (público, para mapa de tracking) */
+    @GetMapping("/gps/embarcacoes")
+    public ResponseEntity<?> todasPosicoes() {
+        return ResponseEntity.ok(service.todasUltimasPosicoes());
+    }
 }

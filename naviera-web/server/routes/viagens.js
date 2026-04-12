@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -64,7 +65,7 @@ router.get('/:id', async (req, res) => {
 })
 
 // POST /api/viagens
-router.post('/', async (req, res) => {
+router.post('/', validate({ id_embarcacao: 'required|integer', id_rota: 'required|integer', data_viagem: 'required|string', data_chegada: 'required|string', descricao: 'required|string' }), async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida } = req.body

@@ -12,9 +12,11 @@ import java.util.Map;
 @Service
 public class OpEncomendaWriteService {
     private final JdbcTemplate jdbc;
+    private final NotificationService notificationService;
 
-    public OpEncomendaWriteService(JdbcTemplate jdbc) {
+    public OpEncomendaWriteService(JdbcTemplate jdbc, NotificationService notificationService) {
         this.jdbc = jdbc;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -55,6 +57,7 @@ public class OpEncomendaWriteService {
             }
         }
 
+        notificationService.encomendaCriada(empresaId, idEncomenda, numEncomenda);
         return Map.of("mensagem", "Encomenda criada", "id_encomenda", idEncomenda, "numero_encomenda", numEncomenda);
     }
 
@@ -96,6 +99,7 @@ public class OpEncomendaWriteService {
             WHERE id_encomenda = ? AND empresa_id = ?""",
             dados.get("doc_recebedor"), dados.get("nome_recebedor"), id, empresaId);
         if (rows == 0) throw ApiException.notFound("Encomenda nao encontrada");
+        notificationService.encomendaEntregue(empresaId, id);
         return Map.of("mensagem", "Encomenda entregue");
     }
 

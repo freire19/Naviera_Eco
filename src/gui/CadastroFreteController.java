@@ -71,6 +71,7 @@ import java.util.stream.Collectors;
 import gui.util.AlertHelper;
 import gui.util.MoneyUtil;
 import gui.util.AppLogger;
+import gui.util.ValidationHelper;
 
 /**
  * Controller da tela CadastroFrete.fxml.
@@ -1479,26 +1480,10 @@ public class CadastroFreteController implements Initializable {
     }
 
     private void salvarOuAlterarFrete() {
-        if (cbRemetente == null || cbRemetente.getValue() == null || cbRemetente.getValue().trim().isEmpty()) {
-            AlertHelper.show(AlertType.WARNING, "Campo ObrigatÃ³rio", "Remetente deve ser informado.");
-            if (cbRemetente != null) cbRemetente.requestFocus();
-            return;
-        }
-        if (cbCliente == null || cbCliente.getValue() == null || cbCliente.getValue().trim().isEmpty()) {
-            AlertHelper.show(AlertType.WARNING, "Campo ObrigatÃ³rio", "Cliente (DestinatÃ¡rio) deve ser informado.");
-            if (cbCliente != null) cbCliente.requestFocus();
-            return;
-        }
-        if (cbRota == null || cbRota.getValue() == null || cbRota.getValue().trim().isEmpty()) {
-            AlertHelper.show(AlertType.WARNING, "Campo ObrigatÃ³rio", "Rota deve ser informada.");
-            if (cbRota != null) cbRota.requestFocus();
-            return;
-        }
-        if (listaTabelaItensFrete == null || listaTabelaItensFrete.isEmpty()) {
-            AlertHelper.show(AlertType.WARNING, "Nenhum Item na Nota", "Ã‰ necessÃ¡rio adicionar pelo menos um item ao frete.");
-            if (txtquantidade != null) txtquantidade.requestFocus();
-            return;
-        }
+        if (!ValidationHelper.requiredCombo(cbRemetente, "Remetente")) return;
+        if (!ValidationHelper.requiredCombo(cbCliente, "Cliente (Destinatário)")) return;
+        if (!ValidationHelper.requiredCombo(cbRota, "Rota")) return;
+        if (!ValidationHelper.requiredList(listaTabelaItensFrete, txtquantidade, "Itens do Frete")) return;
 
         boolean isNewFrete = (freteAtualId == -1);
         if (isNewFrete && this.viagemAtiva == null) {
@@ -1708,35 +1693,16 @@ public class CadastroFreteController implements Initializable {
         }
         String precoStr = txtpreco.getText().trim();
 
-        if (qtdStr.isEmpty()) {
-            txtquantidade.requestFocus();
-            return;
-        }
+        if (!ValidationHelper.positiveInt(txtquantidade, "Quantidade")) return;
         if (itemNomeOuDescricao == null || itemNomeOuDescricao.trim().isEmpty()) {
+            AlertHelper.show(AlertType.WARNING, "Campo Obrigatório", "Item deve ser informado.");
             cbitem.requestFocus();
             return;
         }
-        if (precoStr.isEmpty()) {
-            txtpreco.requestFocus();
-            return;
-        }
+        if (!ValidationHelper.nonNegativeDouble(txtpreco, "Preço Unitário")) return;
 
-        int quantidade;
-        try {
-            quantidade = Integer.parseInt(qtdStr);
-            if (quantidade <= 0) throw new NumberFormatException("Qtd > 0");
-        } catch (NumberFormatException e) {
-            txtquantidade.requestFocus();
-            return;
-        }
-        double precoUnitario;
-        try {
-            precoUnitario = MoneyUtil.parseDouble(precoStr);
-            if (precoUnitario < 0) throw new NumberFormatException("Preco nao negativo");
-        } catch (NumberFormatException e) {
-            txtpreco.requestFocus();
-            return;
-        }
+        int quantidade = Integer.parseInt(qtdStr);
+        double precoUnitario = MoneyUtil.parseDouble(precoStr);
 
         // DL065: preservar case original (toUpperCase para documentos fiscais)
         String nomeItemFinal = itemNomeOuDescricao.trim().toUpperCase();

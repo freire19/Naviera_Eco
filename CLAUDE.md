@@ -30,15 +30,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `TenantContext` (ThreadLocal) armazena empresa_id da thread atual
 - Desktop: empresa_id fixo, lido de `db.properties` (chave `empresa.id`)
 - API REST: empresa_id extraido do JWT a cada request
+- Web BFF: empresa_id extraido do JWT (login valida pelo slug do subdominio)
 - Tabelas auxiliares (aux_*) sao compartilhadas entre empresas
+
+### Estrategia de subdominios (producao)
+
+**Dominio:** `naviera.com.br`
+
+| Subdominio | Funcao | Quem usa |
+|-----------|--------|----------|
+| `{slug}.naviera.com.br` | Console web da empresa | Operadores (ex: `saofrancisco.naviera.com.br`) |
+| `app.naviera.com.br` | App mobile (clientes) | Passageiros e lojas |
+| `admin.naviera.com.br` | Painel admin Naviera | Gestor da plataforma |
+| `api.naviera.com.br` | API REST | Todos os frontends |
+
+**Fluxo:**
+1. Operador acessa `{slug}.naviera.com.br`
+2. Nginx extrai subdominio → header `X-Tenant-Slug`
+3. BFF middleware resolve slug → `empresa_id` (tabela `empresas.slug`)
+4. Login valida usuario filtrando por `empresa_id`
+5. JWT gerado com `empresa_id` embutido
+6. Todas as queries filtram por `empresa_id` do JWT
+
+**Wildcard DNS:** `*.naviera.com.br` → IP do servidor
+**Wildcard SSL:** Let's Encrypt com certbot `--domains *.naviera.com.br`
 
 ### Arquivos-chave do multi-tenant
 
 | Arquivo | Funcao |
 |---------|--------|
 | `database_scripts/013_multi_tenant.sql` | Migration: cria tabela `empresas`, adiciona `empresa_id` em todas as tabelas |
+| `database_scripts/014_tenant_slug.sql` | Migration: adiciona `slug` unico na tabela `empresas` |
 | `src/dao/TenantContext.java` | ThreadLocal com empresa_id — usado por todos os DAOs |
 | `src/dao/DAOUtils.java` | Helpers: `empresaId()`, `setEmpresa()`, `TENANT_FILTER` |
+| `naviera-web/server/middleware/tenant.js` | Middleware BFF: resolve slug → empresa_id |
+| `nginx/naviera.conf` | Nginx: wildcard subdominio → proxy + X-Tenant-Slug |
 | `db.properties.example` | Config com `empresa.id=1` |
 
 ---
@@ -200,7 +226,7 @@ Diretorio: `naviera-api/`
 | TenantContext | FEITO | `dao/TenantContext.java` — ThreadLocal + default via db.properties |
 | DAOUtils helpers | FEITO | `empresaId()`, `setEmpresa()`, `TENANT_FILTER` |
 | ConexaoBD atualizado | FEITO | Le `empresa.id` do db.properties e inicializa TenantContext |
-| DAOs tenant-aware | FEITO | 22/24 DAOs migrados (faltam EmpresaDAO e BalancoViagemDAO) |
+| DAOs tenant-aware | FEITO | 24/24 DAOs migrados — todos filtram por empresa_id |
 | Controllers GUI | FEITO | 22 controllers com SQL inline migrados para empresa_id |
 
 ### DAOs — Status Final
@@ -228,8 +254,8 @@ Diretorio: `naviera-api/`
 | ItemEncomendaPadraoDAO | FEITO |
 | PassageiroDAO | FEITO |
 | EncomendaItemDAO | N/A (tabela filha via FK) |
-| EmpresaDAO | PENDENTE |
-| BalancoViagemDAO | PENDENTE (queries complexas) |
+| EmpresaDAO | FEITO |
+| BalancoViagemDAO | FEITO |
 
 ### Controllers GUI — SQL Inline Migrado
 
@@ -252,35 +278,40 @@ aux_*, contatos, frete_itens, encomenda_itens, log_estornos_*, clientes_app
 ### Fase 1: Banco multi-tenant — PENDENTE
 
 - [ ] Executar migration 013 no banco de producao
-- [x] Completar todos os DAOs da lista acima (22/24 feitos — faltam EmpresaDAO e BalancoViagemDAO)
-- [ ] Atualizar EmpresaDAO para usar empresa_id ao inves de id_config fixo
+- [x] Completar todos os DAOs da lista acima (24/24 feitos)
+- [x] EmpresaDAO e BalancoViagemDAO ja filtram por empresa_id corretamente
 - [ ] Testar com empresa_id = 1 (deve funcionar identico ao sistema atual)
 
-### Fase 2: API tenant-aware + sync — PENDENTE
+### Fase 2: API tenant-aware + sync — CONCLUIDA
 
-- [ ] API: JWT com empresa_id, filtro em todos endpoints
-- [ ] Reescrever SyncClient (atual e deprecated/incompleto)
-- [ ] WebSocket para notificacoes real-time
-- [ ] Endpoints mobile: viagens publicas (cross-tenant), compra passagem, rastreio
+- [x] API: JWT com empresa_id, filtro em todos endpoints (TenantUtils)
+- [x] SyncService reescrito (11 tabelas, last-write-wins, ON CONFLICT, sanitizacao)
+- [x] SyncClient Desktop reescrito (auth JWT, upload/download, retry com backoff, mark synced)
+- [x] WebSocket STOMP/SockJS (`/ws`) com NotificationService tenant-aware (`/topic/empresa/{id}/notifications`)
+- [x] Endpoints mobile: viagens publicas cross-tenant, rastreio encomenda, GPS embarcacoes
+- [x] Migration 015: tabela gps_posicoes para rastreamento
+- [x] Multi-tenant por subdominio: tenant middleware, slug na tabela empresas, Nginx wildcard
 
-### Fase 3: Desktop auto-update + Web — EM ANDAMENTO
+### Fase 3: Desktop auto-update + Web — CONCLUIDA
 
-- [ ] Sistema de versao: GET /api/versao/check no startup do desktop
-- [ ] Instalador nativo via jpackage (JRE embutido)
-- [x] naviera-web criado: React + Express BFF, 6 telas funcionais (leitura), 20 placeholder
-- [ ] naviera-web: implementar operacoes de escrita (criar/editar passagem, encomenda, frete)
-- [ ] naviera-web: implementar as 20 telas placeholder
-- [ ] Painel admin Naviera (gestao de empresas/planos)
+- [x] Sistema de versao: VersaoController (API) + VersaoChecker.java (Desktop) — check no startup, dialog com changelog
+- [x] Instalador nativo: scripts build.sh (Linux .deb) + build.bat (Windows .msi/.exe) via jpackage com JRE embutido
+- [x] naviera-web: 29+ paginas funcionais (CRUD completo), Express BFF com ~50 endpoints
+- [x] naviera-web: multi-tenant por subdominio (tenant middleware + login por empresa)
+- [x] naviera-web: responsivo (3 breakpoints), logging, rate limiting, query timeout
+- [x] Painel admin Naviera: AdminEmpresas (CRUD + stats + ativar) + AdminMetricas (dashboard plataforma)
 
-### Fase 4: App mobile + GPS — EM ANDAMENTO
+### Fase 4: App mobile + GPS — CONCLUIDA
 
-- [x] UI do app criada em React web (11 telas, 2 perfis CPF/CNPJ) — dev em web, destino mobile
+- [x] UI do app: 15+ telas, 2 perfis CPF/CNPJ, refatorado em 27+ modulos
 - [x] Cadastro CPF/CNPJ + login + auth JWT
 - [x] Design system Naviera V4 (light/dark)
-- [ ] Migrar de React web para mobile (React Native, PWA ou Capacitor)
-- [ ] Rastreamento GPS (app tripulacao envia lat/lon)
-- [ ] Notificacoes push (Firebase)
-- [ ] Separar App.jsx monolitico em modulos
+- [x] Tela EncomendaCPF (rastreio com busca)
+- [x] API GPS: POST /gps/posicao (tripulacao) + GET /gps/embarcacoes (publico)
+- [x] PWA: manifest.json, service worker (cache-first + offline), usePWA hook, install banner
+- [x] MapaCPF integrado com GPS real: mapa SVG rio Amazonas, barcos coloridos por freshness, auto-refresh 30s
+- [x] Push notifications: Firebase FCM com graceful degradation, useNotifications hook, NotificationBanner
+- [x] WebSocket STOMP/SockJS no app: useWebSocket hook, NotificationList com badge, reconexao automatica
 
 ---
 

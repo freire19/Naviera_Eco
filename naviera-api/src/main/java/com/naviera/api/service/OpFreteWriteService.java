@@ -12,9 +12,11 @@ import java.util.Map;
 @Service
 public class OpFreteWriteService {
     private final JdbcTemplate jdbc;
+    private final NotificationService notificationService;
 
-    public OpFreteWriteService(JdbcTemplate jdbc) {
+    public OpFreteWriteService(JdbcTemplate jdbc, NotificationService notificationService) {
         this.jdbc = jdbc;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -56,6 +58,7 @@ public class OpFreteWriteService {
             }
         }
 
+        notificationService.freteCriado(empresaId, idFrete, numFrete);
         return Map.of("mensagem", "Frete criado", "id_frete", idFrete, "numero_frete", numFrete);
     }
 

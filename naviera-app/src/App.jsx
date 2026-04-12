@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import {
   IconHome, IconHeart, IconShip, IconTicket, IconGrid, IconCart,
@@ -6,8 +6,12 @@ import {
 } from "./icons.jsx";
 import { T } from "./theme.js";
 import { API } from "./api.js";
+import useWebSocket from "./hooks/useWebSocket.js";
+import useNotifications from "./hooks/useNotifications.js";
 import Header from "./components/Header.jsx";
 import TabBar from "./components/TabBar.jsx";
+import NotificationBanner from "./components/NotificationBanner.jsx";
+import usePWA from "./hooks/usePWA.js";
 import LoginScreen from "./screens/LoginScreen.jsx";
 import HomeCPF from "./screens/HomeCPF.jsx";
 import AmigosCPF from "./screens/AmigosCPF.jsx";
@@ -44,11 +48,48 @@ export default function Naviera() {
   const [tabHistory, setTabHistory] = useState([]);
   const navigateTab = (newTab) => { setTabHistory(h => [...h, tab]); setTab(newTab); };
   const goBack = () => { if (tabHistory.length > 0) { setTab(tabHistory[tabHistory.length - 1]); setTabHistory(h => h.slice(0, -1)); } };
+  const { canInstall, promptInstall, dismiss: dismissInstall } = usePWA();
   const [mode, setMode] = useState("light");
   const [token, setToken] = useState(() => localStorage.getItem("naviera_token"));
   const [usuario, setUsuario] = useState(() => { try { return JSON.parse(localStorage.getItem("naviera_usuario")); } catch { return null; } });
   const [minhaFoto, setMinhaFoto] = useState(null);
   const t = T[mode];
+
+  /* ═══ PUSH NOTIFICATIONS ═══ */
+  const {
+    suportado: notifSuportado, permissao, tokenFcm,
+    notificacao, solicitarPermissao, obterTokenFcm,
+    enviarNotificacaoLocal, limparNotificacao,
+  } = useNotifications();
+  const pushTokenEnviado = useRef(false);
+
+  // Apos permissao concedida, tenta obter token FCM
+  useEffect(() => {
+    if (permissao === "granted") obterTokenFcm();
+  }, [permissao, obterTokenFcm]);
+
+  // Registra token FCM no backend
+  useEffect(() => {
+    if (!tokenFcm || !token || pushTokenEnviado.current) return;
+    pushTokenEnviado.current = true;
+    fetch(`${API}/push/registrar`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ tokenFcm, plataforma: "web" }),
+    }).catch(() => { pushTokenEnviado.current = false; });
+  }, [tokenFcm, token]);
+
+  const handleSolicitarPermissao = async () => {
+    const result = await solicitarPermissao();
+    if (result === "granted") obterTokenFcm();
+  };
+
+  /* ═══ WEBSOCKET ═══ */
+  const { notifications, clearNotifications, unreadCount } = useWebSocket({
+    token,
+    empresaId: usuario?.id || null,
+    apiUrl: API,
+  });
 
   useEffect(() => {
     if (!token) { setMinhaFoto(null); return; }
@@ -95,9 +136,41 @@ export default function Naviera() {
 
   return (
     <div style={{ minHeight: "100vh", background: t.bg, maxWidth: 420, margin: "0 auto", position: "relative", transition: "background 0.3s", color: t.tx }}>
-      <Header t={t} mode={mode} setMode={setMode} tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} doLogout={doLogout} />
+      <Header t={t} mode={mode} setMode={setMode} tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} doLogout={doLogout} notifications={notifications} clearNotifications={clearNotifications} unreadCount={unreadCount} />
+      {canInstall && (
+        <div style={{
+          margin: "8px 18px 0", padding: "12px 16px", borderRadius: 12,
+          background: t.priGrad, display: "flex", alignItems: "center",
+          justifyContent: "space-between", gap: 12
+        }}>
+          <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>
+            Instalar o app Naviera
+          </span>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button onClick={dismissInstall} style={{
+              background: "rgba(255,255,255,0.2)", color: "#fff", border: "none",
+              borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit"
+            }}>Agora nao</button>
+            <button onClick={promptInstall} style={{
+              background: "#fff", color: "#059669", border: "none",
+              borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700,
+              cursor: "pointer", fontFamily: "inherit"
+            }}>Instalar</button>
+          </div>
+        </div>
+      )}
       <div style={{ padding: "16px 18px 100px" }}>{screen()}</div>
       <TabBar tabs={tabs} tab={tab} setTab={(id) => { setTab(id); setTabHistory([]); }} t={t} />
+      {notifSuportado && (
+        <NotificationBanner
+          t={t}
+          permissao={permissao}
+          notificacao={notificacao}
+          onSolicitar={handleSolicitarPermissao}
+          onLimpar={limparNotificacao}
+        />
+      )}
     </div>
   );
 }
