@@ -395,72 +395,69 @@ public class SetupWizardController implements Initializable {
     }
 
     private void instalarPostgresWindows() {
-        lblPgInstallStatus.setText("Baixando PostgreSQL 16 para Windows...");
+        lblPgInstallStatus.setText("Instalando PostgreSQL via winget...");
         lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
 
         Thread bg = new Thread(() -> {
             try {
-                // Baixar o instalador do PostgreSQL
-                String pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-16.6-1-windows-x64.exe";
-                Path tempInstaller = Files.createTempFile("postgresql-installer-", ".exe");
+                // Metodo 1: winget (Windows 10 1709+ e Windows 11)
+                updatePgStatus("Tentando instalar via winget...");
 
-                updatePgStatus("Baixando PostgreSQL (pode levar alguns minutos)...");
-
-                try (java.io.InputStream in = new URL(pgUrl).openStream()) {
-                    Files.copy(in, tempInstaller, StandardCopyOption.REPLACE_EXISTING);
-                }
-
-                updatePgStatus("Download concluido. Executando instalador...");
-
-                // Executar instalador em modo unattended com senha padrao
                 ProcessBuilder pb = new ProcessBuilder(
-                    tempInstaller.toString(),
-                    "--mode", "unattended",
-                    "--superpassword", "NavieraDB@2026",
-                    "--serverport", "5432",
-                    "--prefix", "C:\\Program Files\\PostgreSQL\\16",
-                    "--datadir", "C:\\Program Files\\PostgreSQL\\16\\data",
-                    "--install_runtimes", "0"
+                    "cmd.exe", "/c",
+                    "winget install -e --id PostgreSQL.PostgreSQL.16 " +
+                    "--accept-package-agreements --accept-source-agreements --silent"
                 );
                 pb.redirectErrorStream(true);
                 Process proc = pb.start();
 
-                // Ler output
+                StringBuilder output = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         AppLogger.info("PgInstall", line);
+                        output.append(line).append("\n");
+                        String logLine = line;
+                        Platform.runLater(() -> lblPgInstallStatus.setText(
+                            logLine.length() > 60 ? logLine.substring(0, 60) + "..." : logLine));
                     }
                 }
 
                 int exitCode = proc.waitFor();
+                boolean wingetOk = (exitCode == 0);
 
-                // Limpar installer
-                Files.deleteIfExists(tempInstaller);
+                if (!wingetOk) {
+                    // Metodo 2: download direto do EDB
+                    updatePgStatus("winget falhou. Baixando instalador direto...");
+                    wingetOk = tentarDownloadDiretoPostgres();
+                }
 
-                if (exitCode == 0) {
+                if (wingetOk) {
                     // Aguardar o servico iniciar
-                    Thread.sleep(3000);
+                    updatePgStatus("Aguardando PostgreSQL iniciar...");
+                    for (int i = 0; i < 10; i++) {
+                        Thread.sleep(3000);
+                        if (isPostgresRunning()) break;
+                    }
                     boolean running = isPostgresRunning();
 
                     Platform.runLater(() -> {
                         progressPgInstall.setProgress(1.0);
                         if (running) {
-                            lblPgInstallStatus.setText("PostgreSQL instalado com sucesso!");
+                            lblPgInstallStatus.setText("PostgreSQL instalado! Configure a senha abaixo.");
                             lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
-                            // Preencher campos automaticamente
-                            txtUsuario.setText("postgres");
-                            txtSenha.setText("NavieraDB@2026");
                             txtPorta.setText("5432");
+                            txtUsuario.setText("postgres");
+                            pgInstallBox.setStyle("-fx-background-color: #D1FAE5; -fx-border-color: #059669; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 15;");
                         } else {
-                            lblPgInstallStatus.setText("Instalado, mas o servico nao iniciou. Reinicie o computador.");
+                            lblPgInstallStatus.setText("Instalado. Reinicie o computador e abra o Naviera novamente.");
                             lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#F59E0B"));
                         }
                         btnInstalarPostgres.setDisable(false);
                     });
                 } else {
-                    updatePgStatus("Erro na instalacao (codigo " + exitCode + "). Instale manualmente.");
                     Platform.runLater(() -> {
+                        lblPgInstallStatus.setText("Nao foi possivel instalar. Baixe em postgresql.org/download/windows");
                         lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
                         btnInstalarPostgres.setDisable(false);
                         progressPgInstall.setVisible(false);
@@ -479,6 +476,74 @@ public class SetupWizardController implements Initializable {
         });
         bg.setDaemon(true);
         bg.start();
+    }
+
+    private boolean tentarDownloadDiretoPostgres() {
+        try {
+            // URL oficial do instalador EDB PostgreSQL 16
+            String[] urls = {
+                "https://get.enterprisedb.com/postgresql/postgresql-16.8-1-windows-x64.exe",
+                "https://get.enterprisedb.com/postgresql/postgresql-16.7-1-windows-x64.exe",
+                "https://get.enterprisedb.com/postgresql/postgresql-16.6-1-windows-x64.exe"
+            };
+
+            Path tempInstaller = Files.createTempFile("postgresql-installer-", ".exe");
+
+            for (String pgUrl : urls) {
+                try {
+                    updatePgStatus("Baixando de " + pgUrl.substring(pgUrl.lastIndexOf('/') + 1) + "...");
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new URL(pgUrl).openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(300000);
+                    conn.setInstanceFollowRedirects(true);
+                    if (conn.getResponseCode() == 200) {
+                        try (java.io.InputStream in = conn.getInputStream()) {
+                            Files.copy(in, tempInstaller, StandardCopyOption.REPLACE_EXISTING);
+                        }
+                        break;
+                    }
+                } catch (Exception e) {
+                    AppLogger.warn("PgInstall", "URL falhou: " + pgUrl + " - " + e.getMessage());
+                    continue;
+                }
+            }
+
+            if (!Files.exists(tempInstaller) || Files.size(tempInstaller) < 1000000) {
+                return false; // Download falhou
+            }
+
+            updatePgStatus("Executando instalador (pode levar alguns minutos)...");
+
+            ProcessBuilder pb = new ProcessBuilder(
+                tempInstaller.toString(),
+                "--mode", "unattended",
+                "--superpassword", "NavieraDB@2026",
+                "--serverport", "5432",
+                "--install_runtimes", "0"
+            );
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    AppLogger.info("PgInstall", line);
+                }
+            }
+
+            int exitCode = proc.waitFor();
+            Files.deleteIfExists(tempInstaller);
+
+            if (exitCode == 0) {
+                txtSenha.setText("NavieraDB@2026");
+                return true;
+            }
+            return false;
+
+        } catch (Exception e) {
+            AppLogger.error("PgInstall", "Download direto falhou: " + e.getMessage(), e);
+            return false;
+        }
     }
 
     private void instalarPostgresLinux() {
