@@ -19,10 +19,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Modelo de operacao
 
-- **Desktop** = JavaFX + PostgreSQL LOCAL = funciona OFFLINE no barco
-- **Web** = React + Express BFF (acesso direto ao PostgreSQL) = mesmo que Desktop, para escritorio com internet
-- **App Mobile** = React web (dev) → mobile futuro = clientes finais CPF/CNPJ (compra passagem, rastreia encomenda, GPS) = consome API Spring Boot
-- **Sync** = quando barco chega em area com internet, sync bidirecional automatico
+**Principio fundamental: o Desktop SEMPRE opera com banco local e NUNCA depende de internet para funcionar.** O barco fica online a maior parte do tempo, mas a internet pode cair a qualquer momento. Quando isso acontece, o operador continua lancando passagens, fretes e encomendas normalmente no banco local. Quando a internet volta, o SyncClient sincroniza imediatamente com o banco central da VPS. O offline nao e o modo principal — e a rede de seguranca que garante operacao ininterrupta.
+
+```
+VPS (72.62.166.247)
+┌──────────────────────────────────────────────────────────┐
+│  Docker: naviera_postgres (porta 5435)                   │
+│  Banco CENTRAL: naviera_eco                              │
+│  User: naviera / Nav13r4DB@2026                          │
+│                                                          │
+│  naviera-api (Spring Boot, porta 8081, systemd)          │
+│  naviera-web (Express BFF, porta 3003, PM2)              │
+│  naviera-app (build estatico, Nginx)                     │
+│  Todos acessam o MESMO banco central                     │
+└──────────────────────┬───────────────────────────────────┘
+                       │ sync bidirecional (quando online)
+┌──────────────────────┴───────────────────────────────────┐
+│  BARCO (Desktop JavaFX)                                  │
+│  PostgreSQL LOCAL (porta 5437 dev / variavel prod)       │
+│  Banco LOCAL: naviera_eco                                │
+│  Opera OFFLINE — lanca passagens, fretes, encomendas     │
+│  SyncClient sincroniza com API quando tem internet       │
+└──────────────────────────────────────────────────────────┘
+```
+
+- **Desktop** = JavaFX + PostgreSQL LOCAL = opera offline, sync quando online
+- **Web** = React + Express BFF = acessa banco CENTRAL da VPS (escritorio com internet estavel)
+- **App Mobile** = React → API Spring Boot = acessa banco CENTRAL da VPS
+- **Sync** = SyncClient no Desktop: bidirecional, automatico quando online, via API REST
 
 ### Estrategia de isolamento
 

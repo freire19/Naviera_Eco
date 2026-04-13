@@ -57,6 +57,8 @@ public class SetupWizardController implements Initializable {
     @FXML private TextField txtEmpresaId;
     @FXML private TextField txtApiUrl;
     @FXML private TextField txtPoolSize;
+    @FXML private TextField txtSyncLogin;
+    @FXML private PasswordField txtSyncSenha;
 
     // -- Step 4: Resumo --
     @FXML private Label lblResumoConexao;
@@ -543,8 +545,8 @@ public class SetupWizardController implements Initializable {
         lblResumoConexao.setText("Conexao: " + host + ":" + porta);
         lblResumoBanco.setText("Banco: " + banco);
         lblResumoEmpresa.setText("Empresa ID: " + txtEmpresaId.getText().trim());
-        lblResumoApi.setText("API: " + (txtApiUrl.getText().isBlank() ? "(nao configurada)" : txtApiUrl.getText().trim()));
-        lblResumoPool.setText("Pool: " + txtPoolSize.getText().trim() + " conexoes");
+        lblResumoApi.setText("API Sync: " + (txtApiUrl.getText().isBlank() ? "https://api.naviera.com.br" : txtApiUrl.getText().trim()));
+        lblResumoPool.setText("Pool: " + txtPoolSize.getText().trim() + " conexoes | Sync: automatico (5 min)");
     }
 
     // ========================================================================
@@ -587,6 +589,9 @@ public class SetupWizardController implements Initializable {
             Files.writeString(Path.of("db.properties"), sb.toString(), StandardCharsets.UTF_8);
             AppLogger.info("SetupWizard", "db.properties salvo com sucesso.");
 
+            // Gerar sync_config.properties para o SyncClient
+            salvarSyncConfig(apiUrl);
+
             AlertHelper.info("Configuracao salva com sucesso! O sistema vai iniciar.");
 
             // Fechar wizard — Launch.java vai abrir o LoginApp
@@ -598,6 +603,38 @@ public class SetupWizardController implements Initializable {
         } catch (IOException e) {
             AppLogger.error("SetupWizard", "Erro ao salvar db.properties: " + e.getMessage(), e);
             AlertHelper.error("Erro", "Nao foi possivel salvar db.properties: " + e.getMessage());
+        }
+    }
+
+    // ========================================================================
+    // Gerar sync_config.properties
+    // ========================================================================
+
+    private void salvarSyncConfig(String apiUrl) {
+        if (apiUrl == null || apiUrl.isBlank()) {
+            apiUrl = "https://api.naviera.com.br";
+        }
+        // Garante que a URL nao termina com /
+        if (apiUrl.endsWith("/")) {
+            apiUrl = apiUrl.substring(0, apiUrl.length() - 1);
+        }
+
+        StringBuilder sc = new StringBuilder();
+        sc.append("#Configuracoes de Sincronizacao - Naviera Eco\n");
+        sc.append("server.url=").append(apiUrl).append("\n");
+        sc.append("operador.login=").append(txtSyncLogin.getText().trim()).append("\n");
+        sc.append("operador.senha=").append(txtSyncSenha.getText().trim()).append("\n");
+        sc.append("api.token=\n");
+        sc.append("api.token.encoded=false\n");
+        sc.append("sync.auto=true\n");
+        sc.append("sync.interval.minutos=5\n");
+        sc.append("sync.ultima=\n");
+
+        try {
+            Files.writeString(Path.of("sync_config.properties"), sc.toString(), StandardCharsets.UTF_8);
+            AppLogger.info("SetupWizard", "sync_config.properties salvo com sucesso.");
+        } catch (IOException e) {
+            AppLogger.warn("SetupWizard", "Erro ao salvar sync_config.properties: " + e.getMessage());
         }
     }
 

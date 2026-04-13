@@ -265,6 +265,11 @@ public class SyncClient {
 
     public CompletableFuture<Boolean> testarConexao() {
         return CompletableFuture.supplyAsync(() -> {
+            // Garantir autenticacao antes de testar (ping requer JWT)
+            if (!garantirAutenticacao()) {
+                notificarListeners(SyncEvent.ERRO, "Falha na autenticacao para teste de conexao.");
+                return false;
+            }
             HttpURLConnection conn = null;
             try {
                 conn = abrirConexao("/api/sync/ping", "GET");
@@ -813,6 +818,11 @@ public class SyncClient {
 
         if ("POST".equals(method) || "PUT".equals(method)) {
             conn.setDoOutput(true);
+        }
+
+        // Incluir JWT se disponivel
+        if (jwtToken != null && !jwtToken.isEmpty()) {
+            conn.setRequestProperty("Authorization", "Bearer " + jwtToken);
         }
 
         return conn;
