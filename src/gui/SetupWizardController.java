@@ -67,6 +67,12 @@ public class SetupWizardController implements Initializable {
     @FXML private Label lblResumoApi;
     @FXML private Label lblResumoPool;
 
+    // -- Step 1: PostgreSQL install --
+    @FXML private VBox pgInstallBox;
+    @FXML private Button btnInstalarPostgres;
+    @FXML private Label lblPgInstallStatus;
+    @FXML private ProgressBar progressPgInstall;
+
     // -- Footer --
     @FXML private Button btnVoltar;
     @FXML private Button btnProximo;
@@ -113,6 +119,7 @@ public class SetupWizardController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         updateStepView();
+        verificarPostgresInstalado();
 
         // Carrega valores existentes do db.properties se houver (setup parcial)
         File dbProps = new File("db.properties");
@@ -324,6 +331,215 @@ public class SetupWizardController implements Initializable {
         });
         bg.setDaemon(true);
         bg.start();
+    }
+
+    // ========================================================================
+    // PostgreSQL: Detectar e instalar automaticamente
+    // ========================================================================
+
+    private void verificarPostgresInstalado() {
+        if (pgInstallBox == null) return; // FXML pode nao ter o componente ainda
+
+        Thread bg = new Thread(() -> {
+            boolean encontrado = isPostgresRunning();
+            Platform.runLater(() -> {
+                if (encontrado) {
+                    pgInstallBox.setVisible(false);
+                    pgInstallBox.setManaged(false);
+                } else {
+                    pgInstallBox.setVisible(true);
+                    pgInstallBox.setManaged(true);
+                    lblPgInstallStatus.setText("PostgreSQL nao detectado na maquina.");
+                    lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#F59E0B"));
+                }
+            });
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
+
+    private boolean isPostgresRunning() {
+        // Tenta conectar na porta default
+        try (java.net.Socket socket = new java.net.Socket()) {
+            socket.connect(new java.net.InetSocketAddress("localhost", 5432), 2000);
+            return true;
+        } catch (Exception e) {
+            // Tenta porta 5433 tambem (segunda instancia comum)
+            try (java.net.Socket socket = new java.net.Socket()) {
+                socket.connect(new java.net.InetSocketAddress("localhost", 5433), 1000);
+                return true;
+            } catch (Exception e2) {
+                return false;
+            }
+        }
+    }
+
+    @FXML
+    private void handleInstalarPostgres() {
+        btnInstalarPostgres.setDisable(true);
+        progressPgInstall.setVisible(true);
+        progressPgInstall.setProgress(-1); // indeterminate
+
+        String os = System.getProperty("os.name", "").toLowerCase();
+
+        if (os.contains("win")) {
+            instalarPostgresWindows();
+        } else if (os.contains("linux")) {
+            instalarPostgresLinux();
+        } else {
+            lblPgInstallStatus.setText("SO nao suportado para instalacao automatica.");
+            lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
+            btnInstalarPostgres.setDisable(false);
+            progressPgInstall.setVisible(false);
+        }
+    }
+
+    private void instalarPostgresWindows() {
+        lblPgInstallStatus.setText("Baixando PostgreSQL 16 para Windows...");
+        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
+
+        Thread bg = new Thread(() -> {
+            try {
+                // Baixar o instalador do PostgreSQL
+                String pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-16.6-1-windows-x64.exe";
+                Path tempInstaller = Files.createTempFile("postgresql-installer-", ".exe");
+
+                updatePgStatus("Baixando PostgreSQL (pode levar alguns minutos)...");
+
+                try (java.io.InputStream in = new URL(pgUrl).openStream()) {
+                    Files.copy(in, tempInstaller, StandardCopyOption.REPLACE_EXISTING);
+                }
+
+                updatePgStatus("Download concluido. Executando instalador...");
+
+                // Executar instalador em modo unattended com senha padrao
+                ProcessBuilder pb = new ProcessBuilder(
+                    tempInstaller.toString(),
+                    "--mode", "unattended",
+                    "--superpassword", "NavieraDB@2026",
+                    "--serverport", "5432",
+                    "--prefix", "C:\\Program Files\\PostgreSQL\\16",
+                    "--datadir", "C:\\Program Files\\PostgreSQL\\16\\data",
+                    "--install_runtimes", "0"
+                );
+                pb.redirectErrorStream(true);
+                Process proc = pb.start();
+
+                // Ler output
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        AppLogger.info("PgInstall", line);
+                    }
+                }
+
+                int exitCode = proc.waitFor();
+
+                // Limpar installer
+                Files.deleteIfExists(tempInstaller);
+
+                if (exitCode == 0) {
+                    // Aguardar o servico iniciar
+                    Thread.sleep(3000);
+                    boolean running = isPostgresRunning();
+
+                    Platform.runLater(() -> {
+                        progressPgInstall.setProgress(1.0);
+                        if (running) {
+                            lblPgInstallStatus.setText("PostgreSQL instalado com sucesso!");
+                            lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
+                            // Preencher campos automaticamente
+                            txtUsuario.setText("postgres");
+                            txtSenha.setText("NavieraDB@2026");
+                            txtPorta.setText("5432");
+                        } else {
+                            lblPgInstallStatus.setText("Instalado, mas o servico nao iniciou. Reinicie o computador.");
+                            lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#F59E0B"));
+                        }
+                        btnInstalarPostgres.setDisable(false);
+                    });
+                } else {
+                    updatePgStatus("Erro na instalacao (codigo " + exitCode + "). Instale manualmente.");
+                    Platform.runLater(() -> {
+                        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
+                        btnInstalarPostgres.setDisable(false);
+                        progressPgInstall.setVisible(false);
+                    });
+                }
+
+            } catch (Exception e) {
+                AppLogger.error("PgInstall", "Erro ao instalar PostgreSQL: " + e.getMessage(), e);
+                Platform.runLater(() -> {
+                    lblPgInstallStatus.setText("Erro: " + e.getMessage());
+                    lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
+                    btnInstalarPostgres.setDisable(false);
+                    progressPgInstall.setVisible(false);
+                });
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
+
+    private void instalarPostgresLinux() {
+        lblPgInstallStatus.setText("Instalando PostgreSQL via apt...");
+        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
+
+        Thread bg = new Thread(() -> {
+            try {
+                // No Linux, usar pkexec para rodar com permissao de root
+                ProcessBuilder pb = new ProcessBuilder(
+                    "pkexec", "bash", "-c",
+                    "apt-get update -qq && apt-get install -y postgresql postgresql-client && " +
+                    "sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'NavieraDB@2026';\""
+                );
+                pb.redirectErrorStream(true);
+                Process proc = pb.start();
+
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String logLine = line;
+                        AppLogger.info("PgInstall", logLine);
+                    }
+                }
+
+                int exitCode = proc.waitFor();
+
+                Thread.sleep(2000);
+                boolean running = isPostgresRunning();
+
+                Platform.runLater(() -> {
+                    progressPgInstall.setProgress(1.0);
+                    if (running) {
+                        lblPgInstallStatus.setText("PostgreSQL instalado com sucesso!");
+                        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
+                        txtUsuario.setText("postgres");
+                        txtSenha.setText("NavieraDB@2026");
+                        txtPorta.setText("5432");
+                    } else {
+                        lblPgInstallStatus.setText("Instalado mas nao iniciou. Execute: sudo systemctl start postgresql");
+                        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#F59E0B"));
+                    }
+                    btnInstalarPostgres.setDisable(false);
+                });
+
+            } catch (Exception e) {
+                AppLogger.error("PgInstall", "Erro: " + e.getMessage(), e);
+                Platform.runLater(() -> {
+                    lblPgInstallStatus.setText("Erro: " + e.getMessage());
+                    lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
+                    btnInstalarPostgres.setDisable(false);
+                    progressPgInstall.setVisible(false);
+                });
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
+
+    private void updatePgStatus(String msg) {
+        Platform.runLater(() -> lblPgInstallStatus.setText(msg));
     }
 
     // ========================================================================

@@ -118,6 +118,22 @@
                         <children>
                            <Label text="Configure a conexao com o PostgreSQL local." textFill="#546e7a" wrapText="true" />
 
+                           <!-- PostgreSQL nao detectado — oferecer instalacao -->
+                           <VBox fx:id="pgInstallBox" spacing="10.0" visible="false" managed="false" style="-fx-background-color: #FEF3C7; -fx-border-color: #F59E0B; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 15;">
+                              <children>
+                                 <Label text="PostgreSQL nao detectado" textFill="#92400E" wrapText="true">
+                                    <font><Font name="System Bold" size="13.0" /></font>
+                                 </Label>
+                                 <Label fx:id="lblPgInstallStatus" text="O PostgreSQL e necessario para o Naviera funcionar." textFill="#78350F" wrapText="true">
+                                    <font><Font size="12.0" /></font>
+                                 </Label>
+                                 <ProgressBar fx:id="progressPgInstall" prefHeight="15.0" prefWidth="1.7976931348623157E308" progress="0.0" visible="false" style="-fx-accent: #059669;" />
+                                 <Button fx:id="btnInstalarPostgres" onAction="#handleInstalarPostgres" prefHeight="35.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="Instalar PostgreSQL automaticamente">
+                                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                                 </Button>
+                              </children>
+                           </VBox>
+
                            <VBox spacing="5.0">
                               <children>
                                  <Label text="Host:" textFill="#0F2D24">
