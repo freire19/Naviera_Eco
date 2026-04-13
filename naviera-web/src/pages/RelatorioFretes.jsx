@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { PieChart } from '../components/Charts.jsx'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -45,6 +46,14 @@ export default function RelatorioFretes({ viagemAtiva }) {
     )
   }
 
+  // PieChart data: pago vs devedor
+  const pagos = fretes.filter(f => f.status === 'PAGO').length
+  const pendentes = fretes.filter(f => f.status !== 'PAGO').length
+  const pieData = [
+    { label: 'Pago', value: pagos, color: '#4ADE80' },
+    { label: 'Devedor', value: pendentes, color: '#EF4444' }
+  ]
+
   return (
     <div>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
@@ -66,6 +75,16 @@ export default function RelatorioFretes({ viagemAtiva }) {
               <div className="stat-card info">
                 <span className="stat-label">Valor Pago</span>
                 <span className="stat-value money">{formatMoney(resumo.valor_pago)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Chart */}
+          {fretes.length > 0 && (
+            <div className="dash-grid" style={{ marginTop: '1.5rem' }}>
+              <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Status Pagamento</h4>
+                <PieChart data={pieData} size={180} />
               </div>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { printListaPassageiros } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -45,7 +46,17 @@ export default function ListaPassageiros({ viagemAtiva }) {
       <div className="card">
         <div className="card-header">
           <h3>Lista de Passageiros — {viagemAtiva.descricao || `Viagem #${viagemAtiva.id_viagem}`}</h3>
-          <span className="badge info">{passagens.length} passageiros</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="badge info">{passagens.length} passageiros</span>
+            {passagens.length > 0 && (
+              <button
+                className="btn-sm primary"
+                onClick={() => printListaPassageiros(passagens, viagemAtiva)}
+              >
+                Imprimir Lista
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { printReciboEncomenda } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -233,6 +234,7 @@ export default function Encomendas({ viagemAtiva }) {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn-sm primary" onClick={() => printReciboEncomenda(e, viagemAtiva)}>Imprimir</button>
                         {!e.entregue && e.status_pagamento !== 'PAGO' && (
                           <button className="btn-sm primary" onClick={() => openPagar(e)}>Pagar</button>
                         )}

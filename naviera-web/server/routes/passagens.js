@@ -6,6 +6,27 @@ import { validate } from '../middleware/validate.js'
 const router = Router()
 router.use(authMiddleware)
 
+// GET /api/passageiros/busca?q=jon — Search passageiros by name (ILIKE)
+router.get('/busca-passageiro', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { q } = req.query
+    if (!q || q.trim().length < 2) return res.json([])
+    const result = await pool.query(
+      `SELECT id_passageiro, nome_passageiro, numero_documento
+       FROM passageiros
+       WHERE empresa_id = $1 AND nome_passageiro ILIKE $2
+       ORDER BY nome_passageiro
+       LIMIT 15`,
+      [empresaId, `%${q.trim()}%`]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    console.error('[Passagens] Erro busca passageiro:', err.message)
+    res.status(500).json({ error: 'Erro ao buscar passageiros' })
+  }
+})
+
 // GET /api/passagens?viagem_id=X
 router.get('/', async (req, res) => {
   try {

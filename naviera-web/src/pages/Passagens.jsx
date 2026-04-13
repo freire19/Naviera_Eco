@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
+import { printBilhete, printListaPassageiros } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -43,6 +44,13 @@ export default function Passagens({ viagemAtiva }) {
   // Tipos passageiro (dropdown)
   const [tiposPassageiro, setTiposPassageiro] = useState([])
 
+  // Autocomplete passageiro
+  const [sugestoes, setSugestoes] = useState([])
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const [buscando, setBuscando] = useState(false)
+  const debounceRef = useRef(null)
+  const autocompleteRef = useRef(null)
+
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3500)
@@ -67,16 +75,68 @@ export default function Passagens({ viagemAtiva }) {
       .catch(() => {})
   }, [])
 
+  // Close autocomplete on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(e.target)) {
+        setMostrarSugestoes(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  // --- Autocomplete passageiro ---
+
+  function handleNomeChange(e) {
+    const value = e.target.value
+    setForm(prev => ({ ...prev, nome_passageiro: value, id_passageiro: '' }))
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (value.trim().length < 2) {
+      setSugestoes([])
+      setMostrarSugestoes(false)
+      return
+    }
+
+    debounceRef.current = setTimeout(() => {
+      setBuscando(true)
+      api.get(`/passagens/busca-passageiro?q=${encodeURIComponent(value.trim())}`)
+        .then(data => {
+          setSugestoes(Array.isArray(data) ? data : [])
+          setMostrarSugestoes(true)
+        })
+        .catch(() => setSugestoes([]))
+        .finally(() => setBuscando(false))
+    }, 300)
+  }
+
+  function selecionarPassageiro(p) {
+    setForm(prev => ({
+      ...prev,
+      nome_passageiro: p.nome_passageiro,
+      numero_doc: p.numero_documento || '',
+      id_passageiro: p.id_passageiro
+    }))
+    setMostrarSugestoes(false)
+    setSugestoes([])
+  }
+
   // --- Criar passagem ---
 
   function abrirModalCriar() {
     setForm({ ...FORM_INICIAL, id_viagem: viagemAtiva.id_viagem })
+    setSugestoes([])
+    setMostrarSugestoes(false)
     setModalCriar(true)
   }
 
   function fecharModalCriar() {
     setModalCriar(false)
     setForm(FORM_INICIAL)
+    setSugestoes([])
+    setMostrarSugestoes(false)
   }
 
   function handleFormChange(e) {
@@ -197,6 +257,15 @@ export default function Passagens({ viagemAtiva }) {
             <button className="btn-primary" onClick={abrirModalCriar}>
               + Nova Passagem
             </button>
+            {passagens.length > 0 && (
+              <button
+                className="btn-sm primary"
+                style={{ marginLeft: 8 }}
+                onClick={() => printListaPassageiros(passagens, viagemAtiva)}
+              >
+                Imprimir Lista
+              </button>
+            )}
           </div>
           <span className="badge info">{passagens.length} registros</span>
         </div>
@@ -235,6 +304,13 @@ export default function Passagens({ viagemAtiva }) {
                         </span>
                       </td>
                       <td>
+                        <button
+                          className="btn-sm primary"
+                          onClick={() => printBilhete(p, viagemAtiva)}
+                          style={{ marginRight: 6 }}
+                        >
+                          Imprimir
+                        </button>
                         {restante > 0 && (
                           <button
                             className="btn-sm primary"
@@ -274,15 +350,77 @@ export default function Passagens({ viagemAtiva }) {
             <h3>Nova Passagem</h3>
             <form onSubmit={handleCriar}>
               <div className="form-grid">
-                <div className="form-group">
+                <div className="form-group" ref={autocompleteRef} style={{ position: 'relative' }}>
                   <label>Nome do Passageiro *</label>
                   <input
                     name="nome_passageiro"
                     value={form.nome_passageiro}
-                    onChange={handleFormChange}
-                    placeholder="Nome completo"
+                    onChange={handleNomeChange}
+                    onFocus={() => { if (sugestoes.length > 0) setMostrarSugestoes(true) }}
+                    placeholder="Digite para buscar..."
                     required
+                    autoComplete="off"
                   />
+                  {buscando && (
+                    <div style={{ position: 'absolute', right: 8, top: 34, fontSize: 11, color: 'var(--text-muted)' }}>
+                      Buscando...
+                    </div>
+                  )}
+                  {mostrarSugestoes && sugestoes.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      maxHeight: 200,
+                      overflowY: 'auto',
+                      zIndex: 100,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    }}>
+                      {sugestoes.map(s => (
+                        <div
+                          key={s.id_passageiro}
+                          onClick={() => selecionarPassageiro(s)}
+                          style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid var(--border)',
+                            fontSize: 13
+                          }}
+                          onMouseEnter={e => e.target.style.background = 'var(--bg-hover)'}
+                          onMouseLeave={e => e.target.style.background = 'transparent'}
+                        >
+                          <strong>{s.nome_passageiro}</strong>
+                          {s.numero_documento && (
+                            <span style={{ color: 'var(--text-muted)', marginLeft: 8, fontSize: 12 }}>
+                              Doc: {s.numero_documento}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {mostrarSugestoes && sugestoes.length === 0 && form.nome_passageiro.trim().length >= 2 && !buscando && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      fontSize: 12,
+                      color: 'var(--text-muted)',
+                      zIndex: 100,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    }}>
+                      Nenhum passageiro encontrado. Um novo sera criado.
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Documento</label>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { PieChart } from '../components/Charts.jsx'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -38,6 +39,13 @@ export default function BalancoViagem({ viagemAtiva }) {
     )
   }
 
+  // PieChart: receitas por tipo
+  const pieData = balanco ? [
+    { label: 'Passagens', value: balanco.receitas?.passagens || 0, color: '#059669' },
+    { label: 'Encomendas', value: balanco.receitas?.encomendas || 0, color: '#0EA5E9' },
+    { label: 'Fretes', value: balanco.receitas?.fretes || 0, color: '#F59E0B' }
+  ] : []
+
   return (
     <div>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
@@ -70,6 +78,16 @@ export default function BalancoViagem({ viagemAtiva }) {
               <span className="stat-sub">Receita de fretes</span>
             </div>
           </div>
+
+          {/* PieChart receitas */}
+          {(balanco.totalReceitas || 0) > 0 && (
+            <div className="dash-grid" style={{ marginTop: '1.5rem' }}>
+              <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Composicao Receitas</h4>
+                <PieChart data={pieData} size={200} />
+              </div>
+            </div>
+          )}
 
           {/* Totais */}
           <div className="dash-grid" style={{ marginTop: '1rem' }}>

@@ -24,6 +24,10 @@ import RelatorioFretes from '../pages/RelatorioFretes.jsx'
 // Financeiro
 import FinanceiroSaida from '../pages/FinanceiroSaida.jsx'
 import BalancoViagem from '../pages/BalancoViagem.jsx'
+import Boletos from '../pages/Boletos.jsx'
+
+// Tabela Precos
+import TabelaPrecoFrete from '../pages/TabelaPrecoFrete.jsx'
 
 // Cadastros
 import CadastroViagem from '../pages/CadastroViagem.jsx'
@@ -59,9 +63,11 @@ const PAGES = {
   'lancar-frete': { component: Fretes, label: 'Lancar Frete', section: 'fretes' },
   'listar-fretes': { component: ListaFretes, label: 'Lista Fretes', section: 'fretes' },
   'relatorio-fretes': { component: RelatorioFretes, label: 'Relatorio Fretes', section: 'fretes' },
+  'tabela-preco-frete': { component: TabelaPrecoFrete, label: 'Tabela Precos', section: 'fretes' },
   'financeiro-entrada': { component: Financeiro, label: 'Lancar Entrada', section: 'financeiro' },
   'financeiro-saida': { component: FinanceiroSaida, label: 'Lancar Saida', section: 'financeiro' },
   'balanco-viagem': { component: BalancoViagem, label: 'Balanco Viagem', section: 'financeiro' },
+  'boletos': { component: Boletos, label: 'Boletos', section: 'financeiro' },
   'cadastro-viagem': { component: CadastroViagem, label: 'Cadastrar Viagem', section: 'cadastros' },
   'cadastro-usuario': { component: CadastroUsuario, label: 'Usuarios', section: 'cadastros' },
   'cadastro-rota': { component: CadastroRota, label: 'Rotas', section: 'cadastros' },

@@ -420,4 +420,100 @@ router.delete('/funcionarios/:id', async (req, res) => {
   }
 })
 
+// --- Itens Frete Padrao CRUD ---
+router.post('/itens-frete', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome_item, preco_padrao } = req.body
+    if (!nome_item) return res.status(400).json({ error: 'nome_item obrigatorio' })
+    const result = await pool.query(
+      'INSERT INTO itens_frete_padrao (nome_item, preco_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) RETURNING *',
+      [nome_item, parseFloat(preco_padrao) || 0, empresaId]
+    )
+    res.status(201).json(result.rows[0])
+  } catch (err) {
+    console.error('[Cadastros] Erro ao criar item frete:', err.message)
+    res.status(500).json({ error: 'Erro ao criar item frete' })
+  }
+})
+
+router.put('/itens-frete/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome_item, preco_padrao } = req.body
+    const result = await pool.query(
+      'UPDATE itens_frete_padrao SET nome_item = COALESCE($1, nome_item), preco_padrao = COALESCE($2, preco_padrao) WHERE id = $3 AND empresa_id = $4 RETURNING *',
+      [nome_item, preco_padrao != null ? parseFloat(preco_padrao) : null, req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Item frete nao encontrado' })
+    res.json(result.rows[0])
+  } catch (err) {
+    console.error('[Cadastros] Erro ao atualizar item frete:', err.message)
+    res.status(500).json({ error: 'Erro ao atualizar item frete' })
+  }
+})
+
+router.delete('/itens-frete/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'UPDATE itens_frete_padrao SET ativo = FALSE WHERE id = $1 AND empresa_id = $2 RETURNING *',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Item frete nao encontrado' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[Cadastros] Erro ao desativar item frete:', err.message)
+    res.status(500).json({ error: 'Erro ao desativar item frete' })
+  }
+})
+
+// --- Itens Encomenda Padrao CRUD ---
+router.post('/itens-encomenda', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome_item, preco_padrao } = req.body
+    if (!nome_item) return res.status(400).json({ error: 'nome_item obrigatorio' })
+    const result = await pool.query(
+      'INSERT INTO itens_encomenda_padrao (nome_item, preco_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) RETURNING *',
+      [nome_item, parseFloat(preco_padrao) || 0, empresaId]
+    )
+    res.status(201).json(result.rows[0])
+  } catch (err) {
+    console.error('[Cadastros] Erro ao criar item encomenda:', err.message)
+    res.status(500).json({ error: 'Erro ao criar item encomenda' })
+  }
+})
+
+router.put('/itens-encomenda/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome_item, preco_padrao } = req.body
+    const result = await pool.query(
+      'UPDATE itens_encomenda_padrao SET nome_item = COALESCE($1, nome_item), preco_padrao = COALESCE($2, preco_padrao) WHERE id = $3 AND empresa_id = $4 RETURNING *',
+      [nome_item, preco_padrao != null ? parseFloat(preco_padrao) : null, req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Item encomenda nao encontrado' })
+    res.json(result.rows[0])
+  } catch (err) {
+    console.error('[Cadastros] Erro ao atualizar item encomenda:', err.message)
+    res.status(500).json({ error: 'Erro ao atualizar item encomenda' })
+  }
+})
+
+router.delete('/itens-encomenda/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'UPDATE itens_encomenda_padrao SET ativo = FALSE WHERE id = $1 AND empresa_id = $2 RETURNING *',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Item encomenda nao encontrado' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[Cadastros] Erro ao desativar item encomenda:', err.message)
+    res.status(500).json({ error: 'Erro ao desativar item encomenda' })
+  }
+})
+
 export default router

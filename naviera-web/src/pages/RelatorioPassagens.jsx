@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { PieChart, BarChart } from '../components/Charts.jsx'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -45,6 +46,27 @@ export default function RelatorioPassagens({ viagemAtiva }) {
     )
   }
 
+  // Compute chart data
+  const pagos = passagens.filter(p => !p.devedor).length
+  const devedores = passagens.filter(p => p.devedor).length
+  const pieData = [
+    { label: 'Pago', value: pagos, color: '#4ADE80' },
+    { label: 'Devedor', value: devedores, color: '#EF4444' }
+  ]
+
+  // Bar chart: group by tipo passageiro
+  const tipoMap = {}
+  passagens.forEach(p => {
+    const tipo = p.tipo_passageiro || p.descricao_tipo || 'Sem tipo'
+    tipoMap[tipo] = (tipoMap[tipo] || 0) + 1
+  })
+  const barColors = ['#059669', '#0EA5E9', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+  const barData = Object.entries(tipoMap).map(([label, value], i) => ({
+    label,
+    value,
+    color: barColors[i % barColors.length]
+  }))
+
   return (
     <div>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
@@ -67,6 +89,22 @@ export default function RelatorioPassagens({ viagemAtiva }) {
                 <span className="stat-label">Valor Pago</span>
                 <span className="stat-value money">{formatMoney(resumo.valor_pago)}</span>
               </div>
+            </div>
+          )}
+
+          {/* Charts */}
+          {passagens.length > 0 && (
+            <div className="dash-grid" style={{ marginTop: '1.5rem' }}>
+              <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Status Pagamento</h4>
+                <PieChart data={pieData} size={180} />
+              </div>
+              {barData.length > 1 && (
+                <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                  <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Por Tipo Passageiro</h4>
+                  <BarChart data={barData} width={360} height={200} />
+                </div>
+              )}
             </div>
           )}
 

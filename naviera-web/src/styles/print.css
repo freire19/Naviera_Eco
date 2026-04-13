@@ -1,0 +1,103 @@
+/* === Naviera Web — Print Styles === */
+
+@media print {
+  /* Hide app chrome */
+  .sidebar,
+  .topbar,
+  .modal-overlay,
+  .toast,
+  .btn-primary,
+  .btn-secondary,
+  .btn-sm,
+  .btn-icon,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset layout */
+  .app-layout {
+    display: block !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    padding: 0 !important;
+  }
+
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* Tables for print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important;
+  }
+
+  table th {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    border: 1px solid #333 !important;
+    padding: 6px 8px !important;
+    font-size: 9pt !important;
+  }
+
+  table td {
+    border: 1px solid #999 !important;
+    padding: 5px 8px !important;
+    color: #000 !important;
+  }
+
+  table tr:hover td {
+    background: transparent !important;
+  }
+
+  /* Badge adjustments */
+  .badge {
+    border: 1px solid #999 !important;
+    background: transparent !important;
+    color: #000 !important;
+  }
+
+  /* Page breaks */
+  .card {
+    page-break-inside: avoid;
+  }
+
+  /* A4 defaults */
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}
+
+/* Thermal printer format (80mm) */
+@media print and (max-width: 80mm) {
+  @page {
+    size: 80mm auto;
+    margin: 2mm;
+  }
+
+  body {
+    font-size: 9pt;
+    width: 80mm;
+  }
+
+  table {
+    font-size: 8pt !important;
+  }
+}

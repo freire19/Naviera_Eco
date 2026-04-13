@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { printNotaFrete, printEtiquetaFrete } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -186,10 +187,11 @@ export default function Fretes({ viagemAtiva }) {
                       </span>
                     </td>
                     <td>
+                      <button className="btn-sm primary" onClick={() => printNotaFrete(f, viagemAtiva)} style={{ marginRight: 4 }}>Nota</button>
+                      <button className="btn-sm primary" onClick={() => printEtiquetaFrete(f)} style={{ marginRight: 4 }}>Etiqueta</button>
                       {f.status !== 'PAGO' && f.status !== 'CANCELADO' && (
-                        <button className="btn-sm primary" onClick={() => openPayModal(f)}>Pagar</button>
+                        <button className="btn-sm primary" onClick={() => openPayModal(f)} style={{ marginRight: 4 }}>Pagar</button>
                       )}
-                      {' '}
                       <button className="btn-sm danger" onClick={() => handleDelete(f)}>Excluir</button>
                     </td>
                   </tr>

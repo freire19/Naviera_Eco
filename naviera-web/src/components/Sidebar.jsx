@@ -28,7 +28,8 @@ const NAV = [
     items: [
       { key: 'lancar-frete', icon: '\uD83D\uDE9A', label: 'Lancar Frete' },
       { key: 'listar-fretes', icon: '\uD83D\uDCCB', label: 'Lista Fretes' },
-      { key: 'relatorio-fretes', icon: '\uD83D\uDCCA', label: 'Relatorio' }
+      { key: 'relatorio-fretes', icon: '\uD83D\uDCCA', label: 'Relatorio' },
+      { key: 'tabela-preco-frete', icon: '\uD83C\uDFF7', label: 'Tabela Precos' }
     ]
   },
   {
@@ -36,7 +37,8 @@ const NAV = [
     items: [
       { key: 'financeiro-entrada', icon: '\uD83D\uDCB0', label: 'Lancar Entrada' },
       { key: 'financeiro-saida', icon: '\uD83D\uDCB8', label: 'Lancar Saida' },
-      { key: 'balanco-viagem', icon: '\uD83D\uDCC8', label: 'Balanco Viagem' }
+      { key: 'balanco-viagem', icon: '\uD83D\uDCC8', label: 'Balanco Viagem' },
+      { key: 'boletos', icon: '\uD83D\uDCDD', label: 'Boletos' }
     ]
   },
   {
