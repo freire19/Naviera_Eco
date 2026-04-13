@@ -130,9 +130,11 @@ jobs:
           Copy-Item "$DIST\naviera-desktop.jar" $JPINPUT
           Copy-Item "$LIB\*.jar" "$JPINPUT\lib\"
 
-          # Icon
+          # Icon (.ico for Windows)
           $iconOpt = @()
-          if (Test-Path "$SRC\gui\icons\logo_icon.png") {
+          if (Test-Path "$SRC\gui\icons\logo_icon.ico") {
+            $iconOpt = @("--icon", "$SRC\gui\icons\logo_icon.ico")
+          } elseif (Test-Path "$SRC\gui\icons\logo_icon.png") {
             $iconOpt = @("--icon", "$SRC\gui\icons\logo_icon.png")
           }
 
