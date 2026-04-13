@@ -1,0 +1,5 @@
+# Configuracao do banco de dados — NAO commitar com credenciais de producao
+db.url=jdbc:postgresql://localhost:5437/naviera_eco
+db.usuario=postgres
+db.senha=SUA_SENHA_AQUI
+db.pool.tamanho=5
