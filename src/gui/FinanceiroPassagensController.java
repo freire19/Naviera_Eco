@@ -29,6 +29,7 @@ import gui.util.StatusPagamentoView;
 import model.PassagemFinanceiro;
 import model.OpcaoViagem;
 import gui.util.AppLogger;
+
 public class FinanceiroPassagensController {
     @FXML private ComboBox<OpcaoViagem> cmbViagem;
     @FXML private TextField txtBusca;
@@ -37,13 +38,14 @@ public class FinanceiroPassagensController {
     @FXML private Button btnSair;
     @FXML private TableView<PassagemFinanceiro> tabela;
     @FXML private TableColumn<PassagemFinanceiro, String> colBilhete;
-    @FXML private TableColumn<PassagemFinanceiro, String> colData; 
+    @FXML private TableColumn<PassagemFinanceiro, String> colData;
     @FXML private TableColumn<PassagemFinanceiro, String> colPassageiro;
     @FXML private TableColumn<PassagemFinanceiro, String> colDestino;
     @FXML private TableColumn<PassagemFinanceiro, String> colTotal;
     @FXML private TableColumn<PassagemFinanceiro, String> colPago;
     @FXML private TableColumn<PassagemFinanceiro, String> colRestante;
     @FXML private TableColumn<PassagemFinanceiro, String> colStatus;
+
     @FXML
     public void initialize() {
         if (!PermissaoService.isFinanceiro()) { PermissaoService.exigirFinanceiro("Financeiro Passagens"); return; }
@@ -55,34 +57,44 @@ public class FinanceiroPassagensController {
         bg.start();
         txtBusca.textProperty().addListener((obs, oldVal, newVal) -> carregarDadosEmBackground());
         chkApenasDevedores.selectedProperty().addListener((obs, oldVal, newVal) -> carregarDadosEmBackground());
-        
+
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
         } catch (Exception e) { AppLogger.warn("FinanceiroPassagensController", "Erro em FinanceiroPassagensController.initialize (CSS): " + e.getMessage()); }
     }
+
     public void sair() {
         Stage stage = (Stage) btnSair.getScene().getWindow();
         stage.close();
+    }
+
     public void verHistoricoEstornos() {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/HistoricoEstornosPassagens.fxml")); 
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/HistoricoEstornosPassagens.fxml"));
             Parent root = loader.load();
-            
+
             Stage stage = new Stage();
-            stage.setTitle("Histórico de Auditoria - Estornos (Passagens)");
+            stage.setTitle("Historico de Auditoria - Estornos (Passagens)");
             stage.setScene(TemaManager.criarSceneComTema(root));
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setMaximized(true);
             stage.showAndWait();
-        } catch(Exception e) { 
-            AppLogger.error("FinanceiroPassagensController", e.getMessage(), e); 
-            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro ao abrir histórico: " + e.getMessage()); 
+        } catch (Exception e) {
+            AppLogger.error("FinanceiroPassagensController", e.getMessage(), e);
+            AlertHelper.info("Erro interno. Contate o administrador.");
+            AppLogger.warn("FinanceiroPassagensController", "Erro ao abrir historico: " + e.getMessage());
         }
+    }
+
     public void setViagemInicial(int idViagem) {
         for (OpcaoViagem op : cmbViagem.getItems()) {
             if (op.id == idViagem) {
                 cmbViagem.setValue(op);
                 break;
             }
+        }
+    }
+
     private void configurarTabela() {
         colBilhete.setCellValueFactory(new PropertyValueFactory<>("bilhete"));
         colData.setCellValueFactory(new PropertyValueFactory<>("dataViagem"));
@@ -102,7 +114,10 @@ public class FinanceiroPassagensController {
                     setText(item);
                     setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
+            }
         });
+    }
+
     private void carregarComboViagens() {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
@@ -112,8 +127,11 @@ public class FinanceiroPassagensController {
             if (label == null || label.trim().isEmpty()) label = "Viagem";
             if (v.getDataViagem() != null) label += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem())) + ")";
             lista.add(new OpcaoViagem(v.getId().intValue(), label));
+        }
         ObservableList<OpcaoViagem> finalLista = lista;
         javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
+    }
+
     /**
      * Resultado da query de passagens financeiras.
      */
@@ -123,8 +141,13 @@ public class FinanceiroPassagensController {
         ResultadoQueryPassagens(ObservableList<PassagemFinanceiro> lista, java.math.BigDecimal somaPendente) {
             this.lista = lista;
             this.somaPendente = somaPendente;
+        }
+    }
+
+    /**
      * Executa a query de passagens financeiras com os filtros informados.
      * Pode ser chamado de qualquer thread (nao acessa UI).
+     */
     private ResultadoQueryPassagens buscarPassagensFinanceiro(int idViagem, boolean apenasDevedores, String busca) throws SQLException {
         ObservableList<PassagemFinanceiro> lista = FXCollections.observableArrayList();
         java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
@@ -146,6 +169,8 @@ public class FinanceiroPassagensController {
             String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
             sql.append(" AND (LOWER(pas.nome_passageiro) LIKE ? ESCAPE '\\' OR CAST(p.numero_bilhete AS TEXT) LIKE ? ESCAPE '\\') ");
             params.add("%" + buscaEscapada + "%");
+            params.add("%" + buscaEscapada + "%");
+        }
         sql.append(" ORDER BY p.id_passagem DESC");
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
@@ -153,6 +178,7 @@ public class FinanceiroPassagensController {
                 Object p = params.get(i);
                 if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
                 else stmt.setString(i + 1, p.toString());
+            }
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             while (rs.next()) {
@@ -170,18 +196,27 @@ public class FinanceiroPassagensController {
                     rs.getString("nome_passageiro"), rs.getString("destino_nome"), total, pago, statusBD
                 ));
                 if (devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
+            }
+        }
         return new ResultadoQueryPassagens(lista, somaPendente);
+    }
+
     public void carregarDados() {
         if (cmbViagem.getValue() == null) return;
         int idViagem = cmbViagem.getValue().id;
         boolean apenasDevedores = chkApenasDevedores.isSelected();
         String busca = txtBusca.getText() != null ? txtBusca.getText().toLowerCase() : "";
+        try {
             ResultadoQueryPassagens resultado = buscarPassagensFinanceiro(idViagem, apenasDevedores, busca);
             tabela.setItems(resultado.lista);
             lblTotalPendente.setText(String.format("R$ %,.2f", resultado.somaPendente));
         } catch (SQLException e) {
             AppLogger.error("FinanceiroPassagensController", e.getMessage(), e);
-            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro ao buscar dados: " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador.");
+            AppLogger.warn("FinanceiroPassagensController", "Erro ao buscar dados: " + e.getMessage());
+        }
+    }
+
     // DR102: captura valores UI na FX thread, busca dados em bg, atualiza UI via Platform.runLater
     private void carregarDadosEmBackground() {
         final OpcaoViagem viagemSel = cmbViagem.getValue();
@@ -192,48 +227,67 @@ public class FinanceiroPassagensController {
         Task<ResultadoQueryPassagens> task = new Task<>() {
             protected ResultadoQueryPassagens call() throws Exception {
                 return buscarPassagensFinanceiro(idViagem, apenasDevedores, busca);
+            }
         };
         task.setOnSucceeded(event -> {
             ResultadoQueryPassagens resultado = task.getValue();
+            tabela.setItems(resultado.lista);
+            lblTotalPendente.setText(String.format("R$ %,.2f", resultado.somaPendente));
+        });
         task.setOnFailed(event -> {
             Throwable ex = task.getException();
             if (ex != null) AppLogger.error("FinanceiroPassagensController", ex.getMessage(), ex);
             javafx.application.Platform.runLater(() -> AlertHelper.info("Erro ao carregar dados financeiros."));
+        });
         Thread t = new Thread(task);
         t.setDaemon(true);
         t.start();
+    }
+
     // =================================================================================
-    // >>> LÓGICA DE DAR BAIXA (MODERNA - MÚLTIPLOS PAGAMENTOS) <<<
+    // >>> LOGICA DE DAR BAIXA (MODERNA - MULTIPLOS PAGAMENTOS) <<<
     public void darBaixa() {
         PassagemFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
             AlertHelper.info("Selecione uma passagem na tabela para dar baixa.");
             return;
+        }
         if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
-            AlertHelper.info("Esta passagem já está quitada!");
-            // 1. Busca os dados COMPLETOS da passagem no banco (incluindo o que já foi pago de Pix/Dinheiro/Cartão)
+            AlertHelper.info("Esta passagem ja esta quitada!");
+            return;
+        }
+        try {
+            // 1. Busca os dados COMPLETOS da passagem no banco (incluindo o que ja foi pago de Pix/Dinheiro/Cartao)
             Passagem passagemCompleta = buscarPassagemCompletaPorId(selecionada.getId());
             if (passagemCompleta == null) {
                 AlertHelper.info("Erro ao carregar dados originais da passagem.");
                 return;
+            }
             // 2. Guarda os valores ANTIGOS (para somar depois)
             BigDecimal antigoDinheiro = passagemCompleta.getValorPagamentoDinheiro();
             BigDecimal antigoPix = passagemCompleta.getValorPagamentoPix();
             BigDecimal antigoCartao = passagemCompleta.getValorPagamentoCartao();
             // 3. Abre a janela de Pagamento Misto
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/FinalizarPagamentoPassagem.fxml"));
+            Parent root = loader.load();
             FinalizarPagamentoPassagemController controller = loader.getController();
-            // ATENÇÃO: Passamos a passagem para a tela, mas zeramos os campos de pagamento individuais na tela
-            // para que o usuário digite APENAS o que está pagando AGORA.
+            // ATENCAO: Passamos a passagem para a tela, mas zeramos os campos de pagamento individuais na tela
+            // para que o usuario digite APENAS o que esta pagando AGORA.
             controller.setDadosPagamento(null, passagemCompleta); // null stage, setaremos depois se precisar
-            stage.setTitle("Quitar Passagem - Múltiplos Pagamentos");
+
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
+            stage.setTitle("Quitar Passagem - Multiplos Pagamentos");
             stage.setResizable(false);
+            stage.initModality(Modality.APPLICATION_MODAL);
             // Re-seta o stage no controller para ele poder fechar
             controller.setDadosPagamento(stage, passagemCompleta);
+            stage.showAndWait();
+
             // 4. Se confirmou, processa a SOMA dos pagamentos
             if (controller.isConfirmado()) {
                 Passagem passagemRetorno = controller.getPassagemAtualizada();
-                
+
                 // Pega o que foi digitado na tela (o pagamento NOVO)
                 BigDecimal novoDinheiro = passagemRetorno.getValorPagamentoDinheiro();
                 BigDecimal novoPix = passagemRetorno.getValorPagamentoPix();
@@ -251,78 +305,96 @@ public class FinanceiroPassagensController {
                 BigDecimal totalDaPassagem = passagemRetorno.getValorTotal().subtract(passagemRetorno.getValorDesconto());
                 BigDecimal novoDevedor = totalDaPassagem.subtract(totalPagoAtualizado);
                 if (novoDevedor.compareTo(BigDecimal.ZERO) < 0) novoDevedor = BigDecimal.ZERO;
-                passagemRetorno.setValorAPagar(novoDevedor); // Atualiza campo valor_a_pagar/devedor
+                passagemRetorno.setValorAPagar(novoDevedor);
                 passagemRetorno.setDevedor(novoDevedor);
                 // Atualiza Status
                 if (novoDevedor.compareTo(BigDecimal.ZERO) <= 0) {
                     passagemRetorno.setStatusPassagem("PAGO");
+                } else {
                     passagemRetorno.setStatusPassagem("PARCIAL");
+                }
                 // 5. Salva no Banco usando o DAO atualizado
                 PassagemDAO dao = new PassagemDAO();
                 boolean sucesso = dao.atualizar(passagemRetorno);
                 if (sucesso) {
                     AlertHelper.info("Pagamento registrado com sucesso!");
-                    carregarDados(); // Atualiza a tabela
+                    carregarDados();
+                } else {
                     AlertHelper.info("Erro ao salvar o pagamento no banco.");
+                }
+            }
         } catch (Exception e) {
-            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro: " + e.getMessage());
-    
-    // Método auxiliar para buscar a passagem completa (necessário pois a tabela usa modelo simplificado)
+            AlertHelper.info("Erro interno. Contate o administrador.");
+            AppLogger.warn("FinanceiroPassagensController", "Erro: " + e.getMessage());
+        }
+    }
+
+    // Metodo auxiliar para buscar a passagem completa (necessario pois a tabela usa modelo simplificado)
     private Passagem buscarPassagemCompletaPorId(long id) {
         PassagemDAO dao = new PassagemDAO();
-        // Como o DAO pode não ter o buscarPorId implementado no seu código antigo,
-        // vou implementar uma busca rápida aqui mesmo para garantir.
         String sql = "SELECT * FROM passagens WHERE id_passagem = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
+            stmt.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) {
-                Passagem p = new Passagem();
-                p.setId(rs.getLong("id_passagem"));
-                p.setNumBilhete(rs.getInt("numero_bilhete"));
-                p.setValorTotal(rs.getBigDecimal("valor_total"));
-                p.setValorDesconto(rs.getBigDecimal("valor_desconto_geral"));
-                // Importante: Pegar o valor "A Pagar" correto (que é a dívida atual)
-                BigDecimal total = rs.getBigDecimal("valor_total");
-                BigDecimal pago = rs.getBigDecimal("valor_pago");
-                BigDecimal desc = rs.getBigDecimal("valor_desconto_geral");
-                if (pago == null) pago = BigDecimal.ZERO;
-                if (desc == null) desc = BigDecimal.ZERO;
-                p.setValorAPagar(total.subtract(desc).subtract(pago)); 
-                p.setValorPago(pago);
-                p.setValorPagamentoDinheiro(rs.getBigDecimal("valor_pagamento_dinheiro"));
-                p.setValorPagamentoPix(rs.getBigDecimal("valor_pagamento_pix"));
-                p.setValorPagamentoCartao(rs.getBigDecimal("valor_pagamento_cartao"));
-                // Campos obrigatórios para o update funcionar sem quebrar FKs
-                p.setIdPassageiro(rs.getLong("id_passageiro"));
-                p.setIdViagem(rs.getLong("id_viagem"));
-                p.setIdRota(rs.getLong("id_rota"));
-                // ... preencher outros FKs essenciais como null safe se o update pedir
-                p.setAssento(rs.getString("assento"));
-                // Se o seu método atualizar() valida muitos campos, precisaríamos carregar tudo.
-                // Mas geralmente para financeiro, focamos nos valores.
-                // Recarrega dados auxiliares minimos para o update não falhar
-                p.setIdAcomodacao(getObjectInt(rs, "id_acomodacao"));
-                p.setIdTipoPassagem(getObjectInt(rs, "id_tipo_passagem"));
-                p.setIdAgente(getObjectInt(rs, "id_agente"));
-                p.setIdCaixa(getObjectInt(rs, "id_caixa"));
-                p.setIdHorarioSaida(getObjectInt(rs, "id_horario_saida"));
-                p.setObservacoes(rs.getString("observacoes"));
-                return p;
-            } // fecha try(ResultSet)
-            AppLogger.warn("FinanceiroPassagensController", "FinanceiroPassagensController.buscarPassagemCompletaPorId: erro ao buscar passagem id=" + id + " — " + e.getMessage());
+                if (rs.next()) {
+                    Passagem p = new Passagem();
+                    p.setId(rs.getLong("id_passagem"));
+                    p.setNumBilhete(rs.getInt("numero_bilhete"));
+                    p.setValorTotal(rs.getBigDecimal("valor_total"));
+                    p.setValorDesconto(rs.getBigDecimal("valor_desconto_geral"));
+                    BigDecimal total = rs.getBigDecimal("valor_total");
+                    BigDecimal pago = rs.getBigDecimal("valor_pago");
+                    BigDecimal desc = rs.getBigDecimal("valor_desconto_geral");
+                    if (pago == null) pago = BigDecimal.ZERO;
+                    if (desc == null) desc = BigDecimal.ZERO;
+                    p.setValorAPagar(total.subtract(desc).subtract(pago));
+                    p.setValorPago(pago);
+                    p.setValorPagamentoDinheiro(rs.getBigDecimal("valor_pagamento_dinheiro"));
+                    p.setValorPagamentoPix(rs.getBigDecimal("valor_pagamento_pix"));
+                    p.setValorPagamentoCartao(rs.getBigDecimal("valor_pagamento_cartao"));
+                    p.setIdPassageiro(rs.getLong("id_passageiro"));
+                    p.setIdViagem(rs.getLong("id_viagem"));
+                    p.setIdRota(rs.getLong("id_rota"));
+                    p.setAssento(rs.getString("assento"));
+                    p.setIdAcomodacao(getObjectInt(rs, "id_acomodacao"));
+                    p.setIdTipoPassagem(getObjectInt(rs, "id_tipo_passagem"));
+                    p.setIdAgente(getObjectInt(rs, "id_agente"));
+                    p.setIdCaixa(getObjectInt(rs, "id_caixa"));
+                    p.setIdHorarioSaida(getObjectInt(rs, "id_horario_saida"));
+                    p.setObservacoes(rs.getString("observacoes"));
+                    return p;
+                }
+            }
+        } catch (Exception e) {
+            AppLogger.warn("FinanceiroPassagensController", "buscarPassagemCompletaPorId: erro ao buscar passagem id=" + id + " — " + e.getMessage());
+        }
         return null;
+    }
+
     private Integer getObjectInt(ResultSet rs, String col) throws SQLException {
         Object o = rs.getObject(col);
         return (o != null) ? (Integer) o : null;
+    }
+
     public void estornarPagamento() {
+        PassagemFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) { AlertHelper.info("Selecione um item para estornar."); return; }
-        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { AlertHelper.info("Este item não tem pagamento para estornar."); return; }
+        if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { AlertHelper.info("Este item nao tem pagamento para estornar."); return; }
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/EstornoPagamento.fxml"));
+            Parent root = loader.load();
             EstornoPagamentoController controller = loader.getController();
             controller.setDados(selecionada.getTotal(), selecionada.getPago());
-            stage.setTitle("Estornar Pagamento - Área Restrita");
+
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
+            stage.setTitle("Estornar Pagamento - Area Restrita");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.showAndWait();
+
+            if (controller.isConfirmado()) {
                 java.math.BigDecimal vEstorno = controller.getValorEstorno();
                 String motivo = controller.getMotivo();
                 String forma = controller.getFormaDevolucao();
@@ -334,64 +406,84 @@ public class FinanceiroPassagensController {
                 try (Connection con = ConexaoBD.getConnection()) {
                     con.setAutoCommit(false);
                     try {
-                    // #DB011: null check antes de usar resultado de buscarPassagemCompletaPorId
-                    Passagem p = buscarPassagemCompletaPorId(selecionada.getId());
-                    if (p == null) {
-                        AlertHelper.info("Erro ao carregar dados da passagem. Registro nao encontrado.");
-                        return;
-                    }
-                    BigDecimal estornoBD = vEstorno;
-                    BigDecimal din = p.getValorPagamentoDinheiro();
-                    BigDecimal pix = p.getValorPagamentoPix();
-                    BigDecimal car = p.getValorPagamentoCartao();
-                    
-                    // DL042: cascata din→pix→car com tratamento correto do ultimo trecho
-                    if (din.compareTo(estornoBD) >= 0) {
-                        din = din.subtract(estornoBD); estornoBD = BigDecimal.ZERO;
-                    } else {
-                        estornoBD = estornoBD.subtract(din); din = BigDecimal.ZERO;
-                        if (pix.compareTo(estornoBD) >= 0) {
-                            pix = pix.subtract(estornoBD); estornoBD = BigDecimal.ZERO;
+                        // #DB011: null check antes de usar resultado de buscarPassagemCompletaPorId
+                        Passagem p = buscarPassagemCompletaPorId(selecionada.getId());
+                        if (p == null) {
+                            AlertHelper.info("Erro ao carregar dados da passagem. Registro nao encontrado.");
+                            return;
+                        }
+                        BigDecimal estornoBD = vEstorno;
+                        BigDecimal din = p.getValorPagamentoDinheiro();
+                        BigDecimal pix = p.getValorPagamentoPix();
+                        BigDecimal car = p.getValorPagamentoCartao();
+
+                        // DL042: cascata din->pix->car com tratamento correto do ultimo trecho
+                        if (din.compareTo(estornoBD) >= 0) {
+                            din = din.subtract(estornoBD); estornoBD = BigDecimal.ZERO;
                         } else {
-                            estornoBD = estornoBD.subtract(pix); pix = BigDecimal.ZERO;
-                            if (car.compareTo(estornoBD) >= 0) {
-                                car = car.subtract(estornoBD);
+                            estornoBD = estornoBD.subtract(din); din = BigDecimal.ZERO;
+                            if (pix.compareTo(estornoBD) >= 0) {
+                                pix = pix.subtract(estornoBD); estornoBD = BigDecimal.ZERO;
                             } else {
-                                // Estorno excede cartao — zera cartao, excesso absorvido
-                                car = BigDecimal.ZERO;
+                                estornoBD = estornoBD.subtract(pix); pix = BigDecimal.ZERO;
+                                if (car.compareTo(estornoBD) >= 0) {
+                                    car = car.subtract(estornoBD);
+                                } else {
+                                    car = BigDecimal.ZERO;
+                                }
                             }
                         }
-                    String sqlUp = "UPDATE passagens SET valor_pago = ?, status_passagem = ?, valor_pagamento_dinheiro = ?, valor_pagamento_pix = ?, valor_pagamento_cartao = ? WHERE id_passagem = ? AND empresa_id = ?";
-                    try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
-                        stmt.setBigDecimal(1, novoPago);
-                        stmt.setString(2, novoStatus);
-                        stmt.setBigDecimal(3, din);
-                        stmt.setBigDecimal(4, pix);
-                        stmt.setBigDecimal(5, car);
-                        stmt.setInt(6, selecionada.getId());
-                        stmt.executeUpdate();
-                    // 2. Grava Log
-                    String sqlLog = "INSERT INTO log_estornos_passagens (id_passagem, valor_estornado, motivo, forma_devolucao, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?, ?)";
-                    try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
-                        stmt.setInt(1, selecionada.getId());
-                        stmt.setBigDecimal(2, vEstorno);
-                        stmt.setString(3, motivo);
-                        stmt.setString(4, forma);
-                        stmt.setInt(5, idAutorizador);
-                        stmt.setString(6, nomeAutorizador);
-                    con.commit();
-                    AlertHelper.info("Estorno realizado com sucesso!");
-                    carregarDados();
+                        String sqlUp = "UPDATE passagens SET valor_pago = ?, status_passagem = ?, valor_pagamento_dinheiro = ?, valor_pagamento_pix = ?, valor_pagamento_cartao = ? WHERE id_passagem = ? AND empresa_id = ?";
+                        try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
+                            stmt.setBigDecimal(1, novoPago);
+                            stmt.setString(2, novoStatus);
+                            stmt.setBigDecimal(3, din);
+                            stmt.setBigDecimal(4, pix);
+                            stmt.setBigDecimal(5, car);
+                            stmt.setInt(6, selecionada.getId());
+                            stmt.setInt(7, DAOUtils.empresaId());
+                            stmt.executeUpdate();
+                        }
+                        // 2. Grava Log
+                        String sqlLog = "INSERT INTO log_estornos_passagens (id_passagem, valor_estornado, motivo, forma_devolucao, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?, ?)";
+                        try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
+                            stmt.setInt(1, selecionada.getId());
+                            stmt.setBigDecimal(2, vEstorno);
+                            stmt.setString(3, motivo);
+                            stmt.setString(4, forma);
+                            stmt.setInt(5, idAutorizador);
+                            stmt.setString(6, nomeAutorizador);
+                            stmt.executeUpdate();
+                        }
+                        con.commit();
+                        AlertHelper.info("Estorno realizado com sucesso!");
+                        carregarDados();
                     } catch (Exception ex) {
                         try { con.rollback(); } catch (Exception re) { AppLogger.error("FinanceiroPassagensController", re.getMessage(), re); }
                         AppLogger.error("FinanceiroPassagensController", ex.getMessage(), ex);
                         AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
-        } catch (Exception e) { 
-            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroPassagensController", "Erro ao abrir tela de estorno: " + e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            AlertHelper.info("Erro interno. Contate o administrador.");
+            AppLogger.warn("FinanceiroPassagensController", "Erro ao abrir tela de estorno: " + e.getMessage());
+        }
+    }
+
     public void gerarRelatorioCliente() {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/ExtratoPassageiro.fxml"));
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Extrato Financeiro - Passageiro");
+            stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
-            AppLogger.warn("FinanceiroPassagensController", "FinanceiroPassagensController.gerarRelatorioCliente: erro ao abrir tela de extrato — " + e.getMessage());
-            AlertHelper.info("Tela de Extrato ainda não criada ou com erro: " + e.getMessage());
+        } catch (Exception e) {
+            AppLogger.warn("FinanceiroPassagensController", "gerarRelatorioCliente: erro ao abrir tela de extrato — " + e.getMessage());
+            AlertHelper.info("Tela de Extrato ainda nao criada ou com erro: " + e.getMessage());
+        }
+    }
 }

@@ -176,13 +176,14 @@ public class AgendaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                tarefas.add(new TarefaAgenda(
-                    rs.getInt("id_anotacao"),
-                    rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
-                    rs.getString("descricao"),
-                    rs.getBoolean("concluida")
-                ));
+                while (rs.next()) {
+                    tarefas.add(new TarefaAgenda(
+                        rs.getInt("id_anotacao"),
+                        rs.getDate("data_evento") != null ? rs.getDate("data_evento").toLocalDate() : null,
+                        rs.getString("descricao"),
+                        rs.getBoolean("concluida")
+                    ));
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("AgendaDAO", "Erro SQL em AgendaDAO: " + e.getMessage());

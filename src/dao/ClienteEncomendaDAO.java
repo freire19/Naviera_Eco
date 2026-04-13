@@ -24,12 +24,12 @@ public class ClienteEncomendaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                ClienteEncomenda cliente = new ClienteEncomenda();
-                cliente.setIdCliente(rs.getLong("id_cliente"));
-                cliente.setNomeCliente(rs.getString("nome_cliente"));
-                clientes.add(cliente);
+                while (rs.next()) {
+                    ClienteEncomenda cliente = new ClienteEncomenda();
+                    cliente.setIdCliente(rs.getLong("id_cliente"));
+                    cliente.setNomeCliente(rs.getString("nome_cliente"));
+                    clientes.add(cliente);
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("ClienteEncomendaDAO", "Erro SQL em ClienteEncomendaDAO: " + e.getMessage());

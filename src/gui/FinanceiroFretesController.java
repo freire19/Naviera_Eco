@@ -62,6 +62,7 @@ public class FinanceiroFretesController {
     public void sair() {
         Stage stage = (Stage) btnSair.getScene().getWindow();
         stage.close();
+    }
     public void verHistoricoEstornos() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/HistoricoEstornosFretes.fxml"));
@@ -76,11 +77,15 @@ public class FinanceiroFretesController {
             AppLogger.error("FinanceiroFretesController", e.getMessage(), e);
             AlertHelper.info("Histórico de estornos de fretes ainda não implementado.");
         }
+    }
     public void setViagemInicial(int idViagem) {
         for (OpcaoViagem op : cmbViagem.getItems()) {
             if (op.id == idViagem) {
                 cmbViagem.setValue(op);
                 break;
+            }
+        }
+    }
     private void configurarTabela() {
         colNumero.setCellValueFactory(new PropertyValueFactory<>("numero"));
         colData.setCellValueFactory(new PropertyValueFactory<>("dataViagem"));
@@ -102,6 +107,9 @@ public class FinanceiroFretesController {
                     setText(item);
                     setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
+            }
+        });
+    }
     private void carregarComboViagens() {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
@@ -112,9 +120,12 @@ public class FinanceiroFretesController {
                 label += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem()));
                 if (v.getDataChegada() != null) label += " - " + sdf.format(java.sql.Date.valueOf(v.getDataChegada()));
                 label += ")";
+            }
             lista.add(new OpcaoViagem(v.getId().intValue(), label));
+        }
         ObservableList<OpcaoViagem> finalLista = lista;
         Platform.runLater(() -> cmbViagem.setItems(finalLista));
+    }
     public void carregarDados() {
         if (cmbViagem.getValue() == null) return;
         int idViagem = cmbViagem.getValue().id;
@@ -138,6 +149,8 @@ public class FinanceiroFretesController {
             String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
             sql.append(" AND (LOWER(f.remetente_nome_temp) LIKE ? ESCAPE '\\' OR LOWER(f.destinatario_nome_temp) LIKE ? ESCAPE '\\') ");
             params.add("%" + buscaEscapada + "%");
+            params.add("%" + buscaEscapada + "%");
+        }
         sql.append(" ORDER BY f.id_frete DESC");
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
@@ -145,6 +158,7 @@ public class FinanceiroFretesController {
                 Object p = params.get(i);
                 if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
                 else stmt.setString(i + 1, p.toString());
+            }
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             while (rs.next()) {
@@ -167,32 +181,51 @@ public class FinanceiroFretesController {
                         totalBD, pagoBD
                 ));
                 if (devendoBD.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendoBD);
+            }
             tabela.setItems(lista);
             lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
         } catch (SQLException e) {
+            AppLogger.error("FinanceiroFretesController", e.getMessage(), e);
+        }
+    }
     public void darBaixa() {
         FreteFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
             AlertHelper.info("Selecione um frete na tabela para dar baixa.");
             return;
+        }
         if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
             AlertHelper.info("Este frete já está quitado!");
+            return;
+        }
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/BaixaPagamento.fxml"));
+            Parent root = loader.load();
             BaixaPagamentoController controller = loader.getController();
             controller.setDadosIniciais(
                     selecionada.getTotal(),
                     selecionada.getPago(),
                     selecionada.getRestante()
             );
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Realizar Pagamento - Frete");
+            stage.initModality(Modality.APPLICATION_MODAL);
             stage.setResizable(false);
+            stage.showAndWait();
             if (controller.isConfirmado()) {
                 salvarPagamento(selecionada.getId(), controller, selecionada.getPago());
+            }
+        } catch (Exception e) {
+            AppLogger.error("FinanceiroFretesController", e.getMessage(), e);
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao abrir tela de pagamento: " + e.getMessage());
+        }
+    }
     private void salvarPagamento(long idFrete, BaixaPagamentoController dados, java.math.BigDecimal jaPago) {
         // DL040: usar transacao unica para buscar desconto + atualizar (evita race condition)
         try (Connection con = ConexaoBD.getConnection()) {
             con.setAutoCommit(false);
+            try {
                 // Buscar desconto ja armazenado no banco (DL012)
                 java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
                 try (PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM fretes WHERE id_frete = ? AND empresa_id = ? FOR UPDATE")) {
@@ -201,6 +234,7 @@ public class FinanceiroFretesController {
                     try (ResultSet rs = stmtQ.executeQuery()) {
                         if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
                     }
+                }
                 java.math.BigDecimal novoPago = jaPago.add(dados.getValorPago());
                 java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
                 java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
@@ -215,22 +249,41 @@ public class FinanceiroFretesController {
                     stmt.setString(5, dados.getCaixa());
                     stmt.setString(6, novoStatus);
                     stmt.setLong(7, idFrete);
+                    stmt.setInt(8, dao.DAOUtils.empresaId());
                     stmt.executeUpdate();
+                }
                 con.commit();
                 AlertHelper.info("Pagamento registrado com sucesso!");
                 carregarDados();
             } catch (SQLException ex) {
                 con.rollback();
                 throw ex;
+            }
+        } catch (Exception e) {
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao salvar no banco: " + e.getMessage());
+        }
+    }
     public void estornarPagamento() {
+        FreteFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
+        if (selecionada == null) {
             AlertHelper.info("Selecione um frete para estornar.");
+            return;
+        }
         if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
             AlertHelper.info("Este frete não tem pagamento para estornar.");
+            return;
+        }
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/EstornoPagamento.fxml"));
+            Parent root = loader.load();
             EstornoPagamentoController controller = loader.getController();
             controller.setDados(selecionada.getTotal(), selecionada.getPago());
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Estornar Pagamento - Área Restrita");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.showAndWait();
+            if (controller.isConfirmado()) {
                 java.math.BigDecimal vEstorno = controller.getValorEstorno();
                 String motivo = controller.getMotivo();
                 int idAutorizador = controller.getIdAutorizador();
@@ -250,6 +303,7 @@ public class FinanceiroFretesController {
                             stmt.setBigDecimal(2, novoDevedor);
                             stmt.setString(3, novoStatus);
                             stmt.setLong(4, selecionada.getId());
+                            stmt.setInt(5, dao.DAOUtils.empresaId());
                             stmt.executeUpdate();
                         }
                         // Log do estorno
@@ -260,6 +314,8 @@ public class FinanceiroFretesController {
                             stmt.setString(3, motivo);
                             stmt.setInt(4, idAutorizador);
                             stmt.setString(5, nomeAutorizador);
+                            stmt.executeUpdate();
+                        }
                         con.commit();
                         AlertHelper.info("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
                         carregarDados();
@@ -267,9 +323,20 @@ public class FinanceiroFretesController {
                         try { con.rollback(); } catch (Exception re) { AppLogger.error("FinanceiroFretesController", re.getMessage(), re); }
                         AppLogger.error("FinanceiroFretesController", ex.getMessage(), ex);
                         AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao abrir tela de estorno: " + e.getMessage());
+        }
+    }
     public void abrirNotaFrete() {
+        FreteFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
+        if (selecionada == null) {
             AlertHelper.info("Selecione um frete para visualizar a nota.");
+            return;
+        }
+        try {
             // Buscar dados completos do frete no banco
             String sql = "SELECT f.numero_frete, f.remetente_nome_temp, f.destinatario_nome_temp, " +
                          "f.valor_total_itens, f.valor_pago, f.valor_devedor, f.data_emissao, " +
@@ -287,7 +354,7 @@ public class FinanceiroFretesController {
                 stmt.setLong(1, selecionada.getId());
                 stmt.setInt(2, dao.DAOUtils.empresaId());
                 ResultSet rs = stmt.executeQuery();
-                
+
                 if (rs.next()) {
                     remetente = rs.getString("remetente_nome_temp") != null ? rs.getString("remetente_nome_temp") : "";
                     destinatario = rs.getString("destinatario_nome_temp") != null ? rs.getString("destinatario_nome_temp") : "";
@@ -297,25 +364,42 @@ public class FinanceiroFretesController {
                     double pago = rs.getDouble("valor_pago");
                     double devedor = rs.getDouble("valor_devedor");
                     pagamento = String.format("Pago: R$ %.2f | Devedor: R$ %.2f", pago, devedor);
-                    
+
                     java.sql.Date dataEmissao = rs.getDate("data_emissao");
                     if (dataEmissao != null) {
                         dataHora = new java.text.SimpleDateFormat("dd/MM/yyyy").format(dataEmissao);
+                    }
+                }
+            }
             // Buscar itens do frete
             String sqlItens = "SELECT fi.quantidade, fi.descricao, fi.valor_unitario " +
                               "FROM frete_itens fi " +
                               "WHERE fi.id_frete = ?";
+            try (Connection con = ConexaoBD.getConnection();
                  PreparedStatement stmt = con.prepareStatement(sqlItens)) {
+                stmt.setLong(1, selecionada.getId());
+                ResultSet rs = stmt.executeQuery();
                 while (rs.next()) {
                     itens.add(new NotaFretePersonalizadaController.ItemNota(
                         rs.getInt("quantidade"),
                         rs.getString("descricao"),
                         rs.getDouble("valor_unitario")
                     ));
+                }
+            }
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/NotaFretePersonalizada.fxml"));
+            Parent root = loader.load();
             NotaFretePersonalizadaController controller = loader.getController();
             controller.setDadosNotaFrete(remetente, destinatario, conferente, rota, dataHora, pagamento, total, itens);
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Nota do Frete - " + selecionada.getNumero());
+            stage.initModality(Modality.APPLICATION_MODAL);
             stage.setResizable(true);
+            stage.showAndWait();
+        } catch (Exception e) {
+            AppLogger.error("FinanceiroFretesController", e.getMessage(), e);
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroFretesController", "Erro ao abrir nota do frete: " + e.getMessage());
+        }
+    }
 }

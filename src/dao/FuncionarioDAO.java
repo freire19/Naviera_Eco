@@ -346,7 +346,8 @@ public class FuncionarioDAO {
         try (PreparedStatement ps = con.prepareStatement("SELECT id_viagem FROM viagens WHERE is_atual = true AND empresa_id = ? LIMIT 1")) {
             ps.setInt(1, DAOUtils.empresaId());
             try (ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getInt(1);
+                if (rs.next()) return rs.getInt(1);
+            }
         } catch (SQLException e) {
             AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.buscarViagemAtiva: " + e.getMessage());
         }

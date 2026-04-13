@@ -18,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import dao.ConexaoBD;
+import dao.DAOUtils;
 import dao.EmpresaDAO;
 import dao.ReciboAvulsoDAO;
 import dao.ViagemDAO;
@@ -180,7 +181,7 @@ public class GerarReciboAvulsoController implements Initializable {
         String sql = "SELECT id_viagem, data_viagem, data_chegada FROM viagens WHERE empresa_id = ? ORDER BY id_viagem DESC";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, dao.DAOUtils.empresaId());
+            stmt.setInt(1, DAOUtils.empresaId());
             ResultSet rs = stmt.executeQuery();
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             while (rs.next()) {

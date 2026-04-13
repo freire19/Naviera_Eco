@@ -25,9 +25,10 @@ public class ConferenteDAO {
              PreparedStatement st = con.prepareStatement(sql)) {
             st.setInt(1, DAOUtils.empresaId());
             try (ResultSet rs = st.executeQuery()) {
-            while (rs.next()) {
-                lista.add(new long[]{rs.getLong("id_conferente"), 0});
-                // Recria como lista de objetos abaixo — usado via listarNomes()
+                while (rs.next()) {
+                    lista.add(new long[]{rs.getLong("id_conferente"), 0});
+                    // Recria como lista de objetos abaixo — usado via listarNomes()
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.listarTodos: " + e.getMessage());
@@ -45,9 +46,10 @@ public class ConferenteDAO {
              PreparedStatement st = con.prepareStatement(sql)) {
             st.setInt(1, DAOUtils.empresaId());
             try (ResultSet rs = st.executeQuery()) {
-            while (rs.next()) {
-                String nome = rs.getString(1);
-                if (nome != null) lista.add(nome);
+                while (rs.next()) {
+                    String nome = rs.getString(1);
+                    if (nome != null) lista.add(nome);
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.listarNomes: " + e.getMessage());
@@ -75,8 +77,9 @@ public class ConferenteDAO {
              PreparedStatement st = con.prepareStatement(sql)) {
             st.setInt(1, DAOUtils.empresaId());
             try (ResultSet rs = st.executeQuery()) {
-            while (rs.next()) {
-                lista.add(new ConferenteRow(rs.getLong("id_conferente"), rs.getString("nome_conferente")));
+                while (rs.next()) {
+                    lista.add(new ConferenteRow(rs.getLong("id_conferente"), rs.getString("nome_conferente")));
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.listarComId: " + e.getMessage());

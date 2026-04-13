@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="520.0" prefWidth="700.0" style="-fx-background-color: #F7FBF9;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="gui.SetupWizardController">
+   <children>
+      <HBox AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0">
+         <children>
+
+            <!-- ============================================================ -->
+            <!-- SIDEBAR ESQUERDA — Indicador de passos                       -->
+            <!-- ============================================================ -->
+            <VBox prefWidth="200.0" spacing="0" style="-fx-background-color: #0F2D24;">
+               <children>
+                  <!-- Logo / Titulo -->
+                  <VBox alignment="CENTER" spacing="5.0" style="-fx-padding: 25 15 20 15;">
+                     <children>
+                        <Label text="NAVIERA" textFill="#A7F3D0">
+                           <font><Font name="System Bold" size="22.0" /></font>
+                        </Label>
+                        <Label text="Configuracao Inicial" textFill="#7BA393">
+                           <font><Font size="12.0" /></font>
+                        </Label>
+                     </children>
+                  </VBox>
+
+                  <Separator style="-fx-background-color: #059669;" />
+
+                  <!-- Passos -->
+                  <VBox spacing="5.0" style="-fx-padding: 20 15 0 15;">
+                     <children>
+                        <HBox fx:id="stepIndicator1" alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 10; -fx-background-color: #059669; -fx-background-radius: 5;">
+                           <children>
+                              <Label text="1" textFill="white" style="-fx-background-color: #047857; -fx-background-radius: 12; -fx-min-width: 24; -fx-min-height: 24; -fx-alignment: center;">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                              <Label text="Banco de Dados" textFill="white">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                           </children>
+                        </HBox>
+
+                        <HBox fx:id="stepIndicator2" alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 10; -fx-background-radius: 5;">
+                           <children>
+                              <Label text="2" textFill="#7BA393" style="-fx-background-color: #1a3d30; -fx-background-radius: 12; -fx-min-width: 24; -fx-min-height: 24; -fx-alignment: center;">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                              <Label text="Criar Estrutura" textFill="#7BA393">
+                                 <font><Font size="12.0" /></font>
+                              </Label>
+                           </children>
+                        </HBox>
+
+                        <HBox fx:id="stepIndicator3" alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 10; -fx-background-radius: 5;">
+                           <children>
+                              <Label text="3" textFill="#7BA393" style="-fx-background-color: #1a3d30; -fx-background-radius: 12; -fx-min-width: 24; -fx-min-height: 24; -fx-alignment: center;">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                              <Label text="Empresa" textFill="#7BA393">
+                                 <font><Font size="12.0" /></font>
+                              </Label>
+                           </children>
+                        </HBox>
+
+                        <HBox fx:id="stepIndicator4" alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 10; -fx-background-radius: 5;">
+                           <children>
+                              <Label text="4" textFill="#7BA393" style="-fx-background-color: #1a3d30; -fx-background-radius: 12; -fx-min-width: 24; -fx-min-height: 24; -fx-alignment: center;">
+                                 <font><Font name="System Bold" size="12.0" /></font>
+                              </Label>
+                              <Label text="Concluir" textFill="#7BA393">
+                                 <font><Font size="12.0" /></font>
+                              </Label>
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+               </children>
+            </VBox>
+
+            <!-- ============================================================ -->
+            <!-- CONTEUDO PRINCIPAL — StackPane com os passos                 -->
+            <!-- ============================================================ -->
+            <VBox HBox.hgrow="ALWAYS" spacing="0">
+               <children>
+
+                  <!-- Header -->
+                  <HBox alignment="CENTER_LEFT" prefHeight="50.0" style="-fx-background-color: white; -fx-border-color: #E6F5ED; -fx-border-width: 0 0 1 0;">
+                     <padding><Insets left="25.0" right="25.0" /></padding>
+                     <children>
+                        <Label fx:id="lblStepTitle" text="Conexao com o Banco de Dados" textFill="#0F2D24">
+                           <font><Font name="System Bold" size="16.0" /></font>
+                        </Label>
+                     </children>
+                  </HBox>
+
+                  <!-- Conteudo dos passos -->
+                  <StackPane fx:id="stepContent" VBox.vgrow="ALWAYS" style="-fx-padding: 25;">
+
+                     <!-- ====== PASSO 1: Conexao Banco ====== -->
+                     <VBox fx:id="step1" spacing="15.0">
+                        <children>
+                           <Label text="Configure a conexao com o PostgreSQL local." textFill="#546e7a" wrapText="true" />
+
+                           <VBox spacing="5.0">
+                              <children>
+                                 <Label text="Host:" textFill="#0F2D24">
+                                    <font><Font name="System Bold" size="12.0" /></font>
+                                 </Label>
+                                 <TextField fx:id="txtHost" prefHeight="35.0" promptText="localhost" text="localhost" />
+                              </children>
+                           </VBox>
+
+                           <HBox spacing="15.0">
+                              <children>
+                                 <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <children>
+                                       <Label text="Porta:" textFill="#0F2D24">
+                                          <font><Font name="System Bold" size="12.0" /></font>
+                                       </Label>
+                                       <TextField fx:id="txtPorta" prefHeight="35.0" promptText="5432" text="5432" />
+                                    </children>
+                                 </VBox>
+                                 <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <children>
+                                       <Label text="Nome do Banco:" textFill="#0F2D24">
+                                          <font><Font name="System Bold" size="12.0" /></font>
+                                       </Label>
+                                       <TextField fx:id="txtNomeBanco" prefHeight="35.0" promptText="naviera_eco" text="naviera_eco" />
+                                    </children>
+                                 </VBox>
+                              </children>
+                           </HBox>
+
+                           <VBox spacing="5.0">
+                              <children>
+                                 <Label text="Usuario:" textFill="#0F2D24">
+                                    <font><Font name="System Bold" size="12.0" /></font>
+                                 </Label>
+                                 <TextField fx:id="txtUsuario" prefHeight="35.0" promptText="postgres" text="postgres" />
+                              </children>
+                           </VBox>
+
+                           <VBox spacing="5.0">
+                              <children>
+                                 <Label text="Senha:" textFill="#0F2D24">
+                                    <font><Font name="System Bold" size="12.0" /></font>
+                                 </Label>
+                                 <PasswordField fx:id="txtSenha" prefHeight="35.0" promptText="Senha do PostgreSQL" />
+                              </children>
+                           </VBox>
+
+                           <HBox alignment="CENTER_LEFT" spacing="10.0">
+                              <children>
+                                 <Button fx:id="btnTestarConexao" onAction="#handleTestarConexao" prefHeight="35.0" style="-fx-background-color: #E6F5ED; -fx-text-fill: #3D6B56; -fx-font-weight: bold;" text="Testar Conexao">
+                                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                                 </Button>
+                                 <Label fx:id="lblStatusConexao" text="" textFill="#546e7a" />
+                              </children>
+                           </HBox>
+                        </children>
+                     </VBox>
+
+                     <!-- ====== PASSO 2: Criar Estrutura ====== -->
+                     <VBox fx:id="step2" spacing="15.0" visible="false">
+                        <children>
+                           <Label text="O sistema vai criar o banco e as tabelas necessarias." textFill="#546e7a" wrapText="true" />
+
+                           <VBox spacing="8.0" style="-fx-background-color: white; -fx-border-color: #E6F5ED; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 15;">
+                              <children>
+                                 <CheckBox fx:id="chkCriarBanco" text="Criar banco de dados (se nao existir)" selected="true" disable="true" />
+                                 <CheckBox fx:id="chkRodarMigrations" text="Executar scripts de estrutura (migrations)" selected="true" disable="true" />
+                              </children>
+                           </VBox>
+
+                           <VBox spacing="5.0">
+                              <children>
+                                 <Label text="Progresso:" textFill="#0F2D24">
+                                    <font><Font name="System Bold" size="12.0" /></font>
+                                 </Label>
+                                 <ProgressBar fx:id="progressMigrations" prefHeight="20.0" prefWidth="1.7976931348623157E308" progress="0.0" style="-fx-accent: #059669;" />
+                                 <Label fx:id="lblProgressDetail" text="Aguardando..." textFill="#546e7a" />
+                              </children>
+                           </VBox>
+
+                           <TextArea fx:id="txtLog" prefHeight="150.0" editable="false" wrapText="true" promptText="Log de execucao..." style="-fx-font-family: monospace; -fx-font-size: 11px;" />
+
+                           <HBox alignment="CENTER_LEFT">
+                              <children>
+                                 <Button fx:id="btnExecutarSetup" onAction="#handleExecutarSetup" prefHeight="35.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="Executar">
+                                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                                 </Button>
+                              </children>
+                           </HBox>
+                        </children>
+                     </VBox>
+
+                     <!-- ====== PASSO 3: Empresa ====== -->
+                     <VBox fx:id="step3" spacing="15.0" visible="false">
+                        <children>
+                           <Label text="Informe o ID da empresa que este computador vai operar." textFill="#546e7a" wrapText="true" />
+
+                           <VBox spacing="8.0" style="-fx-background-color: #E6F5ED; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 15;">
+                              <children>
+                                 <Label text="Cada instalacao do Naviera pertence a uma empresa. O ID e fornecido pelo administrador da plataforma." textFill="#3D6B56" wrapText="true">
+                                    <font><Font size="12.0" /></font>
+                                 </Label>
+                              </children>
+                           </VBox>
+
+                           <VBox spacing="5.0">
+                              <children>
+                                 <Label text="ID da Empresa:" textFill="#0F2D24">
+                                    <font><Font name="System Bold" size="12.0" /></font>
+                                 </Label>
+                                 <TextField fx:id="txtEmpresaId" prefHeight="35.0" promptText="Ex: 1" text="1" />
+                              </children>
+                           </VBox>
+
+                           <VBox spacing="5.0">
+                              <children>
+                                 <Label text="URL da API (para sync):" textFill="#0F2D24">
+                                    <font><Font name="System Bold" size="12.0" /></font>
+                                 </Label>
+                                 <TextField fx:id="txtApiUrl" prefHeight="35.0" promptText="https://api.naviera.com.br" />
+                              </children>
+                           </VBox>
+
+                           <VBox spacing="5.0">
+                              <children>
+                                 <Label text="Tamanho do Pool de Conexoes:" textFill="#0F2D24">
+                                    <font><Font name="System Bold" size="12.0" /></font>
+                                 </Label>
+                                 <TextField fx:id="txtPoolSize" prefHeight="35.0" text="5" />
+                              </children>
+                           </VBox>
+                        </children>
+                     </VBox>
+
+                     <!-- ====== PASSO 4: Concluir ====== -->
+                     <VBox fx:id="step4" spacing="15.0" visible="false">
+                        <children>
+                           <Label text="Revise as configuracoes antes de salvar." textFill="#546e7a" wrapText="true" />
+
+                           <VBox fx:id="boxResumo" spacing="8.0" style="-fx-background-color: white; -fx-border-color: #E6F5ED; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 20;">
+                              <children>
+                                 <Label fx:id="lblResumoConexao" text="Conexao: ..." textFill="#0F2D24" />
+                                 <Label fx:id="lblResumoBanco" text="Banco: ..." textFill="#0F2D24" />
+                                 <Label fx:id="lblResumoEmpresa" text="Empresa ID: ..." textFill="#0F2D24" />
+                                 <Label fx:id="lblResumoApi" text="API: ..." textFill="#0F2D24" />
+                                 <Label fx:id="lblResumoPool" text="Pool: ..." textFill="#0F2D24" />
+                              </children>
+                           </VBox>
+
+                           <VBox spacing="8.0" style="-fx-background-color: #E6F5ED; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 15;">
+                              <children>
+                                 <Label text="Ao concluir, o arquivo db.properties sera criado e o sistema iniciara normalmente." textFill="#3D6B56" wrapText="true">
+                                    <font><Font size="12.0" /></font>
+                                 </Label>
+                              </children>
+                           </VBox>
+                        </children>
+                     </VBox>
+
+                  </StackPane>
+
+                  <!-- Footer — Botoes de navegacao -->
+                  <HBox alignment="CENTER_RIGHT" prefHeight="55.0" spacing="10.0" style="-fx-background-color: white; -fx-border-color: #E6F5ED; -fx-border-width: 1 0 0 0;">
+                     <padding><Insets left="25.0" right="25.0" /></padding>
+                     <children>
+                        <Button fx:id="btnVoltar" onAction="#handleVoltar" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #E6F5ED; -fx-text-fill: #3D6B56; -fx-font-weight: bold;" text="Voltar" visible="false">
+                           <cursor><Cursor fx:constant="HAND" /></cursor>
+                        </Button>
+                        <Button fx:id="btnProximo" onAction="#handleProximo" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="Proximo">
+                           <effect><DropShadow color="#00000033" offsetY="2.0" /></effect>
+                           <cursor><Cursor fx:constant="HAND" /></cursor>
+                        </Button>
+                        <Button fx:id="btnConcluir" onAction="#handleConcluir" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;" text="Concluir" visible="false">
+                           <effect><DropShadow color="#00000033" offsetY="2.0" /></effect>
+                           <cursor><Cursor fx:constant="HAND" /></cursor>
+                        </Button>
+                     </children>
+                  </HBox>
+
+               </children>
+            </VBox>
+
+         </children>
+      </HBox>
+   </children>
+</AnchorPane>

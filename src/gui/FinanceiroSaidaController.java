@@ -51,15 +51,15 @@ import gui.util.AppLogger;
 public class FinanceiroSaidaController {
     @FXML private TextField txtDescricao;
     @FXML private TextField txtValor;
-    @FXML private ComboBox<String> cmbCategoria; 
+    @FXML private ComboBox<String> cmbCategoria;
     @FXML private DatePicker dpDataGasto;
-    @FXML private DatePicker dpDataPrimeiroPagamento; 
+    @FXML private DatePicker dpDataPrimeiroPagamento;
     @FXML private ComboBox<String> cmbFormaPagamento;
-    
+
     @FXML private Label lblTotalGasto;
     @FXML private ComboBox<String> cmbFiltroCategoria;
-    @FXML private ComboBox<String> cmbFiltroPagamento; 
-    @FXML private ComboBox<OpcaoViagem> cmbFiltroViagem; 
+    @FXML private ComboBox<String> cmbFiltroPagamento;
+    @FXML private ComboBox<OpcaoViagem> cmbFiltroViagem;
     @FXML private DatePicker dpFiltroData;
     @FXML private Button btnSair;
     @FXML private TableView<Despesa> tabela;
@@ -80,7 +80,7 @@ public class FinanceiroSaidaController {
         // 1. Configurações visuais iniciais
         carregarCategorias();
         configurarTabela();
-        
+
         dpDataGasto.setValue(LocalDate.now());
         if (dpDataPrimeiroPagamento != null) {
             dpDataPrimeiroPagamento.setValue(LocalDate.now());
@@ -125,14 +125,18 @@ public class FinanceiroSaidaController {
                 boolean isAtual = v.getIsAtual();
                 if (isAtual) {
                     desc += " (ATUAL)";
+                }
                 OpcaoViagem op = new OpcaoViagem(id, desc);
                 lista.add(op);
+                if (isAtual) {
                     opcaoAtivaEncontrada = op;
+                }
             }
-            
+
             // DR010: atualiza UI na FX thread
             OpcaoViagem finalOpcaoAtiva = opcaoAtivaEncontrada;
             ObservableList<OpcaoViagem> finalLista = lista;
+            javafx.application.Platform.runLater(() -> {
                 cmbFiltroViagem.setItems(finalLista);
                 if (finalOpcaoAtiva != null) {
                     cmbFiltroViagem.getSelectionModel().select(finalOpcaoAtiva);
@@ -140,10 +144,14 @@ public class FinanceiroSaidaController {
                     cmbFiltroViagem.getSelectionModel().select(1);
                 } else {
                     cmbFiltroViagem.getSelectionModel().selectFirst();
+                }
+            });
         } catch (Exception e) {
             AppLogger.error("FinanceiroSaidaController", e.getMessage(), e);
             javafx.application.Platform.runLater(() -> AlertHelper.info("Erro interno. Contate o administrador."));
             AppLogger.warn("FinanceiroSaidaController", "Erro ao carregar viagens: " + e.getMessage());
+        }
+    }
     public void filtrar() {
         // Se o combo estiver nulo (ainda carregando), não faz nada
         if(cmbFiltroViagem.getValue() == null) return;
@@ -153,6 +161,7 @@ public class FinanceiroSaidaController {
         String categoriaFiltro = cmbFiltroCategoria.getValue();
         String formaFiltro = cmbFiltroPagamento.getValue();
         java.time.LocalDate dataFiltro = dpFiltroData.getValue();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         java.util.List<java.util.Map<String, Object>> rows = despesaDAO.buscarDespesas(
                 idFiltro, categoriaFiltro, formaFiltro, dataFiltro, true);
         for (java.util.Map<String, Object> row : rows) {
@@ -170,56 +179,76 @@ public class FinanceiroSaidaController {
             lista.add(d);
             if (!d.isExcluido() && d.getValor() != null) {
                 total = total.add(d.getValor());
+            }
+        }
         tabela.setItems(lista);
         lblTotalGasto.setText(nf.format(total));
+    }
     public void sair() {
         Node nodeRef = (btnSair != null) ? btnSair : txtDescricao;
         TelaPrincipalController.fecharTelaAtual(nodeRef);
+    }
     public void abrirGestaoFuncionarios() {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/GestaoFuncionarios.fxml"));
             Parent root = loader.load();
             Stage stage = new Stage();
             stage.setTitle("Gestão Completa de Funcionários e Pagamentos");
             stage.setScene(TemaManager.criarSceneComTema(root));
-            stage.initModality(Modality.APPLICATION_MODAL); 
+            stage.initModality(Modality.APPLICATION_MODAL);
             stage.setMaximized(true);
             stage.showAndWait();
-            filtrar(); 
+            filtrar();
+        } catch (Exception e) {
             AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.abrirGestaoFuncionarios: erro ao abrir tela — " + e.getMessage());
             AlertHelper.info("Erro interno. Contate o administrador.");
+        }
+    }
     private void configurarAutoComplete(ComboBox<String> cmb) {
         cmb.setEditable(true);
         cmb.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
-                ignoreFilter = true; 
+                ignoreFilter = true;
                 cmb.getEditor().setText(newVal);
-                Platform.runLater(() -> ignoreFilter = false); 
+                Platform.runLater(() -> ignoreFilter = false);
+            }
+        });
         cmb.getEditor().textProperty().addListener((obs, oldText, newText) -> {
-            if (ignoreFilter) return; 
+            if (ignoreFilter) return;
             Platform.runLater(() -> {
                 if (newText == null || newText.isEmpty()) {
                     cmb.setItems(listaCategoriasOriginal);
                     return;
+                }
                 ObservableList<String> sublista = FXCollections.observableArrayList();
                 for (String item : listaCategoriasOriginal) {
                     if (item.toUpperCase().contains(newText.toUpperCase())) {
                         sublista.add(item);
                     }
+                }
                 cmb.setItems(sublista);
                 if (!cmb.isShowing() && !sublista.isEmpty()) cmb.show();
                 if (sublista.isEmpty()) cmb.hide();
+            });
+        });
+    }
     public void salvarLancamento() {
         if (txtDescricao.getText().isEmpty() || txtValor.getText().isEmpty() || cmbCategoria.getValue() == null) {
             AlertHelper.info("Preencha os campos obrigatórios."); return;
+        }
         if (dpDataPrimeiroPagamento.getValue() == null) {
             AlertHelper.info("Por favor, informe a Data do 1º Pagamento.");
             return;
+        }
         int idParaSalvar = 0;
         if (cmbFiltroViagem.getValue() != null && cmbFiltroViagem.getValue().id != 0) {
             idParaSalvar = cmbFiltroViagem.getValue().id;
-        } 
+        }
         if (idParaSalvar == 0) {
             AlertHelper.info("ERRO CRÍTICO: Não foi possível identificar a viagem selecionada.\nVerifique o filtro de viagens no topo da tela.");
+            return;
+        }
+        try {
             String valorTexto = txtValor.getText().replace(",", ".");
             java.math.BigDecimal valor = new java.math.BigDecimal(valorTexto);
             if (valor.signum() <= 0) { AlertHelper.info("O valor deve ser maior que zero."); return; }
@@ -229,7 +258,7 @@ public class FinanceiroSaidaController {
             String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, id_viagem, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             try (Connection con = ConexaoBD.getConnection();
                  PreparedStatement stmt = con.prepareStatement(sql)) {
-                
+
                 stmt.setString(1, txtDescricao.getText().toUpperCase());
                 stmt.setBigDecimal(2, valor);
                 stmt.setBigDecimal(3, status.equals("PAGO") ? valor : java.math.BigDecimal.ZERO);
@@ -240,24 +269,33 @@ public class FinanceiroSaidaController {
                 stmt.setString(7, forma);
                 stmt.setInt(8, idCat);
                 stmt.setInt(9, idParaSalvar);
+                stmt.setInt(10, dao.DAOUtils.empresaId());
                 stmt.executeUpdate();
                 AlertHelper.info("Despesa salva com sucesso!");
                 txtDescricao.clear();
                 txtValor.clear();
                 cmbCategoria.setValue(null);
-                cmbCategoria.getEditor().clear(); 
+                cmbCategoria.getEditor().clear();
                 cmbCategoria.setItems(listaCategoriasOriginal);
                 dpDataGasto.setValue(LocalDate.now());
                 dpDataPrimeiroPagamento.setValue(LocalDate.now());
+                filtrar();
+            }
+        } catch (Exception e) {
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroSaidaController", "Erro ao salvar: " + e.getMessage());
+        }
+    }
     public void excluir() {
         Despesa sel = tabela.getSelectionModel().getSelectedItem();
         if (sel == null) return;
         if (sel.isExcluido()) {
             AlertHelper.info("Este item já está excluído.");
+            return;
+        }
         String nomeOperador = "DESCONHECIDO";
         if (SessaoUsuario.isUsuarioLogado()) {
-            nomeOperador = SessaoUsuario.getUsuarioLogado().getNomeCompleto(); 
+            nomeOperador = SessaoUsuario.getUsuarioLogado().getNomeCompleto();
+        }
         final String solicitanteFinal = nomeOperador;
         Dialog<Pair<String, String>> dialog = new Dialog<>();
         dialog.setTitle("Exclusão Administrativa");
@@ -286,7 +324,9 @@ public class FinanceiroSaidaController {
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == loginButtonType) {
                 return new Pair<>(password.getText(), motivo.getText());
+            }
             return null;
+        });
         Optional<Pair<String, String>> result = dialog.showAndWait();
         result.ifPresent(dados -> {
             String pass = dados.getKey();
@@ -294,11 +334,14 @@ public class FinanceiroSaidaController {
             if (reason.isEmpty()) {
                 AlertHelper.info("É obrigatório informar o motivo da exclusão.");
                 return;
+            }
             String nomeAdmin = validarPermissaoGerente(pass);
             if (nomeAdmin == null) {
                 AlertHelper.info("Senha incorreta ou usuário sem permissão de Gerente/Administrador.");
+                return;
+            }
             try (Connection con = ConexaoBD.getConnection()) {
-                con.setAutoCommit(false); 
+                con.setAutoCommit(false);
                 int idViagemDaDespesa = buscarIdViagemDaDespesa(sel.getId(), con);
                 String infoViagem = buscarInfoViagem(sel.getId(), con);
                 String responsaveis = solicitanteFinal.toUpperCase() + " / " + nomeAdmin.toUpperCase();
@@ -308,6 +351,7 @@ public class FinanceiroSaidaController {
                     stmt.setInt(2, sel.getId());
                     stmt.setInt(3, dao.DAOUtils.empresaId());
                     stmt.executeUpdate();
+                }
                 String sqlAudit = "INSERT INTO auditoria_financeiro (acao, usuario, motivo, detalhe_valor, id_viagem, empresa_id) VALUES (?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement stmt = con.prepareStatement(sqlAudit)) {
                     stmt.setString(1, "EXCLUSAO_DESPESA");
@@ -316,11 +360,17 @@ public class FinanceiroSaidaController {
                     stmt.setString(4, sel.getDescricao() + " | " + sel.getValorFormatado() + " | " + infoViagem);
                     stmt.setInt(5, idViagemDaDespesa);
                     stmt.setInt(6, dao.DAOUtils.empresaId());
+                    stmt.executeUpdate();
+                }
                 con.commit();
                 AlertHelper.info("Registro marcado como excluído com sucesso!");
+                filtrar();
             } catch (Exception e) {
                 AppLogger.error("FinanceiroSaidaController", e.getMessage(), e);
                 AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroSaidaController", "Erro ao excluir: " + e.getMessage());
+            }
+        });
+    }
     private String validarPermissaoGerente(String senha) {
         String sql = "SELECT nome, senha FROM usuarios WHERE empresa_id = ? AND (funcao = 'Gerente' OR funcao = 'Administrador') AND excluido IS NOT TRUE";
         try (Connection con = ConexaoBD.getConnection();
@@ -336,11 +386,15 @@ public class FinanceiroSaidaController {
                         if (org.mindrot.jbcrypt.BCrypt.checkpw(senha, hashDoBanco)) {
                             return login;
                         }
+                    }
                 } catch (IllegalArgumentException ex) {
                     // Hash nao e BCrypt valido — ignora este usuario
                     AppLogger.warn("FinanceiroSaidaController", "Hash invalido para usuario " + login + ": formato nao-BCrypt");
+                }
+            }
         } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.validarPermissaoGerente: erro ao consultar usuarios — " + e.getMessage()); AppLogger.error("FinanceiroSaidaController", e.getMessage(), e); }
         return null;
+    }
     private String buscarInfoViagem(int idDespesa, Connection con) {
         String info = "VIAGEM N/D";
         String sql = "SELECT v.data_viagem, v.data_chegada FROM financeiro_saidas s JOIN viagens v ON s.id_viagem = v.id_viagem WHERE s.id = ? AND s.empresa_id = ?";
@@ -355,22 +409,29 @@ public class FinanceiroSaidaController {
                 String sIda = (dtIda != null) ? sdf.format(dtIda) : "?";
                 String sVolta = (dtVolta != null) ? sdf.format(dtVolta) : "?";
                 info = "REF. VIAGEM: " + sIda + " A " + sVolta;
+            }
         } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.buscarInfoViagem: " + e.getMessage()); }
         return info;
+    }
     private int buscarIdViagemDaDespesa(int idDespesa, Connection con) {
         String sql = "SELECT id_viagem FROM financeiro_saidas WHERE id = ? AND empresa_id = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, idDespesa);
+            stmt.setInt(2, dao.DAOUtils.empresaId());
+            ResultSet rs = stmt.executeQuery();
             if (rs.next()) return rs.getInt("id_viagem");
         } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.buscarIdViagemDaDespesa: " + e.getMessage()); }
         return 0;
+    }
     public void imprimirRelatorio() {
         PrinterJob job = PrinterJob.createPrinterJob();
         if (job != null && job.showPrintDialog(tabela.getScene().getWindow())) {
             Printer printer = job.getPrinter();
             PageLayout pageLayout = printer.createPageLayout(javafx.print.Paper.A4, javafx.print.PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
-            double alturaUtilPagina = pageLayout.getPrintableHeight() - 80; 
+            double alturaUtilPagina = pageLayout.getPrintableHeight() - 80;
             double larguraPagina = pageLayout.getPrintableWidth();
             List<VBox> paginas = new ArrayList<>();
-            List<Label> labelsNumeracao = new ArrayList<>(); 
+            List<Label> labelsNumeracao = new ArrayList<>();
             VBox paginaAtual = new VBox(5);
             paginaAtual.setPrefWidth(larguraPagina);
             paginaAtual.setStyle("-fx-background-color: white; -fx-padding: 0;");
@@ -378,7 +439,7 @@ public class FinanceiroSaidaController {
             double alturaAtual = 0;
             VBox cabecalho = criarCabecalhoEmpresa();
             paginaAtual.getChildren().add(cabecalho);
-            alturaAtual += 140; 
+            alturaAtual += 140;
             VBox filtros = criarCabecalhoFiltros();
             paginaAtual.getChildren().add(filtros);
             alturaAtual += 50;
@@ -386,16 +447,16 @@ public class FinanceiroSaidaController {
             configurarGridTabela(gridTabela, larguraPagina);
             adicionarCabecalhoColunas(gridTabela);
             paginaAtual.getChildren().add(gridTabela);
-            alturaAtual += 30; 
+            alturaAtual += 30;
             ObservableList<Despesa> itens = tabela.getItems();
             Map<String, java.math.BigDecimal> totaisPorTipo = new HashMap<>();
             java.math.BigDecimal totalGeral = java.math.BigDecimal.ZERO;
-            int rowGrid = 1; 
+            int rowGrid = 1;
             for (Despesa d : itens) {
-                double alturaLinha = 30; 
-                if (d.getDescricao().length() > 55) alturaLinha = 50; 
+                double alturaLinha = 30;
+                if (d.getDescricao().length() > 55) alturaLinha = 50;
                 if (alturaAtual + alturaLinha > alturaUtilPagina) {
-                    paginas.add(paginaAtual); 
+                    paginas.add(paginaAtual);
                     paginaAtual = new VBox(5);
                     paginaAtual.setPrefWidth(larguraPagina);
                     paginaAtual.setStyle("-fx-background-color: white; -fx-padding: 20 0 0 0;");
@@ -408,15 +469,18 @@ public class FinanceiroSaidaController {
                     configurarGridTabela(gridTabela, larguraPagina);
                     adicionarCabecalhoColunas(gridTabela);
                     paginaAtual.getChildren().add(gridTabela);
-                    alturaAtual += 70; 
-                    rowGrid = 1; 
+                    alturaAtual += 70;
+                    rowGrid = 1;
+                }
                 String corFundo = (rowGrid % 2 == 0) ? "#f2f2f2" : "#ffffff";
                 adicionarLinhaGrid(gridTabela, d, rowGrid, corFundo);
                 if (!d.isExcluido()) {
                     totaisPorTipo.merge(d.getForma(), d.getValor(), java.math.BigDecimal::add);
                     totalGeral = totalGeral.add(d.getValor());
+                }
                 alturaAtual += alturaLinha;
                 rowGrid++;
+            }
             if (alturaAtual + 150 > alturaUtilPagina) {
                  paginas.add(paginaAtual);
                  paginaAtual = new VBox(5);
@@ -426,16 +490,21 @@ public class FinanceiroSaidaController {
                  Label lblNumPag = new Label("Página ?/?");
                  labelsNumeracao.add(lblNumPag);
                  paginaAtual.getChildren().add(lblNumPag);
+            }
             paginaAtual.getChildren().add(criarRodape(totaisPorTipo, totalGeral));
             paginas.add(paginaAtual);
             int totalPaginas = paginas.size();
             for (int i = 0; i < labelsNumeracao.size(); i++) {
                 labelsNumeracao.get(i).setText("Página " + (i + 2) + "/" + totalPaginas);
+            }
             for (VBox p : paginas) { job.printPage(pageLayout, p); }
             job.endJob();
+        }
+    }
     private VBox criarRodape(Map<String, java.math.BigDecimal> totais, java.math.BigDecimal geral) {
         VBox box = new VBox(5);
         box.setStyle("-fx-padding: 20 0 0 0; -fx-border-color: #333; -fx-border-width: 1 0 0 0;");
+        GridPane grid = new GridPane();
         grid.setHgap(20);
         int col = 0;
         int row = 0;
@@ -445,10 +514,12 @@ public class FinanceiroSaidaController {
             grid.add(lbl, col, row);
             col++;
             if (col > 3) { col = 0; row++; }
+        }
         Label lblTotal = new Label("TOTAL GERAL: " + nf.format(geral));
         lblTotal.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #059669;");
         box.getChildren().addAll(grid, lblTotal);
         return box;
+    }
     private VBox criarCabecalhoEmpresa() {
         VBox cabecalho = new VBox(5);
         cabecalho.setAlignment(javafx.geometry.Pos.CENTER);
@@ -458,17 +529,20 @@ public class FinanceiroSaidaController {
                 File file = new File(dados.pathLogo);
                 if (file.exists()) {
                     ImageView imgLogo = new ImageView(new Image(file.toURI().toString()));
-                    imgLogo.setFitHeight(60); 
+                    imgLogo.setFitHeight(60);
                     imgLogo.setPreserveRatio(true);
                     cabecalho.getChildren().add(imgLogo);
+                }
             } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.criarCabecalhoEmpresa (logo): " + e.getMessage()); }
+        }
         String nomeEmpresa = (dados.nome != null && !dados.nome.isEmpty()) ? dados.nome : "F/B DEUS DE ALIANÇA V";
         Label lblEmpresa = new Label(nomeEmpresa.toUpperCase());
-        lblEmpresa.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #059669;"); 
+        lblEmpresa.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #059669;");
         Label lblTitulo = new Label("RELATÓRIO FINANCEIRO - SAÍDAS");
         lblTitulo.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #333;");
         cabecalho.getChildren().addAll(lblEmpresa, lblTitulo);
         return cabecalho;
+    }
     private VBox criarCabecalhoFiltros() {
         VBox box = new VBox(2);
         box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -479,6 +553,8 @@ public class FinanceiroSaidaController {
         lblInfo.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
         lblData.setStyle("-fx-font-size: 9px;");
         box.getChildren().addAll(lblInfo, lblData);
+        return box;
+    }
     private void configurarGridTabela(GridPane grid, double largura) {
         grid.setPrefWidth(largura);
         grid.setMaxWidth(largura);
@@ -488,21 +564,24 @@ public class FinanceiroSaidaController {
         ColumnConstraints col4 = new ColumnConstraints(); col4.setPercentWidth(14); // Forma
         ColumnConstraints col5 = new ColumnConstraints(); col5.setPercentWidth(14); // Valor
         grid.getColumnConstraints().addAll(col1, col2, col3, col4, col5);
+    }
     private void adicionarCabecalhoColunas(GridPane grid) {
         adicionarCelulaCabecalho(grid, "DATA", 0);
         adicionarCelulaCabecalho(grid, "DESCRIÇÃO / FORNECEDOR", 1);
         adicionarCelulaCabecalho(grid, "CATEGORIA", 2);
         adicionarCelulaCabecalho(grid, "FORMA", 3);
         adicionarCelulaCabecalho(grid, "VALOR", 4);
+    }
     private void adicionarCelulaCabecalho(GridPane grid, String texto, int col) {
         StackPane pane = new StackPane();
-        pane.setStyle("-fx-background-color: #059669; -fx-padding: 6;"); 
+        pane.setStyle("-fx-background-color: #059669; -fx-padding: 6;");
         Label label = new Label(texto);
         label.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
         label.setWrapText(true);
         label.setTextAlignment(TextAlignment.CENTER);
         pane.getChildren().add(label);
         grid.add(pane, col, 0);
+    }
     private void adicionarLinhaGrid(GridPane grid, Despesa d, int row, String corFundo) {
         boolean riscado = d.isExcluido();
         String corPadrao = riscado ? "#999999" : "black";
@@ -514,24 +593,42 @@ public class FinanceiroSaidaController {
         adicionarCelulaDado(grid, d.getCategoria(), 2, row, corFundo, true, corPadrao, riscado);
         adicionarCelulaDado(grid, d.getForma(), 3, row, corFundo, false, corForma, riscado);
         adicionarCelulaDado(grid, d.getValorFormatado(), 4, row, corFundo, false, corPadrao, riscado);
+    }
     private void adicionarCelulaDado(GridPane grid, String texto, int col, int row, String corFundo, boolean wrap, String corTexto, boolean riscado) {
+        StackPane pane = new StackPane();
         pane.setStyle("-fx-background-color: " + corFundo + "; -fx-padding: 5;");
+        Label label = new Label(texto);
         String style = "-fx-text-fill: " + corTexto + "; -fx-font-size: 9px;";
         if (riscado) { style += "-fx-strikethrough: true;"; } else { if (col == 3) style += "-fx-font-weight: bold;"; }
         label.setStyle(style);
         label.setWrapText(wrap);
         if(!wrap) label.setTextOverrun(OverrunStyle.CLIP);
-        if (col == 4) pane.setAlignment(javafx.geometry.Pos.CENTER_RIGHT); else pane.setAlignment(javafx.geometry.Pos.CENTER_LEFT); 
+        if (col == 4) pane.setAlignment(javafx.geometry.Pos.CENTER_RIGHT); else pane.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        pane.getChildren().add(label);
         grid.add(pane, col, row);
+    }
     private String getCorPorForma(String forma) {
         if (forma == null) return "black";
         switch (forma.toUpperCase()) {
             case "DINHEIRO": return "#059669"; case "PIX": return "#059669"; case "CARTAO": return "#B45309"; case "TRANSFERENCIA": return "#7BA393"; case "BOLETO": return "#DC2626"; default: return "black";
+        }
+    }
     public void abrirCadastroBoleto() {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/CadastroBoleto.fxml"));
+            Parent root = loader.load();
+            Stage stage = new Stage();
             stage.setTitle("Gestão de Boletos e Prazos");
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setMaximized(true);
+            stage.showAndWait();
+            filtrar();
+        } catch (Exception e) {
             AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.abrirBoletos: erro ao abrir tela de boletos — " + e.getMessage());
+            AlertHelper.info("Erro interno. Contate o administrador.");
+        }
+    }
     public void novaCategoria() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Nova Categoria");
@@ -542,23 +639,31 @@ public class FinanceiroSaidaController {
             try(Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("INSERT INTO categorias_despesa (nome, empresa_id) VALUES (?, ?)")) {
                 stmt.setString(1, res.get().toUpperCase());
                 stmt.setInt(2, dao.DAOUtils.empresaId());
-                carregarCategorias(); 
+                stmt.executeUpdate();
+                carregarCategorias();
             } catch(Exception e) { AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroSaidaController", "Erro: " + e.getMessage()); }
+        }
+    }
     @FXML public void limparFiltros() {
-        dpFiltroData.getEditor().clear(); 
+        dpFiltroData.getEditor().clear();
+        dpFiltroData.setValue(null);
         cmbFiltroCategoria.getSelectionModel().clearSelection();
         cmbFiltroPagamento.getSelectionModel().clearSelection();
         cmbFiltroPagamento.getSelectionModel().select("Todas");
         cmbFiltroCategoria.getSelectionModel().select("Todas");
         filtrar();
+    }
     public void abrirAuditoria() {
         if (cmbFiltroViagem.getValue() == null || cmbFiltroViagem.getValue().id == 0) {
             AlertHelper.info("Selecione uma viagem específica no filtro para ver a auditoria.\nO sistema precisa saber de qual viagem você quer ver o histórico.");
+            return;
+        }
         AuditoriaExclusoesSaida tela = new AuditoriaExclusoesSaida();
         tela.abrir(cmbFiltroViagem.getValue().id, cmbFiltroViagem.getValue().label);
+    }
     private void carregarCategorias() {
         listaCategoriasOriginal.clear();
-        listaCategoriasOriginal.add("Todas"); 
+        listaCategoriasOriginal.add("Todas");
         ObservableList<String> catsParaCadastro = FXCollections.observableArrayList();
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement pst = con.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = ? ORDER BY nome")) {
             pst.setInt(1, dao.DAOUtils.empresaId());
@@ -567,19 +672,24 @@ public class FinanceiroSaidaController {
                 String nome = rs.getString(1);
                 listaCategoriasOriginal.add(nome);
                 catsParaCadastro.add(nome);
+            }
         } catch(Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(catsParaCadastro);
-        this.listaCategoriasOriginal = catsParaCadastro; 
-        configurarAutoComplete(cmbCategoria); 
+        this.listaCategoriasOriginal = catsParaCadastro;
+        configurarAutoComplete(cmbCategoria);
         ObservableList<String> catsFiltro = FXCollections.observableArrayList("Todas");
         catsFiltro.addAll(catsParaCadastro);
         cmbFiltroCategoria.setItems(catsFiltro);
+    }
     private int buscarIdCategoria(String nome) throws SQLException {
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ? AND empresa_id = ?")) {
             stmt.setString(1, nome);
             stmt.setInt(2, dao.DAOUtils.empresaId());
+            ResultSet rs = stmt.executeQuery();
             if(rs.next()) return rs.getInt(1);
-        return 1; 
+        }
+        return 1;
+    }
     private void configuringTabela() {
         colData.setCellValueFactory(new PropertyValueFactory<>("data"));
         colDescricao.setCellValueFactory(new PropertyValueFactory<>("descricao"));
@@ -590,8 +700,9 @@ public class FinanceiroSaidaController {
         colStatus.setCellFactory(col -> new TableCell<Despesa, String>() {
             @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { 
-                    setText(null); setStyle(""); 
+                if (empty || item == null) {
+                    setText(null); setStyle("");
+                } else {
                     Despesa d = getTableView().getItems().get(getIndex());
                     if (d.isExcluido()) {
                         setText("EXCLUÍDO");
@@ -599,18 +710,29 @@ public class FinanceiroSaidaController {
                     } else {
                         setText(item);
                         setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
+                    }
+                }
+            }
+        });
         try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.configuringTabela (CSS): " + e.getMessage()); }
+    }
     private void configurarTabela() { configuringTabela(); }
     private static class DadosEmpresa {
         String nome;
         String pathLogo;
+    }
     private DadosEmpresa buscarDadosEmpresa() {
         DadosEmpresa d = new DadosEmpresa();
+        try {
             dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
             model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);
             if (empresa != null) {
                 d.nome = empresa.getEmbarcacao();
                 d.pathLogo = empresa.getCaminhoFoto();
+            }
+        } catch (Exception e) {
             AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.buscarDadosEmpresa: erro ao buscar dados empresa — " + e.getMessage());
+        }
         return d;
+    }
 }

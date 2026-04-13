@@ -51,7 +51,7 @@ public class VersaoChecker {
 
                 int status = conn.getResponseCode();
                 if (status != 200) {
-                    AppLogger.debug(TAG, "Servidor retornou HTTP " + status + " ao verificar versao");
+                    AppLogger.info(TAG, "Servidor retornou HTTP " + status + " ao verificar versao");
                     conn.disconnect();
                     return;
                 }
@@ -63,7 +63,7 @@ public class VersaoChecker {
 
             } catch (Exception e) {
                 // Silencioso — app funciona offline
-                AppLogger.debug(TAG, "Nao foi possivel verificar atualizacao: " + e.getMessage());
+                AppLogger.info(TAG, "Nao foi possivel verificar atualizacao: " + e.getMessage());
             }
         }, "VersionCheck");
         t.setDaemon(true);
@@ -82,7 +82,7 @@ public class VersaoChecker {
             props.load(fis);
             return props.getProperty("server.url", defaultUrl);
         } catch (Exception e) {
-            AppLogger.debug(TAG, "Erro ao ler sync_config.properties: " + e.getMessage());
+            AppLogger.info(TAG, "Erro ao ler sync_config.properties: " + e.getMessage());
             return defaultUrl;
         }
     }

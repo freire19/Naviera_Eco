@@ -33,7 +33,7 @@ public class FinanceiroEncomendasController {
     @FXML private Button btnSair;
     @FXML private TableView<EncomendaFinanceiro> tabela;
     @FXML private TableColumn<EncomendaFinanceiro, String> colNumero;
-    @FXML private TableColumn<EncomendaFinanceiro, String> colData; 
+    @FXML private TableColumn<EncomendaFinanceiro, String> colData;
     @FXML private TableColumn<EncomendaFinanceiro, String> colRemetente;
     @FXML private TableColumn<EncomendaFinanceiro, String> colDestinatario;
     @FXML private TableColumn<EncomendaFinanceiro, String> colTotal;
@@ -58,7 +58,7 @@ public class FinanceiroEncomendasController {
         });
         bg.setDaemon(true);
         bg.start();
-        
+
         try {
             tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm());
         } catch (Exception e) { AppLogger.warn("FinanceiroEncomendasController", "Erro em FinanceiroEncomendasController.initialize (CSS): " + e.getMessage()); }
@@ -66,8 +66,10 @@ public class FinanceiroEncomendasController {
     public void sair() {
         Stage stage = (Stage) btnSair.getScene().getWindow();
         stage.close();
+    }
     // --- Abre a nova tela de Histórico ---
     public void verHistoricoEstornos() {
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/HistoricoEstornos.fxml"));
             Parent root = loader.load();
             Stage stage = new Stage();
@@ -76,15 +78,19 @@ public class FinanceiroEncomendasController {
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setMaximized(true);
             stage.showAndWait();
-        } catch(Exception e) { 
-            AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e); 
-            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir histórico: " + e.getMessage()); 
+        } catch(Exception e) {
+            AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e);
+            AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir histórico: " + e.getMessage());
         }
+    }
     public void setViagemInicial(int idViagem) {
         for (OpcaoViagem op : cmbViagem.getItems()) {
             if (op.id == idViagem) {
                 cmbViagem.setValue(op);
                 break;
+            }
+        }
+    }
     private void configurarTabela() {
         colNumero.setCellValueFactory(new PropertyValueFactory<>("numero"));
         colData.setCellValueFactory(new PropertyValueFactory<>("dataLancamento"));
@@ -104,6 +110,9 @@ public class FinanceiroEncomendasController {
                     setText(item);
                     setStyle(StatusPagamentoView.getEstiloCelula(model.StatusPagamento.fromString(item)));
                 }
+            }
+        });
+    }
     private void carregarComboViagens() {
         ObservableList<OpcaoViagem> lista = FXCollections.observableArrayList();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
@@ -114,9 +123,12 @@ public class FinanceiroEncomendasController {
                 label += " (" + sdf.format(java.sql.Date.valueOf(v.getDataViagem()));
                 if (v.getDataChegada() != null) label += " - " + sdf.format(java.sql.Date.valueOf(v.getDataChegada()));
                 label += ")";
+            }
             lista.add(new OpcaoViagem(v.getId().intValue(), label));
+        }
         ObservableList<OpcaoViagem> finalLista = lista;
         javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
+    }
     public void carregarDados() {
         if (cmbViagem.getValue() == null) return;
         int idViagem = cmbViagem.getValue().id;
@@ -136,6 +148,8 @@ public class FinanceiroEncomendasController {
             String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
             sql.append(" AND (LOWER(e.remetente) LIKE ? ESCAPE '\\' OR LOWER(e.destinatario) LIKE ? ESCAPE '\\') ");
             params.add("%" + buscaEscapada + "%");
+            params.add("%" + buscaEscapada + "%");
+        }
         sql.append(" ORDER BY e.id_encomenda DESC");
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
@@ -143,9 +157,10 @@ public class FinanceiroEncomendasController {
                 Object p = params.get(i);
                 if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
                 else stmt.setString(i + 1, p.toString());
+            }
             ResultSet rs = stmt.executeQuery();
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-            
+
             while (rs.next()) {
                 java.math.BigDecimal total = rs.getBigDecimal("total_a_pagar");
                 java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
@@ -163,43 +178,60 @@ public class FinanceiroEncomendasController {
                     total, pago
                 ));
                 if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
+            }
             tabela.setItems(lista);
             lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
         } catch (SQLException e) { AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e); }
+    }
     public void darBaixa() {
         EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) {
             AlertHelper.info("Selecione uma encomenda na tabela para dar baixa.");
             return;
+        }
         if (selecionada.getRestante().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) {
             AlertHelper.info("Esta encomenda já está quitada!");
+            return;
+        }
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/BaixaPagamento.fxml"));
+            Parent root = loader.load();
             BaixaPagamentoController controller = loader.getController();
             controller.setDadosIniciais(
-                selecionada.getTotal(), 
+                selecionada.getTotal(),
                 selecionada.getPago(),
                 selecionada.getRestante()
             );
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Realizar Pagamento");
+            stage.initModality(Modality.APPLICATION_MODAL);
             stage.setResizable(false);
+            stage.showAndWait();
             if (controller.isConfirmado()) {
                 salvarPagamento(selecionada.getId(), controller, selecionada.getPago());
+            }
         } catch (Exception e) {
             AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e);
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir tela de pagamento: " + e.getMessage());
-    
+        }
+    }
+
     // DL003: operacao de pagamento em transacao atomica (SELECT + UPDATE na mesma conexao)
     private void salvarPagamento(int idEncomenda, BaixaPagamentoController dados, java.math.BigDecimal jaPago) {
         java.math.BigDecimal novoPago = jaPago.add(dados.getValorPago());
         try (Connection con = ConexaoBD.getConnection()) {
             con.setAutoCommit(false);
+            try {
                 // Buscar desconto ja armazenado e acumular (DL010)
                 java.math.BigDecimal descontoAnterior = java.math.BigDecimal.ZERO;
                 try (PreparedStatement stmtQ = con.prepareStatement("SELECT COALESCE(desconto, 0) FROM encomendas WHERE id_encomenda = ? AND empresa_id = ?")) {
                     stmtQ.setInt(1, idEncomenda);
+                    stmtQ.setInt(2, dao.DAOUtils.empresaId());
                     try (ResultSet rs = stmtQ.executeQuery()) {
                         if (rs.next()) descontoAnterior = rs.getBigDecimal(1);
                     }
+                }
                 java.math.BigDecimal descontoTotal = descontoAnterior.add(dados.getDesconto());
                 java.math.BigDecimal totalComDesconto = dados.getValorTotalOriginal().subtract(descontoTotal);
                 String novoStatus = (novoPago.compareTo(totalComDesconto.subtract(model.StatusPagamento.TOLERANCIA_PAGAMENTO)) >= 0) ? "PAGO" : "PARCIAL";
@@ -212,23 +244,36 @@ public class FinanceiroEncomendasController {
                     stmt.setString(4, dados.getCaixa());
                     stmt.setString(5, novoStatus);
                     stmt.setInt(6, idEncomenda);
+                    stmt.setInt(7, dao.DAOUtils.empresaId());
                     stmt.executeUpdate();
+                }
                 con.commit();
                 AlertHelper.info("Pagamento registrado com sucesso!");
                 carregarDados();
             } catch (SQLException ex) {
                 con.rollback();
                 throw ex;
+            }
         } catch (SQLException e) {
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao salvar no banco: " + e.getMessage());
+        }
+    }
     // --- MÉTODO ESTORNAR (AGORA PRESENTE E CORRIGIDO) ---
     public void estornarPagamento() {
+        EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         if (selecionada == null) { AlertHelper.info("Selecione um item para estornar."); return; }
         if (selecionada.getPago().compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) { AlertHelper.info("Este item não tem pagamento para estornar."); return; }
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/EstornoPagamento.fxml"));
+            Parent root = loader.load();
             EstornoPagamentoController controller = loader.getController();
             controller.setDados(selecionada.getTotal(), selecionada.getPago());
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Estornar Pagamento - Área Restrita");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.showAndWait();
+            if (controller.isConfirmado()) {
                 java.math.BigDecimal vEstorno = controller.getValorEstorno();
                 String motivo = controller.getMotivo();
                 String forma = controller.getFormaDevolucao();
@@ -236,45 +281,67 @@ public class FinanceiroEncomendasController {
                 String nomeAutorizador = controller.getNomeAutorizador();
                 java.math.BigDecimal novoPago = selecionada.getPago().subtract(vEstorno);
                 String novoStatus = (novoPago.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) ? "PARCIAL" : "PENDENTE";
-                
+
                 try (Connection con = ConexaoBD.getConnection()) {
                     con.setAutoCommit(false);
-                    String sqlUp = "UPDATE encomendas SET valor_pago = ?, status_pagamento = ? WHERE id_encomenda = ? AND empresa_id = ?";
-                    try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
-                        stmt.setBigDecimal(1, novoPago);
-                        stmt.setString(2, novoStatus);
-                        stmt.setInt(3, selecionada.getId());
-                        stmt.executeUpdate();
-                    String sqlLog = "INSERT INTO log_estornos_encomendas (id_encomenda, valor_estornado, motivo, forma_devolucao, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?, ?)";
-                    try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
-                        stmt.setInt(1, selecionada.getId());
-                        stmt.setBigDecimal(2, vEstorno);
-                        stmt.setString(3, motivo);
-                        stmt.setString(4, forma);
-                        stmt.setInt(5, idAutorizador);
-                        stmt.setString(6, nomeAutorizador);
-                    con.commit();
-                    AlertHelper.info("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
-                    carregarDados();
-                } catch (Exception ex) {
-                    AppLogger.error("FinanceiroEncomendasController", ex.getMessage(), ex);
-                    AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
-        } catch (Exception e) { 
+                    try {
+                        String sqlUp = "UPDATE encomendas SET valor_pago = ?, status_pagamento = ? WHERE id_encomenda = ? AND empresa_id = ?";
+                        try (PreparedStatement stmt = con.prepareStatement(sqlUp)) {
+                            stmt.setBigDecimal(1, novoPago);
+                            stmt.setString(2, novoStatus);
+                            stmt.setInt(3, selecionada.getId());
+                            stmt.setInt(4, dao.DAOUtils.empresaId());
+                            stmt.executeUpdate();
+                        }
+                        String sqlLog = "INSERT INTO log_estornos_encomendas (id_encomenda, valor_estornado, motivo, forma_devolucao, id_usuario_autorizou, nome_autorizador) VALUES (?, ?, ?, ?, ?, ?)";
+                        try (PreparedStatement stmt = con.prepareStatement(sqlLog)) {
+                            stmt.setInt(1, selecionada.getId());
+                            stmt.setBigDecimal(2, vEstorno);
+                            stmt.setString(3, motivo);
+                            stmt.setString(4, forma);
+                            stmt.setInt(5, idAutorizador);
+                            stmt.setString(6, nomeAutorizador);
+                            stmt.executeUpdate();
+                        }
+                        con.commit();
+                        AlertHelper.info("Estorno realizado com sucesso!\nAutorizado por: " + nomeAutorizador);
+                        carregarDados();
+                    } catch (Exception ex) {
+                        try { con.rollback(); } catch (Exception re) { AppLogger.error("FinanceiroEncomendasController", re.getMessage(), re); }
+                        AppLogger.error("FinanceiroEncomendasController", ex.getMessage(), ex);
+                        AlertHelper.info("Erro ao gravar estorno: " + ex.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir tela de estorno: " + e.getMessage());
+        }
+    }
     // --- GERA EXTRATO (AGORA ABRE MESMO SEM SELEÇÃO) ---
     public void gerarRelatorioCliente() {
+        EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();
         String nomeCliente = "";
         if (selecionada != null) {
             nomeCliente = selecionada.getRemetente();
         } else {
             nomeCliente = txtBusca.getText();
+        }
+        try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/ExtratoClienteEncomenda.fxml"));
+            Parent root = loader.load();
             ExtratoClienteEncomendaController controller = loader.getController();
             if (nomeCliente != null && !nomeCliente.trim().isEmpty()) {
                 controller.carregarExtrato(nomeCliente);
             } else {
                 controller.carregarExtrato(""); // Abre vazio para pesquisar lá
+            }
+            Stage stage = new Stage();
+            stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Extrato Financeiro");
+            stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
+        } catch (Exception e) {
             AlertHelper.info("Erro interno. Contate o administrador."); AppLogger.warn("FinanceiroEncomendasController", "Erro ao abrir extrato: " + e.getMessage());
+        }
+    }
 }

@@ -1,4 +1,4 @@
--- Migration 014: Trigger inteligente para sync bypass
+-- Migration 019: Trigger inteligente para sync bypass
 -- Problema: o trigger atualizar_ultima_atualizacao() reseta sincronizado = FALSE em todo UPDATE.
 -- Quando o sync aplica um registro recebido, ele seta sincronizado = TRUE, mas o trigger desfaz.
 -- Solucao: se o UPDATE explicitamente muda sincronizado de FALSE para TRUE, o trigger nao interfere.
