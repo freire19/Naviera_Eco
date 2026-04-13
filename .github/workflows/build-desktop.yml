@@ -99,10 +99,21 @@ jobs:
           }
           Write-Host "Resources copied"
 
-          # Create JAR
-          $manifestCP = ($libJars | ForEach-Object { "lib/$([System.IO.Path]::GetFileName($_))" }) -join " "
-          $manifest = "Manifest-Version: 1.0`nMain-Class: gui.Launch`nClass-Path: $manifestCP`n"
-          $manifest | Out-File "$BUILD\MANIFEST.MF" -Encoding ASCII -NoNewline
+          # Create JAR (manifest must use LF line endings and 72-char line limit)
+          $cpEntries = $libJars | ForEach-Object { "lib/$([System.IO.Path]::GetFileName($_))" }
+          $lines = @("Manifest-Version: 1.0", "Main-Class: gui.Launch")
+          # Write Class-Path with line continuation (72 char limit)
+          $cpLine = "Class-Path: " + ($cpEntries -join " ")
+          $wrapped = @()
+          while ($cpLine.Length -gt 70) {
+            $wrapped += $cpLine.Substring(0, 70)
+            $cpLine = " " + $cpLine.Substring(70)
+          }
+          $wrapped += $cpLine
+          $lines += $wrapped
+          $lines += ""
+          $manifestContent = ($lines -join "`n") + "`n"
+          [System.IO.File]::WriteAllText("$BUILD\MANIFEST.MF", $manifestContent, [System.Text.Encoding]::ASCII)
 
           & $JAR cfm "$DIST\naviera-desktop.jar" "$BUILD\MANIFEST.MF" -C "$CLASSES" .
           if ($LASTEXITCODE -ne 0) { throw "JAR creation failed" }
