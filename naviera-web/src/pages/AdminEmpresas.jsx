@@ -5,7 +5,9 @@ const FORM_INICIAL = {
   nome: '',
   slug: '',
   cor_primaria: '#1a73e8',
-  logo_url: ''
+  logo_url: '',
+  operador_nome: '',
+  operador_email: ''
 }
 
 export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
@@ -16,6 +18,7 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
   const [form, setForm] = useState(FORM_INICIAL)
   const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState(null)
+  const [credenciais, setCredenciais] = useState(null)
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
@@ -64,17 +67,26 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
     e.preventDefault()
     if (!form.nome.trim()) { showToast('Informe o nome', 'error'); return }
     if (!form.slug.trim()) { showToast('Informe o slug', 'error'); return }
+    if (!editando && !form.operador_nome.trim()) { showToast('Informe o nome do operador', 'error'); return }
+    if (!editando && !form.operador_email.trim()) { showToast('Informe o email do operador', 'error'); return }
 
     setSalvando(true)
     try {
       if (editando) {
         await api.put(`/admin/empresas/${editando.id}`, form)
         showToast('Empresa atualizada com sucesso')
+        fecharModal()
       } else {
-        await api.post('/admin/empresas', form)
-        showToast('Empresa criada com sucesso')
+        const result = await api.post('/admin/empresas', form)
+        setCredenciais({
+          empresa: result.nome,
+          slug: result.slug,
+          nome: result.operador.nome,
+          email: result.operador.email,
+          senha: result.operador.senha_temporaria
+        })
+        fecharModal()
       }
-      fecharModal()
       carregar()
     } catch (err) {
       showToast(err.message || 'Erro ao salvar empresa', 'error')
@@ -187,6 +199,21 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
                   <input type="text" name="logo_url" value={form.logo_url} onChange={handleChange} placeholder="https://..." />
                 </div>
               </div>
+              {!editando && (
+                <>
+                  <h4 style={{ margin: '16px 0 8px', borderTop: '1px solid var(--border)', paddingTop: 16 }}>Operador Responsavel</h4>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Nome do Operador</label>
+                      <input type="text" name="operador_nome" value={form.operador_nome} onChange={handleChange} placeholder="Nome completo" />
+                    </div>
+                    <div className="form-group">
+                      <label>Email do Operador</label>
+                      <input type="email" name="operador_email" value={form.operador_email} onChange={handleChange} placeholder="operador@email.com" />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={fecharModal}>Cancelar</button>
                 <button type="submit" className="btn-primary" disabled={salvando}>
@@ -194,6 +221,34 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {credenciais && (
+        <div className="modal-overlay" onClick={() => setCredenciais(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <h3 style={{ color: 'var(--success)' }}>Empresa Criada com Sucesso!</h3>
+            <p style={{ margin: '12px 0 4px', fontSize: 14, color: 'var(--text-muted)' }}>
+              Envie estas credenciais para o operador. A senha e temporaria.
+            </p>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 16, margin: '12px 0', fontFamily: 'monospace', fontSize: 14, lineHeight: 2 }}>
+              <div><strong>Empresa:</strong> {credenciais.empresa}</div>
+              <div><strong>Acesso:</strong> {credenciais.slug}.naviera.com.br</div>
+              <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
+              <div><strong>Login:</strong> {credenciais.email}</div>
+              <div><strong>Senha:</strong> <span style={{ color: 'var(--danger)', fontWeight: 'bold', fontSize: 16 }}>{credenciais.senha}</span></div>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              O operador deve trocar a senha apos o primeiro login.
+            </p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => {
+                navigator.clipboard.writeText(`Empresa: ${credenciais.empresa}\nAcesso: ${credenciais.slug}.naviera.com.br\nLogin: ${credenciais.email}\nSenha: ${credenciais.senha}`)
+                showToast('Credenciais copiadas!')
+              }}>Copiar</button>
+              <button className="btn-primary" onClick={() => setCredenciais(null)}>Fechar</button>
+            </div>
           </div>
         </div>
       )}

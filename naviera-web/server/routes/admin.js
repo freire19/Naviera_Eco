@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import crypto from 'crypto'
+import bcrypt from 'bcryptjs'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 
@@ -45,25 +47,61 @@ router.get('/empresas', async (req, res) => {
   }
 })
 
-// POST /api/admin/empresas — create new empresa
+// POST /api/admin/empresas — create new empresa + first admin user
 router.post('/empresas', async (req, res) => {
+  const client = await pool.connect()
   try {
-    const { nome, slug, cor_primaria, logo_url } = req.body
+    const { nome, slug, cor_primaria, logo_url, operador_nome, operador_email } = req.body
     if (!nome || !slug) {
       return res.status(400).json({ error: 'nome e slug obrigatorios' })
     }
-    const result = await pool.query(
+    if (!operador_nome || !operador_email) {
+      return res.status(400).json({ error: 'Nome e email do operador obrigatorios' })
+    }
+
+    await client.query('BEGIN')
+
+    // Create empresa
+    const empresaResult = await client.query(
       `INSERT INTO empresas (nome, slug, cor_primaria, logo_url, ativo)
        VALUES ($1, $2, $3, $4, TRUE) RETURNING *`,
       [nome, slug.toLowerCase(), cor_primaria || '#1a73e8', logo_url || null]
     )
-    res.status(201).json(result.rows[0])
+    const empresa = empresaResult.rows[0]
+
+    // Generate temporary password
+    const senhaTemp = crypto.randomBytes(4).toString('hex') // 8 chars hex
+    const senhaHash = await bcrypt.hash(senhaTemp, 10)
+
+    // Create first admin user for this empresa
+    await client.query(
+      `INSERT INTO usuarios (nome, email, senha, funcao, permissao, empresa_id)
+       VALUES ($1, $2, $3, 'Administrador', 'ADMIN', $4)`,
+      [operador_nome, operador_email.toLowerCase(), senhaHash, empresa.id]
+    )
+
+    await client.query('COMMIT')
+
+    res.status(201).json({
+      ...empresa,
+      operador: {
+        nome: operador_nome,
+        email: operador_email.toLowerCase(),
+        senha_temporaria: senhaTemp
+      }
+    })
   } catch (err) {
+    await client.query('ROLLBACK')
     console.error('[Admin] Erro ao criar empresa:', err.message)
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Slug ja existe' })
+      const detail = err.detail || ''
+      if (detail.includes('slug')) return res.status(409).json({ error: 'Slug ja existe' })
+      if (detail.includes('email')) return res.status(409).json({ error: 'Email do operador ja existe' })
+      return res.status(409).json({ error: 'Registro duplicado' })
     }
     res.status(500).json({ error: 'Erro ao criar empresa' })
+  } finally {
+    client.release()
   }
 })
 
