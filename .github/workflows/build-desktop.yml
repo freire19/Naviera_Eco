@@ -49,96 +49,116 @@ jobs:
           Write-Output "C:\liberica-full-jdk-17\bin" >> $env:GITHUB_PATH
 
       - name: Build .msi
-        shell: bash
-        env:
-          LIBERICA_HOME: /c/liberica-full-jdk-17
+        shell: pwsh
         run: |
-          chmod +x build/build.sh
-          sed -i "s/APP_VERSION=\".*\"/APP_VERSION=\"${{ inputs.version }}\"/" build/build.sh
-          # Windows uses build.bat but we adapt build.sh for CI
-          export PATH="$LIBERICA_HOME/bin:$PATH"
+          $ErrorActionPreference = "Stop"
+          $JAVA_HOME = "C:\liberica-full-jdk-17"
+          $JAVAC = "$JAVA_HOME\bin\javac.exe"
+          $JAR = "$JAVA_HOME\bin\jar.exe"
+          $JPACKAGE = "$JAVA_HOME\bin\jpackage.exe"
 
-          PROJECT_ROOT="$(pwd)"
-          SRC_DIR="$PROJECT_ROOT/src"
-          LIB_DIR="$PROJECT_ROOT/lib"
-          BUILD_DIR="$PROJECT_ROOT/build"
-          CLASSES_DIR="$BUILD_DIR/classes"
-          DIST_DIR="$BUILD_DIR/dist"
-          INSTALLER_DIR="$BUILD_DIR/installer"
-          JAR_NAME="naviera-desktop.jar"
+          $PROJECT = "${{ github.workspace }}"
+          $SRC = "$PROJECT\src"
+          $LIB = "$PROJECT\lib"
+          $BUILD = "$PROJECT\build"
+          $CLASSES = "$BUILD\classes"
+          $DIST = "$BUILD\dist"
+          $INSTALLER = "$BUILD\installer"
 
-          mkdir -p "$CLASSES_DIR" "$DIST_DIR" "$INSTALLER_DIR"
+          # Clean & create dirs
+          foreach ($d in @($CLASSES, $DIST, $INSTALLER)) {
+            if (Test-Path $d) { Remove-Item $d -Recurse -Force }
+            New-Item $d -ItemType Directory -Force | Out-Null
+          }
 
-          # Build classpath
-          LIB_CP=""
-          for jar in "$LIB_DIR"/*.jar; do
-            [ -f "$jar" ] || continue
-            LIB_CP="${LIB_CP:+$LIB_CP;}$jar"
-          done
+          # Build classpath from lib/ JARs
+          $libJars = Get-ChildItem "$LIB\*.jar" | ForEach-Object { $_.FullName }
+          $LIB_CP = $libJars -join ";"
 
           # Compile
-          JAVA_FILES=$(find "$SRC_DIR" -name "*.java" -type f)
-          "$LIBERICA_HOME/bin/javac" \
-            --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.swing,javafx.media \
-            -cp "$LIB_CP" \
-            -d "$CLASSES_DIR" \
-            -encoding UTF-8 \
-            -source 17 -target 17 \
-            $JAVA_FILES
+          $javaFiles = Get-ChildItem "$SRC" -Recurse -Filter "*.java" | ForEach-Object { $_.FullName }
+          $javaFilesList = "$BUILD\sources.txt"
+          $javaFiles | Out-File -FilePath $javaFilesList -Encoding UTF8
+          Write-Host "Compiling $($javaFiles.Count) .java files..."
 
-          # Copy resources
-          (cd "$SRC_DIR" && find . \( -name "*.fxml" -o -name "*.css" -o -name "*.png" \) -exec cp --parents {} "$CLASSES_DIR/" \;) 2>/dev/null || true
-          [ -d "$PROJECT_ROOT/resources" ] && cp -r "$PROJECT_ROOT/resources"/* "$CLASSES_DIR/" 2>/dev/null || true
+          & $JAVAC --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.swing,javafx.media `
+            -cp "$LIB_CP" -d "$CLASSES" -encoding UTF-8 -source 17 -target 17 `
+            "@$javaFilesList"
+          if ($LASTEXITCODE -ne 0) { throw "Compilation failed" }
+
+          # Copy resources (FXML, CSS, PNG)
+          Get-ChildItem "$SRC" -Recurse -Include "*.fxml","*.css","*.png" | ForEach-Object {
+            $rel = $_.FullName.Substring($SRC.Length + 1)
+            $dest = Join-Path $CLASSES $rel
+            $destDir = Split-Path $dest -Parent
+            if (!(Test-Path $destDir)) { New-Item $destDir -ItemType Directory -Force | Out-Null }
+            Copy-Item $_.FullName $dest -Force
+          }
+          if (Test-Path "$PROJECT\resources") {
+            Copy-Item "$PROJECT\resources\*" $CLASSES -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          Write-Host "Resources copied"
 
           # Create JAR
-          MANIFEST_CP=""
-          for jar in "$LIB_DIR"/*.jar; do
-            [ -f "$jar" ] || continue
-            MANIFEST_CP="${MANIFEST_CP:+$MANIFEST_CP }lib/$(basename "$jar")"
-          done
-          echo -e "Manifest-Version: 1.0\nMain-Class: gui.Launch\nClass-Path: $MANIFEST_CP\n" > "$BUILD_DIR/MANIFEST.MF"
-          "$LIBERICA_HOME/bin/jar" cfm "$DIST_DIR/$JAR_NAME" "$BUILD_DIR/MANIFEST.MF" -C "$CLASSES_DIR" .
+          $manifestCP = ($libJars | ForEach-Object { "lib/$([System.IO.Path]::GetFileName($_))" }) -join " "
+          $manifest = "Manifest-Version: 1.0`nMain-Class: gui.Launch`nClass-Path: $manifestCP`n"
+          $manifest | Out-File "$BUILD\MANIFEST.MF" -Encoding ASCII -NoNewline
 
-          mkdir -p "$DIST_DIR/lib"
-          cp "$LIB_DIR"/*.jar "$DIST_DIR/lib/"
+          & $JAR cfm "$DIST\naviera-desktop.jar" "$BUILD\MANIFEST.MF" -C "$CLASSES" .
+          if ($LASTEXITCODE -ne 0) { throw "JAR creation failed" }
 
-          # jpackage
-          JPACKAGE_INPUT="$BUILD_DIR/jpackage-input"
-          mkdir -p "$JPACKAGE_INPUT/lib"
-          cp "$DIST_DIR/$JAR_NAME" "$JPACKAGE_INPUT/"
-          cp "$LIB_DIR"/*.jar "$JPACKAGE_INPUT/lib/"
+          # Copy lib JARs
+          New-Item "$DIST\lib" -ItemType Directory -Force | Out-Null
+          Copy-Item "$LIB\*.jar" "$DIST\lib\"
+          Write-Host "JAR created"
 
-          ALL_MODULES="javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.web,javafx.swing,javafx.media"
-          ALL_MODULES="$ALL_MODULES,java.base,java.sql,java.sql.rowset,java.desktop,java.logging,java.naming"
-          ALL_MODULES="$ALL_MODULES,java.transaction.xa,java.net.http,java.security.jgss,java.xml,java.prefs"
-          ALL_MODULES="$ALL_MODULES,java.datatransfer,java.scripting,java.compiler,java.management"
-          ALL_MODULES="$ALL_MODULES,jdk.unsupported,jdk.unsupported.desktop,jdk.jsobject,jdk.xml.dom"
+          # Prepare jpackage input
+          $JPINPUT = "$BUILD\jpackage-input"
+          if (Test-Path $JPINPUT) { Remove-Item $JPINPUT -Recurse -Force }
+          New-Item "$JPINPUT\lib" -ItemType Directory -Force | Out-Null
+          Copy-Item "$DIST\naviera-desktop.jar" $JPINPUT
+          Copy-Item "$LIB\*.jar" "$JPINPUT\lib\"
 
-          ICON_OPT=""
-          [ -f "$SRC_DIR/gui/icons/logo_icon.png" ] && ICON_OPT="--icon $SRC_DIR/gui/icons/logo_icon.png"
+          # Icon
+          $iconOpt = @()
+          if (Test-Path "$SRC\gui\icons\logo_icon.png") {
+            $iconOpt = @("--icon", "$SRC\gui\icons\logo_icon.png")
+          }
 
-          "$LIBERICA_HOME/bin/jpackage" \
-            --input "$JPACKAGE_INPUT" \
-            --main-jar "$JAR_NAME" \
-            --main-class gui.Launch \
-            --name Naviera \
-            --app-version "${{ inputs.version }}" \
-            --vendor "Naviera Eco" \
-            --description "Sistema de Gestao Naviera" \
-            --dest "$INSTALLER_DIR" \
-            --type msi \
-            --add-modules "$ALL_MODULES" \
-            --java-options "--add-opens javafx.base/com.sun.javafx.reflect=ALL-UNNAMED" \
-            --java-options "--add-opens javafx.graphics/com.sun.javafx.css=ALL-UNNAMED" \
-            --java-options "--add-opens javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED" \
-            --java-options "--add-opens javafx.graphics/com.sun.javafx.scene.layout=ALL-UNNAMED" \
-            --java-options "--add-opens javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED" \
-            --java-options "--add-opens javafx.controls/javafx.scene.control.skin=ALL-UNNAMED" \
-            --java-options "-Dfile.encoding=UTF-8" \
-            --win-menu \
-            --win-shortcut \
-            --win-dir-chooser \
-            $ICON_OPT
+          # All modules
+          $modules = "javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.web,javafx.swing,javafx.media"
+          $modules += ",java.base,java.sql,java.sql.rowset,java.desktop,java.logging,java.naming"
+          $modules += ",java.transaction.xa,java.net.http,java.security.jgss,java.xml,java.prefs"
+          $modules += ",java.datatransfer,java.scripting,java.compiler,java.management"
+          $modules += ",jdk.unsupported,jdk.unsupported.desktop,jdk.jsobject,jdk.xml.dom"
+
+          Write-Host "Creating .msi with jpackage..."
+          & $JPACKAGE `
+            --input "$JPINPUT" `
+            --main-jar "naviera-desktop.jar" `
+            --main-class gui.Launch `
+            --name Naviera `
+            --app-version "${{ inputs.version }}" `
+            --vendor "Naviera Eco" `
+            --description "Sistema de Gestao Naviera" `
+            --dest "$INSTALLER" `
+            --type msi `
+            --add-modules "$modules" `
+            --java-options "--add-opens javafx.base/com.sun.javafx.reflect=ALL-UNNAMED" `
+            --java-options "--add-opens javafx.graphics/com.sun.javafx.css=ALL-UNNAMED" `
+            --java-options "--add-opens javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED" `
+            --java-options "--add-opens javafx.graphics/com.sun.javafx.scene.layout=ALL-UNNAMED" `
+            --java-options "--add-opens javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED" `
+            --java-options "--add-opens javafx.controls/javafx.scene.control.skin=ALL-UNNAMED" `
+            --java-options "-Dfile.encoding=UTF-8" `
+            --win-menu `
+            --win-shortcut `
+            --win-dir-chooser `
+            @iconOpt
+          if ($LASTEXITCODE -ne 0) { throw "jpackage failed" }
+
+          Get-ChildItem "$INSTALLER" | ForEach-Object { Write-Host "$($_.Name) - $([math]::Round($_.Length/1MB, 1)) MB" }
+          Write-Host "Build complete!"
 
       - name: Upload .msi
         uses: actions/upload-artifact@v4
