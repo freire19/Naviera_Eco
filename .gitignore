@@ -3,6 +3,10 @@ bin/
 *.class
 dist/
 build/
+!build/build.sh
+!build/build.bat
+!build/jpackage.cfg
+!build/publish.sh
 
 # IDE
 .metadata/
