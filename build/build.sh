@@ -1,17 +1,24 @@
 #!/bin/bash
 # ============================================================================
 # Naviera Desktop -- Build & Package Script (Linux)
-# Requires: JDK 17+, JavaFX SDK 23.0.2+
+# Requires: Liberica Full JDK 17 (with JavaFX) at /opt/liberica-full-jdk-17
 # ============================================================================
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Configuration -- adjust these paths for your environment
+# Configuration
 # ---------------------------------------------------------------------------
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# JavaFX SDK location (default: /opt/javafx-sdk-23.0.2)
-JAVAFX_PATH="${JAVAFX_PATH:-/opt/javafx-sdk-23.0.2/lib}"
+# Liberica Full JDK 17 (includes JavaFX + all Java modules)
+LIBERICA_HOME="${LIBERICA_HOME:-/opt/liberica-full-jdk-17}"
+JAVA="$LIBERICA_HOME/bin/java"
+JAVAC="$LIBERICA_HOME/bin/javac"
+JAR_CMD="$LIBERICA_HOME/bin/jar"
+JPACKAGE="$LIBERICA_HOME/bin/jpackage"
+
+# JavaFX is built into Liberica Full — get module path from jmods
+JAVAFX_JMODS="$LIBERICA_HOME/jmods"
 
 # Source and output directories
 SRC_DIR="$PROJECT_ROOT/src"
@@ -30,17 +37,15 @@ APP_DESCRIPTION="Sistema de Gestao Naviera"
 JAR_NAME="naviera-desktop.jar"
 MAIN_CLASS="gui.Launch"
 
-# Icon (PNG for Linux, will be used by jpackage)
+# Icon (PNG for Linux)
 ICON_FILE="$SRC_DIR/gui/icons/logo_icon.png"
 
-# JavaFX modules required
-JAVAFX_MODULES="javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.web,javafx.swing,javafx.media"
-
-# Java platform modules required by the app (java.sql for DB, java.desktop for AWT/print/sound, etc.)
-JAVA_MODULES="java.base,java.sql,java.desktop,java.logging,java.naming,java.net.http,java.security.jgss,java.xml,java.prefs,java.datatransfer,java.scripting,java.management,jdk.unsupported"
-
-# All modules for jpackage runtime
-ALL_MODULES="$JAVAFX_MODULES,$JAVA_MODULES"
+# All modules needed in the runtime (JavaFX + Java platform)
+ALL_MODULES="javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.web,javafx.swing,javafx.media"
+ALL_MODULES="$ALL_MODULES,java.base,java.sql,java.sql.rowset,java.desktop,java.logging,java.naming"
+ALL_MODULES="$ALL_MODULES,java.transaction.xa,java.net.http,java.security.jgss,java.xml,java.prefs"
+ALL_MODULES="$ALL_MODULES,java.datatransfer,java.scripting,java.compiler,java.management"
+ALL_MODULES="$ALL_MODULES,jdk.unsupported,jdk.unsupported.desktop,jdk.jsobject,jdk.xml.dom"
 
 # ---------------------------------------------------------------------------
 # Helper functions
@@ -55,19 +60,24 @@ die()   { err "$@"; exit 1; }
 # ---------------------------------------------------------------------------
 info "Checking prerequisites..."
 
-command -v java  >/dev/null 2>&1 || die "java not found in PATH"
-command -v javac >/dev/null 2>&1 || die "javac not found in PATH"
+[ -x "$JAVA" ]     || die "Liberica Full JDK 17 not found at $LIBERICA_HOME. Install with: wget + tar to /opt/"
+[ -x "$JAVAC" ]    || die "javac not found in Liberica JDK"
+[ -x "$JPACKAGE" ] || die "jpackage not found in Liberica JDK"
 
-JAVA_VERSION=$(java -version 2>&1 | head -1 | grep -oP '\"(\d+)' | tr -d '"')
-if [ "$JAVA_VERSION" -lt 17 ] 2>/dev/null; then
-    die "JDK 17+ required (found version $JAVA_VERSION)"
-fi
-ok "JDK $JAVA_VERSION detected"
+JAVA_VERSION=$("$JAVA" -version 2>&1 | head -1 | grep -oP '"(\d+)' | tr -d '"')
+ok "Liberica Full JDK $JAVA_VERSION detected"
 
-if [ ! -d "$JAVAFX_PATH" ]; then
-    die "JavaFX SDK not found at $JAVAFX_PATH. Set JAVAFX_PATH env variable."
+# Verify JavaFX is built-in
+if ! "$JAVA" --list-modules 2>/dev/null | grep -q "javafx.base"; then
+    die "JavaFX not found in JDK. Use Liberica FULL JDK (not standard)."
 fi
-ok "JavaFX SDK found at $JAVAFX_PATH"
+ok "JavaFX modules built into JDK"
+
+# Verify java.sql is available
+if ! "$JAVA" --list-modules 2>/dev/null | grep -q "java.sql@"; then
+    die "java.sql not found in JDK — broken installation"
+fi
+ok "java.sql module available"
 
 # ---------------------------------------------------------------------------
 # Step 0: Clean previous build
@@ -78,7 +88,7 @@ mkdir -p "$CLASSES_DIR" "$DIST_DIR" "$INSTALLER_DIR"
 ok "Build directories created"
 
 # ---------------------------------------------------------------------------
-# Step 1: Build classpath from lib/ JARs + JavaFX JARs
+# Step 1: Build classpath from lib/ JARs
 # ---------------------------------------------------------------------------
 info "Building classpath..."
 LIB_CP=""
@@ -86,14 +96,6 @@ for jar in "$LIB_DIR"/*.jar; do
     [ -f "$jar" ] || continue
     LIB_CP="${LIB_CP:+$LIB_CP:}$jar"
 done
-
-JAVAFX_CP=""
-for jar in "$JAVAFX_PATH"/*.jar; do
-    [ -f "$jar" ] || continue
-    JAVAFX_CP="${JAVAFX_CP:+$JAVAFX_CP:}$jar"
-done
-
-FULL_CP="$JAVAFX_CP:$LIB_CP"
 ok "Classpath ready ($(echo "$LIB_CP" | tr ':' '\n' | wc -l) lib JARs)"
 
 # ---------------------------------------------------------------------------
@@ -101,15 +103,13 @@ ok "Classpath ready ($(echo "$LIB_CP" | tr ':' '\n' | wc -l) lib JARs)"
 # ---------------------------------------------------------------------------
 info "Compiling sources..."
 
-# Collect all .java files
 JAVA_FILES=$(find "$SRC_DIR" -name "*.java" -type f)
 FILE_COUNT=$(echo "$JAVA_FILES" | wc -l)
 info "  Found $FILE_COUNT .java files"
 
-# Compile with module path for JavaFX and classpath for other libs
-javac \
-    --module-path "$JAVAFX_PATH" \
-    --add-modules "$JAVAFX_MODULES" \
+# Liberica Full has JavaFX in the JDK itself — no external module-path needed
+"$JAVAC" \
+    --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.swing,javafx.media \
     -cp "$LIB_CP" \
     -d "$CLASSES_DIR" \
     -encoding UTF-8 \
@@ -123,23 +123,20 @@ ok "Compilation complete"
 # ---------------------------------------------------------------------------
 info "Copying resources..."
 
-# Copy FXML, CSS, PNG from src/ preserving package structure (relative to src/)
 (cd "$SRC_DIR" && find . -name "*.fxml" -exec cp --parents {} "$CLASSES_DIR/" \;) 2>/dev/null && \
-    ok "  FXML files copied from src/" || true
+    ok "  FXML files copied" || true
 
 (cd "$SRC_DIR" && find . -name "*.css" -exec cp --parents {} "$CLASSES_DIR/" \;) 2>/dev/null && \
-    ok "  CSS files copied from src/" || true
+    ok "  CSS files copied" || true
 
 (cd "$SRC_DIR" && find . -name "*.png" -exec cp --parents {} "$CLASSES_DIR/" \;) 2>/dev/null && \
-    ok "  PNG icons copied from src/" || true
+    ok "  PNG icons copied" || true
 
-# Copy resources/ directory contents (css/, icons/)
 if [ -d "$RESOURCES_DIR" ]; then
     cp -r "$RESOURCES_DIR"/* "$CLASSES_DIR/" 2>/dev/null && \
         ok "  resources/ directory copied" || true
 fi
 
-# Copy config files that the app may need at runtime
 for cfg in db.properties db.properties.example impressoras.config sync_config.properties; do
     if [ -f "$PROJECT_ROOT/$cfg" ]; then
         cp "$PROJECT_ROOT/$cfg" "$CLASSES_DIR/"
@@ -148,9 +145,8 @@ done
 ok "Resources copied"
 
 # ---------------------------------------------------------------------------
-# Step 4: Cleanup stale paths (if any)
+# Step 4: Cleanup stale paths
 # ---------------------------------------------------------------------------
-# Remove any absolute-path artifacts from previous builds
 find "$CLASSES_DIR" -maxdepth 1 -name "home" -type d -exec rm -rf {} + 2>/dev/null || true
 if [ -d "$CLASSES_DIR/src" ]; then
     cp -r "$CLASSES_DIR/src/"* "$CLASSES_DIR/" 2>/dev/null || true
@@ -163,23 +159,16 @@ ok "Resource paths verified"
 # ---------------------------------------------------------------------------
 info "Creating JAR..."
 
-# Build Class-Path for manifest (all lib JARs, relative to jar location)
 MANIFEST_CP=""
 for jar in "$LIB_DIR"/*.jar; do
     [ -f "$jar" ] || continue
     MANIFEST_CP="${MANIFEST_CP:+$MANIFEST_CP }lib/$(basename "$jar")"
 done
-for jar in "$JAVAFX_PATH"/*.jar; do
-    [ -f "$jar" ] || continue
-    MANIFEST_CP="${MANIFEST_CP:+$MANIFEST_CP }javafx/$(basename "$jar")"
-done
 
-# Create manifest (Class-Path must wrap at 72 chars with leading space continuation)
 MANIFEST_FILE="$BUILD_DIR/MANIFEST.MF"
 {
     echo "Manifest-Version: 1.0"
     echo "Main-Class: $MAIN_CLASS"
-    # Write Class-Path with proper line continuation (72 char limit per line)
     LINE="Class-Path:"
     for entry in $MANIFEST_CP; do
         if [ ${#LINE} -gt 0 ] && [ $(( ${#LINE} + 1 + ${#entry} )) -gt 70 ]; then
@@ -193,32 +182,19 @@ MANIFEST_FILE="$BUILD_DIR/MANIFEST.MF"
     echo ""
 } > "$MANIFEST_FILE"
 
-# Create JAR
-jar cfm "$DIST_DIR/$JAR_NAME" "$MANIFEST_FILE" -C "$CLASSES_DIR" .
+"$JAR_CMD" cfm "$DIST_DIR/$JAR_NAME" "$MANIFEST_FILE" -C "$CLASSES_DIR" .
 ok "JAR created: $DIST_DIR/$JAR_NAME"
 
-# Copy dependency JARs alongside the main JAR
 mkdir -p "$DIST_DIR/lib"
 cp "$LIB_DIR"/*.jar "$DIST_DIR/lib/"
-
-mkdir -p "$DIST_DIR/javafx"
-cp "$JAVAFX_PATH"/*.jar "$DIST_DIR/javafx/"
 ok "Dependencies copied to dist/"
 
 # ---------------------------------------------------------------------------
 # Step 6: Create native installer with jpackage
 # ---------------------------------------------------------------------------
-if ! command -v jpackage >/dev/null 2>&1; then
-    err "jpackage not found -- skipping native installer."
-    err "Install JDK 17+ with jpackage support to create installers."
-    info "You can still run the app with:"
-    info "  java --module-path \"$JAVAFX_PATH\" --add-modules $JAVAFX_MODULES -jar $DIST_DIR/$JAR_NAME"
-    exit 0
-fi
-
 info "Creating native installer with jpackage..."
 
-# Determine installer type based on OS
+# Determine installer type
 case "$(uname -s)" in
     Linux*)
         if command -v dpkg >/dev/null 2>&1; then
@@ -229,33 +205,27 @@ case "$(uname -s)" in
             PKG_TYPE="app-image"
         fi
         ;;
-    Darwin*)
-        PKG_TYPE="dmg"
-        ;;
-    *)
-        PKG_TYPE="app-image"
-        ;;
+    Darwin*) PKG_TYPE="dmg" ;;
+    *)       PKG_TYPE="app-image" ;;
 esac
 
 info "  Installer type: $PKG_TYPE"
 
-# Collect all dependency JARs into a single input directory for jpackage
+# Prepare input directory
 JPACKAGE_INPUT="$BUILD_DIR/jpackage-input"
 rm -rf "$JPACKAGE_INPUT"
 mkdir -p "$JPACKAGE_INPUT/lib"
-
 cp "$DIST_DIR/$JAR_NAME" "$JPACKAGE_INPUT/"
 cp "$LIB_DIR"/*.jar "$JPACKAGE_INPUT/lib/"
-cp "$JAVAFX_PATH"/*.jar "$JPACKAGE_INPUT/lib/"
 
-# Icon option
+# Icon
 JPACKAGE_ICON_OPT=""
 if [ -f "$ICON_FILE" ]; then
     JPACKAGE_ICON_OPT="--icon $ICON_FILE"
     info "  Using icon: $ICON_FILE"
 fi
 
-# Linux-specific options (declare system dependencies for .deb)
+# Linux .deb options
 LINUX_OPTS=""
 if [ "$PKG_TYPE" = "deb" ]; then
     LINUX_OPTS="--linux-deb-maintainer suporte@naviera.com.br"
@@ -263,8 +233,9 @@ if [ "$PKG_TYPE" = "deb" ]; then
     LINUX_OPTS="$LINUX_OPTS --linux-shortcut"
 fi
 
-# Build jpackage command with ALL required modules (JavaFX + Java platform)
-jpackage \
+# jpackage uses Liberica Full JDK — JavaFX + java.sql are built-in
+# No external module-path needed, no post-build patching
+"$JPACKAGE" \
     --input "$JPACKAGE_INPUT" \
     --main-jar "$JAR_NAME" \
     --main-class "$MAIN_CLASS" \
@@ -274,7 +245,6 @@ jpackage \
     --description "$APP_DESCRIPTION" \
     --dest "$INSTALLER_DIR" \
     --type "$PKG_TYPE" \
-    --module-path "$JAVAFX_PATH" \
     --add-modules "$ALL_MODULES" \
     --java-options "--add-opens javafx.base/com.sun.javafx.reflect=ALL-UNNAMED" \
     --java-options "--add-opens javafx.graphics/com.sun.javafx.css=ALL-UNNAMED" \
@@ -286,42 +256,34 @@ jpackage \
     $JPACKAGE_ICON_OPT \
     $LINUX_OPTS
 
-ok "Native installer created in $INSTALLER_DIR/"
+ok "Native installer created"
 
 # ---------------------------------------------------------------------------
-# Step 7: Patch .deb — inject JavaFX native libs into runtime
+# Step 7: Verify .deb contents
 # ---------------------------------------------------------------------------
 if [ "$PKG_TYPE" = "deb" ]; then
     DEB_FILE=$(ls "$INSTALLER_DIR"/*.deb 2>/dev/null | head -1)
     if [ -n "$DEB_FILE" ]; then
-        info "Patching .deb with JavaFX native libraries..."
-        PATCH_DIR=$(mktemp -d)
-        dpkg-deb -x "$DEB_FILE" "$PATCH_DIR/root"
-        dpkg-deb -e "$DEB_FILE" "$PATCH_DIR/DEBIAN"
+        info "Verifying .deb contents..."
+        VERIFY_DIR=$(mktemp -d)
+        dpkg-deb -x "$DEB_FILE" "$VERIFY_DIR"
 
-        # Copy JavaFX native .so files into the runtime
-        RUNTIME_LIB="$PATCH_DIR/root/opt/naviera/lib/runtime/lib"
-        if [ -d "$RUNTIME_LIB" ]; then
-            cp "$JAVAFX_PATH"/*.so "$RUNTIME_LIB/" 2>/dev/null || true
-            SO_COUNT=$(ls "$RUNTIME_LIB"/libglass*.so 2>/dev/null | wc -l)
-            ok "  Copied $SO_COUNT+ JavaFX native libs (.so)"
+        # Check JavaFX native libs
+        SO_COUNT=$(find "$VERIFY_DIR" -name "libglass*.so" -o -name "libprism*.so" 2>/dev/null | wc -l)
+        if [ "$SO_COUNT" -gt 0 ]; then
+            ok "  JavaFX native libs present ($SO_COUNT .so files)"
+        else
+            err "  JavaFX native libs MISSING — installer may not work"
         fi
 
-        # Verify java.sql is in the runtime
-        JAVA_BIN="$PATCH_DIR/root/opt/naviera/lib/runtime/bin/java"
-        if [ -x "$JAVA_BIN" ]; then
-            if "$JAVA_BIN" --list-modules 2>/dev/null | grep -q "java.sql"; then
-                ok "  java.sql module present in runtime"
-            else
-                err "  java.sql module MISSING — runtime may be incomplete"
-            fi
+        # Check java.sql module
+        if find "$VERIFY_DIR" -path "*/legal/java.sql" -type d 2>/dev/null | grep -q "."; then
+            ok "  java.sql module present"
+        else
+            err "  java.sql module MISSING"
         fi
 
-        # Rebuild .deb (DEBIAN must be inside the root directory)
-        mv "$PATCH_DIR/DEBIAN" "$PATCH_DIR/root/DEBIAN"
-        dpkg-deb --build --root-owner-group "$PATCH_DIR/root" "$DEB_FILE"
-        rm -rf "$PATCH_DIR"
-        ok "  .deb patched successfully"
+        rm -rf "$VERIFY_DIR"
     fi
 fi
 
@@ -336,10 +298,8 @@ info "  Build complete!"
 info "============================================"
 info "  JAR:       $DIST_DIR/$JAR_NAME"
 info "  Installer: $INSTALLER_DIR/"
+info "  JDK:       $LIBERICA_HOME"
 info ""
-info "  To run directly:"
-info "    java --module-path \"$JAVAFX_PATH\" \\"
-info "         --add-modules $JAVAFX_MODULES \\"
-info "         -cp \"$DIST_DIR/$JAR_NAME:$DIST_DIR/lib/*:$DIST_DIR/javafx/*\" \\"
-info "         $MAIN_CLASS"
+info "  To install:"
+info "    sudo dpkg -i $INSTALLER_DIR/*.deb"
 echo ""
