@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | **Web** | React + Vite + Express (BFF) | Espelho do Desktop online (escritorio) | PARCIAL — 6 telas funcionais, 20 placeholder, somente leitura |
 | **API** | Spring Boot 3.3 + PostgreSQL | Backend REST multi-tenant | PARCIAL — precisa tenant-awareness |
 | **App Mobile** | React + Vite (dev) → mobile futuro | App para clientes finais (CPF/CNPJ) | PARCIAL — 11 telas (2 perfis CPF/CNPJ), UI em web para dev |
+| **Site** | React + Vite (estatico) | Site institucional (naviera.com.br) | FUNCIONAL — 7 paginas, deploy estatico |
 
 ---
 
@@ -31,6 +32,7 @@ VPS (72.62.166.247)
 │  naviera-api (Spring Boot, porta 8081, systemd)          │
 │  naviera-web (Express BFF, porta 3003, PM2)              │
 │  naviera-app (build estatico, Nginx)                     │
+│  naviera-site (build estatico, Nginx)                    │
 │  Todos acessam o MESMO banco central                     │
 └──────────────────────┬───────────────────────────────────┘
                        │ sync bidirecional (quando online)
@@ -63,6 +65,7 @@ VPS (72.62.166.247)
 
 | Subdominio | Funcao | Quem usa |
 |-----------|--------|----------|
+| `naviera.com.br` | Site institucional | Publico geral (protegido por auth_basic temporariamente) |
 | `{slug}.naviera.com.br` | Console web da empresa | Operadores (ex: `saofrancisco.naviera.com.br`) |
 | `app.naviera.com.br` | App mobile (clientes) | Passageiros e lojas |
 | `admin.naviera.com.br` | Painel admin Naviera | Gestor da plataforma |
@@ -88,7 +91,7 @@ VPS (72.62.166.247)
 | `src/dao/TenantContext.java` | ThreadLocal com empresa_id — usado por todos os DAOs |
 | `src/dao/DAOUtils.java` | Helpers: `empresaId()`, `setEmpresa()`, `TENANT_FILTER` |
 | `naviera-web/server/middleware/tenant.js` | Middleware BFF: resolve slug → empresa_id |
-| `nginx/naviera.conf` | Nginx: wildcard subdominio → proxy + X-Tenant-Slug |
+| `nginx/naviera.conf` | Nginx: site institucional + wildcard subdominio + proxy (deploy como `naviera.com.br.conf`) |
 | `db.properties.example` | Config com `empresa.id=1` |
 
 ---
@@ -228,6 +231,51 @@ cd naviera-app && npm run dev  # Dev web (sera mobile no futuro)
 
 ---
 
+## Camada Site Institucional
+
+Diretorio: `naviera-site/`
+
+Site institucional da Naviera em `naviera.com.br`. React SPA com build estatico servido pelo Nginx.
+
+### Stack
+
+- **Framework**: React 18 + Vite 5
+- **Estrutura**: Monolitico em `App.jsx` (~600 linhas) — 7 paginas + componentes compartilhados
+- **Estilos**: CSS inline via template string (sem arquivo CSS separado)
+- **Fontes**: Sora (titulos) + Space Mono (monospace)
+- **Deploy**: `npm run build` → `dist/` copiado para `/var/www/naviera-site/` na VPS
+
+### Paginas
+
+| Pagina | Componente | Conteudo |
+|--------|-----------|----------|
+| Home | `HomePage` | Hero + features + arquitetura + dual B2B/B2C + CTA |
+| Empresas | `EmpresasPage` | Landing para operadores + 3 passos |
+| Passageiros | `PassageirosPage` | Landing para passageiros + lojas CNPJ |
+| Funcionalidades | `FuncionalidadesPage` | Grid operacional + financeiro + tech |
+| Precos | `PrecosPage` | 3 planos (Gratis / R$299 / Consulta) + FAQ |
+| Download | `DownloadPage` | Desktop (.deb/.msi) + App (PWA/stores) |
+| Contato | `ContatoPage` | Canais + WhatsApp CTA |
+
+### Downloads hospedados
+
+- `naviera.com.br/downloads/naviera-desktop.deb` — Instalador Linux (97 MB)
+- `naviera.com.br/downloads/naviera-desktop.msi` — Futuro instalador Windows
+- Arquivos em `/var/www/naviera-site/downloads/` na VPS
+
+### Protecao temporaria
+
+Site protegido por `auth_basic` no Nginx (htpasswd em `/etc/nginx/.htpasswd_naviera`). Remover as 3 linhas de `auth_basic` no bloco `naviera.com.br` quando for publicar.
+
+### Comandos
+
+```bash
+cd naviera-site && npm run dev    # Dev local (porta 5175)
+cd naviera-site && npm run build  # Build producao → dist/
+```
+
+---
+
 ## Camada API (Spring Boot)
 
 Diretorio: `naviera-api/`
@@ -337,6 +385,15 @@ aux_*, contatos, frete_itens, encomenda_itens, log_estornos_*, clientes_app
 - [x] Push notifications: Firebase FCM com graceful degradation, useNotifications hook, NotificationBanner
 - [x] WebSocket STOMP/SockJS no app: useWebSocket hook, NotificationList com badge, reconexao automatica
 
+### Fase 5: Site institucional + Instalador — CONCLUIDA
+
+- [x] Site institucional React SPA (`naviera-site/`) com 7 paginas
+- [x] Deploy estatico em `naviera.com.br` (antes redirecionava para app)
+- [x] Nginx atualizado: bloco `naviera.com.br` serve site, bloco deve vir ANTES do wildcard `*.naviera.com.br`
+- [x] Downloads hospedados: `/downloads/naviera-desktop.deb` (97 MB) servido com Content-Disposition attachment
+- [x] Protecao temporaria com auth_basic (htpasswd)
+- [x] Instalador Desktop Linux (.deb) via jpackage com JRE embutido
+
 ---
 
 ## Comandos uteis
@@ -359,6 +416,13 @@ cd naviera-web/server && node index.js
 
 # App Mobile dev (web, porta padrao Vite)
 cd naviera-app && npm run dev
+
+# Site institucional dev (porta 5175)
+cd naviera-site && npm run dev
+
+# Site institucional — build + deploy
+cd naviera-site && npm run build
+scp -r dist/* root@72.62.166.247:/var/www/naviera-site/
 ```
 
 ---
@@ -375,4 +439,4 @@ cd naviera-app && npm run dev
 
 ---
 
-*Atualizado: 2026-04-10 — Correcao estado real das camadas Web, App e API*
+*Atualizado: 2026-04-12 — Adicionado site institucional (naviera-site/), instalador Desktop, downloads hospedados*

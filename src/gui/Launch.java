@@ -88,6 +88,9 @@ public class Launch extends Application {
             stage.setTitle("Naviera - Login");
             stage.setResizable(false);
             stage.show();
+
+            // Verificar atualizacao em background (silencioso se offline)
+            gui.util.VersaoChecker.verificarAtualizacao();
         } catch (Exception e) {
             AppLogger.error("Launch", "Erro ao abrir Login: " + e.getMessage(), e);
         }

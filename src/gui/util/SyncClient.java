@@ -25,11 +25,12 @@ public class SyncClient {
     private static final String TAG = "SyncClient";
     private static final String CONFIG_FILE = "sync_config.properties";
 
-    // Tabelas permitidas para sync (alinhadas com SyncService do servidor)
+    // Tabelas permitidas para sync — ORDEM IMPORTA: tabelas referenciadas primeiro
+    // (embarcacoes/rotas antes de viagens, passageiros antes de passagens)
     private static final List<String> TABELAS_SYNC = List.of(
-        "viagens", "passagens", "passageiros", "encomendas",
-        "fretes", "financeiro_saidas", "conferentes", "caixas",
-        "rotas", "embarcacoes", "tarifas"
+        "embarcacoes", "rotas", "tarifas", "conferentes", "caixas",
+        "passageiros", "viagens", "passagens", "encomendas",
+        "fretes", "financeiro_saidas"
     );
 
     // Mapa tabela -> coluna PK (alinhado com SyncService)
