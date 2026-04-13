@@ -1,0 +1,174 @@
+name: Build Desktop Installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Liberica Full JDK 17
+        run: |
+          wget -q "https://download.bell-sw.com/java/17.0.14+10/bellsoft-jdk17.0.14+10-linux-amd64-full.tar.gz" -O /tmp/liberica.tar.gz
+          sudo mkdir -p /opt/liberica-full-jdk-17
+          sudo tar xzf /tmp/liberica.tar.gz -C /opt/liberica-full-jdk-17 --strip-components=1
+
+      - name: Update version
+        run: |
+          sed -i "s/APP_VERSION=\".*\"/APP_VERSION=\"${{ inputs.version }}\"/" build/build.sh
+
+      - name: Build .deb
+        run: |
+          chmod +x build/build.sh
+          build/build.sh
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: naviera-desktop-linux
+          path: build/installer/*.deb
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Liberica Full JDK 17
+        run: |
+          Invoke-WebRequest -Uri "https://download.bell-sw.com/java/17.0.14+10/bellsoft-jdk17.0.14+10-windows-amd64-full.zip" -OutFile "$env:TEMP\liberica.zip"
+          Expand-Archive -Path "$env:TEMP\liberica.zip" -DestinationPath "C:\liberica"
+          $jdkDir = Get-ChildItem "C:\liberica" | Select-Object -First 1
+          Rename-Item $jdkDir.FullName "C:\liberica-full-jdk-17"
+
+      - name: Build .msi
+        shell: bash
+        env:
+          LIBERICA_HOME: C:\liberica-full-jdk-17
+        run: |
+          chmod +x build/build.sh
+          sed -i "s/APP_VERSION=\".*\"/APP_VERSION=\"${{ inputs.version }}\"/" build/build.sh
+          # Windows uses build.bat but we adapt build.sh for CI
+          export PATH="$LIBERICA_HOME/bin:$PATH"
+
+          PROJECT_ROOT="$(pwd)"
+          SRC_DIR="$PROJECT_ROOT/src"
+          LIB_DIR="$PROJECT_ROOT/lib"
+          BUILD_DIR="$PROJECT_ROOT/build"
+          CLASSES_DIR="$BUILD_DIR/classes"
+          DIST_DIR="$BUILD_DIR/dist"
+          INSTALLER_DIR="$BUILD_DIR/installer"
+          JAR_NAME="naviera-desktop.jar"
+
+          mkdir -p "$CLASSES_DIR" "$DIST_DIR" "$INSTALLER_DIR"
+
+          # Build classpath
+          LIB_CP=""
+          for jar in "$LIB_DIR"/*.jar; do
+            [ -f "$jar" ] || continue
+            LIB_CP="${LIB_CP:+$LIB_CP;}$jar"
+          done
+
+          # Compile
+          JAVA_FILES=$(find "$SRC_DIR" -name "*.java" -type f)
+          "$LIBERICA_HOME/bin/javac" \
+            --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.swing,javafx.media \
+            -cp "$LIB_CP" \
+            -d "$CLASSES_DIR" \
+            -encoding UTF-8 \
+            -source 17 -target 17 \
+            $JAVA_FILES
+
+          # Copy resources
+          (cd "$SRC_DIR" && find . \( -name "*.fxml" -o -name "*.css" -o -name "*.png" \) -exec cp --parents {} "$CLASSES_DIR/" \;) 2>/dev/null || true
+          [ -d "$PROJECT_ROOT/resources" ] && cp -r "$PROJECT_ROOT/resources"/* "$CLASSES_DIR/" 2>/dev/null || true
+
+          # Create JAR
+          MANIFEST_CP=""
+          for jar in "$LIB_DIR"/*.jar; do
+            [ -f "$jar" ] || continue
+            MANIFEST_CP="${MANIFEST_CP:+$MANIFEST_CP }lib/$(basename "$jar")"
+          done
+          echo -e "Manifest-Version: 1.0\nMain-Class: gui.Launch\nClass-Path: $MANIFEST_CP\n" > "$BUILD_DIR/MANIFEST.MF"
+          "$LIBERICA_HOME/bin/jar" cfm "$DIST_DIR/$JAR_NAME" "$BUILD_DIR/MANIFEST.MF" -C "$CLASSES_DIR" .
+
+          mkdir -p "$DIST_DIR/lib"
+          cp "$LIB_DIR"/*.jar "$DIST_DIR/lib/"
+
+          # jpackage
+          JPACKAGE_INPUT="$BUILD_DIR/jpackage-input"
+          mkdir -p "$JPACKAGE_INPUT/lib"
+          cp "$DIST_DIR/$JAR_NAME" "$JPACKAGE_INPUT/"
+          cp "$LIB_DIR"/*.jar "$JPACKAGE_INPUT/lib/"
+
+          ALL_MODULES="javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.web,javafx.swing,javafx.media"
+          ALL_MODULES="$ALL_MODULES,java.base,java.sql,java.sql.rowset,java.desktop,java.logging,java.naming"
+          ALL_MODULES="$ALL_MODULES,java.transaction.xa,java.net.http,java.security.jgss,java.xml,java.prefs"
+          ALL_MODULES="$ALL_MODULES,java.datatransfer,java.scripting,java.compiler,java.management"
+          ALL_MODULES="$ALL_MODULES,jdk.unsupported,jdk.unsupported.desktop,jdk.jsobject,jdk.xml.dom"
+
+          ICON_OPT=""
+          [ -f "$SRC_DIR/gui/icons/logo_icon.png" ] && ICON_OPT="--icon $SRC_DIR/gui/icons/logo_icon.png"
+
+          "$LIBERICA_HOME/bin/jpackage" \
+            --input "$JPACKAGE_INPUT" \
+            --main-jar "$JAR_NAME" \
+            --main-class gui.Launch \
+            --name Naviera \
+            --app-version "${{ inputs.version }}" \
+            --vendor "Naviera Eco" \
+            --description "Sistema de Gestao Naviera" \
+            --dest "$INSTALLER_DIR" \
+            --type msi \
+            --add-modules "$ALL_MODULES" \
+            --java-options "--add-opens javafx.base/com.sun.javafx.reflect=ALL-UNNAMED" \
+            --java-options "--add-opens javafx.graphics/com.sun.javafx.css=ALL-UNNAMED" \
+            --java-options "--add-opens javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED" \
+            --java-options "--add-opens javafx.graphics/com.sun.javafx.scene.layout=ALL-UNNAMED" \
+            --java-options "--add-opens javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED" \
+            --java-options "--add-opens javafx.controls/javafx.scene.control.skin=ALL-UNNAMED" \
+            --java-options "-Dfile.encoding=UTF-8" \
+            --win-menu \
+            --win-shortcut \
+            --win-dir-chooser \
+            $ICON_OPT
+
+      - name: Upload .msi
+        uses: actions/upload-artifact@v4
+        with:
+          name: naviera-desktop-windows
+          path: build/installer/*.msi
+
+  deploy:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: naviera-desktop-linux
+          path: installers/
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: naviera-desktop-windows
+          path: installers/
+
+      - name: List installers
+        run: ls -lh installers/
+
+      - name: Deploy to VPS
+        env:
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sudo apt-get install -y sshpass
+          sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no installers/*.deb root@72.62.166.247:/var/www/naviera-site/downloads/naviera-desktop.deb
+          sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no installers/*.msi root@72.62.166.247:/var/www/naviera-site/downloads/naviera-desktop.msi
+          echo "Deployed to VPS!"

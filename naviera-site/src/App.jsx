@@ -283,28 +283,56 @@ function PrecosPage({ go }) {
 }
 
 function DownloadPage({ go }) {
+  const [os, setOs] = useState('unknown');
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('win')) setOs('windows');
+    else if (ua.includes('linux')) setOs('linux');
+    else if (ua.includes('mac')) setOs('mac');
+    else if (ua.includes('android')) setOs('android');
+    else if (ua.includes('iphone') || ua.includes('ipad')) setOs('ios');
+  }, []);
+
+  const isDesktop = os === 'windows' || os === 'linux' || os === 'mac' || os === 'unknown';
+  const isMobile = os === 'android' || os === 'ios';
+
   return <>
     <section className="hero hero-short">
       <div className="hero-inner" style={{textAlign:'center'}}>
         <div className="badge badge-green fade-up" style={{marginBottom:24}}>Download</div>
         <h1 className="fade-up d1" style={{fontSize:'clamp(32px, 5vw, 56px)'}}>Baixe. Instale. <em>Use.</em></h1>
-        <p className="hero-desc fade-up d2" style={{margin:'0 auto'}}>Desktop para operadores. App para passageiros. Escolha o seu.</p>
+        <p className="hero-desc fade-up d2" style={{margin:'0 auto'}}>
+          {isDesktop ? 'Detectamos que você usa ' + (os === 'windows' ? 'Windows' : os === 'linux' ? 'Linux' : 'Desktop') + '.' : 'Baixe o app no seu celular.'}
+        </p>
+
+        {/* Botão principal — detecta SO */}
+        <div className="fade-up d3" style={{marginTop:32}}>
+          {os === 'windows' && <a className="btn btn-pri" href="/downloads/naviera-desktop.msi" download style={{fontSize:18,padding:'20px 40px'}}>⬇ Baixar para Windows (.msi)</a>}
+          {os === 'linux' && <a className="btn btn-pri" href="/downloads/naviera-desktop.deb" download style={{fontSize:18,padding:'20px 40px'}}>⬇ Baixar para Linux (.deb)</a>}
+          {os === 'android' && <a className="btn btn-pri" href="https://app.naviera.com.br" target="_blank" rel="noopener noreferrer" style={{fontSize:18,padding:'20px 40px'}}>⬇ Instalar App (PWA)</a>}
+          {os === 'ios' && <a className="btn btn-pri" href="https://app.naviera.com.br" target="_blank" rel="noopener noreferrer" style={{fontSize:18,padding:'20px 40px'}}>⬇ Instalar App (PWA)</a>}
+          {(os === 'unknown' || os === 'mac') && <a className="btn btn-pri" href="/downloads/naviera-desktop.msi" download style={{fontSize:18,padding:'20px 40px'}}>⬇ Baixar para Windows (.msi)</a>}
+        </div>
+        {isDesktop && <p className="fade-up d4" style={{marginTop:12,fontSize:13,color:'rgba(255,255,255,.35)'}}>
+          Também disponível para {os === 'windows' ? <a onClick={(e) => {e.preventDefault(); window.location.href='/downloads/naviera-desktop.deb'}} style={{color:'var(--pri-light)',cursor:'pointer'}}>Linux (.deb)</a> : <a onClick={(e) => {e.preventDefault(); window.location.href='/downloads/naviera-desktop.msi'}} style={{color:'var(--pri-light)',cursor:'pointer'}}>Windows (.msi)</a>}
+        </p>}
       </div>
     </section>
+
     <section className="sec sec-dark" style={{paddingTop:0}}>
       <div className="container">
         <div className="grid2">
           <div className="dl-card dl-dark">
             <div className="badge badge-green" style={{marginBottom:20}}>Para Operadores</div>
             <h3 style={{color:'#F0FDF4',fontSize:24,marginBottom:8}}>Naviera Desktop</h3>
-            <p style={{color:'rgba(255,255,255,.5)',marginBottom:24}}>Software completo para gestão a bordo.</p>
+            <p style={{color:'rgba(255,255,255,.5)',marginBottom:24}}>Software completo para gestão a bordo. Instale e use em minutos.</p>
             <div className="dl-buttons">
-              <DlBtn title="Windows (.msi)" sub="Windows 10+ · 64-bit" dark href="#"/>
-              <DlBtn title="Linux (.deb)" sub="Ubuntu 22.04+ / Debian 12+" dark href="/downloads/naviera-desktop.deb"/>
+              <DlBtn title="Windows (.msi)" sub="Windows 10+ · 64-bit" dark href="/downloads/naviera-desktop.msi" primary={os === 'windows'}/>
+              <DlBtn title="Linux (.deb)" sub="Ubuntu 22.04+ / Debian 12+" dark href="/downloads/naviera-desktop.deb" primary={os === 'linux'}/>
             </div>
             <div className="dl-reqs">
               <h4>Requisitos Mínimos</h4>
-              <ul><li>Java 17+ (JRE embutido)</li><li>PostgreSQL 14+</li><li>4 GB RAM / 2 GB disco</li><li>Impressora térmica 80mm (opcional)</li></ul>
+              <ul><li>4 GB RAM / 500 MB disco</li><li>PostgreSQL 14+ (pode instalar junto)</li><li>Impressora térmica 80mm (opcional)</li></ul>
             </div>
           </div>
           <div className="dl-card dl-light">
@@ -312,18 +340,19 @@ function DownloadPage({ go }) {
             <h3 style={{color:'#0F2620',fontSize:24,marginBottom:8}}>Naviera App</h3>
             <p style={{color:'#3D6B56',marginBottom:24}}>Compre passagens, veja o GPS e rastreie encomendas.</p>
             <div className="dl-buttons">
-              <DlBtn title="App Store" sub="iPhone e iPad" href="#"/>
-              <DlBtn title="Google Play" sub="Android 8.0+" href="#"/>
-              <DlBtn title="PWA (Web App)" sub="Funciona em qualquer navegador" href="https://app.naviera.com.br"/>
+              <DlBtn title="PWA (Web App)" sub="Funciona em qualquer navegador" href="https://app.naviera.com.br" primary={isMobile}/>
+              <DlBtn title="App Store" sub="Em breve — iPhone e iPad" href="#"/>
+              <DlBtn title="Google Play" sub="Em breve — Android 8.0+" href="#"/>
             </div>
             <div className="dl-reqs dl-reqs-light">
-              <h4>Funciona como App Nativo</h4>
-              <ul><li>Instale direto pelo navegador (PWA)</li><li>Funciona offline via service worker</li><li>Notificações push</li><li>Cadastro com CPF ou CNPJ</li></ul>
+              <h4>Instalação Rápida</h4>
+              <ul><li>Acesse app.naviera.com.br no celular</li><li>Clique em "Instalar" no banner</li><li>Pronto — funciona como app nativo</li><li>Cadastro com CPF ou CNPJ</li></ul>
             </div>
           </div>
         </div>
       </div>
     </section>
+
     <section className="sec">
       <div className="container" style={{maxWidth:680,textAlign:'center'}}>
         <div className="badge badge-dark">Acesso Web</div>
@@ -449,9 +478,9 @@ function PricingCard({ title, price, priceSuffix, priceDesc, features, btnLabel,
   );
 }
 
-function DlBtn({ title, sub, dark, href }) {
+function DlBtn({ title, sub, dark, href, primary }) {
   return (
-    <a className={`dl-btn ${dark ? 'dl-btn-dark' : ''}`} href={href || '#'} download={href && !href.startsWith('http') ? true : undefined} target={href && href.startsWith('http') ? '_blank' : undefined} rel={href && href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+    <a className={`dl-btn ${dark ? 'dl-btn-dark' : ''} ${primary ? 'dl-btn-primary' : ''}`} href={href || '#'} download={href && !href.startsWith('http') && href !== '#' ? true : undefined} target={href && href.startsWith('http') ? '_blank' : undefined} rel={href && href.startsWith('http') ? 'noopener noreferrer' : undefined}>
       <div><strong>{title}</strong><span>{sub}</span></div>
     </a>
   );
@@ -674,6 +703,8 @@ const styles = `
   .dl-btn:not(.dl-btn-dark) strong { color: var(--text); }
   .dl-btn:not(.dl-btn-dark) span { color: var(--text-muted); }
   .dl-btn:not(.dl-btn-dark):hover { border-color: var(--pri); }
+  .dl-btn-primary { border-color: var(--pri) !important; box-shadow: 0 0 0 1px var(--pri), 0 4px 16px rgba(5,150,105,.2); transform: scale(1.02); }
+  .dl-btn-primary strong::after { content: ' ← recomendado'; font-size: 10px; font-weight: 500; color: var(--pri-light); margin-left: 8px; text-transform: uppercase; letter-spacing: .1em; }
   .dl-reqs { margin-top: 0; padding: 20px; border-radius: 12px; background: rgba(255,255,255,.03); }
   .dl-reqs h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .15em; color: var(--pri-light); margin-bottom: 10px; font-family: var(--mono); }
   .dl-reqs li { font-size: 13px; color: rgba(255,255,255,.4); padding: 3px 0; list-style: none; }
