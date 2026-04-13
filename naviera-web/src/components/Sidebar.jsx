@@ -80,7 +80,8 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
     .join('')
     .toUpperCase()
 
-  const isAdmin = usuario?.funcao === 'Administrador'
+  const isAdminSubdomain = window.location.hostname.startsWith('admin.')
+  const isAdmin = usuario?.funcao === 'Administrador' && isAdminSubdomain
   const sections = isAdmin ? [...NAV, NAV_ADMIN] : NAV
 
   return (
