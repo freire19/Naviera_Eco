@@ -43,14 +43,15 @@ jobs:
       - name: Install Liberica Full JDK 17
         run: |
           Invoke-WebRequest -Uri "https://download.bell-sw.com/java/17.0.14+10/bellsoft-jdk17.0.14+10-windows-amd64-full.zip" -OutFile "$env:TEMP\liberica.zip"
-          Expand-Archive -Path "$env:TEMP\liberica.zip" -DestinationPath "C:\liberica"
-          $jdkDir = Get-ChildItem "C:\liberica" | Select-Object -First 1
-          Rename-Item $jdkDir.FullName "C:\liberica-full-jdk-17"
+          Expand-Archive -Path "$env:TEMP\liberica.zip" -DestinationPath "C:\liberica-extract"
+          $jdkDir = Get-ChildItem "C:\liberica-extract" | Select-Object -First 1
+          Move-Item $jdkDir.FullName "C:\liberica-full-jdk-17"
+          Write-Output "C:\liberica-full-jdk-17\bin" >> $env:GITHUB_PATH
 
       - name: Build .msi
         shell: bash
         env:
-          LIBERICA_HOME: C:\liberica-full-jdk-17
+          LIBERICA_HOME: /c/liberica-full-jdk-17
         run: |
           chmod +x build/build.sh
           sed -i "s/APP_VERSION=\".*\"/APP_VERSION=\"${{ inputs.version }}\"/" build/build.sh
