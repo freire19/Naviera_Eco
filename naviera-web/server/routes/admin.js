@@ -16,7 +16,8 @@ function adminOnly(req, res, next) {
   if (!isAdminSubdomain) {
     return res.status(403).json({ error: 'Acesso restrito ao painel admin' })
   }
-  if (req.user.funcao !== 'Administrador') {
+  const funcao = (req.user.funcao || '').toLowerCase()
+  if (funcao !== 'administrador' && funcao !== 'admin') {
     return res.status(403).json({ error: 'Acesso restrito a administradores' })
   }
   next()
@@ -47,7 +48,7 @@ router.get('/empresas', async (req, res) => {
   }
 })
 
-// POST /api/admin/empresas — create new empresa + first admin user
+// POST /api/admin/empresas — create new empresa + first admin user + activation code
 router.post('/empresas', async (req, res) => {
   const client = await pool.connect()
   try {
@@ -61,22 +62,25 @@ router.post('/empresas', async (req, res) => {
 
     await client.query('BEGIN')
 
-    // Create empresa
+    // Generate activation code
+    const codigoAtivacao = 'NAV-' + crypto.randomBytes(2).toString('hex').toUpperCase()
+
+    // Create empresa with activation code
     const empresaResult = await client.query(
-      `INSERT INTO empresas (nome, slug, cor_primaria, logo_url, ativo)
-       VALUES ($1, $2, $3, $4, TRUE) RETURNING *`,
-      [nome, slug.toLowerCase(), cor_primaria || '#1a73e8', logo_url || null]
+      `INSERT INTO empresas (nome, slug, cor_primaria, logo_url, ativo, codigo_ativacao)
+       VALUES ($1, $2, $3, $4, TRUE, $5) RETURNING *`,
+      [nome, slug.toLowerCase(), cor_primaria || '#059669', logo_url || null, codigoAtivacao]
     )
     const empresa = empresaResult.rows[0]
 
     // Generate temporary password
-    const senhaTemp = crypto.randomBytes(4).toString('hex') // 8 chars hex
+    const senhaTemp = crypto.randomBytes(4).toString('hex')
     const senhaHash = await bcrypt.hash(senhaTemp, 10)
 
-    // Create first admin user for this empresa
+    // Create first admin user with deve_trocar_senha = TRUE
     await client.query(
-      `INSERT INTO usuarios (nome, email, senha, funcao, permissao, empresa_id)
-       VALUES ($1, $2, $3, 'Administrador', 'ADMIN', $4)`,
+      `INSERT INTO usuarios (nome, email, senha, funcao, permissao, empresa_id, deve_trocar_senha)
+       VALUES ($1, $2, $3, 'Administrador', 'ADMIN', $4, TRUE)`,
       [operador_nome, operador_email.toLowerCase(), senhaHash, empresa.id]
     )
 

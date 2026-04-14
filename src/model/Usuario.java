@@ -10,6 +10,7 @@ public class Usuario {
     private String permissoes; // Corresponde a permissao (singular no banco)
     private String loginUsuario; // Mapeado para 'nome' no banco (nao existe coluna login_usuario)
     private boolean ativo;      // Inverso de 'excluido' no banco (ativo=true → excluido=false)
+    private boolean deveTrocarSenha; // Flag de troca obrigatoria no primeiro login
 
     public Usuario() {
     }
@@ -99,6 +100,13 @@ public class Usuario {
     }
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public boolean isDeveTrocarSenha() {
+        return deveTrocarSenha;
+    }
+    public void setDeveTrocarSenha(boolean deveTrocarSenha) {
+        this.deveTrocarSenha = deveTrocarSenha;
     }
 
     @Override

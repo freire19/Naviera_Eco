@@ -145,12 +145,13 @@ public class UsuarioDAO {
         return null;
     }
     
-    public Usuario buscarPorLogin(String nomeUsuario) {
-        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ? AND empresa_id = ?";
+    public Usuario buscarPorLogin(String loginOuEmail) {
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE (nome = ? OR LOWER(email) = LOWER(?)) AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nomeUsuario);
-            ps.setInt(2, DAOUtils.empresaId());
+            ps.setString(1, loginOuEmail);
+            ps.setString(2, loginOuEmail);
+            ps.setInt(3, DAOUtils.empresaId());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return extrairUsuarioDoResultSet(rs, true);
@@ -162,14 +163,15 @@ public class UsuarioDAO {
         return null;
     }
 
-    // Renomeado de verificarLogin para buscarPorUsuarioESenha para alinhar com o LoginController
-    public Usuario buscarPorUsuarioESenha(String nomeUsuario, String senhaTextoPlano) {
-        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ? AND empresa_id = ? AND excluido IS NOT TRUE";
+    // Login aceita nome OU email — alinhado com Web e API
+    public Usuario buscarPorUsuarioESenha(String loginOuEmail, String senhaTextoPlano) {
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido, COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha FROM usuarios WHERE (nome = ? OR LOWER(email) = LOWER(?)) AND empresa_id = ? AND excluido IS NOT TRUE";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, nomeUsuario);
-            ps.setInt(2, DAOUtils.empresaId());
+            ps.setString(1, loginOuEmail);
+            ps.setString(2, loginOuEmail);
+            ps.setInt(3, DAOUtils.empresaId());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     String hashArmazenado = rs.getString("senha");
@@ -251,6 +253,30 @@ public class UsuarioDAO {
         u.setFuncao(rs.getString("funcao"));
         u.setPermissoes(rs.getString("permissao"));
         u.setAtivo(!rs.getBoolean("excluido")); // excluido=false → ativo=true
+        try {
+            u.setDeveTrocarSenha(rs.getBoolean("deve_trocar_senha"));
+        } catch (SQLException ignored) {
+            // Coluna pode nao existir em bancos antigos (antes da migration 023)
+            u.setDeveTrocarSenha(false);
+        }
         return u;
+    }
+
+    /**
+     * Troca a senha do usuario e desliga a flag deve_trocar_senha.
+     * Usado no fluxo de troca obrigatoria no primeiro login.
+     */
+    public boolean trocarSenhaELimparFlag(int idUsuario, String novaSenhaPlana) {
+        String sql = "UPDATE usuarios SET senha = ?, deve_trocar_senha = FALSE WHERE id = ? AND empresa_id = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, hashSenha(novaSenhaPlana));
+            ps.setInt(2, idUsuario);
+            ps.setInt(3, empresaId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            AppLogger.warn("UsuarioDAO", "Erro ao trocar senha: " + e.getMessage());
+            return false;
+        }
     }
 }

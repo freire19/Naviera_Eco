@@ -62,11 +62,86 @@ public class LoginController implements Initializable {
         }
 
         if (realizarLogin(login, senha)) {
+            Usuario u = SessaoUsuario.getUsuarioLogado();
+
+            // Verificar se precisa trocar a senha no primeiro login
+            if (u != null && u.isDeveTrocarSenha()) {
+                boolean senhaTrocada = exibirDialogTrocaSenha(u);
+                if (!senhaTrocada) {
+                    // Nao trocou — nao deixa entrar
+                    SessaoUsuario.setUsuarioLogado(null);
+                    AlertHelper.show(AlertType.WARNING, "Troca Obrigatoria",
+                        "Voce precisa criar uma nova senha para continuar.");
+                    return;
+                }
+            }
+
             Stage stageLogin = (Stage) btnEntrar.getScene().getWindow();
             stageLogin.close();
             abrirTelaPrincipal();
         } else {
             AlertHelper.show(AlertType.ERROR, "Acesso Negado", "Senha incorreta ou usuario inativo.");
+        }
+    }
+
+    /**
+     * Exibe dialog de troca de senha obrigatoria (primeiro login).
+     * Retorna true se a senha foi trocada com sucesso.
+     */
+    private boolean exibirDialogTrocaSenha(Usuario usuario) {
+        javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Criar Nova Senha");
+        dialog.setHeaderText("Bem-vindo, " + usuario.getNomeCompleto() + "!\nCrie uma nova senha para continuar.");
+
+        javafx.scene.control.ButtonType btnTrocar = new javafx.scene.control.ButtonType("Salvar Nova Senha", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(btnTrocar, javafx.scene.control.ButtonType.CANCEL);
+
+        javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(10);
+        PasswordField novaSenha = new PasswordField();
+        novaSenha.setPromptText("Nova senha (minimo 6 caracteres)");
+        novaSenha.setPrefHeight(35);
+        PasswordField confirmar = new PasswordField();
+        confirmar.setPromptText("Confirmar nova senha");
+        confirmar.setPrefHeight(35);
+        content.getChildren().addAll(
+            new javafx.scene.control.Label("Nova senha:"), novaSenha,
+            new javafx.scene.control.Label("Confirmar:"), confirmar
+        );
+        content.setPadding(new javafx.geometry.Insets(10, 20, 10, 20));
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefWidth(380);
+
+        Platform.runLater(novaSenha::requestFocus);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == btnTrocar) return novaSenha.getText();
+            return null;
+        });
+
+        while (true) {
+            java.util.Optional<String> resultado = dialog.showAndWait();
+            if (resultado.isEmpty() || resultado.get() == null) return false;
+
+            String nova = resultado.get();
+            String conf = confirmar.getText();
+
+            if (nova.length() < 6) {
+                AlertHelper.show(AlertType.WARNING, "Senha Curta", "A senha deve ter no minimo 6 caracteres.");
+                continue;
+            }
+            if (!nova.equals(conf)) {
+                AlertHelper.show(AlertType.WARNING, "Senhas Diferentes", "As senhas nao conferem.");
+                continue;
+            }
+
+            boolean ok = usuarioDAO.trocarSenhaELimparFlag(usuario.getId(), nova);
+            if (ok) {
+                AlertHelper.show(AlertType.INFORMATION, "Senha Atualizada", "Sua senha foi alterada com sucesso!");
+                return true;
+            } else {
+                AlertHelper.show(AlertType.ERROR, "Erro", "Nao foi possivel alterar a senha. Tente novamente.");
+                return false;
+            }
         }
     }
 

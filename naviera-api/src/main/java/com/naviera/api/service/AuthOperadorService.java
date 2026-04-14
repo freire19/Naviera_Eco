@@ -44,7 +44,9 @@ public class AuthOperadorService {
             usuario.getPermissao()
         );
 
-        return new AuthOperadorResponse(token, dto);
+        boolean deveTrocar = Boolean.TRUE.equals(usuario.getDeveTrocarSenha());
+
+        return new AuthOperadorResponse(token, deveTrocar, dto);
     }
 
     public UsuarioDTO me(Integer usuarioId) {

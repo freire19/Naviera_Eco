@@ -27,6 +27,9 @@ public class Usuario {
     @Column(columnDefinition = "boolean default false")
     private Boolean excluido;
 
+    @Column(name = "deve_trocar_senha", columnDefinition = "boolean default false")
+    private Boolean deveTrocarSenha;
+
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
     public String getNome() { return nome; }
@@ -43,4 +46,6 @@ public class Usuario {
     public void setEmpresaId(Integer empresaId) { this.empresaId = empresaId; }
     public Boolean getExcluido() { return excluido; }
     public void setExcluido(Boolean excluido) { this.excluido = excluido; }
+    public Boolean getDeveTrocarSenha() { return deveTrocarSenha; }
+    public void setDeveTrocarSenha(Boolean deveTrocarSenha) { this.deveTrocarSenha = deveTrocarSenha; }
 }

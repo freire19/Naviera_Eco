@@ -34,7 +34,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     // Operadores com funcao ADMIN ganham ROLE_ADMIN adicional
                     io.jsonwebtoken.Claims claims = jwtUtil.parsear(token);
                     String funcao = claims.get("funcao", String.class);
-                    if ("ADMIN".equalsIgnoreCase(funcao)) {
+                    if (funcao != null && ("ADMIN".equalsIgnoreCase(funcao) || "Administrador".equalsIgnoreCase(funcao))) {
                         authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
                     }
                 }
