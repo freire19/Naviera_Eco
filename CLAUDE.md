@@ -517,3 +517,21 @@ cd naviera-web/server && node index.js           # BFF (inclui rotas OCR)
 - [x] Migration 022: tabela ocr_lancamentos com workflow de status
 
 *Atualizado: 2026-04-14 — Adicionado naviera-ocr (lancamento de fretes por foto com OCR + Gemini AI)*
+
+### Fase 7: Onboarding Self-Service — EM ANDAMENTO
+
+- [x] Migration 023: codigo_ativacao + ativado_em em empresas, deve_trocar_senha em usuarios
+- [x] API: POST /public/registrar-empresa (OnboardingService — cria empresa + usuario + codigo)
+- [x] API: GET /public/ativar/{codigo} (retorna empresa_id, nome, slug, operador)
+- [x] Desktop: SetupWizard reescrito — 3 telas (ativacao, preparando, pronto), zero config tecnica
+- [ ] Site: pagina de cadastro self-service (CadastroEmpresaPublico.jsx no naviera-site)
+- [ ] Correcao: JwtFilter + BFF adminOnly — padronizar funcao 'Administrador'
+- [ ] Correcao: UsuarioDAO.buscarPorUsuarioESenha aceitar email (Desktop login)
+- [ ] Correcao: Troca de senha obrigatoria no primeiro login
+
+**Fluxo do operador:**
+1. Operador acessa naviera.com.br/cadastro
+2. Preenche: nome empresa, CNPJ, embarcacao, email, senha
+3. Recebe codigo de ativacao (ex: NAV-7F3A) + botao download
+4. Instala Desktop, abre → digita codigo → tudo automatico
+5. Tela "Pronto! Login: email. Use a senha do site." → Iniciar

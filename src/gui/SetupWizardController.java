@@ -6,13 +6,15 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -20,80 +22,72 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Controller do wizard de primeira configuracao.
- * Guia o tecnico pelos passos: conexao PG, criar banco/migrations, empresa, salvar db.properties.
+ * Wizard de primeira configuracao — fluxo simplificado com codigo de ativacao.
+ *
+ * 3 telas:
+ *   1. Codigo de ativacao (unico campo)
+ *   2. Preparando sistema (auto-setup completo em background)
+ *   3. Pronto (empresa configurada, pronto para login)
+ *
+ * O operador NAO precisa saber o que e PostgreSQL, host, porta, banco ou empresa_id.
+ * Tudo e detectado, instalado e configurado automaticamente.
  */
 public class SetupWizardController implements Initializable {
 
-    // -- Sidebar step indicators --
-    @FXML private HBox stepIndicator1;
-    @FXML private HBox stepIndicator2;
-    @FXML private HBox stepIndicator3;
-    @FXML private HBox stepIndicator4;
+    // -- Sidebar --
+    @FXML private HBox stepIndicator1, stepIndicator2, stepIndicator3;
 
-    // -- Content --
+    // -- Header --
     @FXML private Label lblStepTitle;
     @FXML private StackPane stepContent;
-    @FXML private VBox step1, step2, step3, step4;
+    @FXML private VBox step1, step2, step3;
 
-    // -- Step 1: Conexao --
-    @FXML private TextField txtHost;
-    @FXML private TextField txtPorta;
-    @FXML private TextField txtNomeBanco;
-    @FXML private TextField txtUsuario;
-    @FXML private PasswordField txtSenha;
-    @FXML private Button btnTestarConexao;
-    @FXML private Label lblStatusConexao;
+    // -- Tela 1: Ativacao --
+    @FXML private TextField txtCodigoAtivacao;
+    @FXML private Label lblStatusAtivacao;
+    @FXML private Button btnAtivar;
+    @FXML private Hyperlink lnkCadastrar;
 
-    // -- Step 2: Migrations --
-    @FXML private CheckBox chkCriarBanco;
-    @FXML private CheckBox chkRodarMigrations;
-    @FXML private ProgressBar progressMigrations;
-    @FXML private Label lblProgressDetail;
-    @FXML private TextArea txtLog;
-    @FXML private Button btnExecutarSetup;
+    // -- Tela 2: Preparando --
+    @FXML private Label lblNomeEmpresa;
+    @FXML private Label lblSetupMsg;
+    @FXML private ProgressBar progressSetup;
+    @FXML private Label lblSetupDetail;
+    @FXML private VBox boxErro;
+    @FXML private Label lblErroDetalhe;
+    @FXML private Button btnTentarNovamente, btnCopiarLog;
 
-    // -- Step 3: Empresa --
-    @FXML private TextField txtEmpresaId;
-    @FXML private TextField txtApiUrl;
-    @FXML private TextField txtPoolSize;
-    @FXML private TextField txtSyncLogin;
-    @FXML private PasswordField txtSyncSenha;
-
-    // -- Step 4: Resumo --
-    @FXML private Label lblResumoConexao;
-    @FXML private Label lblResumoBanco;
-    @FXML private Label lblResumoEmpresa;
-    @FXML private Label lblResumoApi;
-    @FXML private Label lblResumoPool;
-
-    // -- Step 1: PostgreSQL install --
-    @FXML private VBox pgInstallBox;
-    @FXML private Button btnInstalarPostgres;
-    @FXML private Label lblPgInstallStatus;
-    @FXML private ProgressBar progressPgInstall;
-
-    // -- Footer --
-    @FXML private Button btnVoltar;
-    @FXML private Button btnProximo;
-    @FXML private Button btnConcluir;
+    // -- Tela 3: Pronto --
+    @FXML private Label lblProntoEmpresa;
+    @FXML private Label lblProntoLogin;
+    @FXML private Button btnIniciar;
 
     private int currentStep = 1;
-    private boolean conexaoTestadaOk = false;
-    private boolean setupExecutado = false;
 
-    private static final String STYLE_STEP_ACTIVE = "-fx-padding: 10; -fx-background-color: #059669; -fx-background-radius: 5;";
-    private static final String STYLE_STEP_DONE = "-fx-padding: 10; -fx-background-color: #047857; -fx-background-radius: 5;";
-    private static final String STYLE_STEP_INACTIVE = "-fx-padding: 10; -fx-background-radius: 5;";
+    // Dados recebidos da API apos ativacao
+    private long empresaId;
+    private String nomeEmpresa;
+    private String slugEmpresa;
+    private String operadorNome;
+    private String operadorEmail;
+
+    // Log de setup para suporte
+    private final StringBuilder logCompleto = new StringBuilder();
+
+    // URL da API central
+    private static final String API_URL = "https://api.naviera.com.br";
+
+    // Credenciais do PG local (geradas automaticamente, operador nunca ve)
+    private String pgSenhaLocal;
+    private String pgPortaLocal = "5432";
 
     private static final String[] STEP_TITLES = {
-        "Conexao com o Banco de Dados",
-        "Criar Estrutura do Banco",
-        "Configurar Empresa",
-        "Revisar e Concluir"
+        "Ativar sua empresa",
+        "Preparando seu sistema",
+        "Tudo pronto!"
     };
 
-    // Migrations na ordem correta (000 e obrigatorio, demais sao incrementais)
+    // Migrations na ordem correta
     private static final String[] MIGRATION_FILES = {
         "000_schema_completo.sql",
         "001_adicionar_campos_sincronizacao.sql",
@@ -113,374 +107,346 @@ public class SetupWizardController implements Initializable {
         "016_adicionar_coluna_local_armazenamento.sql",
         "017_criar_tabela_log_estornos_fretes.sql",
         "018_criar_tabela_usuarios.sql",
-        "019_sync_trigger_bypass.sql"
+        "019_sync_trigger_bypass.sql",
+        "020_sync_colunas_faltantes.sql",
+        "021_estornos_empresa_id.sql",
+        "022_ocr_lancamentos.sql",
+        "023_onboarding_self_service.sql"
     };
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // Gerar senha aleatoria para o PostgreSQL local
+        pgSenhaLocal = "nav_" + UUID.randomUUID().toString().substring(0, 12);
         updateStepView();
-        verificarPostgresInstalado();
-
-        // Carrega valores existentes do db.properties se houver (setup parcial)
-        File dbProps = new File("db.properties");
-        if (dbProps.exists()) {
-            try {
-                Properties props = new Properties();
-                try (FileInputStream fis = new FileInputStream(dbProps)) {
-                    props.load(fis);
-                }
-                String url = props.getProperty("db.url", "");
-                if (url.startsWith("jdbc:postgresql://")) {
-                    // Parse: jdbc:postgresql://host:porta/banco
-                    String after = url.substring("jdbc:postgresql://".length());
-                    String hostPort = after.contains("/") ? after.substring(0, after.indexOf('/')) : after;
-                    String banco = after.contains("/") ? after.substring(after.indexOf('/') + 1) : "naviera_eco";
-                    String host = hostPort.contains(":") ? hostPort.substring(0, hostPort.indexOf(':')) : hostPort;
-                    String porta = hostPort.contains(":") ? hostPort.substring(hostPort.indexOf(':') + 1) : "5432";
-                    txtHost.setText(host);
-                    txtPorta.setText(porta);
-                    txtNomeBanco.setText(banco);
-                }
-                if (props.containsKey("db.usuario")) txtUsuario.setText(props.getProperty("db.usuario"));
-                if (props.containsKey("empresa.id")) txtEmpresaId.setText(props.getProperty("empresa.id"));
-                if (props.containsKey("db.pool.tamanho")) txtPoolSize.setText(props.getProperty("db.pool.tamanho"));
-            } catch (Exception e) {
-                // Ignora — valores default ja estao nos campos
-            }
-        }
     }
 
     // ========================================================================
-    // Navegacao
+    // Tela 1: Ativacao
     // ========================================================================
 
     @FXML
-    private void handleVoltar() {
-        if (currentStep > 1) {
-            currentStep--;
-            updateStepView();
-        }
-    }
-
-    @FXML
-    private void handleProximo() {
-        if (!validarPassoAtual()) return;
-        if (currentStep < 4) {
-            currentStep++;
-            if (currentStep == 4) preencherResumo();
-            updateStepView();
-        }
-    }
-
-    @FXML
-    private void handleConcluir() {
-        salvarDbProperties();
-    }
-
-    private void updateStepView() {
-        // Mostrar/esconder paineis
-        step1.setVisible(currentStep == 1); step1.setManaged(currentStep == 1);
-        step2.setVisible(currentStep == 2); step2.setManaged(currentStep == 2);
-        step3.setVisible(currentStep == 3); step3.setManaged(currentStep == 3);
-        step4.setVisible(currentStep == 4); step4.setManaged(currentStep == 4);
-
-        // Titulo
-        lblStepTitle.setText(STEP_TITLES[currentStep - 1]);
-
-        // Botoes
-        btnVoltar.setVisible(currentStep > 1);
-        btnProximo.setVisible(currentStep < 4);
-        btnConcluir.setVisible(currentStep == 4);
-
-        // Sidebar indicators
-        HBox[] indicators = { stepIndicator1, stepIndicator2, stepIndicator3, stepIndicator4 };
-        for (int i = 0; i < indicators.length; i++) {
-            if (i + 1 == currentStep) {
-                indicators[i].setStyle(STYLE_STEP_ACTIVE);
-                setIndicatorColors(indicators[i], true, true);
-            } else if (i + 1 < currentStep) {
-                indicators[i].setStyle(STYLE_STEP_DONE);
-                setIndicatorColors(indicators[i], true, false);
-            } else {
-                indicators[i].setStyle(STYLE_STEP_INACTIVE);
-                setIndicatorColors(indicators[i], false, false);
-            }
-        }
-    }
-
-    private void setIndicatorColors(HBox indicator, boolean active, boolean current) {
-        indicator.getChildren().forEach(node -> {
-            if (node instanceof javafx.scene.control.Label lbl) {
-                if (active) {
-                    lbl.setTextFill(javafx.scene.paint.Color.WHITE);
-                    if (lbl.getText().length() == 1) { // numero
-                        lbl.setStyle(current
-                            ? "-fx-background-color: #047857; -fx-background-radius: 12; -fx-min-width: 24; -fx-min-height: 24; -fx-alignment: center;"
-                            : "-fx-background-color: #059669; -fx-background-radius: 12; -fx-min-width: 24; -fx-min-height: 24; -fx-alignment: center;");
-                    }
-                } else {
-                    lbl.setTextFill(javafx.scene.paint.Color.web("#7BA393"));
-                    if (lbl.getText().length() == 1) {
-                        lbl.setStyle("-fx-background-color: #1a3d30; -fx-background-radius: 12; -fx-min-width: 24; -fx-min-height: 24; -fx-alignment: center;");
-                    }
-                }
-            }
-        });
-    }
-
-    // ========================================================================
-    // Validacao por passo
-    // ========================================================================
-
-    private boolean validarPassoAtual() {
-        switch (currentStep) {
-            case 1:
-                if (txtHost.getText().isBlank() || txtPorta.getText().isBlank()
-                        || txtUsuario.getText().isBlank() || txtSenha.getText().isBlank()) {
-                    AlertHelper.warn("Preencha todos os campos de conexao.");
-                    return false;
-                }
-                if (!conexaoTestadaOk) {
-                    AlertHelper.warn("Teste a conexao antes de continuar.");
-                    return false;
-                }
-                return true;
-
-            case 2:
-                if (!setupExecutado) {
-                    AlertHelper.warn("Execute a criacao do banco antes de continuar.");
-                    return false;
-                }
-                return true;
-
-            case 3:
-                String empresaIdStr = txtEmpresaId.getText().trim();
-                if (empresaIdStr.isBlank()) {
-                    AlertHelper.warn("Informe o ID da empresa.");
-                    return false;
-                }
-                try {
-                    int id = Integer.parseInt(empresaIdStr);
-                    if (id < 1) throw new NumberFormatException();
-                } catch (NumberFormatException e) {
-                    AlertHelper.warn("ID da empresa deve ser um numero positivo.");
-                    return false;
-                }
-                return true;
-
-            default:
-                return true;
-        }
-    }
-
-    // ========================================================================
-    // Passo 1: Testar conexao
-    // ========================================================================
-
-    @FXML
-    private void handleTestarConexao() {
-        String host = txtHost.getText().trim();
-        String porta = txtPorta.getText().trim();
-        String usuario = txtUsuario.getText().trim();
-        String senha = txtSenha.getText();
-
-        if (host.isBlank() || porta.isBlank() || usuario.isBlank() || senha.isBlank()) {
-            AlertHelper.warn("Preencha todos os campos primeiro.");
+    private void handleAtivar() {
+        String codigo = txtCodigoAtivacao.getText().trim().toUpperCase();
+        if (codigo.isEmpty()) {
+            lblStatusAtivacao.setText("Digite o codigo de ativacao.");
             return;
         }
 
-        btnTestarConexao.setDisable(true);
-        lblStatusConexao.setText("Testando...");
-        lblStatusConexao.setTextFill(javafx.scene.paint.Color.web("#546e7a"));
+        btnAtivar.setDisable(true);
+        lblStatusAtivacao.setText("");
+        lblStatusAtivacao.setTextFill(javafx.scene.paint.Color.web("#546e7a"));
+        lblStatusAtivacao.setText("Verificando codigo...");
 
         Thread bg = new Thread(() -> {
-            // Testa conexao no banco postgres (existe sempre)
-            String url = "jdbc:postgresql://" + host + ":" + porta + "/postgres";
             try {
-                Class.forName("org.postgresql.Driver");
-                DriverManager.setLoginTimeout(5);
-                try (Connection conn = DriverManager.getConnection(url, usuario, senha)) {
-                    if (conn.isValid(3)) {
-                        Platform.runLater(() -> {
-                            lblStatusConexao.setText("Conexao OK");
-                            lblStatusConexao.setTextFill(javafx.scene.paint.Color.web("#059669"));
-                            conexaoTestadaOk = true;
-                            btnTestarConexao.setDisable(false);
-                        });
-                        return;
-                    }
+                // Chamar API: GET /public/ativar/{codigo}
+                String urlStr = API_URL + "/api/public/ativar/" + codigo;
+                HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+
+                int status = conn.getResponseCode();
+                String body = readResponse(conn);
+
+                if (status == 200) {
+                    // Parse JSON simples (sem lib externa)
+                    empresaId = parseLong(body, "empresa_id");
+                    nomeEmpresa = parseString(body, "nome");
+                    slugEmpresa = parseString(body, "slug");
+                    operadorNome = parseString(body, "operador_nome");
+                    operadorEmail = parseString(body, "operador_email");
+
+                    log("Ativacao OK: empresa_id=" + empresaId + ", nome=" + nomeEmpresa);
+
+                    Platform.runLater(() -> {
+                        // Ir para tela 2 e iniciar setup automatico
+                        currentStep = 2;
+                        updateStepView();
+                        lblNomeEmpresa.setText(nomeEmpresa);
+                        iniciarSetupAutomatico();
+                    });
+                } else {
+                    String erro = parseString(body, "error");
+                    if (erro == null || erro.isEmpty()) erro = parseString(body, "message");
+                    if (erro == null || erro.isEmpty()) erro = "Codigo invalido. Verifique e tente novamente.";
+                    String msg = erro;
+                    Platform.runLater(() -> {
+                        lblStatusAtivacao.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
+                        lblStatusAtivacao.setText(msg);
+                        btnAtivar.setDisable(false);
+                    });
                 }
             } catch (Exception e) {
-                String msg = e.getMessage();
-                if (msg != null && msg.length() > 80) msg = msg.substring(0, 80) + "...";
-                String finalMsg = msg;
+                log("Erro na ativacao: " + e.getMessage());
                 Platform.runLater(() -> {
-                    lblStatusConexao.setText("Falha: " + finalMsg);
-                    lblStatusConexao.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
-                    conexaoTestadaOk = false;
-                    btnTestarConexao.setDisable(false);
+                    lblStatusAtivacao.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
+                    lblStatusAtivacao.setText("Sem conexao com a internet. Conecte e tente novamente.");
+                    btnAtivar.setDisable(false);
                 });
-                return;
             }
-            Platform.runLater(() -> {
-                lblStatusConexao.setText("Falha ao conectar");
-                lblStatusConexao.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
-                conexaoTestadaOk = false;
-                btnTestarConexao.setDisable(false);
-            });
         });
         bg.setDaemon(true);
         bg.start();
-    }
-
-    // ========================================================================
-    // PostgreSQL: Detectar e instalar automaticamente
-    // ========================================================================
-
-    private void verificarPostgresInstalado() {
-        if (pgInstallBox == null) return; // FXML pode nao ter o componente ainda
-
-        Thread bg = new Thread(() -> {
-            boolean encontrado = isPostgresRunning();
-            Platform.runLater(() -> {
-                if (encontrado) {
-                    pgInstallBox.setVisible(false);
-                    pgInstallBox.setManaged(false);
-                } else {
-                    pgInstallBox.setVisible(true);
-                    pgInstallBox.setManaged(true);
-                    lblPgInstallStatus.setText("PostgreSQL nao detectado na maquina.");
-                    lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#F59E0B"));
-                }
-            });
-        });
-        bg.setDaemon(true);
-        bg.start();
-    }
-
-    private boolean isPostgresRunning() {
-        // Tenta conectar na porta default
-        try (java.net.Socket socket = new java.net.Socket()) {
-            socket.connect(new java.net.InetSocketAddress("localhost", 5432), 2000);
-            return true;
-        } catch (Exception e) {
-            // Tenta porta 5433 tambem (segunda instancia comum)
-            try (java.net.Socket socket = new java.net.Socket()) {
-                socket.connect(new java.net.InetSocketAddress("localhost", 5433), 1000);
-                return true;
-            } catch (Exception e2) {
-                return false;
-            }
-        }
     }
 
     @FXML
-    private void handleInstalarPostgres() {
-        btnInstalarPostgres.setDisable(true);
-        progressPgInstall.setVisible(true);
-        progressPgInstall.setProgress(-1); // indeterminate
-
-        String os = System.getProperty("os.name", "").toLowerCase();
-
-        if (os.contains("win")) {
-            instalarPostgresWindows();
-        } else if (os.contains("linux")) {
-            instalarPostgresLinux();
-        } else {
-            lblPgInstallStatus.setText("SO nao suportado para instalacao automatica.");
-            lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
-            btnInstalarPostgres.setDisable(false);
-            progressPgInstall.setVisible(false);
+    private void handleAbrirSite() {
+        try {
+            java.awt.Desktop.getDesktop().browse(new java.net.URI("https://naviera.com.br"));
+        } catch (Exception e) {
+            AppLogger.warn("SetupWizard", "Nao foi possivel abrir o navegador: " + e.getMessage());
         }
     }
 
-    private void instalarPostgresWindows() {
-        lblPgInstallStatus.setText("Instalando PostgreSQL via winget...");
-        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
+    // ========================================================================
+    // Tela 2: Setup automatico completo
+    // ========================================================================
+
+    private void iniciarSetupAutomatico() {
+        boxErro.setVisible(false);
+        boxErro.setManaged(false);
+        progressSetup.setProgress(-1);
 
         Thread bg = new Thread(() -> {
             try {
-                // Metodo 1: winget (Windows 10 1709+ e Windows 11)
-                updatePgStatus("Tentando instalar via winget...");
+                // ---- Passo 1: Verificar/instalar PostgreSQL ----
+                updateSetup("Verificando seu computador...", "Procurando banco de dados local...", -1);
 
-                ProcessBuilder pb = new ProcessBuilder(
-                    "cmd.exe", "/c",
-                    "winget install -e --id PostgreSQL.PostgreSQL.16 " +
-                    "--accept-package-agreements --accept-source-agreements --silent"
-                );
-                pb.redirectErrorStream(true);
-                Process proc = pb.start();
+                if (!isPostgresRunning()) {
+                    updateSetup("Instalando componentes necessarios...", "Isso pode levar alguns minutos...", -1);
+                    log("PostgreSQL nao detectado, iniciando instalacao...");
+                    boolean instalado = instalarPostgresSilencioso();
 
-                StringBuilder output = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        AppLogger.info("PgInstall", line);
-                        output.append(line).append("\n");
-                        String logLine = line;
-                        Platform.runLater(() -> lblPgInstallStatus.setText(
-                            logLine.length() > 60 ? logLine.substring(0, 60) + "..." : logLine));
+                    if (!instalado) {
+                        throw new Exception("Nao foi possivel instalar o banco de dados automaticamente. " +
+                            "Ligue para o suporte: (92) 00000-0000");
                     }
-                }
 
-                int exitCode = proc.waitFor();
-                boolean wingetOk = (exitCode == 0);
-
-                if (!wingetOk) {
-                    // Metodo 2: download direto do EDB
-                    updatePgStatus("winget falhou. Baixando instalador direto...");
-                    wingetOk = tentarDownloadDiretoPostgres();
-                }
-
-                if (wingetOk) {
-                    // Aguardar o servico iniciar
-                    updatePgStatus("Aguardando PostgreSQL iniciar...");
-                    for (int i = 0; i < 10; i++) {
-                        Thread.sleep(3000);
+                    // Aguardar PG subir
+                    updateSetup("Aguardando componentes iniciarem...", "Quase la...", -1);
+                    for (int i = 0; i < 15; i++) {
+                        Thread.sleep(2000);
                         if (isPostgresRunning()) break;
                     }
-                    boolean running = isPostgresRunning();
-
-                    Platform.runLater(() -> {
-                        progressPgInstall.setProgress(1.0);
-                        if (running) {
-                            lblPgInstallStatus.setText("PostgreSQL instalado! Configure a senha abaixo.");
-                            lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
-                            txtPorta.setText("5432");
-                            txtUsuario.setText("postgres");
-                            pgInstallBox.setStyle("-fx-background-color: #D1FAE5; -fx-border-color: #059669; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 15;");
-                        } else {
-                            lblPgInstallStatus.setText("Instalado. Reinicie o computador e abra o Naviera novamente.");
-                            lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#F59E0B"));
-                        }
-                        btnInstalarPostgres.setDisable(false);
-                    });
+                    if (!isPostgresRunning()) {
+                        throw new Exception("O banco de dados foi instalado mas nao iniciou. " +
+                            "Reinicie o computador e abra o Naviera novamente.");
+                    }
+                    log("PostgreSQL instalado e rodando.");
                 } else {
-                    Platform.runLater(() -> {
-                        lblPgInstallStatus.setText("Nao foi possivel instalar. Baixe em postgresql.org/download/windows");
-                        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
-                        btnInstalarPostgres.setDisable(false);
-                        progressPgInstall.setVisible(false);
-                    });
+                    log("PostgreSQL detectado na porta " + pgPortaLocal);
                 }
 
-            } catch (Exception e) {
-                AppLogger.error("PgInstall", "Erro ao instalar PostgreSQL: " + e.getMessage(), e);
+                // ---- Passo 2: Criar banco ----
+                updateSetup("Criando banco de dados...", "Preparando estrutura...", 0.2);
+
+                String urlPostgres = "jdbc:postgresql://localhost:" + pgPortaLocal + "/postgres";
+                Class.forName("org.postgresql.Driver");
+                DriverManager.setLoginTimeout(5);
+
+                // Tentar com senha gerada, fallback para senhas comuns
+                String senhaFuncional = encontrarSenhaPg();
+                if (senhaFuncional == null) {
+                    throw new Exception("Nao foi possivel conectar ao banco de dados local. " +
+                        "Ligue para o suporte: (92) 00000-0000");
+                }
+
+                // Criar banco se nao existir
+                try (Connection conn = DriverManager.getConnection(urlPostgres, "postgres", senhaFuncional)) {
+                    boolean bancoExiste = false;
+                    try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM pg_database WHERE datname = ?")) {
+                        ps.setString(1, "naviera_eco");
+                        try (ResultSet rs = ps.executeQuery()) { bancoExiste = rs.next(); }
+                    }
+                    if (!bancoExiste) {
+                        log("Criando banco naviera_eco...");
+                        try (Statement st = conn.createStatement()) {
+                            st.execute("CREATE DATABASE naviera_eco ENCODING 'UTF8'");
+                        }
+                        log("Banco criado.");
+                    } else {
+                        log("Banco naviera_eco ja existe.");
+                    }
+                }
+
+                // ---- Passo 3: Rodar migrations ----
+                updateSetup("Configurando estrutura de dados...", "Criando tabelas...", 0.35);
+                String urlBanco = "jdbc:postgresql://localhost:" + pgPortaLocal + "/naviera_eco";
+
+                try (Connection conn = DriverManager.getConnection(urlBanco, "postgres", senhaFuncional)) {
+                    // Verificar se ja tem tabelas
+                    boolean temTabelas = false;
+                    try (ResultSet rs = conn.getMetaData().getTables(null, "public", "viagens", null)) {
+                        temTabelas = rs.next();
+                    }
+
+                    if (!temTabelas) {
+                        String migrationsDir = localizarDiretorioMigrations();
+                        log("Rodando migrations de: " + migrationsDir);
+
+                        for (int i = 0; i < MIGRATION_FILES.length; i++) {
+                            String fileName = MIGRATION_FILES[i];
+                            File sqlFile = new File(migrationsDir, fileName);
+                            if (!sqlFile.exists()) {
+                                log("Migration nao encontrada (pulando): " + fileName);
+                                continue;
+                            }
+
+                            double progress = 0.35 + (0.5 * ((double)(i + 1) / MIGRATION_FILES.length));
+                            updateSetup("Configurando estrutura de dados...", fileName, progress);
+
+                            String sql = Files.readString(sqlFile.toPath(), StandardCharsets.UTF_8);
+                            executarSql(conn, sql, fileName);
+                            log("Migration OK: " + fileName);
+                        }
+                    } else {
+                        log("Banco ja possui tabelas — migrations puladas.");
+                    }
+                }
+
+                // ---- Passo 4: Gerar db.properties ----
+                updateSetup("Salvando configuracao...", "Finalizando...", 0.9);
+                salvarDbProperties(senhaFuncional);
+                salvarSyncConfig();
+                log("db.properties e sync_config.properties gerados.");
+
+                // ---- Concluido ----
+                updateSetup("Tudo configurado!", "", 1.0);
+                Thread.sleep(500);
+
                 Platform.runLater(() -> {
-                    lblPgInstallStatus.setText("Erro: " + e.getMessage());
-                    lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
-                    btnInstalarPostgres.setDisable(false);
-                    progressPgInstall.setVisible(false);
+                    currentStep = 3;
+                    updateStepView();
+                    lblProntoEmpresa.setText(nomeEmpresa);
+                    lblProntoLogin.setText("Seu login: " + operadorEmail);
                 });
+
+            } catch (Exception e) {
+                log("ERRO FATAL: " + e.getMessage());
+                AppLogger.error("SetupWizard", "Erro no auto-setup: " + e.getMessage(), e);
+                Platform.runLater(() -> mostrarErro(e.getMessage()));
             }
         });
         bg.setDaemon(true);
         bg.start();
+    }
+
+    // ========================================================================
+    // PostgreSQL: Detectar e instalar silenciosamente
+    // ========================================================================
+
+    private boolean isPostgresRunning() {
+        String[] portas = {"5432", "5433"};
+        for (String porta : portas) {
+            try (java.net.Socket socket = new java.net.Socket()) {
+                socket.connect(new java.net.InetSocketAddress("localhost", Integer.parseInt(porta)), 2000);
+                pgPortaLocal = porta;
+                return true;
+            } catch (Exception ignored) {}
+        }
+        return false;
+    }
+
+    /**
+     * Tenta encontrar uma senha que funcione para o PostgreSQL local.
+     * Testa: senha do instalador silencioso, senhas comuns, sem senha.
+     */
+    private String encontrarSenhaPg() {
+        String[] senhasCandidatas = {
+            pgSenhaLocal,           // senha gerada pelo nosso instalador silencioso
+            "NavieraDB@2026",       // senha usada pelo instalador anterior
+            "postgres",             // default comum
+            "",                     // sem senha (trust auth)
+            "123456"                // comum em dev
+        };
+
+        String url = "jdbc:postgresql://localhost:" + pgPortaLocal + "/postgres";
+        for (String senha : senhasCandidatas) {
+            try {
+                DriverManager.setLoginTimeout(3);
+                try (Connection conn = DriverManager.getConnection(url, "postgres", senha)) {
+                    if (conn.isValid(2)) {
+                        log("Conexao PG OK com senha: " + (senha.isEmpty() ? "(vazia)" : "****"));
+                        return senha;
+                    }
+                }
+            } catch (SQLException ignored) {}
+        }
+        return null;
+    }
+
+    private boolean instalarPostgresSilencioso() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+
+        if (os.contains("linux")) {
+            return instalarPostgresLinux();
+        } else if (os.contains("win")) {
+            return instalarPostgresWindows();
+        }
+        return false;
+    }
+
+    private boolean instalarPostgresLinux() {
+        try {
+            log("Instalando PostgreSQL via apt (Linux)...");
+            ProcessBuilder pb = new ProcessBuilder(
+                "pkexec", "bash", "-c",
+                "apt-get update -qq && apt-get install -y postgresql postgresql-client && " +
+                "sudo -u postgres psql -c \"ALTER USER postgres PASSWORD '" + pgSenhaLocal + "';\""
+            );
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("[apt] " + line);
+                }
+            }
+            int exitCode = proc.waitFor();
+            log("apt install exit code: " + exitCode);
+            return exitCode == 0;
+        } catch (Exception e) {
+            log("Erro ao instalar PostgreSQL Linux: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean instalarPostgresWindows() {
+        try {
+            log("Tentando instalar PostgreSQL via winget (Windows)...");
+            ProcessBuilder pb = new ProcessBuilder(
+                "cmd.exe", "/c",
+                "winget install -e --id PostgreSQL.PostgreSQL.16 " +
+                "--accept-package-agreements --accept-source-agreements --silent"
+            );
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("[winget] " + line);
+                }
+            }
+            int exitCode = proc.waitFor();
+            log("winget exit code: " + exitCode);
+
+            if (exitCode == 0) return true;
+
+            // Fallback: download direto
+            log("winget falhou, tentando download direto...");
+            return tentarDownloadDiretoPostgres();
+        } catch (Exception e) {
+            log("Erro ao instalar PostgreSQL Windows: " + e.getMessage());
+            return false;
+        }
     }
 
     private boolean tentarDownloadDiretoPostgres() {
         try {
-            // URL oficial do instalador EDB PostgreSQL 16
             String[] urls = {
                 "https://get.enterprisedb.com/postgresql/postgresql-16.8-1-windows-x64.exe",
                 "https://get.enterprisedb.com/postgresql/postgresql-16.7-1-windows-x64.exe",
@@ -491,267 +457,65 @@ public class SetupWizardController implements Initializable {
 
             for (String pgUrl : urls) {
                 try {
-                    updatePgStatus("Baixando de " + pgUrl.substring(pgUrl.lastIndexOf('/') + 1) + "...");
-                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new URL(pgUrl).openConnection();
+                    log("Baixando de " + pgUrl + "...");
+                    HttpURLConnection conn = (HttpURLConnection) new URL(pgUrl).openConnection();
                     conn.setConnectTimeout(10000);
                     conn.setReadTimeout(300000);
                     conn.setInstanceFollowRedirects(true);
                     if (conn.getResponseCode() == 200) {
-                        try (java.io.InputStream in = conn.getInputStream()) {
+                        try (InputStream in = conn.getInputStream()) {
                             Files.copy(in, tempInstaller, StandardCopyOption.REPLACE_EXISTING);
                         }
                         break;
                     }
                 } catch (Exception e) {
-                    AppLogger.warn("PgInstall", "URL falhou: " + pgUrl + " - " + e.getMessage());
-                    continue;
+                    log("URL falhou: " + pgUrl + " - " + e.getMessage());
                 }
             }
 
-            if (!Files.exists(tempInstaller) || Files.size(tempInstaller) < 1000000) {
-                return false; // Download falhou
-            }
+            if (!Files.exists(tempInstaller) || Files.size(tempInstaller) < 1000000) return false;
 
-            updatePgStatus("Executando instalador (pode levar alguns minutos)...");
-
+            log("Executando instalador silencioso...");
             ProcessBuilder pb = new ProcessBuilder(
-                tempInstaller.toString(),
-                "--mode", "unattended",
-                "--superpassword", "NavieraDB@2026",
-                "--serverport", "5432",
-                "--install_runtimes", "0"
+                tempInstaller.toString(), "--mode", "unattended",
+                "--superpassword", pgSenhaLocal,
+                "--serverport", "5432", "--install_runtimes", "0"
             );
             pb.redirectErrorStream(true);
             Process proc = pb.start();
-
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
                 String line;
-                while ((line = reader.readLine()) != null) {
-                    AppLogger.info("PgInstall", line);
-                }
+                while ((line = reader.readLine()) != null) { log("[installer] " + line); }
             }
-
             int exitCode = proc.waitFor();
             Files.deleteIfExists(tempInstaller);
-
-            if (exitCode == 0) {
-                txtSenha.setText("NavieraDB@2026");
-                return true;
-            }
-            return false;
-
+            log("Installer exit code: " + exitCode);
+            return exitCode == 0;
         } catch (Exception e) {
-            AppLogger.error("PgInstall", "Download direto falhou: " + e.getMessage(), e);
+            log("Download direto falhou: " + e.getMessage());
             return false;
         }
     }
 
-    private void instalarPostgresLinux() {
-        lblPgInstallStatus.setText("Instalando PostgreSQL via apt...");
-        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
-
-        Thread bg = new Thread(() -> {
-            try {
-                // No Linux, usar pkexec para rodar com permissao de root
-                ProcessBuilder pb = new ProcessBuilder(
-                    "pkexec", "bash", "-c",
-                    "apt-get update -qq && apt-get install -y postgresql postgresql-client && " +
-                    "sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'NavieraDB@2026';\""
-                );
-                pb.redirectErrorStream(true);
-                Process proc = pb.start();
-
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        String logLine = line;
-                        AppLogger.info("PgInstall", logLine);
-                    }
-                }
-
-                int exitCode = proc.waitFor();
-
-                Thread.sleep(2000);
-                boolean running = isPostgresRunning();
-
-                Platform.runLater(() -> {
-                    progressPgInstall.setProgress(1.0);
-                    if (running) {
-                        lblPgInstallStatus.setText("PostgreSQL instalado com sucesso!");
-                        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#059669"));
-                        txtUsuario.setText("postgres");
-                        txtSenha.setText("NavieraDB@2026");
-                        txtPorta.setText("5432");
-                    } else {
-                        lblPgInstallStatus.setText("Instalado mas nao iniciou. Execute: sudo systemctl start postgresql");
-                        lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#F59E0B"));
-                    }
-                    btnInstalarPostgres.setDisable(false);
-                });
-
-            } catch (Exception e) {
-                AppLogger.error("PgInstall", "Erro: " + e.getMessage(), e);
-                Platform.runLater(() -> {
-                    lblPgInstallStatus.setText("Erro: " + e.getMessage());
-                    lblPgInstallStatus.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
-                    btnInstalarPostgres.setDisable(false);
-                    progressPgInstall.setVisible(false);
-                });
-            }
-        });
-        bg.setDaemon(true);
-        bg.start();
-    }
-
-    private void updatePgStatus(String msg) {
-        Platform.runLater(() -> lblPgInstallStatus.setText(msg));
-    }
-
     // ========================================================================
-    // Passo 2: Criar banco + rodar migrations
+    // Migrations
     // ========================================================================
 
-    @FXML
-    private void handleExecutarSetup() {
-        btnExecutarSetup.setDisable(true);
-        txtLog.clear();
-        progressMigrations.setProgress(0);
-
-        String host = txtHost.getText().trim();
-        String porta = txtPorta.getText().trim();
-        String nomeBanco = txtNomeBanco.getText().trim();
-        String usuario = txtUsuario.getText().trim();
-        String senha = txtSenha.getText();
-
-        Thread bg = new Thread(() -> {
-            try {
-                Class.forName("org.postgresql.Driver");
-                DriverManager.setLoginTimeout(10);
-
-                // 1. Verificar se banco existe / criar
-                appendLog("Verificando banco '" + nomeBanco + "'...");
-                String urlPostgres = "jdbc:postgresql://" + host + ":" + porta + "/postgres";
-                boolean bancoExiste = false;
-
-                try (Connection conn = DriverManager.getConnection(urlPostgres, usuario, senha)) {
-                    try (PreparedStatement ps = conn.prepareStatement(
-                            "SELECT 1 FROM pg_database WHERE datname = ?")) {
-                        ps.setString(1, nomeBanco);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            bancoExiste = rs.next();
-                        }
-                    }
-
-                    if (!bancoExiste) {
-                        appendLog("Criando banco '" + nomeBanco + "'...");
-                        try (Statement st = conn.createStatement()) {
-                            st.execute("CREATE DATABASE " + nomeBanco
-                                + " ENCODING 'UTF8' LC_COLLATE 'pt_BR.UTF-8' LC_CTYPE 'pt_BR.UTF-8' TEMPLATE template0");
-                        } catch (SQLException e) {
-                            // Se falhar com locale pt_BR, tenta sem especificar
-                            if (e.getMessage().contains("locale") || e.getMessage().contains("collation")) {
-                                appendLog("Locale pt_BR nao disponivel, criando com locale padrao...");
-                                try (Statement st = conn.createStatement()) {
-                                    st.execute("CREATE DATABASE " + nomeBanco + " ENCODING 'UTF8'");
-                                }
-                            } else {
-                                throw e;
-                            }
-                        }
-                        appendLog("Banco criado com sucesso.");
-                    } else {
-                        appendLog("Banco ja existe.");
-                    }
-                }
-
-                // 2. Conectar no banco alvo e rodar migrations
-                String urlBanco = "jdbc:postgresql://" + host + ":" + porta + "/" + nomeBanco;
-
-                try (Connection conn = DriverManager.getConnection(urlBanco, usuario, senha)) {
-                    // Verificar se ja tem tabelas (banco ja configurado)
-                    boolean temTabelas = false;
-                    try (ResultSet rs = conn.getMetaData().getTables(null, "public", "viagens", null)) {
-                        temTabelas = rs.next();
-                    }
-
-                    if (temTabelas) {
-                        appendLog("Banco ja possui tabelas — pulando migrations.");
-                        updateProgress(1.0, "Banco ja configurado.");
-                        Platform.runLater(() -> {
-                            setupExecutado = true;
-                            btnExecutarSetup.setDisable(false);
-                        });
-                        return;
-                    }
-
-                    // Rodar cada migration
-                    appendLog("Executando " + MIGRATION_FILES.length + " scripts...");
-                    String migrationsDir = localizarDiretorioMigrations();
-
-                    for (int i = 0; i < MIGRATION_FILES.length; i++) {
-                        String fileName = MIGRATION_FILES[i];
-                        File sqlFile = new File(migrationsDir, fileName);
-
-                        if (!sqlFile.exists()) {
-                            appendLog("AVISO: " + fileName + " nao encontrado, pulando.");
-                            continue;
-                        }
-
-                        appendLog("Executando " + fileName + "...");
-                        double progress = (double)(i + 1) / MIGRATION_FILES.length;
-                        updateProgress(progress, fileName);
-
-                        String sql = Files.readString(sqlFile.toPath(), StandardCharsets.UTF_8);
-                        executarSql(conn, sql, fileName);
-                    }
-
-                    appendLog("Todas as migrations executadas com sucesso!");
-                    updateProgress(1.0, "Concluido.");
-                }
-
-                Platform.runLater(() -> {
-                    setupExecutado = true;
-                    btnExecutarSetup.setDisable(false);
-                });
-
-            } catch (Exception e) {
-                AppLogger.error("SetupWizard", "Erro no setup: " + e.getMessage(), e);
-                appendLog("ERRO: " + e.getMessage());
-                Platform.runLater(() -> {
-                    btnExecutarSetup.setDisable(false);
-                    AlertHelper.error("Erro no Setup", e.getMessage());
-                });
-            }
-        });
-        bg.setDaemon(true);
-        bg.start();
-    }
-
-    /**
-     * Executa um script SQL completo. Trata blocos PL/pgSQL (funcoes, DO blocks).
-     */
     private void executarSql(Connection conn, String sql, String fileName) throws SQLException {
-        // Remove comentarios de linha e divide por ';' respeitando blocos $$ (PL/pgSQL)
         conn.setAutoCommit(false);
         try (Statement st = conn.createStatement()) {
-            // Estrategia: executar o script inteiro de uma vez
-            // Funciona para a maioria dos scripts PostgreSQL
             st.execute(sql);
             conn.commit();
         } catch (SQLException e) {
             conn.rollback();
-            // Se falhar executando tudo junto, tenta statement por statement
-            if (e.getMessage() != null && e.getMessage().contains("multiple")) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("already exists") || msg.contains("ja existe")
+                    || msg.contains("duplicate") || (msg.contains("relation") && msg.contains("exists"))) {
+                log("  (ja existe, continuando)");
+            } else if (msg.contains("multiple")) {
                 executarStatementPorStatement(conn, sql);
             } else {
-                // Alguns erros sao aceitaveis (objeto ja existe, etc)
-                String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-                if (msg.contains("already exists") || msg.contains("ja existe")
-                        || msg.contains("duplicate") || msg.contains("relation") && msg.contains("exists")) {
-                    appendLog("  (ja existe, continuando)");
-                } else {
-                    throw new SQLException("Erro em " + fileName + ": " + e.getMessage(), e);
-                }
+                throw new SQLException("Erro em " + fileName + ": " + e.getMessage(), e);
             }
         } finally {
             conn.setAutoCommit(true);
@@ -759,7 +523,6 @@ public class SetupWizardController implements Initializable {
     }
 
     private void executarStatementPorStatement(Connection conn, String sql) throws SQLException {
-        // Split simples por ';' no final de linha, ignorando blocos $$
         String[] statements = sql.split("(?m);\\s*$");
         conn.setAutoCommit(false);
         try (Statement st = conn.createStatement()) {
@@ -770,10 +533,7 @@ public class SetupWizardController implements Initializable {
                     st.execute(trimmed);
                 } catch (SQLException e) {
                     String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-                    if (msg.contains("already exists") || msg.contains("duplicate")) {
-                        // Toleravel
-                        continue;
-                    }
+                    if (msg.contains("already exists") || msg.contains("duplicate")) continue;
                     throw e;
                 }
             }
@@ -786,151 +546,191 @@ public class SetupWizardController implements Initializable {
         }
     }
 
-    /**
-     * Localiza o diretorio database_scripts/ — pode estar no diretorio do projeto
-     * ou no diretorio do JAR.
-     */
     private String localizarDiretorioMigrations() {
-        // Tentar caminhos relativos comuns
-        String[] candidatos = {
-            "database_scripts",
-            "../database_scripts",
-            System.getProperty("user.dir") + "/database_scripts",
-        };
+        String[] candidatos = { "database_scripts", "../database_scripts",
+            System.getProperty("user.dir") + "/database_scripts" };
         for (String path : candidatos) {
             File dir = new File(path);
-            if (dir.isDirectory() && new File(dir, "000_schema_completo.sql").exists()) {
-                return dir.getAbsolutePath();
-            }
+            if (dir.isDirectory() && new File(dir, "000_schema_completo.sql").exists()) return dir.getAbsolutePath();
         }
-        // Fallback: diretorio onde o JAR esta
         try {
             File jarDir = new File(SetupWizardController.class.getProtectionDomain()
                 .getCodeSource().getLocation().toURI()).getParentFile();
             File dir = new File(jarDir, "database_scripts");
             if (dir.isDirectory()) return dir.getAbsolutePath();
         } catch (Exception ignored) {}
-
-        return "database_scripts"; // default
+        return "database_scripts";
     }
 
     // ========================================================================
-    // Passo 4: Resumo
+    // Salvar configuracoes
     // ========================================================================
 
-    private void preencherResumo() {
-        String host = txtHost.getText().trim();
-        String porta = txtPorta.getText().trim();
-        String banco = txtNomeBanco.getText().trim();
-
-        lblResumoConexao.setText("Conexao: " + host + ":" + porta);
-        lblResumoBanco.setText("Banco: " + banco);
-        lblResumoEmpresa.setText("Empresa ID: " + txtEmpresaId.getText().trim());
-        lblResumoApi.setText("API Sync: " + (txtApiUrl.getText().isBlank() ? "https://api.naviera.com.br" : txtApiUrl.getText().trim()));
-        lblResumoPool.setText("Pool: " + txtPoolSize.getText().trim() + " conexoes | Sync: automatico (5 min)");
-    }
-
-    // ========================================================================
-    // Salvar db.properties e fechar
-    // ========================================================================
-
-    private void salvarDbProperties() {
-        String host = txtHost.getText().trim();
-        String porta = txtPorta.getText().trim();
-        String banco = txtNomeBanco.getText().trim();
-        String usuario = txtUsuario.getText().trim();
-        String senha = txtSenha.getText();
-        String empresaId = txtEmpresaId.getText().trim();
-        String poolSize = txtPoolSize.getText().trim();
-        String apiUrl = txtApiUrl.getText().trim();
-
-        String jdbcUrl = "jdbc:postgresql://" + host + ":" + porta + "/" + banco;
+    private void salvarDbProperties(String senhaPg) throws IOException {
+        String jdbcUrl = "jdbc:postgresql://localhost:" + pgPortaLocal + "/naviera_eco";
 
         StringBuilder sb = new StringBuilder();
-        sb.append("# Configuracao do banco de dados — gerado pelo Setup Wizard\n");
-        sb.append("# NAO commitar com credenciais de producao\n");
+        sb.append("# Configuracao gerada automaticamente pelo Naviera Setup\n");
         sb.append("db.url=").append(jdbcUrl).append("\n");
-        sb.append("db.usuario=").append(usuario).append("\n");
-        sb.append("db.senha=").append(senha).append("\n");
-        sb.append("db.pool.tamanho=").append(poolSize).append("\n");
-        sb.append("\n");
-        sb.append("# Multi-tenant: ID da empresa desta instalacao\n");
-        sb.append("empresa.id=").append(empresaId).append("\n");
-        sb.append("\n");
-        sb.append("# Versao do aplicativo (usado para auto-update check)\n");
+        sb.append("db.usuario=postgres\n");
+        sb.append("db.senha=").append(senhaPg).append("\n");
+        sb.append("db.pool.tamanho=5\n\n");
+        sb.append("# Empresa desta instalacao\n");
+        sb.append("empresa.id=").append(empresaId).append("\n\n");
+        sb.append("# Versao\n");
         sb.append("app.versao=1.0.0\n");
 
-        if (!apiUrl.isBlank()) {
-            sb.append("\n");
-            sb.append("# URL da API central (sync)\n");
-            sb.append("api.url=").append(apiUrl).append("\n");
-        }
-
-        try {
-            Files.writeString(Path.of("db.properties"), sb.toString(), StandardCharsets.UTF_8);
-            AppLogger.info("SetupWizard", "db.properties salvo com sucesso.");
-
-            // Gerar sync_config.properties para o SyncClient
-            salvarSyncConfig(apiUrl);
-
-            AlertHelper.info("Configuracao salva com sucesso! O sistema vai iniciar.");
-
-            // Fechar wizard — Launch.java vai abrir o LoginApp
-            Platform.runLater(() -> {
-                Stage stage = (Stage) btnConcluir.getScene().getWindow();
-                stage.close();
-            });
-
-        } catch (IOException e) {
-            AppLogger.error("SetupWizard", "Erro ao salvar db.properties: " + e.getMessage(), e);
-            AlertHelper.error("Erro", "Nao foi possivel salvar db.properties: " + e.getMessage());
-        }
+        Files.writeString(Path.of("db.properties"), sb.toString(), StandardCharsets.UTF_8);
     }
 
-    // ========================================================================
-    // Gerar sync_config.properties
-    // ========================================================================
-
-    private void salvarSyncConfig(String apiUrl) {
-        if (apiUrl == null || apiUrl.isBlank()) {
-            apiUrl = "https://api.naviera.com.br";
-        }
-        // Garante que a URL nao termina com /
-        if (apiUrl.endsWith("/")) {
-            apiUrl = apiUrl.substring(0, apiUrl.length() - 1);
-        }
-
+    private void salvarSyncConfig() throws IOException {
         StringBuilder sc = new StringBuilder();
-        sc.append("#Configuracoes de Sincronizacao - Naviera Eco\n");
-        sc.append("server.url=").append(apiUrl).append("\n");
-        sc.append("operador.login=").append(txtSyncLogin.getText().trim()).append("\n");
-        sc.append("operador.senha=").append(txtSyncSenha.getText().trim()).append("\n");
+        sc.append("# Configuracao de sincronizacao — gerado pelo Setup\n");
+        sc.append("server.url=").append(API_URL).append("\n");
+        sc.append("operador.login=").append(operadorEmail != null ? operadorEmail : "").append("\n");
+        sc.append("operador.senha=\n");
         sc.append("api.token=\n");
         sc.append("api.token.encoded=false\n");
         sc.append("sync.auto=true\n");
         sc.append("sync.interval.minutos=5\n");
         sc.append("sync.ultima=\n");
 
-        try {
-            Files.writeString(Path.of("sync_config.properties"), sc.toString(), StandardCharsets.UTF_8);
-            AppLogger.info("SetupWizard", "sync_config.properties salvo com sucesso.");
-        } catch (IOException e) {
-            AppLogger.warn("SetupWizard", "Erro ao salvar sync_config.properties: " + e.getMessage());
+        Files.writeString(Path.of("sync_config.properties"), sc.toString(), StandardCharsets.UTF_8);
+    }
+
+    // ========================================================================
+    // Tela 3: Pronto — iniciar sistema
+    // ========================================================================
+
+    @FXML
+    private void handleIniciar() {
+        Platform.runLater(() -> {
+            Stage stage = (Stage) btnIniciar.getScene().getWindow();
+            stage.close();
+        });
+    }
+
+    // ========================================================================
+    // Erro e retry
+    // ========================================================================
+
+    private void mostrarErro(String mensagem) {
+        progressSetup.setProgress(0);
+        lblSetupMsg.setText("Ocorreu um problema");
+        lblSetupDetail.setText("");
+        boxErro.setVisible(true);
+        boxErro.setManaged(true);
+        lblErroDetalhe.setText(mensagem);
+    }
+
+    @FXML
+    private void handleTentarNovamente() {
+        iniciarSetupAutomatico();
+    }
+
+    @FXML
+    private void handleCopiarLog() {
+        ClipboardContent cc = new ClipboardContent();
+        cc.putString("=== Naviera Setup Log ===\n" +
+            "Empresa: " + nomeEmpresa + " (ID: " + empresaId + ")\n" +
+            "OS: " + System.getProperty("os.name") + " " + System.getProperty("os.arch") + "\n" +
+            "Java: " + System.getProperty("java.version") + "\n\n" +
+            logCompleto.toString());
+        Clipboard.getSystemClipboard().setContent(cc);
+        AlertHelper.info("Log copiado! Cole no WhatsApp e envie para o suporte.");
+    }
+
+    // ========================================================================
+    // Navegacao visual
+    // ========================================================================
+
+    private void updateStepView() {
+        step1.setVisible(currentStep == 1); step1.setManaged(currentStep == 1);
+        step2.setVisible(currentStep == 2); step2.setManaged(currentStep == 2);
+        step3.setVisible(currentStep == 3); step3.setManaged(currentStep == 3);
+
+        lblStepTitle.setText(STEP_TITLES[currentStep - 1]);
+
+        HBox[] indicators = { stepIndicator1, stepIndicator2, stepIndicator3 };
+        for (int i = 0; i < indicators.length; i++) {
+            if (i + 1 == currentStep) {
+                indicators[i].setStyle("-fx-padding: 10; -fx-background-color: #059669; -fx-background-radius: 5;");
+                setIndicatorColors(indicators[i], true);
+            } else if (i + 1 < currentStep) {
+                indicators[i].setStyle("-fx-padding: 10; -fx-background-color: #047857; -fx-background-radius: 5;");
+                setIndicatorColors(indicators[i], true);
+            } else {
+                indicators[i].setStyle("-fx-padding: 10; -fx-background-radius: 5;");
+                setIndicatorColors(indicators[i], false);
+            }
         }
+    }
+
+    private void setIndicatorColors(HBox indicator, boolean active) {
+        indicator.getChildren().forEach(node -> {
+            if (node instanceof Label lbl) {
+                lbl.setTextFill(active
+                    ? javafx.scene.paint.Color.WHITE
+                    : javafx.scene.paint.Color.web("#7BA393"));
+            }
+        });
     }
 
     // ========================================================================
     // Helpers
     // ========================================================================
 
-    private void appendLog(String msg) {
-        Platform.runLater(() -> txtLog.appendText(msg + "\n"));
+    private void updateSetup(String msg, String detail, double progress) {
+        Platform.runLater(() -> {
+            lblSetupMsg.setText(msg);
+            lblSetupDetail.setText(detail);
+            if (progress >= 0) progressSetup.setProgress(progress);
+        });
     }
 
-    private void updateProgress(double value, String detail) {
-        Platform.runLater(() -> {
-            progressMigrations.setProgress(value);
-            lblProgressDetail.setText(detail);
-        });
+    private void log(String msg) {
+        logCompleto.append("[").append(java.time.LocalTime.now().toString().substring(0, 8))
+            .append("] ").append(msg).append("\n");
+        AppLogger.info("SetupWizard", msg);
+    }
+
+    private String readResponse(HttpURLConnection conn) throws IOException {
+        InputStream is = (conn.getResponseCode() < 400) ? conn.getInputStream() : conn.getErrorStream();
+        if (is == null) return "{}";
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line);
+            return sb.toString();
+        }
+    }
+
+    // JSON parsing simples (sem dependencia de Jackson no Desktop)
+    private String parseString(String json, String key) {
+        String search = "\"" + key + "\"";
+        int idx = json.indexOf(search);
+        if (idx == -1) return null;
+        int colon = json.indexOf(":", idx + search.length());
+        if (colon == -1) return null;
+        int start = json.indexOf("\"", colon + 1);
+        if (start == -1) return null;
+        int end = json.indexOf("\"", start + 1);
+        if (end == -1) return null;
+        return json.substring(start + 1, end);
+    }
+
+    private long parseLong(String json, String key) {
+        String search = "\"" + key + "\"";
+        int idx = json.indexOf(search);
+        if (idx == -1) return 0;
+        int colon = json.indexOf(":", idx + search.length());
+        if (colon == -1) return 0;
+        StringBuilder num = new StringBuilder();
+        for (int i = colon + 1; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (Character.isDigit(c)) num.append(c);
+            else if (num.length() > 0) break;
+        }
+        return num.length() > 0 ? Long.parseLong(num.toString()) : 0;
     }
 }
