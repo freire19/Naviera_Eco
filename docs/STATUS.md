@@ -1,19 +1,32 @@
 # STATUS DO PROJETO — Naviera Eco
-> Ultima atualizacao: 2026-04-10
-> Atualizado por: Claude Code (status-update)
+> Ultima atualizacao: 2026-04-14
+> Atualizado por: Claude Code (audit-report V1.2)
 
 ---
 
-## Estado Geral: MVP QUASE PRONTO (77% — 95/124 itens prontos, 3 bloqueadores)
+## Estado Geral: REPROVADO PARA PRODUCAO (12 issues CRITICAS)
 
 ### Resumo
-Plataforma SaaS multi-tenant de gestao fluvial com **4 camadas operacionais**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile). Features core completas em todas as camadas. **3 bloqueadores de seguranca/infra** impedem deploy em producao: CORS aberto no BFF, SyncService SQL injection, HTTPS desativado. 0 issues CRITICAS de codigo. Auditorias: Security e Logic 100% limpas. MVP V4.0 aprofundou analise em infra/seguranca (124 itens vs 116 da V3.0).
+Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile), Site (React). Auditoria V1.2 encontrou **12 issues CRITICAS** — todas nos DAOs Desktop (migracao multi-tenant incompleta): parametros SQL trocados, placeholders faltando, filtros empresa_id ausentes, executeUpdate nunca chamado, SQL sintaticamente invalido. **Corrigir antes de qualquer deploy multi-tenant.**
 
 ---
 
-## ISSUES CRITICAS ABERTAS
+## ISSUES CRITICAS ABERTAS (12)
 
-**Zero issues CRITICAS pendentes.** Todas as 3 criticas de Maintainability (DM031, DM033, DM041) foram corrigidas.
+| # | Issue | Arquivo | Problema |
+|---|-------|---------|----------|
+| #030 | TarifaDAO.buscarTarifaPorRotaETipo | `src/dao/TarifaDAO.java` | Parametros em posicoes erradas — empresa_id nunca setado |
+| #031 | PassageiroDAO.inserir | `src/dao/PassageiroDAO.java` | 7 colunas, 6 placeholders — todo INSERT falha |
+| #032 | PassageiroDAO.listarTodos | `src/dao/PassageiroDAO.java` | executeQuery antes de setar parametro |
+| #033 | PassageiroDAO.listarTodosNomes | `src/dao/PassageiroDAO.java` | Mesmo padrao do #032 |
+| #034 | PassageiroDAO.buscarPorNome | `src/dao/PassageiroDAO.java` | Nome na posicao do empresa_id (cross-tenant) |
+| #035 | TipoPassageiroDAO.inserir | `src/dao/TipoPassageiroDAO.java` | 6 colunas, 5 placeholders + empresa_id nunca setado |
+| #036 | TipoPassageiroDAO.listarTodos | `src/dao/TipoPassageiroDAO.java` | Sem filtro empresa_id (data leak) |
+| #037 | TarifaDAO.listarTodos | `src/dao/TarifaDAO.java` | Sem filtro empresa_id (data leak comercial) |
+| #040 | AgendaDAO.adicionarAnotacao | `src/dao/AgendaDAO.java` | executeUpdate nunca chamado — dados perdidos |
+| #043 | ItemEncomendaPadraoDAO.listarTodos | `src/dao/ItemEncomendaPadraoDAO.java` | Duplo WHERE — SQL sintaticamente invalido |
+| #056 | ItemEncomendaPadraoDAO.listarTodos | `src/dao/ItemEncomendaPadraoDAO.java` | PreparedStatement executado sem setar parametro |
+| #058 | TipoPassageiroDAO.inserir | `src/dao/TipoPassageiroDAO.java` | empresa_id nunca inserido (NULL no banco) |
 
 ---
 
@@ -73,32 +86,35 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 
 ## AUDITORIAS
 
-| Tipo | Versao | Data | Issues ativas | Status | Doc |
-|------|--------|------|--------------|--------|-----|
-| Scan Geral | V1.1 | 2026-04-08 | 54 original | Issues tratadas nos deep audits | [AUDIT_V1.1](audits/current/AUDIT_V1.1.md) |
-| **Deep Security** | **V3.0** | **2026-04-08** | **0** | **100% LIMPO** | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
-| **Deep Logic** | **V4.1** | **2026-04-08** | **0** | **100% LIMPO** | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
-| **Deep Bugs** | **V1.1** | **2026-04-09** | **0** | **100% LIMPO — 35/35 verificadas** | **[DEEP_BUGS](audits/current/DEEP_BUGS.md)** |
-| **Deep Resilience** | **V4.0** | **2026-04-08** | **2 ativas (97% limpo)** | **39 fixadas** | **[DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)** |
-| **Deep Performance** | **V3.0** | **2026-04-09** | **2 (infra only)** | **95% LIMPO — 37/39 fixadas** | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
-| **Deep Maintainability** | **V3.0** | **2026-04-09** | **~5 (estruturais)** | **46 corrigidas (90% reducao)** | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
-| MVP Plan | V3.0 | 2026-04-10 | 0 faltando, 4 incompletos | 93% pronto (features only) | [MVP_PLAN V3.0](mvp/archive/MVP_PLAN_V3.0.md) |
-| **MVP Plan** | **V4.0** | **2026-04-10** | **10 faltando, 17 incompletos** | **77% pronto — 3 bloqueadores (CORS, injection, HTTPS)** | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
+| Tipo | Versao | Data | Issues | Status | Doc |
+|------|--------|------|--------|--------|-----|
+| **Scan Geral** | **V1.2** | **2026-04-14** | **112 (12 CRIT, 22 ALTO)** | **REPROVADO — 12 CRITICAS** | **[AUDIT_V1.2](audits/current/AUDIT_V1.2.md)** |
+| Scan Geral | V1.1 | 2026-04-08 | 54 original | Arquivado | [AUDIT_V1.1](audits/archive/AUDIT_V1.1.md) |
+| Scan Geral | V1.0 | 2026-04-07 | ~194 original | Arquivado | [AUDIT_V1.0](audits/archive/AUDIT_V1.0.md) |
+| Deep Security | V3.0 | 2026-04-08 | 0 | 100% LIMPO | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
+| **Deep Logic** | **V5.0** | **2026-04-14** | **77 ativos (12 CRIT)** | **23 pendentes V1.2 + 24 novos** | **[DEEP_LOGIC](audits/current/DEEP_LOGIC.md)** |
+| Deep Bugs | V1.1 | 2026-04-09 | 0 | 100% LIMPO | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
+| Deep Resilience | V4.0 | 2026-04-08 | 2 ativas | 97% LIMPO | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
+| Deep Performance | V3.0 | 2026-04-09 | 2 (infra) | 95% LIMPO | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
+| Deep Maintainability | V3.0 | 2026-04-09 | ~5 (estruturais) | 90% reduzido | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
+| MVP Plan | V4.0 | 2026-04-10 | 3 bloqueadores | 77% pronto | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
+
+> **NOTA:** O Audit V1.2 re-escaneou o projeto completo apos features adicionais (site, instalador, web parity). Encontrou 12 CRITICAS todas nos DAOs Desktop — consequencia da migracao multi-tenant (script 013) que introduziu empresa_id mas nao corrigiu todos os binds/placeholders nos DAOs. Os deep audits anteriores (V3-V4) nao cobriram esses DAOs especificos.
 
 ---
 
 ## PROXIMO SPRINT (sugerido)
 
-**Prioridade 1 — Resolver 3 bloqueadores (~3h):**
-1. CORS restrito no BFF (`naviera-web/server/index.js` — 1 linha)
-2. SyncService SQL injection — whitelist de tabelas (`naviera-api/.../SyncService.java`)
-3. HTTPS — descomentar nginx.conf + gerar certificados
+**Sprint 1 — CRITICOS (fazer AGORA, ~4h):**
+1. Corrigir 12 DAOs Desktop com parametros/placeholders quebrados (TarifaDAO, PassageiroDAO, TipoPassageiroDAO, AgendaDAO, ItemEncomendaPadraoDAO)
+2. Adicionar empresa_id em DespesaDAO.buscarDespesas, AgendaDAO.buscarBoletos, UsuarioDAO.buscarPorLogin
+3. Rotacionar senha admin123 do sync_config.properties
 
-**Prioridade 2 — Incompletos criticos (~4h):**
-Rate limiting API + BFF geral, secrets fortes em prod, graceful shutdown BFF, BFF npm script.
+**Sprint 2 — ALTOS (~6h):**
+IDOR em DELETE encomenda_itens/frete_itens, WebSocket auth, trust proxy no BFF, race condition MAX+1 (usar sequences), boleto batch sem transacao
 
-**Prioridade 3 — Estabilidade (antes do lancamento):**
-Testes API (fluxos core), input validation BFF (Zod/Joi), migrations avulsas numeradas.
+**Sprint 3 — MEDIOS (este mes):**
+Error Boundaries React, paginacao endpoints BFF, formatMoney centralizar, N+1 queries, CSP headers
 
 ---
 
@@ -110,7 +126,7 @@ Testes API (fluxos core), input validation BFF (Zod/Joi), migrations avulsas num
 | Issues resolvidas (verificadas) | ~205 |
 | Issues pendentes (estimado) | ~82 (muitos sobrepostos) |
 | Taxa de resolucao | 67% |
-| Issues CRITICAS pendentes | **0** |
+| Issues CRITICAS pendentes | **12** |
 | Categorias 100% limpas | **Security, Logic, Bugs** |
 | MVP readiness | **77% (95/124 itens)** |
 | MVP bloqueadores | **3 (CORS, SQL injection, HTTPS)** |
@@ -124,7 +140,7 @@ Testes API (fluxos core), input validation BFF (Zod/Joi), migrations avulsas num
 
 ## LINKS RAPIDOS
 
-- **Audit geral:** [AUDIT_V1.1](audits/current/AUDIT_V1.1.md)
+- **Audit geral:** [AUDIT_V1.2](audits/current/AUDIT_V1.2.md)
 - **Deep Security:** [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) — 100% LIMPO
 - **Deep Logic:** [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) — 100% LIMPO
 - **Deep Bugs:** [DEEP_BUGS](audits/current/DEEP_BUGS.md)
@@ -160,6 +176,8 @@ Testes API (fluxos core), input validation BFF (Zod/Joi), migrations avulsas num
 | 2026-04-10 | **MVP Fase 4** — 22 novas paginas web (29 total), app refatorado (27 arquivos), EncomendaCPF, SyncService (11 tabelas), AppLogger (491 fixes), PostgreSQL no compose |
 | 2026-04-10 | **MVP PLAN V3.0 — 93% pronto (108/116), 0 bloqueadores, 4 fases concluidas** |
 | 2026-04-10 | **MVP PLAN V4.0 — 77% pronto (95/124), 3 bloqueadores (CORS, SyncService injection, HTTPS). Analise aprofundada em infra/seguranca (+8 itens avaliados)** |
+| 2026-04-14 | **AUDIT V1.2 — Re-scan completo: 112 issues (12 CRIT). DAOs Desktop com migracao multi-tenant incompleta. Contra-verificado: 4 FP descartados, 29 severidades ajustadas, 14 novas issues.** |
+| 2026-04-14 | **DEEP_LOGIC V5.0 — 87 arquivos linha por linha. 23 issues V1.2 pendentes, 24 genuinamente novos. API login sem tenant, AuxiliaresDAO caixas/rotas vazam dados, 5 controllers com double para dinheiro.** |
 
 ---
 *Atualizado automaticamente por Claude Code (status-update) — Revisao humana recomendada*

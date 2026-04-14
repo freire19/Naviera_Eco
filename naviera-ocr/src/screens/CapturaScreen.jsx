@@ -27,7 +27,10 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
   }
 
   const enviar = async () => {
-    if (!fotoBlob) return
+    if (!fotoBlob) {
+      showToast('Nenhuma foto selecionada', 'error')
+      return
+    }
 
     // Se offline, salvar na fila
     if (!isOnline) {
@@ -39,11 +42,22 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
     }
 
     setLoading(true)
+    showToast('Enviando foto e processando OCR...', 'info')
     try {
-      const file = new File([fotoBlob], fotoName || 'foto.jpg', { type: fotoBlob.type || 'image/jpeg' })
+      // fotoBlob pode ser File ou Blob — garantir que e File
+      let file = fotoBlob
+      if (!(fotoBlob instanceof File)) {
+        file = new File([fotoBlob], fotoName || 'foto.jpg', { type: fotoBlob.type || 'image/jpeg' })
+      }
       const result = await uploadFoto(file, viagemId || null)
-      onResult(result)
+      if (result) {
+        showToast('Foto processada! Revise os itens.', 'success')
+        onResult(result)
+      } else {
+        showToast('Resposta vazia do servidor', 'error')
+      }
     } catch (err) {
+      console.error('[OCR] Erro no upload:', err)
       showToast(err.message || 'Erro ao enviar foto', 'error')
     } finally {
       setLoading(false)

@@ -57,6 +57,7 @@ public class AgendaDAO {
             stmt.setDate(1, Date.valueOf(data));
             stmt.setString(2, texto);
             stmt.setInt(3, DAOUtils.empresaId());
+            stmt.executeUpdate();
         } catch (SQLException e) {
             AppLogger.warn("AgendaDAO", "Erro SQL em AgendaDAO: " + e.getMessage());
         }

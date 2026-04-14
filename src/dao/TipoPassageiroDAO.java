@@ -12,7 +12,7 @@ public class TipoPassageiroDAO {
 
     public boolean inserir(TipoPassageiro tp) {
         String sql = "INSERT INTO tipo_passageiro (nome, idade_min, idade_max, deficiente, gratuito, empresa_id) "
-                   + "VALUES (?,?,?,?,?)";
+                   + "VALUES (?,?,?,?,?,?)";
         try(Connection conn = ConexaoBD.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -21,6 +21,7 @@ public class TipoPassageiroDAO {
             ps.setInt(3, tp.getIdadeMax());
             ps.setBoolean(4, tp.isDeficiente());
             ps.setBoolean(5, tp.isGratuito());
+            ps.setInt(6, DAOUtils.empresaId());
             ps.executeUpdate();
             return true;
 
@@ -34,10 +35,12 @@ public class TipoPassageiroDAO {
         List<TipoPassageiro> lista = new ArrayList<>();
         String sql = "SELECT id, nome, idade_min, idade_max, deficiente, gratuito "
                    + "FROM tipo_passageiro "
+                   + "WHERE empresa_id = ? "
                    + "ORDER BY id";
         try(Connection conn = ConexaoBD.getConnection();
-            Statement st = conn.createStatement();
-            ResultSet rs = st.executeQuery(sql)) {
+            PreparedStatement st = conn.prepareStatement(sql)) {
+            st.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = st.executeQuery()) {
 
             while(rs.next()) {
                 TipoPassageiro tp = new TipoPassageiro();
@@ -49,6 +52,7 @@ public class TipoPassageiroDAO {
                 tp.setGratuito(rs.getBoolean("gratuito"));
 
                 lista.add(tp);
+            }
             }
         } catch(SQLException e){
             AppLogger.warn("TipoPassageiroDAO", "Erro SQL em TipoPassageiroDAO: " + e.getMessage());

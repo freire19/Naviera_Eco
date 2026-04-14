@@ -29,13 +29,14 @@ public class ItemEncomendaPadraoDAO {
         List<ItemEncomendaPadrao> lista = new ArrayList<>();
         String sql = "SELECT * FROM itens_encomenda_padrao WHERE empresa_id = ? ";
         if (apenasAtivos) {
-            sql += " WHERE ativo = true ";
+            sql += " AND ativo = true ";
         }
         sql += " ORDER BY nome_item";
 
-        try (Connection conn = ConexaoBD.getConnection(); 
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 ItemEncomendaPadrao item = new ItemEncomendaPadrao();
@@ -48,6 +49,7 @@ public class ItemEncomendaPadraoDAO {
                 item.setAtivo(rs.getBoolean("ativo"));
                 
                 lista.add(item);
+            }
             }
         } catch (SQLException e) {
             AppLogger.warn("ItemEncomendaPadraoDAO", "Erro SQL em ItemEncomendaPadraoDAO: " + e.getMessage());

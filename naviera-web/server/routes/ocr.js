@@ -3,14 +3,21 @@ import multer from 'multer'
 import path from 'path'
 import { readFile } from 'fs/promises'
 import { existsSync, mkdirSync } from 'fs'
+import jwt from 'jsonwebtoken'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { callVisionOCR } from '../helpers/visionApi.js'
 import { parseOcrText } from '../helpers/parseOcrText.js'
 import { criarFreteComItens } from '../helpers/criarFrete.js'
+import { geminiParseOCR } from '../helpers/geminiParser.js'
 
 const router = Router()
-router.use(authMiddleware)
+
+// Auth para todas as rotas EXCETO foto (que aceita token via query param)
+router.use((req, res, next) => {
+  if (req.path.match(/\/lancamentos\/\d+\/foto/)) return next()
+  return authMiddleware(req, res, next)
+})
 
 // Configurar multer para upload de fotos
 const UPLOAD_PATH = process.env.OCR_UPLOAD_PATH || path.resolve('uploads/ocr')
@@ -146,6 +153,49 @@ router.get('/lancamentos/:id', async (req, res) => {
 })
 
 // ============================================================================
+// POST /api/ocr/lancamentos/:id/ia-review — Gemini AI reanalisa o texto OCR
+// ============================================================================
+router.post('/lancamentos/:id/ia-review', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+
+    // Buscar lancamento
+    const lancResult = await pool.query(
+      'SELECT id, ocr_texto_bruto FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    if (lancResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Lancamento nao encontrado' })
+    }
+
+    const { ocr_texto_bruto } = lancResult.rows[0]
+    if (!ocr_texto_bruto) {
+      return res.status(400).json({ error: 'Sem texto OCR para analisar' })
+    }
+
+    // Buscar itens padrao da empresa
+    const padrao = await pool.query(
+      'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+      [empresaId]
+    )
+
+    // Chamar Gemini AI
+    const dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
+
+    // Atualizar dados extraidos no banco
+    await pool.query(
+      'UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2',
+      [JSON.stringify(dados), req.params.id]
+    )
+
+    res.json({ dados_extraidos: dados })
+  } catch (err) {
+    console.error('[OCR] Erro na revisao IA:', err.message)
+    res.status(500).json({ error: 'Erro ao processar com IA: ' + err.message })
+  }
+})
+
+// ============================================================================
 // PUT /api/ocr/lancamentos/:id/revisar — Operador confirma/corrige dados
 // ============================================================================
 router.put('/lancamentos/:id/revisar', async (req, res) => {
@@ -266,10 +316,22 @@ router.put('/lancamentos/:id/rejeitar', async (req, res) => {
 
 // ============================================================================
 // GET /api/ocr/lancamentos/:id/foto — Servir foto do filesystem
+// Aceita auth via query param ?token=... (necessario para <img src>)
 // ============================================================================
 router.get('/lancamentos/:id/foto', async (req, res) => {
   try {
-    const empresaId = req.user.empresa_id
+    // Auth: tentar query param primeiro (para <img src>), senao usa req.user do middleware
+    let empresaId = req.user?.empresa_id
+    if (!empresaId && req.query.token) {
+      try {
+        const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET)
+        empresaId = decoded.empresa_id
+      } catch {
+        return res.status(401).json({ error: 'Token invalido' })
+      }
+    }
+    if (!empresaId) return res.status(401).json({ error: 'Nao autorizado' })
+
     const result = await pool.query(
       'SELECT foto_path FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
       [req.params.id, empresaId]

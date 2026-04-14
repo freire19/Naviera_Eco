@@ -17,8 +17,9 @@ public class TarifaDAO {
         String sql = "SELECT id_tarifa, id_rota, id_tipo_passagem, valor_transporte, valor_cargas, valor_alimentacao, valor_desconto FROM tarifas WHERE empresa_id = ? AND id_rota = ? AND id_tipo_passagem = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, idRota);
-            stmt.setInt(2, idTipoPassagem);
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setLong(2, idRota);
+            stmt.setInt(3, idTipoPassagem);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     tarifa = new Tarifa();
@@ -100,11 +101,13 @@ public class TarifaDAO {
                      "FROM tarifas t " +
                      "JOIN rotas r ON t.id_rota = r.id " +
                      "JOIN aux_tipos_passagem atp ON t.id_tipo_passagem = atp.id_tipo_passagem " +
+                     "WHERE t.empresa_id = ? " +
                      "ORDER BY r.origem, atp.nome_tipo_passagem";
 
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 Tarifa tarifa = new Tarifa();
@@ -118,6 +121,7 @@ public class TarifaDAO {
                 tarifa.setNomeRota(rs.getString("nome_rota"));
                 tarifa.setNomeTipoPassageiro(rs.getString("nome_tipo_passageiro"));
                 tarifas.add(tarifa);
+            }
             }
         } catch (SQLException e) {
             AppLogger.warn("TarifaDAO", "Erro SQL em TarifaDAO: " + e.getMessage());

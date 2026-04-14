@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { apiPut, fotoUrl } from '../api.js'
+import { apiPut, apiPost, fotoUrl } from '../api.js'
 import { money } from '../helpers.js'
 import { ConfidenceBadge } from '../components/Badge.jsx'
 import Card from '../components/Card.jsx'
 import ItemRow from '../components/ItemRow.jsx'
-import { IconPlus, IconCheck } from '../icons.jsx'
+import { IconPlus, IconCheck, IconRefresh } from '../icons.jsx'
 
 export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToast }) {
   const [remetente, setRemetente] = useState(dados.remetente || '')
@@ -12,6 +12,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
   const [rota, setRota] = useState(dados.rota || '')
   const [itens, setItens] = useState(dados.itens || [])
   const [loading, setLoading] = useState(false)
+  const [iaLoading, setIaLoading] = useState(false)
 
   const valorTotal = itens.reduce((sum, i) => sum + ((i.quantidade || 0) * (i.preco_unitario || 0)), 0)
 
@@ -27,6 +28,28 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
 
   const addItem = () => {
     setItens([...itens, { nome_item: '', quantidade: 1, preco_unitario: 0, subtotal: 0 }])
+  }
+
+  // Revisar com IA (Gemini)
+  const revisarComIA = async () => {
+    setIaLoading(true)
+    showToast('Analisando com IA... aguarde', 'info')
+    try {
+      const result = await apiPost(`/ocr/lancamentos/${lancamento.id}/ia-review`, {})
+      if (result?.dados_extraidos) {
+        const d = result.dados_extraidos
+        setRemetente(d.remetente || remetente)
+        setDestinatario(d.destinatario || destinatario)
+        setRota(d.rota || rota)
+        setItens(d.itens || [])
+        showToast(`IA identificou ${d.itens?.length || 0} itens`, 'success')
+      }
+    } catch (err) {
+      console.error('[IA Review]', err)
+      showToast(err.message || 'Erro na revisao por IA', 'error')
+    } finally {
+      setIaLoading(false)
+    }
   }
 
   const confirmar = async () => {
@@ -74,6 +97,28 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
           style={{ maxHeight: 180 }}
         />
       </Card>
+
+      {/* Botao Revisar com IA */}
+      <button
+        className="btn btn-block"
+        onClick={revisarComIA}
+        disabled={iaLoading || loading}
+        style={{
+          background: iaLoading ? t.soft : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+          color: iaLoading ? t.txMuted : '#fff',
+          padding: 14, fontSize: '0.95rem',
+          border: iaLoading ? `1px solid ${t.border}` : 'none'
+        }}
+      >
+        {iaLoading ? (
+          <span className="pulse">Analisando com IA...</span>
+        ) : (
+          <>
+            <IconRefresh size={18} color="#fff" />
+            Revisar com IA
+          </>
+        )}
+      </button>
 
       {/* Remetente / Destinatario / Rota */}
       <Card t={t} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -142,7 +187,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
             textAlign: 'center', padding: 24, color: t.txMuted, fontSize: '0.9rem',
             background: t.soft, borderRadius: 10
           }}>
-            Nenhum item extraido. Adicione manualmente.
+            Nenhum item extraido. Use "Revisar com IA" ou adicione manualmente.
           </div>
         )}
       </div>
@@ -159,7 +204,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
       <button
         className="btn btn-block"
         onClick={confirmar}
-        disabled={loading}
+        disabled={loading || iaLoading}
         style={{ background: t.priGrad, color: '#fff', padding: 16, fontSize: '1rem' }}
       >
         <IconCheck size={20} color="#fff" />

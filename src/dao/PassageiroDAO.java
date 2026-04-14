@@ -31,10 +31,12 @@ public class PassageiroDAO {
         // O mapResultSetToPassageiro agora não precisa mais da conexão como parâmetro
         String sql = "SELECT * FROM passageiros WHERE empresa_id = ? ORDER BY nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                passageiros.add(mapResultSetToPassageiro(rs));
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    passageiros.add(mapResultSetToPassageiro(rs));
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("PassageiroDAO", "Erro SQL em PassageiroDAO: " + e.getMessage());
@@ -55,7 +57,7 @@ public class PassageiroDAO {
     }
 
     public Passageiro inserir(Passageiro passageiro) {
-        String sql = "INSERT INTO passageiros (nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade, empresa_id) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO passageiros (nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -113,10 +115,12 @@ public class PassageiroDAO {
         List<String> nomes = new ArrayList<>();
         String sql = "SELECT nome_passageiro FROM passageiros WHERE empresa_id = ? ORDER BY nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                nomes.add(rs.getString("nome_passageiro"));
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    nomes.add(rs.getString("nome_passageiro"));
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("PassageiroDAO", "Erro SQL em PassageiroDAO: " + e.getMessage());
@@ -128,7 +132,8 @@ public class PassageiroDAO {
         String sql = "SELECT * FROM passageiros WHERE empresa_id = ? AND nome_passageiro ILIKE ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, nome);
+            stmt.setInt(1, empresaId());
+            stmt.setString(2, nome);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return mapResultSetToPassageiro(rs);
