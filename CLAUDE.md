@@ -518,16 +518,18 @@ cd naviera-web/server && node index.js           # BFF (inclui rotas OCR)
 
 *Atualizado: 2026-04-14 — Adicionado naviera-ocr (lancamento de fretes por foto com OCR + Gemini AI)*
 
-### Fase 7: Onboarding Self-Service — EM ANDAMENTO
+### Fase 7: Onboarding Self-Service — CONCLUIDA
 
 - [x] Migration 023: codigo_ativacao + ativado_em em empresas, deve_trocar_senha em usuarios
 - [x] API: POST /public/registrar-empresa (OnboardingService — cria empresa + usuario + codigo)
 - [x] API: GET /public/ativar/{codigo} (retorna empresa_id, nome, slug, operador)
 - [x] Desktop: SetupWizard reescrito — 3 telas (ativacao, preparando, pronto), zero config tecnica
-- [ ] Site: pagina de cadastro self-service (CadastroEmpresaPublico.jsx no naviera-site)
-- [ ] Correcao: JwtFilter + BFF adminOnly — padronizar funcao 'Administrador'
-- [ ] Correcao: UsuarioDAO.buscarPorUsuarioESenha aceitar email (Desktop login)
-- [ ] Correcao: Troca de senha obrigatoria no primeiro login
+- [x] Site: pagina de cadastro self-service (CadastroPage no naviera-site)
+- [x] Correcao: JwtFilter + BFF adminOnly — padronizar funcao 'Administrador' / 'ADMIN'
+- [x] Correcao: UsuarioDAO.buscarPorUsuarioESenha aceitar email (Desktop login)
+- [x] Correcao: AdminService.criarEmpresa() cria usuario + codigo na mesma transacao
+- [x] Correcao: Troca de senha obrigatoria no primeiro login (Desktop + Web + API)
+- [x] BFF: POST /api/auth/trocar-senha (endpoint de troca de senha)
 
 **Fluxo do operador:**
 1. Operador acessa naviera.com.br/cadastro

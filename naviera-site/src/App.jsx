@@ -125,7 +125,7 @@ function HomePage({ go }) {
       </div>
     </section>
 
-    <CTA title="Pronto para modernizar sua operação?" desc="Comece gratuitamente. 30 dias sem compromisso." btn="Baixar o Desktop" btnAction={() => go('download')} btn2="Falar com a gente" btn2Action={() => go('contato')}/>
+    <CTA title="Pronto para modernizar sua operação?" desc="Cadastre sua empresa e comece em minutos. 30 dias sem compromisso." btn="Cadastrar minha empresa" btnAction={() => go('cadastro')} btn2="Falar com a gente" btn2Action={() => go('contato')}/>
   </>;
 }
 
@@ -137,7 +137,7 @@ function EmpresasPage({ go }) {
         <h1 className="fade-up d1" style={{fontSize:'clamp(32px, 5vw, 60px)'}}>Seu barco merece<br/>um <em>sistema de verdade</em>.</h1>
         <p className="hero-desc fade-up d2">Chega de caderno, planilha e controle no WhatsApp. O Naviera é o ERP completo — e funciona até sem internet.</p>
         <div className="hero-actions fade-up d3">
-          <button className="btn btn-pri" onClick={() => go('download')}>Baixar gratuitamente</button>
+          <button className="btn btn-pri" onClick={() => go('cadastro')}>Cadastrar minha empresa</button>
           <button className="btn btn-ghost" onClick={() => go('precos')}>Ver preços</button>
         </div>
       </div>
@@ -173,7 +173,7 @@ function EmpresasPage({ go }) {
         </div>
       </div>
     </section>
-    <CTA title="Pronto para deixar o caderno de lado?" desc="Baixe o Naviera Desktop e comece a gerenciar sua embarcação." btn="Baixar o Desktop" btnAction={() => go('download')}/>
+    <CTA title="Pronto para deixar o caderno de lado?" desc="Cadastre sua empresa e comece a gerenciar sua embarcação." btn="Cadastrar minha empresa" btnAction={() => go('cadastro')}/>
   </>;
 }
 
@@ -265,7 +265,7 @@ function PrecosPage({ go }) {
       <div className="container">
         <div className="pricing-grid">
           <PricingCard title="Passageiro" price="Grátis" priceDesc="Para sempre. Sem limites." features={["Compra de passagens","Bilhete digital QR Code","GPS em tempo real","Rastreio de encomendas","Notificações push","Lista de amigos"]} btnLabel="Baixar o App" btnAction={() => go('download')} ghost/>
-          <PricingCard title="Operador" price="R$ 299" priceSuffix="/mês" priceDesc="Por embarcação. Tudo incluso." features={["Desktop offline completo","Web para escritório","Passagens, fretes e encomendas","Financeiro completo","GPS tracking","Sync offline automático","Impressão térmica","Relatórios e auditoria","Suporte prioritário"]} btnLabel="Começar agora" btnAction={() => go('contato')} featured/>
+          <PricingCard title="Operador" price="R$ 299" priceSuffix="/mês" priceDesc="Por embarcação. Tudo incluso." features={["Desktop offline completo","Web para escritório","Passagens, fretes e encomendas","Financeiro completo","GPS tracking","Sync offline automático","Impressão térmica","Relatórios e auditoria","Suporte prioritário"]} btnLabel="Começar agora" btnAction={() => go('cadastro')} featured/>
           <PricingCard title="Frota" price="Sob consulta" priceDesc="Para 3+ embarcações." features={["Tudo do plano Operador","Painel admin centralizado","Métricas consolidadas","Desconto por volume","Onboarding dedicado","Subdomínio personalizado"]} btnLabel="Falar com vendas" btnAction={() => go('contato')} ghost/>
         </div>
       </div>
@@ -278,7 +278,7 @@ function PrecosPage({ go }) {
         </div>
       </div>
     </section>
-    <CTA title="30 dias grátis. Sem cartão." desc="Teste o Naviera na sua embarcação sem compromisso." btn="Começar gratuitamente" btnAction={() => go('download')}/>
+    <CTA title="30 dias grátis. Sem cartão." desc="Cadastre sua empresa e teste o Naviera sem compromisso." btn="Começar gratuitamente" btnAction={() => go('cadastro')}/>
   </>;
 }
 
@@ -413,6 +413,188 @@ function ContatoPage() {
   </>;
 }
 
+function CadastroPage({ go }) {
+  const [form, setForm] = useState({ nome_empresa:'', cnpj:'', nome_embarcacao:'', telefone:'', email:'', nome_operador:'', senha:'', confirmar:'' });
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+
+  function handle(e) { setForm(f => ({...f, [e.target.name]: e.target.value})); setErro(''); }
+
+  function formatCnpj(v) {
+    const d = v.replace(/\D/g,'').slice(0,14);
+    if (d.length<=2) return d;
+    if (d.length<=5) return d.slice(0,2)+'.'+d.slice(2);
+    if (d.length<=8) return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5);
+    if (d.length<=12) return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8);
+    return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12);
+  }
+
+  function formatTel(v) {
+    const d = v.replace(/\D/g,'').slice(0,11);
+    if (d.length<=2) return d.length?'('+d:d;
+    if (d.length<=7) return '('+d.slice(0,2)+') '+d.slice(2);
+    return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.nome_empresa.trim()) { setErro('Informe o nome da empresa'); return; }
+    if (!form.email.trim() || !form.email.includes('@')) { setErro('Informe um email valido'); return; }
+    if (!form.nome_operador.trim()) { setErro('Informe o nome do responsavel'); return; }
+    if (form.senha.length < 6) { setErro('A senha deve ter no minimo 6 caracteres'); return; }
+    if (form.senha !== form.confirmar) { setErro('As senhas nao conferem'); return; }
+
+    setSalvando(true); setErro('');
+    try {
+      const resp = await fetch('https://api.naviera.com.br/api/public/registrar-empresa', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          nome_empresa: form.nome_empresa.trim(),
+          cnpj: form.cnpj.replace(/\D/g,'') || null,
+          nome_embarcacao: form.nome_embarcacao.trim() || null,
+          telefone: form.telefone.trim() || null,
+          email: form.email.trim().toLowerCase(),
+          nome_operador: form.nome_operador.trim(),
+          senha: form.senha
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || data.message || 'Erro ao cadastrar');
+      setResultado(data);
+    } catch(err) {
+      setErro(err.message || 'Erro de conexao. Verifique sua internet.');
+    } finally { setSalvando(false); }
+  }
+
+  // Tela de sucesso com codigo
+  if (resultado) {
+    return <>
+      <section className="hero hero-short">
+        <div className="hero-inner" style={{textAlign:'center'}}>
+          <div className="badge badge-green fade-up" style={{marginBottom:24}}>Empresa Cadastrada!</div>
+          <h1 className="fade-up d1" style={{fontSize:'clamp(32px, 5vw, 56px)'}}>Seu codigo de <em>ativacao</em></h1>
+        </div>
+      </section>
+      <section className="sec" style={{paddingTop:0}}>
+        <div className="container" style={{maxWidth:560,textAlign:'center'}}>
+          <div style={{background:'linear-gradient(160deg, #040D0A, #0F2D24)',borderRadius:24,padding:'40px 32px',color:'#F0FDF4',marginBottom:32}}>
+            <p style={{color:'rgba(255,255,255,.5)',fontSize:14,marginBottom:8}}>Anote ou copie este codigo:</p>
+            <div style={{fontSize:48,fontWeight:800,color:'#34D399',letterSpacing:8,fontFamily:"'Space Mono', monospace",margin:'16px 0'}}>{resultado.codigo_ativacao}</div>
+            <p style={{color:'rgba(255,255,255,.5)',fontSize:13,marginBottom:20}}>Voce vai usar este codigo na primeira vez que abrir o Naviera Desktop.</p>
+            <button className="btn btn-pri btn-sm" style={{background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.15)'}} onClick={() => {
+              navigator.clipboard.writeText(resultado.codigo_ativacao);
+            }}>Copiar codigo</button>
+          </div>
+
+          <div className="card" style={{textAlign:'left',marginBottom:24}}>
+            <h3 style={{marginBottom:12}}>Proximos passos:</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              {[
+                {n:'1',t:'Baixe o instalador',d:'Clique no botao abaixo para baixar o Naviera Desktop.'},
+                {n:'2',t:'Instale no computador',d:'Execute o instalador normalmente (.deb no Linux, .msi no Windows).'},
+                {n:'3',t:'Digite o codigo',d:'Na primeira abertura, digite o codigo ' + resultado.codigo_ativacao + ' e pronto!'}
+              ].map(s => (
+                <div key={s.n} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+                  <div style={{width:28,height:28,borderRadius:'50%',background:'#ECFDF5',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontWeight:700,color:'#059669',fontSize:13}}>{s.n}</div>
+                  <div><div style={{fontWeight:700,fontSize:14}}>{s.t}</div><div style={{fontSize:13,color:'#3D6B56'}}>{s.d}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap'}}>
+            <button className="btn btn-pri" onClick={() => go('download')}>Baixar o Desktop</button>
+            <button className="btn btn-ghost-dark" onClick={() => go('contato')}>Falar com suporte</button>
+          </div>
+
+          <div style={{marginTop:32,padding:16,borderRadius:12,background:'#ECFDF5'}}>
+            <p style={{fontSize:13,color:'#3D6B56',margin:0}}>
+              <strong>Seus dados:</strong> Empresa: {resultado.nome} | Slug: {resultado.slug}.naviera.com.br | Login: {resultado.email}
+            </p>
+          </div>
+        </div>
+      </section>
+    </>;
+  }
+
+  // Formulario
+  const inputStyle = {width:'100%',padding:'12px 16px',borderRadius:10,border:'1.5px solid rgba(5,150,105,.2)',fontSize:15,fontFamily:"'Sora', sans-serif",outline:'none',transition:'border .2s',background:'white'};
+
+  return <>
+    <section className="hero hero-short">
+      <div className="hero-inner" style={{textAlign:'center'}}>
+        <div className="badge badge-green fade-up" style={{marginBottom:24}}>Cadastro</div>
+        <h1 className="fade-up d1" style={{fontSize:'clamp(32px, 5vw, 56px)'}}>Cadastre sua <em>empresa</em></h1>
+        <p className="hero-desc fade-up d2" style={{margin:'0 auto'}}>Preencha os dados abaixo e receba seu codigo de ativacao para instalar o Naviera Desktop.</p>
+      </div>
+    </section>
+    <section className="sec" style={{paddingTop:0}}>
+      <div className="container" style={{maxWidth:600}}>
+        <div className="card" style={{padding:'36px 32px'}}>
+          <div onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',gap:20}}>
+
+            <div>
+              <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>Nome da empresa *</label>
+              <input name="nome_empresa" value={form.nome_empresa} onChange={handle} placeholder="Ex: Navegacoes Sao Francisco" style={inputStyle} />
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div>
+                <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>CNPJ</label>
+                <input name="cnpj" value={form.cnpj} onChange={e => { setForm(f=>({...f,cnpj:formatCnpj(e.target.value)})); setErro(''); }} placeholder="00.000.000/0000-00" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>Nome da embarcacao</label>
+                <input name="nome_embarcacao" value={form.nome_embarcacao} onChange={handle} placeholder="Ex: MV Sao Francisco II" style={inputStyle} />
+              </div>
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div>
+                <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>Telefone / WhatsApp</label>
+                <input name="telefone" value={form.telefone} onChange={e => { setForm(f=>({...f,telefone:formatTel(e.target.value)})); setErro(''); }} placeholder="(92) 99999-9999" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>Email *</label>
+                <input name="email" type="email" value={form.email} onChange={handle} placeholder="operador@email.com" style={inputStyle} />
+              </div>
+            </div>
+
+            <div style={{borderTop:'1.5px solid rgba(5,150,105,.1)',paddingTop:20}}>
+              <p style={{fontSize:13,color:'#7BA393',marginBottom:16}}>Dados do responsavel (primeiro usuario do sistema)</p>
+            </div>
+
+            <div>
+              <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>Nome do responsavel *</label>
+              <input name="nome_operador" value={form.nome_operador} onChange={handle} placeholder="Nome completo" style={inputStyle} />
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div>
+                <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>Criar senha *</label>
+                <input name="senha" type="password" value={form.senha} onChange={handle} placeholder="Minimo 6 caracteres" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{fontSize:13,fontWeight:600,color:'#0F2620',display:'block',marginBottom:6}}>Confirmar senha *</label>
+                <input name="confirmar" type="password" value={form.confirmar} onChange={handle} placeholder="Repita a senha" style={inputStyle} />
+              </div>
+            </div>
+
+            {erro && <div style={{padding:'10px 16px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',color:'#991B1B',fontSize:13}}>{erro}</div>}
+
+            <button type="button" className="btn btn-pri" style={{width:'100%',justifyContent:'center',marginTop:8}} disabled={salvando} onClick={handleSubmit}>
+              {salvando ? 'Cadastrando...' : 'Cadastrar e receber codigo de ativacao'}
+            </button>
+
+            <p style={{fontSize:12,color:'#7BA393',textAlign:'center'}}>Ao cadastrar, voce concorda com os termos de uso e politica de privacidade.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </>;
+}
+
 // ────────────────────────────────────────────
 // SHARED COMPONENTS
 // ────────────────────────────────────────────
@@ -537,7 +719,7 @@ export default function App() {
     setScrolled(e.target.scrollTop > 40);
   }, []);
 
-  const pages = { home: HomePage, empresas: EmpresasPage, passageiros: PassageirosPage, funcionalidades: FuncionalidadesPage, precos: PrecosPage, download: DownloadPage, contato: ContatoPage };
+  const pages = { home: HomePage, empresas: EmpresasPage, passageiros: PassageirosPage, funcionalidades: FuncionalidadesPage, precos: PrecosPage, download: DownloadPage, contato: ContatoPage, cadastro: CadastroPage };
   const PageComponent = pages[page] || HomePage;
 
   return (
