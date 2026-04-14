@@ -28,6 +28,13 @@ public class AuxiliaresDAO {
         "aux_agentes", "aux_horarios_saida", "aux_acomodacoes", "aux_formas_pagamento", "caixas", "rotas"
     );
 
+    /** Tabelas que possuem empresa_id (tenant-scoped, nao compartilhadas). */
+    private static final List<String> TABELAS_COM_TENANT = Arrays.asList("caixas", "rotas");
+
+    private static boolean isTenantScoped(String tabela) {
+        return TABELAS_COM_TENANT.contains(tabela);
+    }
+
     /** DS002: Whitelist de colunas por tabela (previne SQL injection via nome de coluna). */
     private static final java.util.Map<String, java.util.Set<String>> COLUNAS_PERMITIDAS = new java.util.HashMap<>();
     static {
@@ -66,20 +73,27 @@ public class AuxiliaresDAO {
     // Cache: tabela -> (id -> nome)
     private static final Map<String, Map<Integer, String>> cacheIdParaNome = new ConcurrentHashMap<>();
 
-    /** Carrega todos os registros de uma tabela auxiliar no cache. */
+    /** Carrega todos os registros de uma tabela auxiliar no cache. Filtra por empresa_id se tenant-scoped. */
     private static void carregarCache(String tabela, String colunaNome, String colunaId) throws SQLException {
         Map<String, Integer> nomeId = new ConcurrentHashMap<>();
         Map<Integer, String> idNome = new ConcurrentHashMap<>();
         String sql = "SELECT " + colunaId + ", " + colunaNome + " FROM " + tabela;
+        if (isTenantScoped(tabela)) {
+            sql += " WHERE empresa_id = ?";
+        }
         try (Connection conn = ConexaoBD.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                int id = rs.getInt(colunaId);
-                String nome = rs.getString(colunaNome);
-                if (nome != null) {
-                    nomeId.put(nome.toLowerCase().trim(), id);
-                    idNome.put(id, nome);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            if (isTenantScoped(tabela)) {
+                stmt.setInt(1, DAOUtils.empresaId());
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt(colunaId);
+                    String nome = rs.getString(colunaNome);
+                    if (nome != null) {
+                        nomeId.put(nome.toLowerCase().trim(), id);
+                        idNome.put(id, nome);
+                    }
                 }
             }
         }
@@ -143,9 +157,15 @@ public class AuxiliaresDAO {
 
         // Fallback: busca direta (ILIKE para acentos/case)
         String sql = "SELECT " + colunaId + " FROM " + tabela + " WHERE " + colunaNome + " ILIKE ?";
+        if (isTenantScoped(tabela)) {
+            sql += " AND empresa_id = ?";
+        }
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, valorNome);
+            if (isTenantScoped(tabela)) {
+                stmt.setInt(2, DAOUtils.empresaId());
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     int id = rs.getInt(colunaId);

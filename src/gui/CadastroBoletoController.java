@@ -326,22 +326,31 @@ public class CadastroBoletoController {
         if(sel == null) return;
         if(new Alert(Alert.AlertType.CONFIRMATION, "Excluir boleto: " + sel.getDescricao() + "?").showAndWait().get() == ButtonType.OK) {
             try(Connection c = ConexaoBD.getConnection()) {
-                // Registrar em auditoria antes de deletar
-                String usuario = SessaoUsuario.isUsuarioLogado() ? SessaoUsuario.getUsuarioLogado().getNomeCompleto() : "DESCONHECIDO";
-                try (PreparedStatement audit = c.prepareStatement(
-                        "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor, empresa_id) VALUES (?, ?, ?, NOW(), ?, ?)")) {
-                    audit.setString(1, "EXCLUSAO_BOLETO");
-                    audit.setString(2, "Exclusao de boleto: " + sel.getDescricao());
-                    audit.setString(3, usuario);
-                    audit.setString(4, "Valor: " + sel.getValorFormatado() + " | Vencimento: " + sel.getVencimento());
-                    audit.setInt(5, dao.DAOUtils.empresaId());
-                    audit.executeUpdate();
-                }
-                // Agora deleta
-                try (PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=? AND empresa_id = ?")) {
-                    s.setInt(1, sel.getId());
-                    s.setInt(2, dao.DAOUtils.empresaId());
-                    s.executeUpdate();
+                c.setAutoCommit(false);
+                try {
+                    // Registrar em auditoria antes de deletar
+                    String usuario = SessaoUsuario.isUsuarioLogado() ? SessaoUsuario.getUsuarioLogado().getNomeCompleto() : "DESCONHECIDO";
+                    try (PreparedStatement audit = c.prepareStatement(
+                            "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor, empresa_id) VALUES (?, ?, ?, NOW(), ?, ?)")) {
+                        audit.setString(1, "EXCLUSAO_BOLETO");
+                        audit.setString(2, "Exclusao de boleto: " + sel.getDescricao());
+                        audit.setString(3, usuario);
+                        audit.setString(4, "Valor: " + sel.getValorFormatado() + " | Vencimento: " + sel.getVencimento());
+                        audit.setInt(5, dao.DAOUtils.empresaId());
+                        audit.executeUpdate();
+                    }
+                    // Agora deleta
+                    try (PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=? AND empresa_id = ?")) {
+                        s.setInt(1, sel.getId());
+                        s.setInt(2, dao.DAOUtils.empresaId());
+                        s.executeUpdate();
+                    }
+                    c.commit();
+                } catch(Exception e) {
+                    c.rollback();
+                    throw e;
+                } finally {
+                    c.setAutoCommit(true);
                 }
                 filtrar();
             } catch(Exception e) { AppLogger.error("CadastroBoletoController", e.getMessage(), e); }

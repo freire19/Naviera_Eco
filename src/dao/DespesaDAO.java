@@ -192,20 +192,28 @@ public class DespesaDAO {
     public boolean excluirBoleto(int id, String descricao, String valorFormatado,
                                   String vencimento, String nomeUsuario) {
         try (Connection con = ConexaoBD.getConnection()) {
-            try (PreparedStatement audit = con.prepareStatement(
-                    "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor, empresa_id) " +
-                    "VALUES (?, ?, ?, NOW(), ?, ?)")) {
-                audit.setString(1, "EXCLUSAO_BOLETO");
-                audit.setString(2, "Exclusao de boleto: " + descricao);
-                audit.setString(3, nomeUsuario);
-                audit.setString(4, "Valor: " + valorFormatado + " | Vencimento: " + vencimento);
-                audit.setInt(5, DAOUtils.empresaId());
-                audit.executeUpdate();
-            }
-            try (PreparedStatement s = con.prepareStatement("DELETE FROM financeiro_saidas WHERE id=? AND empresa_id=?")) {
-                s.setInt(1, id);
-                s.setInt(2, DAOUtils.empresaId());
-                return s.executeUpdate() > 0;
+            con.setAutoCommit(false);
+            try {
+                try (PreparedStatement audit = con.prepareStatement(
+                        "INSERT INTO auditoria_financeiro (tipo_operacao, descricao, usuario_solicitante, data_hora, detalhe_valor, empresa_id) " +
+                        "VALUES (?, ?, ?, NOW(), ?, ?)")) {
+                    audit.setString(1, "EXCLUSAO_BOLETO");
+                    audit.setString(2, "Exclusao de boleto: " + descricao);
+                    audit.setString(3, nomeUsuario);
+                    audit.setString(4, "Valor: " + valorFormatado + " | Vencimento: " + vencimento);
+                    audit.setInt(5, DAOUtils.empresaId());
+                    audit.executeUpdate();
+                }
+                try (PreparedStatement s = con.prepareStatement("DELETE FROM financeiro_saidas WHERE id=? AND empresa_id=?")) {
+                    s.setInt(1, id);
+                    s.setInt(2, DAOUtils.empresaId());
+                    boolean deleted = s.executeUpdate() > 0;
+                    con.commit();
+                    return deleted;
+                }
+            } catch (SQLException ex) {
+                con.rollback();
+                throw ex;
             }
         } catch (SQLException e) {
             AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.excluirBoleto: " + e.getMessage());

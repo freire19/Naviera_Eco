@@ -984,7 +984,7 @@ String sql = "SELECT ... FROM financeiro_saidas " +
 ---
 
 #### Issue #042 — DespesaDAO.excluirBoleto: audit + delete sem transacao
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/DespesaDAO.java`
 - **Linha(s):** 191-213
@@ -1040,7 +1040,7 @@ if (apenasAtivos) {
 ---
 
 #### Issue #044 — FuncionarioDAO: double para valores financeiros (salario, pagamentos)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/FuncionarioDAO.java`
 - **Linha(s):** 100-118, 172-220, 285, 314
@@ -1078,7 +1078,7 @@ stmt.setDouble(14, f.getValorInss());
 ---
 
 #### Issue #046 — PassagemDAO.obterProximoBilhete: fallback sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/PassagemDAO.java`
 - **Linha(s):** 34-39
@@ -1099,7 +1099,7 @@ String fallback = "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 
 ---
 
 #### Issue #047 — EncomendaDAO.obterProximoNumero: fallback sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/EncomendaDAO.java`
 - **Linha(s):** 230-238
@@ -1156,7 +1156,7 @@ const seqResult = await client.query(
 ---
 
 #### Issue #050 — Web BFF financeiro.js boleto/batch: sem transacao (parcelas parciais)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 262-307
@@ -1187,7 +1187,7 @@ try {
 ---
 
 #### Issue #051 — DespesaDAO.buscarBoletos: rs.getDouble para valor financeiro
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/DespesaDAO.java`
 - **Linha(s):** 379
@@ -1324,7 +1324,7 @@ ps.setInt(6, DAOUtils.empresaId());
 ---
 
 #### Issue #059 — EncomendaDAO.excluir: deleta itens sem verificar tenant antes do commit
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/EncomendaDAO.java`
 - **Linha(s):** 176-198
@@ -1339,7 +1339,7 @@ ps.setInt(6, DAOUtils.empresaId());
 ### 2.4 — Resiliencia e Error Handling
 
 #### Issue #060 — SyncClient.garantirAutenticacao: token JWT nunca validado (expiracao ignorada)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 256-261
@@ -1374,7 +1374,7 @@ private boolean garantirAutenticacao() {
 ---
 
 #### Issue #061 — SyncClient.sincronizarTudo: re-autenticacao apos 401 nunca tentada
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 342-387
@@ -1397,7 +1397,7 @@ for (String tabela : TABELAS_SYNC) {
 ---
 
 #### Issue #062 — SyncClient.aplicarRegistroRecebido: cada registro abre e fecha conexao (N+1)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 557-577
@@ -1418,7 +1418,7 @@ private void aplicarRegistroRecebido(String tabela, Map<String, Object> registro
 ---
 
 #### Issue #063 — SyncClient.sincronizarTabela: CompletableFuture dentro de CompletableFuture (thread starvation)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 342-387, 393-441
@@ -1436,7 +1436,7 @@ for (String tabela : TABELAS_SYNC) {
 ---
 
 #### Issue #064 — SyncClient: credenciais de operador salvas em texto plano no disco
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 156-161
@@ -1452,7 +1452,7 @@ props.setProperty("operador.senha", senha != null ? senha : "");
 ---
 
 #### Issue #065 — Desktop DAOs: erros de SQL logados apenas como warn, sem stacktrace
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/*.java` (todos os DAOs)
 - **Linha(s):** Multiplos
@@ -1474,7 +1474,7 @@ catch (SQLException e) {
 ---
 
 #### Issue #066 — EstornoPagamentoController: PreparedStatement leak em carregarFormasPagamento
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/EstornoPagamentoController.java`
 - **Linha(s):** 76-80
@@ -1496,7 +1496,7 @@ try (Connection con = ConexaoBD.getConnection();
 ---
 
 #### Issue #067 — SyncClient.enviarComRetry: retry nao diferencia erros recuperaveis de permanentes
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** ~404-406
@@ -1507,7 +1507,7 @@ try (Connection con = ConexaoBD.getConnection();
 ---
 
 #### Issue #068 — Web BFF db.js: DB_PASSWORD sem fallback — falha silenciosa
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/db.js`
 - **Linha(s):** 9
@@ -1527,7 +1527,7 @@ password: process.env.DB_PASSWORD || (() => { console.error('FATAL: DB_PASSWORD 
 ---
 
 #### Issue #069 — SyncClient: ResultSet nao fechado em buscarRegistrosPendentes
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 459-496
@@ -1550,7 +1550,7 @@ try (java.sql.ResultSet rs = stmt.executeQuery()) {
 ---
 
 #### Issue #070 — SyncClient: scheduler pode agendar multiplas tasks se iniciarSyncAutomatica chamado N vezes
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 297-315
@@ -1570,7 +1570,7 @@ public void iniciarSyncAutomatica() {
 ---
 
 #### Issue #071 — Web BFF estornos.js: parseFloat para calculos financeiros de estorno
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/estornos.js`
 - **Linha(s):** 53-62
@@ -1586,7 +1586,7 @@ const novoValorDevedor = parseFloat(passagem.valor_a_pagar || passagem.valor_tot
 ---
 
 #### Issue #072 — BalancoViagemDAO: saidas SQL erro silencioso nao propagado
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/BalancoViagemDAO.java`
 - **Linha(s):** 118-131
@@ -1611,7 +1611,7 @@ const novoValorDevedor = parseFloat(passagem.valor_a_pagar || passagem.valor_tot
 ---
 
 #### Issue #073 — ConexaoBD: DriverManager.setLoginTimeout e global (race condition)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** INFO
 - **Arquivo:** `src/dao/ConexaoBD.java`
 - **Linha(s):** 123
@@ -1628,7 +1628,7 @@ DriverManager.setLoginTimeout(5);
 ---
 
 #### Issue #074 — Web BFF boleto single (POST /api/financeiro/boleto) insere boleto + agenda sem transacao
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 227-260
@@ -1644,7 +1644,7 @@ await pool.query('INSERT INTO agenda_anotacoes ...') // Se falhar, boleto ja exi
 ---
 
 #### Issue #075 — Web BFF encomendas.js DELETE: itens deletados sem verificar empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/encomendas.js`
 - **Linha(s):** 165-185
@@ -1669,7 +1669,7 @@ await client.query(
 ---
 
 #### Issue #076 — SyncClient: senha enviada em JSON sem HTTPS enforcement
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 222-224
@@ -1688,7 +1688,7 @@ String jsonBody = "{\"login\":\"" + escapeJson(login)
 ---
 
 #### Issue #077 — EncomendaDAO.excluir: commit executa mesmo quando encomenda nao pertence ao tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/EncomendaDAO.java`
 - **Linha(s):** 176-198

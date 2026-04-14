@@ -4,7 +4,7 @@
 
 ---
 
-## Estado Geral: EM CORRECAO (0 CRITICAS — 11 ALTAS pendentes)
+## Estado Geral: EM CORRECAO (0 CRITICAS, 0 ALTAS DAO/BFF — restam novos do Deep)
 
 ### Resumo
 Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile), Site (React). Auditoria V1.2 encontrou **12 issues CRITICAS** — todas nos DAOs Desktop (migracao multi-tenant incompleta): parametros SQL trocados, placeholders faltando, filtros empresa_id ausentes, executeUpdate nunca chamado, SQL sintaticamente invalido. **Corrigir antes de qualquer deploy multi-tenant.**
@@ -95,7 +95,7 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 | Scan Geral | V1.1 | 2026-04-08 | 54 original | Arquivado | [AUDIT_V1.1](audits/archive/AUDIT_V1.1.md) |
 | Scan Geral | V1.0 | 2026-04-07 | ~194 original | Arquivado | [AUDIT_V1.0](audits/archive/AUDIT_V1.0.md) |
 | Deep Security | V3.0 | 2026-04-08 | 0 | 100% LIMPO | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
-| **Deep Logic** | **V5.0** | **2026-04-14** | **77 ativos (12 CRIT)** | **23 pendentes V1.2 + 24 novos** | **[DEEP_LOGIC](audits/current/DEEP_LOGIC.md)** |
+| **Deep Logic** | **V5.0** | **2026-04-14** | **34 ativos (0 CRIT)** | **25/25 V1.2 resolvidas + 24 novos parcialmente corrigidos** | **[DEEP_LOGIC](audits/current/DEEP_LOGIC.md)** |
 | Deep Bugs | V1.1 | 2026-04-09 | 0 | 100% LIMPO | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
 | Deep Resilience | V4.0 | 2026-04-08 | 2 ativas | 97% LIMPO | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
 | Deep Performance | V3.0 | 2026-04-09 | 2 (infra) | 95% LIMPO | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |

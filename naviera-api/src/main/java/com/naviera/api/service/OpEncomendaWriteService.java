@@ -22,9 +22,14 @@ public class OpEncomendaWriteService {
     @Transactional
     @SuppressWarnings("unchecked")
     public Map<String, Object> criar(Integer empresaId, Map<String, Object> dados) {
-        String numEncomenda = jdbc.queryForObject(
-            "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) + 1 FROM encomendas WHERE empresa_id = ?",
-            String.class, empresaId);
+        String numEncomenda;
+        try {
+            numEncomenda = jdbc.queryForObject("SELECT nextval('seq_numero_encomenda')", String.class);
+        } catch (Exception e) {
+            numEncomenda = jdbc.queryForObject(
+                "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) + 1 FROM encomendas WHERE empresa_id = ?",
+                String.class, empresaId);
+        }
 
         BigDecimal totalAPagar = toBigDecimal(dados.get("total_a_pagar"));
         BigDecimal valorPago = toBigDecimal(dados.get("valor_pago"));
@@ -40,10 +45,15 @@ public class OpEncomendaWriteService {
             valorPago.compareTo(totalAPagar) >= 0 ? "PAGO" : "PENDENTE",
             dados.get("forma_pagamento"), dados.get("rota"), dados.get("id_caixa"), empresaId);
 
-        // Buscar id gerado
-        Long idEncomenda = jdbc.queryForObject(
-            "SELECT id_encomenda FROM encomendas WHERE numero_encomenda = ? AND empresa_id = ? ORDER BY id_encomenda DESC LIMIT 1",
-            Long.class, numEncomenda, empresaId);
+        // Buscar id gerado via currval (mesma transacao, seguro)
+        Long idEncomenda;
+        try {
+            idEncomenda = jdbc.queryForObject("SELECT currval('encomendas_id_encomenda_seq')", Long.class);
+        } catch (Exception e) {
+            idEncomenda = jdbc.queryForObject(
+                "SELECT id_encomenda FROM encomendas WHERE numero_encomenda = ? AND empresa_id = ? ORDER BY id_encomenda DESC LIMIT 1",
+                Long.class, numEncomenda, empresaId);
+        }
 
         // Inserir itens se presentes
         List<Map<String, Object>> itens = (List<Map<String, Object>>) dados.get("itens");

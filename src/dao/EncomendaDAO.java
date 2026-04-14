@@ -174,11 +174,23 @@ public class EncomendaDAO {
     }
 
     public boolean excluir(Long id) {
+        String sqlCheck = "SELECT id_encomenda FROM encomendas WHERE id_encomenda = ? AND empresa_id = ?";
         String sqlItens = "DELETE FROM encomenda_itens WHERE id_encomenda = ?";
         String sqlEnc = "DELETE FROM encomendas WHERE id_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection()) {
             conn.setAutoCommit(false);
             try {
+                // Verificar tenant ANTES de deletar itens
+                try (PreparedStatement check = conn.prepareStatement(sqlCheck)) {
+                    check.setLong(1, id);
+                    check.setInt(2, DAOUtils.empresaId());
+                    try (ResultSet rs = check.executeQuery()) {
+                        if (!rs.next()) {
+                            conn.rollback();
+                            return false;
+                        }
+                    }
+                }
                 try (PreparedStatement stmt1 = conn.prepareStatement(sqlItens)) {
                     stmt1.setLong(1, id);
                     stmt1.executeUpdate();
@@ -186,10 +198,10 @@ public class EncomendaDAO {
                 try (PreparedStatement stmt2 = conn.prepareStatement(sqlEnc)) {
                     stmt2.setLong(1, id);
                     stmt2.setInt(2, DAOUtils.empresaId());
-                    int rows = stmt2.executeUpdate();
-                    conn.commit();
-                    return rows > 0;
+                    stmt2.executeUpdate();
                 }
+                conn.commit();
+                return true;
             } catch (SQLException ex) {
                 conn.rollback();
                 throw ex;

@@ -19,6 +19,7 @@ import javafx.scene.control.Label;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -152,9 +153,9 @@ public class FinanceiroEntradaController {
         String pagSel = cmbFiltroPagamento.getValue();
         String usrSel = cmbFiltroCaixa.getValue();
 
-        double total = 0, recebido = 0, pendente = 0;
-        double somaPassagem = 0, somaEncomenda = 0, somaFrete = 0;
-        double somaPix = 0, somaDinheiro = 0, somaCartao = 0;
+        BigDecimal total = BigDecimal.ZERO, recebido = BigDecimal.ZERO, pendente = BigDecimal.ZERO;
+        BigDecimal somaPassagem = BigDecimal.ZERO, somaEncomenda = BigDecimal.ZERO, somaFrete = BigDecimal.ZERO;
+        BigDecimal somaPix = BigDecimal.ZERO, somaDinheiro = BigDecimal.ZERO, somaCartao = BigDecimal.ZERO;
 
         StringBuilder sql = new StringBuilder();
         java.util.List<Object> params = new java.util.ArrayList<>();
@@ -192,10 +193,12 @@ public class FinanceiroEntradaController {
             try (ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                String tipo = rs.getString("origem"); 
-                double vTot = rs.getDouble("total");
-                double vPag = rs.getDouble("pago");
-                String pgto = rs.getString("pgto");   
+                String tipo = rs.getString("origem");
+                BigDecimal vTot = rs.getBigDecimal("total");
+                BigDecimal vPag = rs.getBigDecimal("pago");
+                if (vTot == null) vTot = BigDecimal.ZERO;
+                if (vPag == null) vPag = BigDecimal.ZERO;
+                String pgto = rs.getString("pgto");
                 String user = rs.getString("usuario");
 
                 if (catSel != null && !catSel.equals("Todas")) {
@@ -208,19 +211,19 @@ public class FinanceiroEntradaController {
                     if (user == null || !user.equalsIgnoreCase(usrSel)) continue;
                 }
 
-                total += vTot;
-                recebido += vPag;
-                pendente += (vTot - vPag);
+                total = total.add(vTot);
+                recebido = recebido.add(vPag);
+                pendente = pendente.add(vTot.subtract(vPag));
 
-                if (tipo.equals("PASSAGEM")) somaPassagem += vTot;
-                else if (tipo.equals("ENCOMENDA")) somaEncomenda += vTot;
-                else if (tipo.equals("FRETE")) somaFrete += vTot;
+                if (tipo.equals("PASSAGEM")) somaPassagem = somaPassagem.add(vTot);
+                else if (tipo.equals("ENCOMENDA")) somaEncomenda = somaEncomenda.add(vTot);
+                else if (tipo.equals("FRETE")) somaFrete = somaFrete.add(vTot);
 
-                if (vPag > 0 && pgto != null) {
+                if (vPag.compareTo(BigDecimal.ZERO) > 0 && pgto != null) {
                     String pgtoUpper = pgto.toUpperCase();
-                    if (pgtoUpper.contains("PIX")) somaPix += vPag;
-                    else if (pgtoUpper.contains("CART") || pgtoUpper.contains("CREDITO") || pgtoUpper.contains("DEBITO")) somaCartao += vPag;
-                    else somaDinheiro += vPag;
+                    if (pgtoUpper.contains("PIX")) somaPix = somaPix.add(vPag);
+                    else if (pgtoUpper.contains("CART") || pgtoUpper.contains("CREDITO") || pgtoUpper.contains("DEBITO")) somaCartao = somaCartao.add(vPag);
+                    else somaDinheiro = somaDinheiro.add(vPag);
                 }
             }
 
@@ -229,16 +232,16 @@ public class FinanceiroEntradaController {
             lblPendente.setText(String.format("R$ %.2f", pendente));
 
             ObservableList<PieChart.Data> dadosPizza = FXCollections.observableArrayList();
-            if (somaPassagem > 0) dadosPizza.add(new PieChart.Data("Passagens", somaPassagem));
-            if (somaEncomenda > 0) dadosPizza.add(new PieChart.Data("Encomendas", somaEncomenda));
-            if (somaFrete > 0) dadosPizza.add(new PieChart.Data("Fretes", somaFrete));
+            if (somaPassagem.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Passagens", somaPassagem.doubleValue()));
+            if (somaEncomenda.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Encomendas", somaEncomenda.doubleValue()));
+            if (somaFrete.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Fretes", somaFrete.doubleValue()));
             graficoPizza.setData(dadosPizza);
 
             XYChart.Series<String, Number> serie = new XYChart.Series<>();
             serie.setName("Recebido");
-            if (somaDinheiro > 0) serie.getData().add(new XYChart.Data<>("Dinheiro", somaDinheiro));
-            if (somaPix > 0) serie.getData().add(new XYChart.Data<>("Pix", somaPix));
-            if (somaCartao > 0) serie.getData().add(new XYChart.Data<>("Cartão", somaCartao));
+            if (somaDinheiro.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Dinheiro", somaDinheiro.doubleValue()));
+            if (somaPix.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Pix", somaPix.doubleValue()));
+            if (somaCartao.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Cartão", somaCartao.doubleValue()));
             
             graficoBarra.getData().clear();
             graficoBarra.getData().add(serie);

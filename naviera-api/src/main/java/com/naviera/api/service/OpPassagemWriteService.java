@@ -20,10 +20,16 @@ public class OpPassagemWriteService {
 
     @Transactional
     public Map<String, Object> criar(Integer empresaId, Map<String, Object> dados) {
-        // Gerar numero do bilhete
-        String numBilhete = jdbc.queryForObject(
-            "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens WHERE empresa_id = ?",
-            String.class, empresaId);
+        // Gerar numero do bilhete via sequence (atomico, sem race condition)
+        String numBilhete;
+        try {
+            numBilhete = jdbc.queryForObject("SELECT nextval('seq_numero_bilhete')", String.class);
+        } catch (Exception e) {
+            // Fallback se sequence nao existir: MAX+1 filtrado por empresa_id
+            numBilhete = jdbc.queryForObject(
+                "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens WHERE empresa_id = ?",
+                String.class, empresaId);
+        }
 
         Long idPassageiro = ((Number) dados.get("id_passageiro")).longValue();
         Long idViagem = ((Number) dados.get("id_viagem")).longValue();

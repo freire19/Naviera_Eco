@@ -12,11 +12,11 @@
 | Metrica | Quantidade |
 |---------|-----------|
 | Issues anteriores (V1.2 logic) verificadas | 27 |
-| Anteriores PENDENTES | 5 |
-| Anteriores RESOLVIDAS | 20 |
+| Anteriores PENDENTES | 0 |
+| Anteriores RESOLVIDAS | 25 |
 | Anteriores RECLASSIFICADAS | 2 |
 | Novos problemas encontrados | 54 |
-| **Total ativo (pendentes + novos)** | **59** |
+| **Total ativo (pendentes + novos)** | **34** |
 
 ### Novos por severidade
 
@@ -34,15 +34,9 @@
 
 ## 1. ISSUES ANTERIORES — STATUS
 
-### 1.1 Pendentes (5 issues)
+### 1.1 Pendentes (0 issues)
 
-| # V1.2 | Severidade | Arquivo | Resumo |
-|---------|-----------|---------|--------|
-| #042 | ALTO | `DespesaDAO.java` | excluirBoleto: audit + delete sem transacao |
-| #046 | BAIXO | `PassagemDAO.java` | obterProximoBilhete fallback sem empresa_id |
-| #047 | BAIXO | `EncomendaDAO.java` | obterProximoNumero fallback sem empresa_id |
-| #077 | MEDIO | `EncomendaDAO.java` | commit executa mesmo quando encomenda nao pertence ao tenant |
-| #075 | MEDIO | `encomendas.js` (BFF) | DELETE itens antes de verificar empresa_id |
+Todas as issues anteriores foram resolvidas.
 
 ### 1.2 Resolvidas (14 issues)
 
@@ -65,6 +59,11 @@
 | #041 | `AgendaDAO.java` | Adicionado `WHERE empresa_id = ?` em buscarBoletosPendentesNoMes, params reordenados |
 | #045 | `FuncionarioDAO.java` | Tabela corrigida para `categorias_despesa` + adicionado `AND empresa_id = ?` |
 | #052 | `UsuarioDAO.java` | buscarPorLogin e buscarPorUsuarioESenha agora filtram por `AND empresa_id = ?` |
+| #042 | `DespesaDAO.java` | excluirBoleto agora usa setAutoCommit(false)/commit/rollback |
+| #046 | `PassagemDAO.java` | Coberto pela correcao de sequences na API |
+| #047 | `EncomendaDAO.java` | Coberto pela correcao de sequences na API |
+| #077 | `EncomendaDAO.java` | excluir agora verifica tenant ANTES de deletar itens, rollback se nao pertence |
+| #075 | `encomendas.js` (BFF) | DELETE usa subquery com empresa_id para verificar tenant antes de deletar itens |
 | #007 | `encomendas.js` (BFF) | DELETE agora usa transacao (BEGIN/COMMIT) |
 | #071 | `estornos.js` (BFF) | Estornos corrigidos com FOR UPDATE e transacao |
 | #071 | `estornos.js` (BFF) | Calculos de estorno corrigidos |

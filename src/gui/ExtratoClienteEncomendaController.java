@@ -14,6 +14,8 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -46,7 +48,7 @@ public class ExtratoClienteEncomendaController {
     @FXML private TableColumn<ItemExtrato, String> colStatus;
 
     private String nomeClienteAtual = "";
-    private double dividaTotalAtual = 0;
+    private BigDecimal dividaTotalAtual = BigDecimal.ZERO;
     private static final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
     private ObservableList<String> listaTodosClientes = FXCollections.observableArrayList();
 
@@ -149,9 +151,9 @@ public class ExtratoClienteEncomendaController {
 
     private void buscarDados() {
         ObservableList<ItemExtrato> lista = FXCollections.observableArrayList();
-        double totalGeral = 0;
-        double totalPago = 0;
-        this.dividaTotalAtual = 0;
+        BigDecimal totalGeral = BigDecimal.ZERO;
+        BigDecimal totalPago = BigDecimal.ZERO;
+        this.dividaTotalAtual = BigDecimal.ZERO;
         
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         String statusFiltro = cmbStatus.getValue();
@@ -173,20 +175,22 @@ public class ExtratoClienteEncomendaController {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                double val = rs.getDouble("total_a_pagar");
-                double pag = rs.getDouble("valor_pago");
-                double saldo = Math.max(0, val - pag);
-                
-                String status = (saldo <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) ? "PAGO" : "PENDENTE";
-                
+                BigDecimal val = rs.getBigDecimal("total_a_pagar");
+                BigDecimal pag = rs.getBigDecimal("valor_pago");
+                if (val == null) val = BigDecimal.ZERO;
+                if (pag == null) pag = BigDecimal.ZERO;
+                BigDecimal saldo = val.subtract(pag).max(BigDecimal.ZERO);
+
+                String status = (saldo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) ? "PAGO" : "PENDENTE";
+
                 if (statusFiltro != null) {
                     if (statusFiltro.equals("PENDENTES") && status.equals("PAGO")) continue;
                     if (statusFiltro.equals("PAGOS") && !status.equals("PAGO")) continue;
                 }
-                
-                totalGeral += val;
-                totalPago += pag;
-                dividaTotalAtual += saldo;
+
+                totalGeral = totalGeral.add(val);
+                totalPago = totalPago.add(pag);
+                dividaTotalAtual = dividaTotalAtual.add(saldo);
                 
                 String dataViagemStr = "--";
                 if(rs.getDate("data_viagem") != null) {
@@ -205,16 +209,16 @@ public class ExtratoClienteEncomendaController {
                 String rem = rs.getString("remetente");
                 String desc = "N° Enc. " + num + " (De: " + rem + ")";
 
-                lista.add(new ItemExtrato(dataViagemStr, rotaStr, desc, val, pag, saldo));
+                lista.add(new ItemExtrato(dataViagemStr, rotaStr, desc, val.doubleValue(), pag.doubleValue(), saldo.doubleValue()));
             }
-            
+
             tabela.setItems(lista);
-            
+
             lblTotalGeral.setText(nf.format(totalGeral));
             lblTotalPago.setText(nf.format(totalPago));
             lblTotalDivida.setText(nf.format(dividaTotalAtual));
-            
-            btnQuitarTudo.setDisable(dividaTotalAtual <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue());
+
+            btnQuitarTudo.setDisable(dividaTotalAtual.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0);
 
         } catch (Exception e) {
             AppLogger.error("ExtratoClienteEncomendaController", e.getMessage(), e);
@@ -227,7 +231,7 @@ public class ExtratoClienteEncomendaController {
     // --- FUNÇÃO ATUALIZADA: CHAMADA DA NOVA TELA DE QUITAÇÃO ---
     @FXML
     public void quitarDividaTotal() {
-        if (dividaTotalAtual <= 0) return;
+        if (dividaTotalAtual.compareTo(BigDecimal.ZERO) <= 0) return;
 
         try {
             // CHAMA O FXML ESPECÍFICO: QuitarDividaEncomendaTotal.fxml
@@ -246,12 +250,12 @@ public class ExtratoClienteEncomendaController {
             stage.showAndWait();
             
             if (controller.isConfirmado()) {
-                double descontoTotal = controller.getDesconto();
+                BigDecimal descontoTotal = controller.getDesconto();
                 String forma = controller.getForma();
                 String caixa = controller.getCaixa();
 
                 // DL047: validar desconto antes de calcular fator proporcional
-                if (descontoTotal > dividaTotalAtual) {
+                if (descontoTotal.compareTo(dividaTotalAtual) > 0) {
                     Alert aErro = new Alert(Alert.AlertType.ERROR);
                     aErro.setTitle("Erro");
                     aErro.setHeaderText("Desconto invalido");
@@ -260,7 +264,7 @@ public class ExtratoClienteEncomendaController {
                     return;
                 }
 
-                double fatorPagamento = (dividaTotalAtual - descontoTotal) / dividaTotalAtual;
+                BigDecimal fatorPagamento = dividaTotalAtual.subtract(descontoTotal).divide(dividaTotalAtual, 10, RoundingMode.HALF_UP);
 
                 String sqlUpdate = "UPDATE encomendas SET " +
                                    "desconto = (total_a_pagar - valor_pago) * (1 - ?), " +
@@ -272,8 +276,8 @@ public class ExtratoClienteEncomendaController {
                 try (Connection con = ConexaoBD.getConnection();
                      PreparedStatement stmt = con.prepareStatement(sqlUpdate)) {
 
-                    stmt.setDouble(1, fatorPagamento);
-                    stmt.setDouble(2, fatorPagamento);
+                    stmt.setBigDecimal(1, fatorPagamento);
+                    stmt.setBigDecimal(2, fatorPagamento);
                     stmt.setString(3, forma);
                     stmt.setString(4, caixa);
                     stmt.setString(5, nomeClienteAtual.trim());

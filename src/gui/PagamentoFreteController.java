@@ -6,6 +6,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -47,37 +48,36 @@ public class PagamentoFreteController {
         });
     }
 
-    public void setTotalFrete(double total) {
+    public void setTotalFrete(BigDecimal total) {
         txtTotalFrete.setText(df.format(total));
         recalcular();
     }
 
     private void recalcular() {
-        double total       = parseDoubleSafe(txtTotalFrete.getText());
-        double desconto    = parseDoubleSafe(txtDesconto.getText());
-        double valorPago   = parseDoubleSafe(txtValorPago.getText());
-        double aPagar      = total - desconto;
-        if(aPagar<0) aPagar=0;
+        BigDecimal total       = parseBigDecimalSafe(txtTotalFrete.getText());
+        BigDecimal desconto    = parseBigDecimalSafe(txtDesconto.getText());
+        BigDecimal valorPago   = parseBigDecimalSafe(txtValorPago.getText());
+        BigDecimal aPagar      = total.subtract(desconto).max(BigDecimal.ZERO);
         txtAPagar.setText(df.format(aPagar));
-        double devedor=(aPagar>valorPago)?(aPagar-valorPago):0;
+        BigDecimal devedor = (aPagar.compareTo(valorPago) > 0) ? aPagar.subtract(valorPago) : BigDecimal.ZERO;
         txtDevedor.setText(df.format(devedor));
-        double troco=(valorPago>aPagar)?(valorPago-aPagar):0;
+        BigDecimal troco = (valorPago.compareTo(aPagar) > 0) ? valorPago.subtract(aPagar) : BigDecimal.ZERO;
         txtTroco.setText(df.format(troco));
     }
 
     public boolean isConfirmado(){return confirmado;}
 
-    public double getDesconto() {
-        return parseDoubleSafe(txtDesconto.getText());
+    public BigDecimal getDesconto() {
+        return parseBigDecimalSafe(txtDesconto.getText());
     }
-    public double getValorPago() {
-        return parseDoubleSafe(txtValorPago.getText());
+    public BigDecimal getValorPago() {
+        return parseBigDecimalSafe(txtValorPago.getText());
     }
-    public double getTroco() {
-        return parseDoubleSafe(txtTroco.getText());
+    public BigDecimal getTroco() {
+        return parseBigDecimalSafe(txtTroco.getText());
     }
-    public double getDevedor() {
-        return parseDoubleSafe(txtDevedor.getText());
+    public BigDecimal getDevedor() {
+        return parseBigDecimalSafe(txtDevedor.getText());
     }
     public String getTipoPagamento() {
         return cbTipoPagamento.getValue();
@@ -86,13 +86,13 @@ public class PagamentoFreteController {
         return cbCaixa.getValue();
     }
 
-    private double parseDoubleSafe(String t) {
-        if(t==null||t.trim().isEmpty()) return 0.0;
+    private BigDecimal parseBigDecimalSafe(String t) {
+        if(t==null||t.trim().isEmpty()) return BigDecimal.ZERO;
         t=t.replace(".", "").replace(",",".");
         try {
-            return Double.parseDouble(t);
+            return new BigDecimal(t);
         }catch(Exception e) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
     }
     private void fecharJanela() {

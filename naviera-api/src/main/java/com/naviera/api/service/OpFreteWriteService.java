@@ -22,10 +22,19 @@ public class OpFreteWriteService {
     @Transactional
     @SuppressWarnings("unchecked")
     public Map<String, Object> criar(Integer empresaId, Map<String, Object> dados) {
-        Map<String, Object> seqs = jdbc.queryForMap(
-            "SELECT COALESCE(MAX(numero_frete), 0) + 1 AS next_num, COALESCE(MAX(id_frete), 0) + 1 AS next_id FROM fretes WHERE empresa_id = ?", empresaId);
-        Long numFrete = ((Number) seqs.get("next_num")).longValue();
-        Long idFrete = ((Number) seqs.get("next_id")).longValue();
+        Long numFrete, idFrete;
+        try {
+            numFrete = jdbc.queryForObject("SELECT nextval('seq_numero_frete')", Long.class);
+        } catch (Exception e) {
+            numFrete = jdbc.queryForObject(
+                "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes WHERE empresa_id = ?", Long.class, empresaId);
+        }
+        try {
+            idFrete = jdbc.queryForObject("SELECT nextval('fretes_id_frete_seq')", Long.class);
+        } catch (Exception e) {
+            idFrete = jdbc.queryForObject(
+                "SELECT COALESCE(MAX(id_frete), 0) + 1 FROM fretes WHERE empresa_id = ?", Long.class, empresaId);
+        }
 
         BigDecimal valorTotal = toBigDecimal(dados.get("valor_total_itens"));
         BigDecimal valorPago = toBigDecimal(dados.get("valor_pago"));

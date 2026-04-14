@@ -347,7 +347,7 @@ public class FinanceiroFretesController {
 
             String remetente = "", destinatario = "", conferente = "", rota = "", dataHora = "", pagamento = "";
             String numeroFrete = selecionada.getNumero();
-            double total = 0;
+            java.math.BigDecimal totalBD = java.math.BigDecimal.ZERO;
             java.util.List<NotaFretePersonalizadaController.ItemNota> itens = new java.util.ArrayList<>();
             try (Connection con = ConexaoBD.getConnection();
                  PreparedStatement stmt = con.prepareStatement(sql)) {
@@ -360,10 +360,13 @@ public class FinanceiroFretesController {
                     destinatario = rs.getString("destinatario_nome_temp") != null ? rs.getString("destinatario_nome_temp") : "";
                     conferente = rs.getString("conferente_temp") != null ? rs.getString("conferente_temp") : "";
                     rota = rs.getString("rota_temp") != null ? rs.getString("rota_temp") : "";
-                    total = rs.getDouble("valor_total_itens");
-                    double pago = rs.getDouble("valor_pago");
-                    double devedor = rs.getDouble("valor_devedor");
-                    pagamento = String.format("Pago: R$ %.2f | Devedor: R$ %.2f", pago, devedor);
+                    totalBD = rs.getBigDecimal("valor_total_itens");
+                    java.math.BigDecimal pagoBD = rs.getBigDecimal("valor_pago");
+                    java.math.BigDecimal devedorBD = rs.getBigDecimal("valor_devedor");
+                    if (totalBD == null) totalBD = java.math.BigDecimal.ZERO;
+                    if (pagoBD == null) pagoBD = java.math.BigDecimal.ZERO;
+                    if (devedorBD == null) devedorBD = java.math.BigDecimal.ZERO;
+                    pagamento = String.format("Pago: R$ %.2f | Devedor: R$ %.2f", pagoBD, devedorBD);
 
                     java.sql.Date dataEmissao = rs.getDate("data_emissao");
                     if (dataEmissao != null) {
@@ -390,7 +393,7 @@ public class FinanceiroFretesController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/gui/NotaFretePersonalizada.fxml"));
             Parent root = loader.load();
             NotaFretePersonalizadaController controller = loader.getController();
-            controller.setDadosNotaFrete(remetente, destinatario, conferente, rota, dataHora, pagamento, total, itens);
+            controller.setDadosNotaFrete(remetente, destinatario, conferente, rota, dataHora, pagamento, totalBD.doubleValue(), itens);
             Stage stage = new Stage();
             stage.setScene(TemaManager.criarSceneComTema(root));
             stage.setTitle("Nota do Frete - " + selecionada.getNumero());

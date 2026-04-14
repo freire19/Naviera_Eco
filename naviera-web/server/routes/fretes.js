@@ -114,13 +114,24 @@ router.delete('/:id', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     await client.query('BEGIN')
-    await client.query('DELETE FROM frete_itens WHERE id_frete = $1', [req.params.id])
+    // Verify tenant ownership BEFORE deleting items
+    const check = await client.query(
+      'SELECT id_frete FROM fretes WHERE id_frete = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    if (check.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Frete nao encontrado' })
+    }
+    await client.query(
+      'DELETE FROM frete_itens WHERE id_frete IN (SELECT id_frete FROM fretes WHERE id_frete = $1 AND empresa_id = $2)',
+      [req.params.id, empresaId]
+    )
     const result = await client.query(
       'DELETE FROM fretes WHERE id_frete = $1 AND empresa_id = $2 RETURNING id_frete',
       [req.params.id, empresaId]
     )
     await client.query('COMMIT')
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Frete nao encontrado' })
     res.json({ mensagem: 'Frete excluido' })
   } catch (err) {
     await client.query('ROLLBACK')

@@ -6,6 +6,8 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,12 +22,12 @@ public class QuitarDividaEncomendaTotalController {
     @FXML private ComboBox<String> cmbCaixa;
     @FXML private Button btnConfirmar;
 
-    private double totalDivida;
+    private BigDecimal totalDivida = BigDecimal.ZERO;
     private boolean confirmado = false;
 
     // Getters
-    public double getDesconto() { return converter(txtDesconto.getText()); }
-    public double getTotalFinal() { return converter(lblTotalFinal.getText().replace("R$", "")); }
+    public BigDecimal getDesconto() { return converterBD(txtDesconto.getText()); }
+    public BigDecimal getTotalFinal() { return converterBD(lblTotalFinal.getText().replace("R$", "")); }
     public String getForma() { return cmbFormaPagamento.getValue(); }
     public String getCaixa() { return cmbCaixa.getValue(); }
     public boolean isConfirmado() { return confirmado; }
@@ -49,7 +51,7 @@ public class QuitarDividaEncomendaTotalController {
         bg.start();
     }
 
-    public void setValorTotal(double total) {
+    public void setValorTotal(BigDecimal total) {
         this.totalDivida = total;
         lblValorOriginal.setText(String.format("R$ %.2f", total));
         calcular();
@@ -57,8 +59,8 @@ public class QuitarDividaEncomendaTotalController {
 
     private void calcular() {
         try {
-            double desc = converter(txtDesconto.getText());
-            double finalVal = Math.max(0, totalDivida - desc);
+            BigDecimal desc = converterBD(txtDesconto.getText());
+            BigDecimal finalVal = totalDivida.subtract(desc).max(BigDecimal.ZERO);
             lblTotalFinal.setText(String.format("R$ %.2f", finalVal));
         } catch (Exception e) {
             lblTotalFinal.setText("ERRO");
@@ -66,8 +68,8 @@ public class QuitarDividaEncomendaTotalController {
         }
     }
 
-    private double converter(String t) {
-        try { return Double.parseDouble(t.replace(",", ".").trim()); } catch(Exception e) { return 0.0; }
+    private BigDecimal converterBD(String t) {
+        try { return new BigDecimal(t.replace(",", ".").trim()); } catch(Exception e) { return BigDecimal.ZERO; }
     }
 
     private void carregarFormas() {
@@ -107,8 +109,8 @@ public class QuitarDividaEncomendaTotalController {
 
     @FXML void confirmar() {
         // DL054: validar desconto e forma de pagamento antes de confirmar
-        double desc = converter(txtDesconto.getText());
-        if (desc > totalDivida) {
+        BigDecimal desc = converterBD(txtDesconto.getText());
+        if (desc.compareTo(totalDivida) > 0) {
             javafx.scene.control.Alert a = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
             a.setTitle("Desconto Invalido");
             a.setHeaderText(null);

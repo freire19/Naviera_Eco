@@ -79,8 +79,8 @@ router.post('/login', loginLimiter, async (req, res) => {
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nome, email, funcao, permissao FROM usuarios WHERE id = $1',
-      [req.user.id]
+      'SELECT id, nome, email, funcao, permissao, empresa_id FROM usuarios WHERE id = $1 AND empresa_id = $2',
+      [req.user.id, req.user.empresa_id]
     )
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario nao encontrado' })

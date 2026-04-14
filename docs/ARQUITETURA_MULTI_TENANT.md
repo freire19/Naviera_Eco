@@ -75,28 +75,192 @@ VALUES ('Admin Alianca', 'admin@deusdealianca.com', '$2a$10$...hash...', 'Admini
 
 Este operador e o ponto de partida — ele podera criar outros usuarios dentro da mesma empresa.
 
-### 2.3. Instalacao do Desktop
+### 2.3. Instalacao do Desktop — Fluxo Completo do Operador
 
-A empresa recebe o instalador do Desktop (`naviera-desktop.deb` para Linux ou `.msi` para Windows). Durante a configuracao inicial:
+A empresa recebe o instalador do Desktop (`naviera-desktop.deb` para Linux ou `.msi` para Windows). O operador instala e abre o app pela primeira vez.
 
-1. O arquivo `db.properties` e configurado com o `empresa.id` correspondente
-2. O banco local PostgreSQL e inicializado com o schema completo
-3. O SyncClient faz o primeiro download dos dados da empresa a partir do banco central
+#### Fluxo de primeiro boot (Setup Wizard)
 
-```properties
-# db.properties — instalacao da Deus de Alianca
-db.url=jdbc:postgresql://localhost:5437/naviera_eco
-db.usuario=postgres
-db.senha=SenhaLocal123
-db.pool.tamanho=5
+O `Launch.java` e o entry point. Ele verifica se `db.properties` existe e esta valido. Se nao: abre o **Setup Wizard**. Se sim: abre o Login direto.
 
-# VINCULO: esta maquina pertence a empresa 2
-empresa.id=2
-
-app.versao=1.0.0
+```
+Operador abre Naviera Desktop pela primeira vez
+          │
+          ▼
+    Launch.java → precisaSetup()
+    db.properties nao existe ou esta incompleto?
+          │
+          ├── SIM → Abre SetupWizard (4 passos)
+          └── NAO → Abre LoginApp + VersaoChecker em background
 ```
 
-**Este `empresa.id` e o vinculo permanente entre a maquina e a empresa na nuvem.** Equivale ao "login da conta Microsoft" no Windows — a partir daqui, tudo que acontece nesse PC esta ligado a empresa 2.
+O Setup Wizard guia o tecnico/operador por **4 passos obrigatorios**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  SETUP WIZARD — Naviera Configuracao Inicial                    │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────────────────────────────────┐ │
+│  │ 1 Banco de   │  │                                          │ │
+│  │   Dados   ●  │  │  Passo 1: Conexao com Banco de Dados    │ │
+│  │              │  │                                          │ │
+│  │ 2 Estrutura  │  │  Host: [localhost        ]               │ │
+│  │              │  │  Porta: [5432] Banco: [naviera_eco]      │ │
+│  │ 3 Empresa    │  │  Usuario: [postgres      ]               │ │
+│  │              │  │  Senha: [************    ]               │ │
+│  │ 4 Concluir   │  │                                          │ │
+│  │              │  │  [Instalar PostgreSQL]  (se nao detectado)│ │
+│  │              │  │  [Testar Conexao]     → "Conexao OK" ✓   │ │
+│  │              │  │                                          │ │
+│  └──────────────┘  │              [Voltar]  [Proximo]         │ │
+│                     └──────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Passo 1: Conexao com o Banco de Dados
+
+O operador informa como conectar ao PostgreSQL **local** da maquina:
+
+| Campo | Default | Descricao |
+|-------|---------|-----------|
+| Host | localhost | Endereco do PostgreSQL |
+| Porta | 5432 | Porta do PostgreSQL (pode variar: 5432, 5433, 5437) |
+| Nome do Banco | naviera_eco | Nome do banco a criar/usar |
+| Usuario | postgres | Usuario do PostgreSQL |
+| Senha | (vazio) | Senha do PostgreSQL local |
+
+**Deteccao automatica de PostgreSQL:** O wizard verifica se o PostgreSQL esta rodando (portas 5432/5433). Se nao detectado, oferece botao **"Instalar PostgreSQL"** que:
+- **Windows:** instala via `winget install PostgreSQL.PostgreSQL.16` (silencioso), com fallback para download direto do EDB
+- **Linux:** instala via `sudo apt install postgresql` ou equivalente
+
+O botao **"Testar Conexao"** conecta no banco `postgres` (que sempre existe) para validar as credenciais. So avanca se o teste passar.
+
+#### Passo 2: Criar Estrutura do Banco
+
+Executa as migrations SQL automaticamente para criar todas as tabelas:
+
+```
+[✓] Criar banco naviera_eco (se nao existir)
+[✓] Rodar migrations
+
+Executando... ████████████████████████ 100%
+
+000_schema_completo.sql .............. OK
+001_adicionar_campos_sincronizacao.sql OK
+003_corrigir_sequence_viagem.sql ..... OK
+...
+013_multi_tenant.sql ................. OK
+014_tenant_slug.sql .................. OK
+015_gps_tracking.sql ................. OK
+...
+019_sync_trigger_bypass.sql .......... OK
+
+✓ 18 migrations executadas com sucesso
+```
+
+O wizard procura os arquivos SQL em `database_scripts/` (relativo ao JAR ou diretorio de execucao). Migrations sao executadas na ordem correta — o schema 000 cria tudo do zero, e as incrementais adicionam funcionalidades.
+
+#### Passo 3: Configurar Empresa
+
+O passo mais importante — vincula esta maquina a uma empresa:
+
+| Campo | Exemplo | Descricao |
+|-------|---------|-----------|
+| **ID da Empresa** | 2 | Numero da empresa no banco central (fornecido pelo admin Naviera) |
+| URL da API | https://api.naviera.com.br | Endereco da API central para sync |
+| Tamanho do Pool | 5 | Conexoes simultaneas com o banco local |
+| Login Sync | admin@deusdealianca.com | Email do operador para autenticar o sync |
+| Senha Sync | ******** | Senha do operador na API central |
+
+**O `ID da Empresa` e o campo-chave.** Ele vincula permanentemente esta instalacao a empresa. E fornecido pelo administrador da Naviera no momento do onboarding da empresa.
+
+As credenciais de sync (login/senha) sao do operador cadastrado no banco central — o SyncClient usa para autenticar via JWT e sincronizar dados.
+
+#### Passo 4: Revisar e Concluir
+
+Tela de resumo com todas as configuracoes:
+
+```
+Resumo da Configuracao
+━━━━━━━━━━━━━━━━━━━━━
+Conexao:    localhost:5432
+Banco:      naviera_eco
+Empresa ID: 2
+API Sync:   https://api.naviera.com.br
+Pool:       5 conexoes | Sync: automatico (5 min)
+
+                                        [Voltar]  [Concluir]
+```
+
+Ao clicar **"Concluir"**, o wizard:
+
+1. **Gera `db.properties`** com todas as configuracoes:
+```properties
+# Configuracao do banco de dados — gerado pelo Setup Wizard
+# NAO commitar com credenciais de producao
+db.url=jdbc:postgresql://localhost:5432/naviera_eco
+db.usuario=postgres
+db.senha=SenhaDoOperador
+db.pool.tamanho=5
+
+# Multi-tenant: ID da empresa desta instalacao
+empresa.id=2
+
+# Versao do aplicativo (usado para auto-update check)
+app.versao=1.0.0
+
+# URL da API central (sync)
+api.url=https://api.naviera.com.br
+```
+
+2. **Gera `sync_config.properties`** para o SyncClient:
+```properties
+# Configuracoes de Sincronizacao - Naviera Eco
+server.url=https://api.naviera.com.br
+operador.login=admin@deusdealianca.com
+operador.senha=SenhaDoOperador
+api.token=
+api.token.encoded=false
+sync.auto=true
+sync.interval.minutos=5
+sync.ultima=
+```
+
+3. **Fecha o wizard** → `Launch.java` detecta que `db.properties` esta valido → abre a tela de **Login**
+
+#### Apos o Setup: Primeiro Login
+
+```
+Setup Wizard fecha
+          │
+          ▼
+    Launch.java → precisaSetup() = false
+          │
+          ▼
+    Abre LoginApp
+    VersaoChecker.verificarAtualizacao() em background
+          │
+          ▼
+    Operador faz login (email + senha contra banco LOCAL)
+          │
+          ▼
+    ConexaoBD carrega db.properties
+    TenantContext.setDefaultEmpresaId(2)  ← empresa_id fixo
+          │
+          ▼
+    SyncClient inicia em background
+    Autentica na API central (sync_config.properties)
+    Primeiro download: baixa dados da empresa 2 do banco central
+          │
+          ▼
+    Tela Principal — sistema pronto para operar
+    (dados da empresa ja estao no banco local)
+```
+
+**A partir daqui, o ciclo se repete:**
+- Operador trabalha offline → dados gravados localmente com `empresa_id = 2`
+- SyncClient detecta internet → sincroniza automaticamente a cada 5 minutos
+- Internet cai → operador continua normalmente, sync retoma quando voltar
 
 ### 2.4. Estado Apos Setup
 

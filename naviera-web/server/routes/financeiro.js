@@ -225,6 +225,7 @@ router.get('/boletos', async (req, res) => {
 
 // POST /api/financeiro/boleto — Create single boleto
 router.post('/boleto', validate({ descricao: 'required|string', valor_total: 'required|number' }), async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
     const {
@@ -234,7 +235,10 @@ router.post('/boleto', validate({ descricao: 'required|string', valor_total: 're
     if (!descricao || !valor_total) {
       return res.status(400).json({ error: 'Campos obrigatorios: descricao, valor_total' })
     }
-    const result = await pool.query(`
+
+    await client.query('BEGIN')
+
+    const result = await client.query(`
       INSERT INTO financeiro_saidas (id_viagem, descricao, valor_total, data_vencimento, id_categoria, forma_pagamento,
         valor_pago, status, numero_parcela, total_parcelas, observacoes, is_excluido, empresa_id)
       VALUES ($1, $2, $3, $4, $5, 'BOLETO', 0, 'PENDENTE', $6, $7, $8, FALSE, $9)
@@ -247,15 +251,19 @@ router.post('/boleto', validate({ descricao: 'required|string', valor_total: 're
 
     // Create agenda entry
     const dataEvento = data_vencimento || new Date().toISOString().split('T')[0]
-    await pool.query(
+    await client.query(
       'INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES ($1, $2, FALSE, $3)',
       [dataEvento, `Boleto: ${descricao} - R$ ${parseFloat(valor_total).toFixed(2)}`, empresaId]
     )
 
+    await client.query('COMMIT')
     res.status(201).json(result.rows[0])
   } catch (err) {
+    await client.query('ROLLBACK')
     console.error('[Financeiro] Erro ao criar boleto:', err.message)
     res.status(500).json({ error: 'Erro ao criar boleto' })
+  } finally {
+    client.release()
   }
 })
 
@@ -270,7 +278,8 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
     if (!descricao_base || !valor_total || !parcelas || parcelas < 1) {
       return res.status(400).json({ error: 'Campos obrigatorios: descricao_base, valor_total, parcelas (>= 1)' })
     }
-    const valorParcela = parseFloat((valor_total / parcelas).toFixed(2))
+    const valorParcela = Math.floor(valor_total * 100 / parcelas) / 100
+    const valorUltimaParcela = Math.round((valor_total - valorParcela * (parcelas - 1)) * 100) / 100
     const intervalo = parseInt(intervalo_dias) || 30
     const dataBase = data_primeira_vencimento ? new Date(data_primeira_vencimento) : new Date()
     const boletos = []
@@ -280,6 +289,7 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
       dataVenc.setDate(dataVenc.getDate() + (i * intervalo))
       const dataStr = dataVenc.toISOString().split('T')[0]
       const descricao = `${descricao_base} (${i + 1}/${parcelas})`
+      const valorEsta = (i === parcelas - 1) ? valorUltimaParcela : valorParcela
 
       const result = await pool.query(`
         INSERT INTO financeiro_saidas (id_viagem, descricao, valor_total, data_vencimento, id_categoria, forma_pagamento,
@@ -287,7 +297,7 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
         VALUES ($1, $2, $3, $4, $5, 'BOLETO', 0, 'PENDENTE', $6, $7, NULL, FALSE, $8)
         RETURNING *
       `, [
-        id_viagem || null, descricao, valorParcela, dataStr, id_categoria || null,
+        id_viagem || null, descricao, valorEsta, dataStr, id_categoria || null,
         i + 1, parseInt(parcelas), empresaId
       ])
       boletos.push(result.rows[0])
@@ -295,7 +305,7 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
       // Create agenda entry for each parcela
       await pool.query(
         'INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES ($1, $2, FALSE, $3)',
-        [dataStr, `Boleto: ${descricao} - R$ ${valorParcela.toFixed(2)}`, empresaId]
+        [dataStr, `Boleto: ${descricao} - R$ ${valorEsta.toFixed(2)}`, empresaId]
       )
     }
 

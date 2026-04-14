@@ -50,11 +50,12 @@ public class OpViagemWriteService {
     @Transactional
     public Map<String, Object> ativar(Integer empresaId, Long id, boolean ativa) {
         // Desativar todas as viagens da empresa antes de ativar a nova
+        // Atualiza ambas as colunas (ativa e is_atual) para consistencia com Desktop e BFF
         if (ativa) {
-            jdbc.update("UPDATE viagens SET ativa = FALSE WHERE empresa_id = ?", empresaId);
+            jdbc.update("UPDATE viagens SET ativa = FALSE, is_atual = FALSE WHERE empresa_id = ?", empresaId);
         }
-        int rows = jdbc.update("UPDATE viagens SET ativa = ? WHERE id_viagem = ? AND empresa_id = ?",
-            ativa, id, empresaId);
+        int rows = jdbc.update("UPDATE viagens SET ativa = ?, is_atual = ? WHERE id_viagem = ? AND empresa_id = ?",
+            ativa, ativa, id, empresaId);
         if (rows == 0) throw ApiException.notFound("Viagem nao encontrada");
         if (ativa) {
             notificationService.viagemAtivada(empresaId, id);
