@@ -17,6 +17,7 @@ import dashboardRoutes from './routes/dashboard.js'
 import adminRoutes from './routes/admin.js'
 import agendaRoutes from './routes/agenda.js'
 import estornoRoutes from './routes/estornos.js'
+import ocrRoutes from './routes/ocr.js'
 
 const app = express()
 const PORT = process.env.SERVER_PORT || 3002
@@ -63,6 +64,7 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/agenda', agendaRoutes)
 app.use('/api/estornos', estornoRoutes)
+app.use('/api/ocr', ocrRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

@@ -1,0 +1,46 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
+body { font-family: 'Sora', sans-serif; -webkit-font-smoothing: antialiased; }
+
+/* Screen transition */
+.screen-enter { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Skeleton */
+.skeleton { background: var(--sk-base); border-radius: 8px; animation: shimmer 1.5s infinite; }
+@keyframes shimmer { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+/* Buttons */
+.btn { border: none; border-radius: 12px; padding: 12px 24px; font-family: 'Sora', sans-serif; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: opacity 0.15s, transform 0.1s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-block { width: 100%; }
+
+/* Toast */
+.toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; animation: toastIn 0.3s ease; max-width: 90%; }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* Card interactive */
+.card-interactive:active { transform: scale(0.98); }
+
+/* Image preview */
+.img-preview { width: 100%; border-radius: 12px; object-fit: cover; }
+
+/* Input */
+.input { border: 1px solid; border-radius: 10px; padding: 10px 14px; font-family: 'Sora', sans-serif; font-size: 0.9rem; width: 100%; outline: none; transition: border-color 0.15s; }
+.input:focus { border-width: 2px; padding: 9px 13px; }
+
+/* Select */
+.select { border: 1px solid; border-radius: 10px; padding: 10px 14px; font-family: 'Sora', sans-serif; font-size: 0.9rem; width: 100%; outline: none; appearance: none; background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; }
+
+/* Pulse */
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* Badge */
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }

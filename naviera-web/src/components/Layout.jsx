@@ -44,6 +44,9 @@ import CadastroClienteEncomenda from '../pages/CadastroClienteEncomenda.jsx'
 import AdminEmpresas from '../pages/AdminEmpresas.jsx'
 import AdminMetricas from '../pages/AdminMetricas.jsx'
 
+// OCR
+import ReviewOCR from '../pages/ReviewOCR.jsx'
+
 // Outros
 import EstornoPassagem from '../pages/EstornoPassagem.jsx'
 import HistoricoEstornos from '../pages/HistoricoEstornos.jsx'
@@ -64,6 +67,7 @@ const PAGES = {
   'listar-fretes': { component: ListaFretes, label: 'Lista Fretes', section: 'fretes' },
   'relatorio-fretes': { component: RelatorioFretes, label: 'Relatorio Fretes', section: 'fretes' },
   'tabela-preco-frete': { component: TabelaPrecoFrete, label: 'Tabela Precos', section: 'fretes' },
+  'review-ocr': { component: ReviewOCR, label: 'Conferir OCR', section: 'fretes' },
   'financeiro-entrada': { component: Financeiro, label: 'Lancar Entrada', section: 'financeiro' },
   'financeiro-saida': { component: FinanceiroSaida, label: 'Lancar Saida', section: 'financeiro' },
   'balanco-viagem': { component: BalancoViagem, label: 'Balanco Viagem', section: 'financeiro' },

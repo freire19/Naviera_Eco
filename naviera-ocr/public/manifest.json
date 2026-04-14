@@ -1,0 +1,15 @@
+{
+  "name": "Naviera OCR",
+  "short_name": "OCR",
+  "description": "Lancamento de fretes por foto",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#040D0A",
+  "theme_color": "#059669",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

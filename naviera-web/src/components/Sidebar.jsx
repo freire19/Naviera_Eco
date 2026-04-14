@@ -29,7 +29,8 @@ const NAV = [
       { key: 'lancar-frete', icon: '\uD83D\uDE9A', label: 'Lancar Frete' },
       { key: 'listar-fretes', icon: '\uD83D\uDCCB', label: 'Lista Fretes' },
       { key: 'relatorio-fretes', icon: '\uD83D\uDCCA', label: 'Relatorio' },
-      { key: 'tabela-preco-frete', icon: '\uD83C\uDFF7', label: 'Tabela Precos' }
+      { key: 'tabela-preco-frete', icon: '\uD83C\uDFF7', label: 'Tabela Precos' },
+      { key: 'review-ocr', icon: '\uD83D\uDCF7', label: 'Conferir OCR' }
     ]
   },
   {

@@ -26,7 +26,7 @@ export async function tenantMiddleware(req, res, next) {
   }
 
   // 3. Se nao tem slug (localhost em dev), usar empresa padrao
-  if (!slug || slug === 'localhost' || slug === 'api' || slug === 'app' || slug === 'admin') {
+  if (!slug || slug === 'localhost' || slug === 'api' || slug === 'app' || slug === 'admin' || slug === 'ocr') {
     req.tenant = null // sem tenant especifico — login aceita qualquer empresa
     return next()
   }
