@@ -4,29 +4,32 @@
 
 ---
 
-## Estado Geral: REPROVADO PARA PRODUCAO (12 issues CRITICAS)
+## Estado Geral: EM CORRECAO (0 CRITICAS — 11 ALTAS pendentes)
 
 ### Resumo
 Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile), Site (React). Auditoria V1.2 encontrou **12 issues CRITICAS** — todas nos DAOs Desktop (migracao multi-tenant incompleta): parametros SQL trocados, placeholders faltando, filtros empresa_id ausentes, executeUpdate nunca chamado, SQL sintaticamente invalido. **Corrigir antes de qualquer deploy multi-tenant.**
 
 ---
 
-## ISSUES CRITICAS ABERTAS (12)
+## ISSUES CRITICAS ABERTAS
+
+**Zero issues CRITICAS.** Todas as 12 criticas do Audit V1.2 foram corrigidas em 2026-04-14 (commit `895adc9`).
+
+### Issues ALTAS pendentes (11)
 
 | # | Issue | Arquivo | Problema |
 |---|-------|---------|----------|
-| #030 | TarifaDAO.buscarTarifaPorRotaETipo | `src/dao/TarifaDAO.java` | Parametros em posicoes erradas — empresa_id nunca setado |
-| #031 | PassageiroDAO.inserir | `src/dao/PassageiroDAO.java` | 7 colunas, 6 placeholders — todo INSERT falha |
-| #032 | PassageiroDAO.listarTodos | `src/dao/PassageiroDAO.java` | executeQuery antes de setar parametro |
-| #033 | PassageiroDAO.listarTodosNomes | `src/dao/PassageiroDAO.java` | Mesmo padrao do #032 |
-| #034 | PassageiroDAO.buscarPorNome | `src/dao/PassageiroDAO.java` | Nome na posicao do empresa_id (cross-tenant) |
-| #035 | TipoPassageiroDAO.inserir | `src/dao/TipoPassageiroDAO.java` | 6 colunas, 5 placeholders + empresa_id nunca setado |
-| #036 | TipoPassageiroDAO.listarTodos | `src/dao/TipoPassageiroDAO.java` | Sem filtro empresa_id (data leak) |
-| #037 | TarifaDAO.listarTodos | `src/dao/TarifaDAO.java` | Sem filtro empresa_id (data leak comercial) |
-| #040 | AgendaDAO.adicionarAnotacao | `src/dao/AgendaDAO.java` | executeUpdate nunca chamado — dados perdidos |
-| #043 | ItemEncomendaPadraoDAO.listarTodos | `src/dao/ItemEncomendaPadraoDAO.java` | Duplo WHERE — SQL sintaticamente invalido |
-| #056 | ItemEncomendaPadraoDAO.listarTodos | `src/dao/ItemEncomendaPadraoDAO.java` | PreparedStatement executado sem setar parametro |
-| #058 | TipoPassageiroDAO.inserir | `src/dao/TipoPassageiroDAO.java` | empresa_id nunca inserido (NULL no banco) |
+| #038 | DespesaDAO.buscarDespesas | `src/dao/DespesaDAO.java` | Sem filtro empresa_id |
+| #039 | ReciboAvulsoDAO.listarPorViagem | `src/dao/ReciboAvulsoDAO.java` | Params em posicoes trocadas |
+| #041 | AgendaDAO.buscarBoletos | `src/dao/AgendaDAO.java` | Sem filtro empresa_id |
+| #045 | FuncionarioDAO.buscarIdCategoria | `src/dao/FuncionarioDAO.java` | Tabela errada + sem empresa_id |
+| #048 | UsuarioDAO.buscarPorLogin | `src/dao/UsuarioDAO.java` | Login sem empresa_id (cross-tenant) |
+| DC001 | CadastroBoletoController | `src/gui/CadastroBoletoController.java` | SQL concatenation |
+| DC002 | TabelaPrecoFreteController | `src/gui/TabelaPrecoFreteController.java` | SQL concatenation |
+| DC003 | TelaPrincipalController | `src/gui/TelaPrincipalController.java` | SQL concatenation |
+| DA001 | AuthOperadorService (API) | `UsuarioRepository.java` | findByLogin sem empresa_id |
+| DA004 | OpFreteWriteService (API) | `OpFreteWriteService.java` | MAX+1 para PK id_frete |
+| DB011 | criarFrete.js (BFF) | `criarFrete.js` | MAX+1 para PK id_frete |
 
 ---
 
@@ -126,7 +129,7 @@ Error Boundaries React, paginacao endpoints BFF, formatMoney centralizar, N+1 qu
 | Issues resolvidas (verificadas) | ~205 |
 | Issues pendentes (estimado) | ~82 (muitos sobrepostos) |
 | Taxa de resolucao | 67% |
-| Issues CRITICAS pendentes | **12** |
+| Issues CRITICAS pendentes | **0** |
 | Categorias 100% limpas | **Security, Logic, Bugs** |
 | MVP readiness | **77% (95/124 itens)** |
 | MVP bloqueadores | **3 (CORS, SQL injection, HTTPS)** |

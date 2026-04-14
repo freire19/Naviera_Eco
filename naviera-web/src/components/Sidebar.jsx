@@ -34,6 +34,13 @@ const NAV = [
     ]
   },
   {
+    title: 'OCR por Foto',
+    items: [
+      { key: '_ocr-app', icon: '\uD83D\uDCF1', label: 'Lancar por Foto', external: true },
+      { key: 'review-ocr-section', icon: '\uD83D\uDD0D', label: 'Conferir Lancamentos', alias: 'review-ocr' }
+    ]
+  },
+  {
     title: 'Financeiro',
     items: [
       { key: 'financeiro-entrada', icon: '\uD83D\uDCB0', label: 'Lancar Entrada' },
@@ -98,16 +105,39 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
         {sections.map(section => (
           <div className="nav-section" key={section.title}>
             <div className="nav-section-title">{section.title}</div>
-            {section.items.map(item => (
-              <div
-                key={item.key}
-                className={`nav-item ${currentPage === item.key ? 'active' : ''}`}
-                onClick={() => onNavigate(item.key)}
-              >
-                <span className="icon">{item.icon}</span>
-                {item.label}
-              </div>
-            ))}
+            {section.items.map(item => {
+              if (item.external) {
+                // Botao que abre naviera-ocr em nova aba
+                const ocrUrl = window.location.hostname === 'localhost'
+                  ? `http://${window.location.hostname}:5175`
+                  : `https://ocr.${window.location.hostname.replace(/^[^.]+\./, '')}`
+                return (
+                  <a
+                    key={item.key}
+                    className="nav-item nav-item-external"
+                    href={ocrUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <span className="icon">{item.icon}</span>
+                    {item.label}
+                    <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.5 }}>&#8599;</span>
+                  </a>
+                )
+              }
+              const navKey = item.alias || item.key
+              return (
+                <div
+                  key={item.key}
+                  className={`nav-item ${currentPage === navKey ? 'active' : ''}`}
+                  onClick={() => onNavigate(navKey)}
+                >
+                  <span className="icon">{item.icon}</span>
+                  {item.label}
+                </div>
+              )
+            })}
           </div>
         ))}
       </nav>

@@ -705,7 +705,7 @@ if (!user.empresa_id) {
 ### 2.3 — Logica de Negocio
 
 #### Issue #030 — TarifaDAO.buscarTarifaPorRotaETipo: parametros em posicao errada (empresa_id ignorado)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/TarifaDAO.java`
 - **Linha(s):** 17-22
@@ -728,7 +728,7 @@ stmt.setInt(3, idTipoPassagem);
 ---
 
 #### Issue #031 — PassageiroDAO.inserir: SQL tem 6 placeholders mas 7 parametros
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/PassageiroDAO.java`
 - **Linha(s):** 58-71
@@ -748,7 +748,7 @@ String sql = "INSERT INTO passageiros (nome_passageiro, numero_documento, id_tip
 ---
 
 #### Issue #032 — PassageiroDAO.listarTodos: PreparedStatement executado sem setar parametro
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/PassageiroDAO.java`
 - **Linha(s):** 32-43
@@ -776,7 +776,7 @@ try (Connection conn = ConexaoBD.getConnection();
 ---
 
 #### Issue #033 — PassageiroDAO.listarTodosNomesPassageiros: mesmo problema — PreparedStatement executado sem setar parametro
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/PassageiroDAO.java`
 - **Linha(s):** 113-125
@@ -793,7 +793,7 @@ try (Connection conn = ConexaoBD.getConnection();
 ---
 
 #### Issue #034 — PassageiroDAO.buscarPorNome: parametro na posicao errada (tenant isolation violation)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/PassageiroDAO.java`
 - **Linha(s):** 128-141
@@ -813,7 +813,7 @@ stmt.setString(2, nome);
 ---
 
 #### Issue #035 — TipoPassageiroDAO.inserir: SQL com 6 colunas mas 5 placeholders, empresa_id nunca inserido
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/TipoPassageiroDAO.java`
 - **Linha(s):** 13-31
@@ -838,7 +838,7 @@ ps.setInt(6, DAOUtils.empresaId());
 ---
 
 #### Issue #036 — TipoPassageiroDAO.listarTodos: sem filtro empresa_id (tenant data leak)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/TipoPassageiroDAO.java`
 - **Linha(s):** 33-57
@@ -861,7 +861,7 @@ String sql = "SELECT id, nome, idade_min, idade_max, deficiente, gratuito "
 ---
 
 #### Issue #037 — TarifaDAO.listarTodos: sem filtro empresa_id (tenant data leak)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/TarifaDAO.java`
 - **Linha(s):** 95-126
@@ -934,7 +934,7 @@ stmt.setInt(2, idViagem);
 ---
 
 #### Issue #040 — AgendaDAO.adicionarAnotacao: executeUpdate nunca chamado
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/AgendaDAO.java`
 - **Linha(s):** 53-63
@@ -1017,7 +1017,7 @@ try (Connection con = ConexaoBD.getConnection()) {
 ---
 
 #### Issue #043 — ItemEncomendaPadraoDAO.listarTodos: SQL sintaticamente invalido (duplo WHERE)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/ItemEncomendaPadraoDAO.java`
 - **Linha(s):** 28-56
@@ -1278,7 +1278,7 @@ private boolean temDataChegada = false;
 ---
 
 #### Issue #056 — ItemEncomendaPadraoDAO.listarTodos: PreparedStatement executado sem setar parametro
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/ItemEncomendaPadraoDAO.java`
 - **Linha(s):** 36-38
@@ -1308,7 +1308,7 @@ stmt.setInt(2, idViagem);
 ---
 
 #### Issue #058 — TipoPassageiroDAO.inserir: empresa_id nunca inserido
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/TipoPassageiroDAO.java`
 - **Linha(s):** 13-25

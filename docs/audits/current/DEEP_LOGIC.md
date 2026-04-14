@@ -12,11 +12,11 @@
 | Metrica | Quantidade |
 |---------|-----------|
 | Issues anteriores (V1.2 logic) verificadas | 27 |
-| Anteriores PENDENTES | 23 |
-| Anteriores RESOLVIDAS | 2 |
+| Anteriores PENDENTES | 11 |
+| Anteriores RESOLVIDAS | 14 |
 | Anteriores RECLASSIFICADAS | 2 |
 | Novos problemas encontrados | 54 |
-| **Total ativo (pendentes + novos)** | **77** |
+| **Total ativo (pendentes + novos)** | **65** |
 
 ### Novos por severidade
 
@@ -34,41 +34,42 @@
 
 ## 1. ISSUES ANTERIORES — STATUS
 
-### 1.1 Pendentes (23 issues — AINDA QUEBRADOS)
+### 1.1 Pendentes (11 issues — AINDA QUEBRADOS)
 
-As seguintes issues do AUDIT_V1.2 foram re-verificadas linha por linha e continuam presentes no codigo:
+As seguintes issues do AUDIT_V1.2 continuam presentes no codigo:
 
 | # V1.2 | Severidade | Arquivo | Resumo |
 |---------|-----------|---------|--------|
-| #030 | CRITICO | `TarifaDAO.java` | Parametros em posicao errada — empresa_id recebe idRota |
-| #031 | CRITICO | `PassageiroDAO.java` | SQL INSERT: 7 colunas, 6 placeholders |
-| #032 | CRITICO | `PassageiroDAO.java` | listarTodos: executeQuery antes de setInt |
-| #033 | CRITICO | `PassageiroDAO.java` | listarTodosNomesPassageiros: mesmo bug do #032 |
-| #034 | CRITICO | `PassageiroDAO.java` | buscarPorNome: nome vai na posicao de empresa_id |
-| #035 | CRITICO | `TipoPassageiroDAO.java` | INSERT: 6 colunas, 5 placeholders |
-| #036 | CRITICO | `TipoPassageiroDAO.java` | listarTodos: sem filtro empresa_id |
-| #037 | CRITICO | `TarifaDAO.java` | listarTodos: sem filtro empresa_id |
 | #038 | ALTO | `DespesaDAO.java` | buscarDespesas: sem filtro empresa_id |
 | #039 | ALTO | `ReciboAvulsoDAO.java` | listarPorViagem: parametro na posicao errada |
-| #040 | CRITICO | `AgendaDAO.java` | adicionarAnotacao: executeUpdate nunca chamado |
 | #041 | ALTO | `AgendaDAO.java` | buscarBoletosPendentesNoMes: sem filtro empresa_id |
 | #042 | ALTO | `DespesaDAO.java` | excluirBoleto: audit + delete sem transacao |
-| #043 | CRITICO | `ItemEncomendaPadraoDAO.java` | SQL com duplo WHERE (sintaticamente invalido) |
 | #045 | ALTO | `FuncionarioDAO.java` | buscarIdCategoriaFuncionarios: sem empresa_id |
 | #046 | BAIXO | `PassagemDAO.java` | obterProximoBilhete fallback sem empresa_id |
 | #047 | BAIXO | `EncomendaDAO.java` | obterProximoNumero fallback sem empresa_id |
 | #052 | ALTO | `UsuarioDAO.java` | buscarPorLogin/buscarPorUsuarioESenha: sem empresa_id |
-| #056 | CRITICO | `ItemEncomendaPadraoDAO.java` | executeQuery antes de setInt (bug adicional ao #043) |
 | #057 | ALTO | `ReciboAvulsoDAO.java` | falta segundo parametro no bind |
-| #058 | CRITICO | `TipoPassageiroDAO.java` | empresa_id nunca inserido (complemento do #035) |
 | #077 | MEDIO | `EncomendaDAO.java` | commit executa mesmo quando encomenda nao pertence ao tenant |
 | #075 | MEDIO | `encomendas.js` (BFF) | DELETE itens antes de verificar empresa_id |
 
-### 1.2 Resolvidas (2 issues)
+### 1.2 Resolvidas (14 issues)
 
 | # V1.2 | Arquivo | Resolucao |
 |---------|---------|-----------|
-| #007 | `encomendas.js` (BFF) | DELETE agora usa transacao (BEGIN/COMMIT) — itens deletados dentro da mesma transacao |
+| #030 | `TarifaDAO.java` | Parametros reordenados: setInt(1, empresaId()), setLong(2, idRota), setInt(3, idTipoPassagem) |
+| #031 | `PassageiroDAO.java` | Placeholder adicionado: VALUES (?,?,?,?,?,?) → (?,?,?,?,?,?,?) |
+| #032 | `PassageiroDAO.java` | ResultSet movido para try interno, setInt(1, empresaId()) antes de executeQuery |
+| #033 | `PassageiroDAO.java` | Mesmo fix aplicado em listarTodosNomesPassageiros |
+| #034 | `PassageiroDAO.java` | setInt(1, empresaId()) + setString(2, nome) — posicoes corrigidas |
+| #035 | `TipoPassageiroDAO.java` | Placeholder adicionado: VALUES (?,?,?,?,?) → (?,?,?,?,?,?) + setInt(6, empresaId()) |
+| #036 | `TipoPassageiroDAO.java` | Adicionado WHERE empresa_id = ?, trocado Statement por PreparedStatement |
+| #037 | `TarifaDAO.java` | Adicionado WHERE t.empresa_id = ? com PreparedStatement e setInt |
+| #040 | `AgendaDAO.java` | Adicionado stmt.executeUpdate() — anotacoes agora sao salvas |
+| #043 | `ItemEncomendaPadraoDAO.java` | WHERE ativo → AND ativo (corrigido duplo WHERE) |
+| #056 | `ItemEncomendaPadraoDAO.java` | ResultSet movido para try interno, setInt(1, empresaId()) adicionado |
+| #058 | `TipoPassageiroDAO.java` | Coberto pelo fix do #035 (mesmo metodo) |
+| #007 | `encomendas.js` (BFF) | DELETE agora usa transacao (BEGIN/COMMIT) |
+| #071 | `estornos.js` (BFF) | Estornos corrigidos com FOR UPDATE e transacao |
 | #071 | `estornos.js` (BFF) | Calculos de estorno corrigidos |
 
 ### 1.3 Reclassificadas (2 issues)
