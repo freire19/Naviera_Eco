@@ -242,7 +242,7 @@ public class SetupWizardController implements Initializable {
                 // ---- Passo 2: Criar banco ----
                 updateSetup("Criando banco de dados...", "Preparando estrutura...", 0.2);
 
-                String urlPostgres = "jdbc:postgresql://localhost:" + pgPortaLocal + "/postgres";
+                String urlPostgres = "jdbc:postgresql://localhost:" + pgPortaLocal + "/postgres?sslmode=disable";
                 Class.forName("org.postgresql.Driver");
                 DriverManager.setLoginTimeout(5);
 
@@ -273,7 +273,7 @@ public class SetupWizardController implements Initializable {
 
                 // ---- Passo 3: Rodar migrations ----
                 updateSetup("Configurando estrutura de dados...", "Criando tabelas...", 0.35);
-                String urlBanco = "jdbc:postgresql://localhost:" + pgPortaLocal + "/naviera_eco";
+                String urlBanco = "jdbc:postgresql://localhost:" + pgPortaLocal + "/naviera_eco?sslmode=disable";
 
                 try (Connection conn = DriverManager.getConnection(urlBanco, "postgres", senhaFuncional)) {
                     // Verificar se ja tem tabelas
@@ -352,6 +352,7 @@ public class SetupWizardController implements Initializable {
     /**
      * Tenta encontrar uma senha que funcione para o PostgreSQL local.
      * Testa: senha do instalador silencioso, senhas comuns, sem senha.
+     * Fallback Linux: reset via peer auth se nenhuma senha funcionar.
      */
     private String encontrarSenhaPg() {
         String[] senhasCandidatas = {
@@ -362,7 +363,7 @@ public class SetupWizardController implements Initializable {
             "123456"                // comum em dev
         };
 
-        String url = "jdbc:postgresql://localhost:" + pgPortaLocal + "/postgres";
+        String url = "jdbc:postgresql://localhost:" + pgPortaLocal + "/postgres?sslmode=disable";
         for (String senha : senhasCandidatas) {
             try {
                 DriverManager.setLoginTimeout(3);
@@ -374,6 +375,44 @@ public class SetupWizardController implements Initializable {
                 }
             } catch (SQLException ignored) {}
         }
+
+        // Fallback Linux: resetar senha via peer auth (sudo -u postgres psql)
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("linux")) {
+            log("Nenhuma senha conhecida funcionou. Resetando senha PG via peer auth...");
+            try {
+                ProcessBuilder pb = new ProcessBuilder(
+                    "sudo", "-u", "postgres", "psql", "-c",
+                    "ALTER ROLE postgres PASSWORD '" + pgSenhaLocal + "';"
+                );
+                pb.redirectErrorStream(true);
+                Process proc = pb.start();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) { log("[pg-reset] " + line); }
+                }
+                int exitCode = proc.waitFor();
+                log("Reset senha PG exit code: " + exitCode);
+
+                if (exitCode == 0) {
+                    // Testar com a senha recém-definida
+                    try {
+                        DriverManager.setLoginTimeout(3);
+                        try (Connection conn = DriverManager.getConnection(url, "postgres", pgSenhaLocal)) {
+                            if (conn.isValid(2)) {
+                                log("Conexao PG OK apos reset via peer auth");
+                                return pgSenhaLocal;
+                            }
+                        }
+                    } catch (SQLException e) {
+                        log("Falha mesmo apos reset: " + e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                log("Erro no reset via peer auth: " + e.getMessage());
+            }
+        }
+
         return null;
     }
 
@@ -567,7 +606,7 @@ public class SetupWizardController implements Initializable {
     // ========================================================================
 
     private void salvarDbProperties(String senhaPg) throws IOException {
-        String jdbcUrl = "jdbc:postgresql://localhost:" + pgPortaLocal + "/naviera_eco";
+        String jdbcUrl = "jdbc:postgresql://localhost:" + pgPortaLocal + "/naviera_eco?sslmode=disable";
 
         StringBuilder sb = new StringBuilder();
         sb.append("# Configuracao gerada automaticamente pelo Naviera Setup\n");

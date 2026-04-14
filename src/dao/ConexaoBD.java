@@ -45,6 +45,10 @@ public class ConexaoBD {
             throw new RuntimeException(
                 "FATAL: db.properties incompleto. Preencha db.url, db.usuario e db.senha.");
         }
+        // Garantir sslmode=disable para evitar SSL handshake_failure em PG local com SSL ativado
+        if (!url.contains("sslmode=")) {
+            url = url + (url.contains("?") ? "&" : "?") + "sslmode=disable";
+        }
         URL = url;
         USUARIO = usuario;
         SENHA = senha;
