@@ -1,4 +1,4 @@
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent'
 
 /**
  * Usa Google Gemini AI para extrair itens estruturados do texto OCR.
@@ -10,7 +10,7 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemi
  * @returns {{ remetente, destinatario, rota, itens[], valor_total, observacoes }}
  */
 export async function geminiParseOCR(ocrText, itensPadrao = []) {
-  const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_CLOUD_VISION_API_KEY
   if (!apiKey) throw new Error('API key nao configurada')
 
   const tabelaPrecos = itensPadrao.length > 0
@@ -66,15 +66,34 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
   }
 
   const data = await res.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+  // Gemini 3 Flash retorna multiplas parts (thoughtSignature + text)
+  // Precisamos encontrar a part que contem o JSON de resposta
+  const parts = data.candidates?.[0]?.content?.parts || []
+  let text = ''
+  for (const part of parts) {
+    if (part.text && part.text.includes('{')) {
+      text = part.text
+      break
+    }
+  }
+  if (!text) {
+    // Fallback: pegar qualquer text
+    text = parts.find(p => p.text)?.text || ''
+  }
 
   // Extrair JSON da resposta (pode vir com markdown ```json ... ```)
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
-    throw new Error('Gemini nao retornou JSON valido')
+    throw new Error('Gemini nao retornou JSON valido. Resposta: ' + text.substring(0, 200))
   }
 
-  const parsed = JSON.parse(jsonMatch[0])
+  let parsed
+  try {
+    parsed = JSON.parse(jsonMatch[0])
+  } catch (e) {
+    throw new Error('JSON invalido do Gemini: ' + jsonMatch[0].substring(0, 200))
+  }
 
   // Garantir estrutura correta
   return {

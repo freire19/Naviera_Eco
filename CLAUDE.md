@@ -427,6 +427,71 @@ scp -r dist/* root@72.62.166.247:/var/www/naviera-site/
 
 ---
 
+## Camada OCR (naviera-ocr)
+
+Diretorio: `naviera-ocr/`
+
+App PWA standalone para operadores lancarem fretes por foto (nota fiscal, cupom, caderno). Deploy em `ocr.naviera.com.br`.
+
+### Stack
+
+- **Frontend**: React 18 + Vite (PWA standalone, porta 5175 dev)
+- **Backend**: Rotas OCR no BFF existente (`naviera-web/server/routes/ocr.js`)
+- **OCR**: Google Cloud Vision API (`DOCUMENT_TEXT_DETECTION`)
+- **IA**: Google Gemini (revisao inteligente dos itens extraidos)
+- **Offline**: IndexedDB para fila de fotos quando sem internet
+- **Fotos**: Filesystem da VPS (`uploads/ocr/{empresa_id}/`)
+
+### Fluxo
+
+```
+Operador tira foto → Google Vision extrai texto → Parser regex extrai itens
+→ Operador revisa (pode clicar "Revisar com IA" para Gemini reprocessar)
+→ Operador confirma → Conferente aprova no naviera-web → Frete criado
+```
+
+### APIs externas e modelos
+
+**IMPORTANTE: Sempre ler esta secao antes de alterar modelos ou keys de API.**
+
+| Servico | Modelo | Variavel .env | Uso |
+|---------|--------|---------------|-----|
+| Google Cloud Vision | DOCUMENT_TEXT_DETECTION | `GOOGLE_CLOUD_VISION_API_KEY` | OCR de imagens (extrair texto) |
+| Google Gemini | `gemini-3-flash-preview` | `GEMINI_API_KEY` | Revisao inteligente dos itens OCR |
+
+- **NUNCA** trocar o modelo do Gemini sem consultar https://ai.google.dev/gemini-api/docs/models e verificar disponibilidade
+- A key do Vision e diferente da key do Gemini — podem ser keys separadas
+- Ambas as keys estao no `.env` do BFF (`naviera-web/.env`) — NUNCA commitar
+
+### Arquivos-chave
+
+| Arquivo | Funcao |
+|---------|--------|
+| `naviera-ocr/src/App.jsx` | App principal PWA (auth + navegacao + theme) |
+| `naviera-ocr/src/screens/CapturaScreen.jsx` | Tela de camera/galeria + upload |
+| `naviera-ocr/src/screens/RevisaoScreen.jsx` | Revisao de itens + botao "Revisar com IA" |
+| `naviera-web/server/routes/ocr.js` | 8 endpoints OCR (upload, listar, revisar, aprovar, rejeitar, foto, ia-review) |
+| `naviera-web/server/helpers/visionApi.js` | Chamada Google Cloud Vision |
+| `naviera-web/server/helpers/geminiParser.js` | Chamada Gemini para reprocessar itens |
+| `naviera-web/server/helpers/parseOcrText.js` | Parser regex (fallback sem IA) |
+| `naviera-web/server/helpers/criarFrete.js` | Logica compartilhada de criacao de frete |
+| `naviera-web/src/pages/ReviewOCR.jsx` | Tela de conferente no naviera-web |
+| `database_scripts/022_ocr_lancamentos.sql` | Tabela ocr_lancamentos |
+
+### Precos de frete vs precos do produto
+
+O preco exibido nos itens OCR e o **preco de FRETE (transporte)**, NAO o preco do produto na nota fiscal. O preco vem da tabela `itens_frete_padrao` da empresa. Se o item nao esta cadastrado, preco = 0 e o operador preenche manualmente.
+
+### Comandos
+
+```bash
+cd naviera-ocr && npm run dev                    # Dev local (porta 5175)
+cd naviera-ocr && npm run build                  # Build producao
+cd naviera-web/server && node index.js           # BFF (inclui rotas OCR)
+```
+
+---
+
 ## Regras importantes
 
 1. **NUNCA** fazer query sem filtrar por `empresa_id` em tabelas de negocio
@@ -439,4 +504,16 @@ scp -r dist/* root@72.62.166.247:/var/www/naviera-site/
 
 ---
 
-*Atualizado: 2026-04-12 — Adicionado site institucional (naviera-site/), instalador Desktop, downloads hospedados*
+### Fase 6: OCR + Lancamento por Foto — CONCLUIDA
+
+- [x] naviera-ocr: PWA standalone com 5 telas (login, captura, revisao, confirmado, historico)
+- [x] Google Cloud Vision: OCR de notas fiscais, cupons e cadernos
+- [x] Google Gemini (gemini-3-flash-preview): revisao inteligente de itens com correcao de OCR
+- [x] Parser regex como fallback (detecta NFC-e e notas manuais)
+- [x] Validacao de precos contra itens_frete_padrao
+- [x] Offline queue com IndexedDB + auto-sync
+- [x] Tela ReviewOCR no naviera-web para conferente aprovar/rejeitar
+- [x] Nginx: ocr.naviera.com.br com client_max_body_size 15M
+- [x] Migration 022: tabela ocr_lancamentos com workflow de status
+
+*Atualizado: 2026-04-14 — Adicionado naviera-ocr (lancamento de fretes por foto com OCR + Gemini AI)*
