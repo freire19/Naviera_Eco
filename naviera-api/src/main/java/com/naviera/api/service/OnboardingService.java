@@ -116,7 +116,6 @@ public class OnboardingService {
             ps.setObject(4, email.toLowerCase());
             ps.setString(5, slug);
             ps.setString(6, codigo);
-            ps.setString(7, "basico");
             return ps;
         }, keyHolder);
 
