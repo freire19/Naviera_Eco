@@ -33,9 +33,10 @@ public class DespesaDAO {
             "s.forma_pagamento, s.valor_total, s.status, s.is_excluido " +
             "FROM financeiro_saidas s " +
             "LEFT JOIN categorias_despesa c ON s.id_categoria = c.id " +
-            "WHERE 1=1 "
+            "WHERE s.empresa_id = ? "
         );
         List<Object> params = new ArrayList<>();
+        params.add(DAOUtils.empresaId());
 
         if (idViagem > 0) {
             sql.append(" AND s.id_viagem = ?");

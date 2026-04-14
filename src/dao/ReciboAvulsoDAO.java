@@ -42,7 +42,8 @@ public class ReciboAvulsoDAO {
         String sql = "SELECT * FROM recibos_avulsos WHERE empresa_id = ? AND id_viagem = ? ORDER BY id_recibo DESC"; 
         
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setInt(1, idViagem);
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setInt(2, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     detectarColunas(rs);

@@ -12,11 +12,11 @@
 | Metrica | Quantidade |
 |---------|-----------|
 | Issues anteriores (V1.2 logic) verificadas | 27 |
-| Anteriores PENDENTES | 11 |
-| Anteriores RESOLVIDAS | 14 |
+| Anteriores PENDENTES | 5 |
+| Anteriores RESOLVIDAS | 20 |
 | Anteriores RECLASSIFICADAS | 2 |
 | Novos problemas encontrados | 54 |
-| **Total ativo (pendentes + novos)** | **65** |
+| **Total ativo (pendentes + novos)** | **59** |
 
 ### Novos por severidade
 
@@ -34,21 +34,13 @@
 
 ## 1. ISSUES ANTERIORES — STATUS
 
-### 1.1 Pendentes (11 issues — AINDA QUEBRADOS)
-
-As seguintes issues do AUDIT_V1.2 continuam presentes no codigo:
+### 1.1 Pendentes (5 issues)
 
 | # V1.2 | Severidade | Arquivo | Resumo |
 |---------|-----------|---------|--------|
-| #038 | ALTO | `DespesaDAO.java` | buscarDespesas: sem filtro empresa_id |
-| #039 | ALTO | `ReciboAvulsoDAO.java` | listarPorViagem: parametro na posicao errada |
-| #041 | ALTO | `AgendaDAO.java` | buscarBoletosPendentesNoMes: sem filtro empresa_id |
 | #042 | ALTO | `DespesaDAO.java` | excluirBoleto: audit + delete sem transacao |
-| #045 | ALTO | `FuncionarioDAO.java` | buscarIdCategoriaFuncionarios: sem empresa_id |
 | #046 | BAIXO | `PassagemDAO.java` | obterProximoBilhete fallback sem empresa_id |
 | #047 | BAIXO | `EncomendaDAO.java` | obterProximoNumero fallback sem empresa_id |
-| #052 | ALTO | `UsuarioDAO.java` | buscarPorLogin/buscarPorUsuarioESenha: sem empresa_id |
-| #057 | ALTO | `ReciboAvulsoDAO.java` | falta segundo parametro no bind |
 | #077 | MEDIO | `EncomendaDAO.java` | commit executa mesmo quando encomenda nao pertence ao tenant |
 | #075 | MEDIO | `encomendas.js` (BFF) | DELETE itens antes de verificar empresa_id |
 
@@ -68,6 +60,11 @@ As seguintes issues do AUDIT_V1.2 continuam presentes no codigo:
 | #043 | `ItemEncomendaPadraoDAO.java` | WHERE ativo → AND ativo (corrigido duplo WHERE) |
 | #056 | `ItemEncomendaPadraoDAO.java` | ResultSet movido para try interno, setInt(1, empresaId()) adicionado |
 | #058 | `TipoPassageiroDAO.java` | Coberto pelo fix do #035 (mesmo metodo) |
+| #038 | `DespesaDAO.java` | Adicionado `WHERE s.empresa_id = ?` como primeiro filtro + params.add(empresaId()) |
+| #039/#057 | `ReciboAvulsoDAO.java` | setInt(1, empresaId()) + setInt(2, idViagem) — posicoes corrigidas |
+| #041 | `AgendaDAO.java` | Adicionado `WHERE empresa_id = ?` em buscarBoletosPendentesNoMes, params reordenados |
+| #045 | `FuncionarioDAO.java` | Tabela corrigida para `categorias_despesa` + adicionado `AND empresa_id = ?` |
+| #052 | `UsuarioDAO.java` | buscarPorLogin e buscarPorUsuarioESenha agora filtram por `AND empresa_id = ?` |
 | #007 | `encomendas.js` (BFF) | DELETE agora usa transacao (BEGIN/COMMIT) |
 | #071 | `estornos.js` (BFF) | Estornos corrigidos com FOR UPDATE e transacao |
 | #071 | `estornos.js` (BFF) | Calculos de estorno corrigidos |

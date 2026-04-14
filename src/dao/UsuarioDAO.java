@@ -146,10 +146,11 @@ public class UsuarioDAO {
     }
     
     public Usuario buscarPorLogin(String nomeUsuario) {
-        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ?";
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nomeUsuario);
+            ps.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return extrairUsuarioDoResultSet(rs, true);
@@ -163,11 +164,12 @@ public class UsuarioDAO {
 
     // Renomeado de verificarLogin para buscarPorUsuarioESenha para alinhar com o LoginController
     public Usuario buscarPorUsuarioESenha(String nomeUsuario, String senhaTextoPlano) {
-        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ? AND excluido IS NOT TRUE";
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE nome = ? AND empresa_id = ? AND excluido IS NOT TRUE";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, nomeUsuario);
+            ps.setInt(2, DAOUtils.empresaId());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     String hashArmazenado = rs.getString("senha");

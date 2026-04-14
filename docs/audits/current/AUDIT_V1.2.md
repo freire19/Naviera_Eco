@@ -887,7 +887,7 @@ String sql = "... FROM tarifas t " +
 ---
 
 #### Issue #038 — DespesaDAO.buscarDespesas: sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/DespesaDAO.java`
 - **Linha(s):** 26-92
@@ -913,7 +913,7 @@ params.add(DAOUtils.empresaId());
 ---
 
 #### Issue #039 — ReciboAvulsoDAO.listarPorViagem: parametro na posicao errada
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/ReciboAvulsoDAO.java`
 - **Linha(s):** 39-57
@@ -960,7 +960,7 @@ try (Connection conn = ConexaoBD.getConnection();
 ---
 
 #### Issue #041 — AgendaDAO.buscarBoletosPendentesNoMes: sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/AgendaDAO.java`
 - **Linha(s):** 115-145
@@ -1057,7 +1057,7 @@ stmt.setDouble(14, f.getValorInss());
 ---
 
 #### Issue #045 — FuncionarioDAO.buscarIdCategoriaFuncionarios: tabela 'categorias' sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/FuncionarioDAO.java`
 - **Linha(s):** 357-367
@@ -1205,7 +1205,7 @@ row.put("valor_total", rs.getBigDecimal("valor_total"));
 ---
 
 #### Issue #052 — UsuarioDAO.buscarPorUsuarioESenha e buscarPorLogin: sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/UsuarioDAO.java`
 - **Linha(s):** 148-162, 165-183
@@ -1291,7 +1291,7 @@ private boolean temDataChegada = false;
 ---
 
 #### Issue #057 — ReciboAvulsoDAO.listarPorViagem: falta segundo parametro no bind
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/ReciboAvulsoDAO.java`
 - **Linha(s):** 42-46

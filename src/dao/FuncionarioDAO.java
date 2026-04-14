@@ -356,10 +356,12 @@ public class FuncionarioDAO {
 
     private int buscarIdCategoriaFuncionarios(Connection con) {
         try (PreparedStatement stmt = con.prepareStatement(
-                "SELECT id FROM categorias WHERE UPPER(nome) LIKE '%FUNCIONARIO%' OR UPPER(nome) LIKE '%FOLHA%' " +
-                "OR UPPER(nome) LIKE '%RH%' OR UPPER(nome) LIKE '%PAGAMENTO%' LIMIT 1");
-             ResultSet rs = stmt.executeQuery()) {
-            if (rs.next()) return rs.getInt("id");
+                "SELECT id FROM categorias_despesa WHERE (UPPER(nome) LIKE '%FUNCIONARIO%' OR UPPER(nome) LIKE '%FOLHA%' " +
+                "OR UPPER(nome) LIKE '%RH%' OR UPPER(nome) LIKE '%PAGAMENTO%') AND empresa_id = ? LIMIT 1")) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt("id");
+            }
         } catch (SQLException e) {
             AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.buscarIdCategoriaFuncionarios: " + e.getMessage());
         }

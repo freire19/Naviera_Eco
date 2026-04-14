@@ -117,15 +117,16 @@ public class AgendaDAO {
         List<ResumoBoleto> boletos = new ArrayList<>();
         // Range query em vez de EXTRACT para permitir uso de indice (fix DP007)
         String sql = "SELECT data_vencimento, descricao, valor_total FROM financeiro_saidas " +
-                     "WHERE forma_pagamento = 'BOLETO' AND status = 'PENDENTE' " +
+                     "WHERE empresa_id = ? AND forma_pagamento = 'BOLETO' AND status = 'PENDENTE' " +
                      "AND data_vencimento >= ? AND data_vencimento < ?";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             LocalDate inicio = LocalDate.of(ano, mes, 1);
-            stmt.setDate(1, Date.valueOf(inicio));
-            stmt.setDate(2, Date.valueOf(inicio.plusMonths(1)));
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setDate(2, Date.valueOf(inicio));
+            stmt.setDate(3, Date.valueOf(inicio.plusMonths(1)));
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while(rs.next()) {
