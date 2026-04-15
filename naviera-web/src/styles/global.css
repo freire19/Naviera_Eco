@@ -212,30 +212,29 @@ body {
 }
 
 .nav-section-title {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--sidebar-text);
-  padding: 6px 14px;
+  padding: 10px 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(255,255,255,0.04);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   user-select: none;
   transition: background 0.15s;
 }
 
 .nav-section-title:hover {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
 }
 
 .nav-section-title .chevron {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
+  margin-left: auto;
   transition: transform 0.2s;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .nav-section-title .chevron.collapsed {
@@ -248,33 +247,35 @@ body {
 
 .nav-section-items {
   overflow: hidden;
-  transition: max-height 0.25s ease;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 14px 5px 22px;
+  padding: 7px 14px 7px 24px;
   border-radius: 0;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 400;
   color: var(--sidebar-text);
   transition: background 0.1s;
   user-select: none;
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
+  opacity: 0.85;
 }
 
 .nav-item:hover {
   background: var(--sidebar-hover);
+  opacity: 1;
 }
 
 .nav-item.active {
-  background: rgba(5, 150, 105, 0.15);
-  color: var(--primary);
+  background: rgba(5, 150, 105, 0.12);
+  color: #fff;
   font-weight: 600;
   border-left-color: var(--primary);
+  opacity: 1;
 }
 
 .nav-item .icon {
@@ -282,7 +283,6 @@ body {
   width: 18px;
   text-align: center;
   flex-shrink: 0;
-  opacity: 0.8;
 }
 
 .sidebar-footer {

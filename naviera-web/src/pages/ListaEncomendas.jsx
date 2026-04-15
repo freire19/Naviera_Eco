@@ -99,7 +99,15 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
                     ? (devedor <= 0.01 ? 'ENTREGUE | PAGO' : 'ENTREGUE | PENDENTE')
                     : (devedor <= 0.01 ? 'PAGO' : 'PENDENTE | ABERTO')
                   return (
-                    <tr key={e.id_encomenda}>
+                    <tr key={e.id_encomenda} className="clickable"
+                        onDoubleClick={() => {
+                          if (onNavigate) {
+                            // Salvar encomenda selecionada no sessionStorage para a tela de edicao recuperar
+                            sessionStorage.setItem('encomenda_editar', JSON.stringify(e))
+                            onNavigate('nova-encomenda')
+                          }
+                        }}
+                        title="Duplo-clique para abrir/editar">
                       <td>{e.numero_encomenda}</td>
                       <td>{e.remetente || '—'}</td>
                       <td>{e.destinatario || '—'}</td>

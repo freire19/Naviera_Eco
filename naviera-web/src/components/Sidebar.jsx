@@ -133,9 +133,9 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
           return (
           <div className="nav-section" key={section.title}>
             <div className="nav-section-title" onClick={() => toggleSection(section.title)}>
-              <span className={`chevron ${isCollapsed ? 'collapsed' : ''}`}>▼</span>
               {section.sectionIcon && <span>{section.sectionIcon}</span>}
               {section.title}
+              <span className={`chevron ${isCollapsed ? 'collapsed' : ''}`}>&#9662;</span>
             </div>
             {!isCollapsed && (
             <div className="nav-section-items">

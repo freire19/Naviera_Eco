@@ -95,6 +95,19 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
     ]).catch(() => {})
   }, [])
 
+  // Verificar se veio encomenda para editar (duplo-clique da lista)
+  useEffect(() => {
+    const raw = sessionStorage.getItem('encomenda_editar')
+    if (raw) {
+      sessionStorage.removeItem('encomenda_editar')
+      try {
+        const enc = JSON.parse(raw)
+        handleSelectRow(enc)
+        setEditando(true)
+      } catch {}
+    }
+  }, [])
+
   // Calculos
   const totalItens = itens.reduce((s, i) => s + (parseFloat(i.valor_total) || 0), 0)
   const totalVolumes = itens.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
