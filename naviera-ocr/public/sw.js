@@ -1,7 +1,8 @@
-const STATIC_CACHE = 'naviera-ocr-static-v1'
-const API_CACHE = 'naviera-ocr-api-v1'
+const CACHE_VERSION = 2
+const STATIC_CACHE = `naviera-ocr-static-v${CACHE_VERSION}`
+const API_CACHE = `naviera-ocr-api-v${CACHE_VERSION}`
 
-const STATIC_URLS = ['/', '/index.html', '/offline.html', '/manifest.json']
+const STATIC_URLS = ['/', '/index.html', '/manifest.json']
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -32,13 +33,13 @@ self.addEventListener('fetch', (e) => {
       }).catch(() => caches.match(request))
     )
   } else {
-    // Cache-first para assets estaticos
+    // Network-first para tudo (garante atualizacoes), fallback cache para offline
     e.respondWith(
-      caches.match(request).then(cached => cached || fetch(request).then(res => {
+      fetch(request).then(res => {
         const clone = res.clone()
         caches.open(STATIC_CACHE).then(c => c.put(request, clone))
         return res
-      })).catch(() => caches.match('/offline.html'))
+      }).catch(() => caches.match(request).then(cached => cached || caches.match('/index.html')))
     )
   }
 })

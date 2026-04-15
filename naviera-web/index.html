@@ -11,26 +11,23 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
 
-    <!-- FAB OCR — fora do React, puro HTML/CSS, sem JS -->
-    <a id="fab-ocr-link" href="#" target="_blank" rel="noopener noreferrer" title="Lancar frete por foto"
-       style="display:none; position:fixed; bottom:20px; right:20px; width:56px; height:56px;
-              border-radius:50%; background:linear-gradient(135deg,#059669,#34D399);
-              color:#fff; font-size:1.5rem; text-decoration:none; z-index:99999;
-              align-items:center; justify-content:center;
-              box-shadow:0 4px 16px rgba(5,150,105,0.4);">
-      &#128247;
-    </a>
+    <!-- FAB OCR — puro HTML, CSS media query esconde em desktop -->
+    <style>
+      #fab-ocr-link {
+        position:fixed; bottom:20px; right:20px; width:56px; height:56px;
+        border-radius:50%; background:linear-gradient(135deg,#059669,#34D399);
+        color:#fff; font-size:1.5rem; text-decoration:none; z-index:99999;
+        display:flex; align-items:center; justify-content:center;
+        box-shadow:0 4px 16px rgba(5,150,105,0.4);
+      }
+      @media (min-width:801px) { #fab-ocr-link { display:none; } }
+    </style>
+    <a id="fab-ocr-link" href="#" target="_blank" rel="noopener noreferrer" title="Lancar frete por foto">&#128247;</a>
     <script>
-      // Mostrar FAB apenas em mobile e configurar URL do OCR
       (function() {
-        var fab = document.getElementById('fab-ocr-link');
-        if (window.innerWidth <= 800) {
-          var host = window.location.hostname;
-          var ocrHost = host === 'localhost' ? host + ':5175' : 'ocr.' + host.replace(/^[^.]+\./, '');
-          var proto = window.location.protocol;
-          fab.href = proto + '//' + ocrHost;
-          fab.style.display = 'flex';
-        }
+        var h = window.location.hostname;
+        var ocrHost = h === 'localhost' ? h + ':5175' : 'ocr.' + h.replace(/^[^.]+\./, '');
+        document.getElementById('fab-ocr-link').href = window.location.protocol + '//' + ocrHost;
       })();
     </script>
   </body>
