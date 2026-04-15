@@ -8,6 +8,7 @@ function formatMoney(val) {
 export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
   const [encomendas, setEncomendas] = useState([])
   const [loading, setLoading] = useState(false)
+  const [filtrosVisiveis, setFiltrosVisiveis] = useState(true)
   const [toast, setToast] = useState(null)
 
   const [viagens, setViagens] = useState([])
@@ -31,11 +32,25 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
     ]).catch(() => {})
   }, [])
 
+  // Cache de itens por encomenda para filtro "Contem Produto"
+  const [itensCache, setItensCache] = useState({})
+
   const carregar = useCallback(() => {
     if (!filtroViagem) return
     setLoading(true)
     api.get(`/encomendas?viagem_id=${filtroViagem}`)
-      .then(setEncomendas)
+      .then(async (data) => {
+        setEncomendas(data)
+        // Carregar itens de todas encomendas para filtro de produto
+        const cache = {}
+        await Promise.allSettled(data.map(async (e) => {
+          try {
+            const itens = await api.get(`/encomendas/${e.id_encomenda}/itens`)
+            cache[e.id_encomenda] = itens
+          } catch { cache[e.id_encomenda] = [] }
+        }))
+        setItensCache(cache)
+      })
       .catch(() => showToast('Erro ao carregar', 'error'))
       .finally(() => setLoading(false))
   }, [filtroViagem])
@@ -53,6 +68,12 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
       if (!(e.remetente || '').toLowerCase().includes(q) && !(e.destinatario || '').toLowerCase().includes(q)) return false
     }
     if (filtroNumero && !String(e.numero_encomenda).includes(filtroNumero)) return false
+    if (filtroItem) {
+      const q = filtroItem.toLowerCase()
+      const eItens = itensCache[e.id_encomenda] || []
+      const temItem = eItens.some(it => (it.descricao || '').toLowerCase().includes(q))
+      if (!temItem) return false
+    }
     return true
   })
 
@@ -138,7 +159,22 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
         </div>
       </div>
 
-      {/* FILTROS */}
+      {/* BOTAO TOGGLE FILTROS */}
+      <div onClick={() => setFiltrosVisiveis(prev => !prev)}
+        style={{
+          writingMode: 'vertical-rl', textOrientation: 'mixed',
+          cursor: 'pointer', padding: '12px 4px', background: 'var(--bg-card)',
+          border: '1px solid var(--border)', borderRadius: '4px 0 0 4px',
+          fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)',
+          display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+          userSelect: 'none', letterSpacing: '0.05em'
+        }}
+        title={filtrosVisiveis ? 'Ocultar filtros' : 'Mostrar filtros'}>
+        {filtrosVisiveis ? '▶' : '◀'} FILTROS
+      </div>
+
+      {/* PAINEL FILTROS */}
+      {filtrosVisiveis && (
       <div style={{ width: 280, flexShrink: 0 }}>
         <div className="card" style={{ position: 'sticky', top: 60 }}>
           <h3 style={{ marginBottom: 12, fontSize: '0.95rem', textTransform: 'uppercase' }}>Filtros de Busca</h3>
@@ -182,6 +218,7 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
           {onNavigate && <button className="btn-secondary" style={{ width: '100%' }} onClick={() => onNavigate('nova-encomenda')}>FECHAR</button>}
         </div>
       </div>
+      )}
     </div>
   )
 }
