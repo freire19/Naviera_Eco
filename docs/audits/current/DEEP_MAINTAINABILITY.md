@@ -192,7 +192,7 @@ public List<String> listarNomes() {
 ---
 
 #### Issue #DM064 — TelaPrincipalController.handleBackup: logica de infra em controller
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — BackupService.java criado, handleBackup 175L→55L, TelaPrincipal -97L)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/TelaPrincipalController.java:1005-1179`
 - **Linha(s):** 1005-1179 (175 linhas)
@@ -233,7 +233,7 @@ public List<String> listarNomes() {
 ### Web / BFF
 
 #### Issue #DM067 — Passagens.jsx 581L com autocomplete inline e 2 modals
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — Autocomplete.jsx, ModalCriarPassagem.jsx, ModalPagarPassagem.jsx extraidos. Passagens.jsx 581→201L)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/src/pages/Passagens.jsx:1-581`
 - **Problema:** Componente monolitico com autocomplete construido manualmente (div + event handlers + position absolute), 2 modals (criar + pagar), 10+ inline styles. Autocomplete deveria ser componente reutilizavel.

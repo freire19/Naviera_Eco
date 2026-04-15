@@ -3,6 +3,7 @@ package gui;
 import dao.ConexaoBD;
 import gui.util.PermissaoService;
 import gui.util.StatusPagamentoView;
+import model.ItemExtratoEncomenda;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -39,14 +40,14 @@ public class ExtratoClienteEncomendaController {
     @FXML private ComboBox<String> cmbClientes;
     @FXML private ComboBox<String> cmbStatus;
 
-    @FXML private TableView<ItemExtrato> tabela;
-    @FXML private TableColumn<ItemExtrato, String> colData;
-    @FXML private TableColumn<ItemExtrato, String> colRota;
-    @FXML private TableColumn<ItemExtrato, String> colDescricao;
-    @FXML private TableColumn<ItemExtrato, String> colValor;
-    @FXML private TableColumn<ItemExtrato, String> colPago;
-    @FXML private TableColumn<ItemExtrato, String> colSaldo;
-    @FXML private TableColumn<ItemExtrato, String> colStatus;
+    @FXML private TableView<ItemExtratoEncomenda> tabela;
+    @FXML private TableColumn<ItemExtratoEncomenda, String> colData;
+    @FXML private TableColumn<ItemExtratoEncomenda, String> colRota;
+    @FXML private TableColumn<ItemExtratoEncomenda, String> colDescricao;
+    @FXML private TableColumn<ItemExtratoEncomenda, String> colValor;
+    @FXML private TableColumn<ItemExtratoEncomenda, String> colPago;
+    @FXML private TableColumn<ItemExtratoEncomenda, String> colSaldo;
+    @FXML private TableColumn<ItemExtratoEncomenda, String> colStatus;
 
     private String nomeClienteAtual = "";
     private BigDecimal dividaTotalAtual = BigDecimal.ZERO;
@@ -77,7 +78,7 @@ public class ExtratoClienteEncomendaController {
         colSaldo.setCellValueFactory(new PropertyValueFactory<>("saldo"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         
-        colStatus.setCellFactory(column -> new TableCell<ItemExtrato, String>() {
+        colStatus.setCellFactory(column -> new TableCell<ItemExtratoEncomenda, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -161,7 +162,7 @@ public class ExtratoClienteEncomendaController {
 
         Thread bg = new Thread(() -> {
             try {
-                ObservableList<ItemExtrato> lista = FXCollections.observableArrayList();
+                ObservableList<ItemExtratoEncomenda> lista = FXCollections.observableArrayList();
                 BigDecimal totalGeral = BigDecimal.ZERO;
                 BigDecimal totalPago = BigDecimal.ZERO;
                 BigDecimal dividaTotal = BigDecimal.ZERO;
@@ -219,7 +220,7 @@ public class ExtratoClienteEncomendaController {
                         String rem = rs.getString("remetente");
                         String desc = "N° Enc. " + num + " (De: " + rem + ")";
 
-                        lista.add(new ItemExtrato(dataViagemStr, rotaStr, desc, val.doubleValue(), pag.doubleValue(), saldo.doubleValue()));
+                        lista.add(new ItemExtratoEncomenda(dataViagemStr, rotaStr, desc, val.doubleValue(), pag.doubleValue(), saldo.doubleValue()));
                     }
                     }
                 }
@@ -330,24 +331,4 @@ public class ExtratoClienteEncomendaController {
 
     @FXML public void fechar() { ((Stage) btnFechar.getScene().getWindow()).close(); }
 
-    // Classe Modelo
-    public static class ItemExtrato {
-        private String dataViagem, rota, descricao;
-        private Double valorTotal, valorPago, saldo;
-        private static final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
-
-        public ItemExtrato(String data, String rota, String desc, Double total, Double pago, Double saldo) {
-            this.dataViagem = data; this.rota = rota; this.descricao = desc;
-            this.valorTotal = total; this.valorPago = pago; this.saldo = saldo;
-        }
-        public String getDataViagem() { return dataViagem; }
-        public String getRota() { return rota; }
-        public String getDescricao() { return descricao; }
-        public String getValorTotal() { return nf.format(valorTotal); }
-        public String getValorPago() { return nf.format(valorPago); }
-        public String getSaldo() { return nf.format(saldo); }
-        public String getStatus() {
-            return model.StatusPagamento.calcularPorSaldo(saldo, valorPago).name();
-        }
-    }
 }

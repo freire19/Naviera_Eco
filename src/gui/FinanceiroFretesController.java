@@ -361,7 +361,7 @@ public class FinanceiroFretesController {
             String remetente = "", destinatario = "", conferente = "", rota = "", dataHora = "", pagamento = "";
             String numeroFrete = selecionada.getNumero();
             java.math.BigDecimal totalBD = java.math.BigDecimal.ZERO;
-            java.util.List<NotaFretePersonalizadaController.ItemNota> itens = new java.util.ArrayList<>();
+            java.util.List<model.ItemNota> itens = new java.util.ArrayList<>();
             try (Connection con = ConexaoBD.getConnection();
                  PreparedStatement stmt = con.prepareStatement(sql)) {
                 stmt.setLong(1, selecionada.getId());
@@ -396,7 +396,7 @@ public class FinanceiroFretesController {
                 stmt.setLong(1, selecionada.getId());
                 ResultSet rs = stmt.executeQuery();
                 while (rs.next()) {
-                    itens.add(new NotaFretePersonalizadaController.ItemNota(
+                    itens.add(new model.ItemNota(
                         rs.getInt("quantidade"),
                         rs.getString("descricao"),
                         rs.getDouble("valor_unitario")

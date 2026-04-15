@@ -1039,7 +1039,6 @@ public class TelaPrincipalController implements Initializable {
     private void handleBackup(ActionEvent e) {
         if (!PermissaoService.exigirAdmin("Backup do Banco de Dados")) return;
         try {
-            // Criar FileChooser para salvar o arquivo
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Salvar Backup do Banco de Dados");
             fileChooser.setInitialFileName("backup_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".sql");
@@ -1047,180 +1046,50 @@ public class TelaPrincipalController implements Initializable {
                 new FileChooser.ExtensionFilter("Arquivo SQL", "*.sql"),
                 new FileChooser.ExtensionFilter("Todos os arquivos", "*.*")
             );
-            
-            // Definir diretório inicial (pasta do usuário)
             fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
-            
-            // Abrir diálogo de salvar
+
             Stage stage = (Stage) rootPane.getScene().getWindow();
             File arquivoDestino = fileChooser.showSaveDialog(stage);
-            
-            if (arquivoDestino == null) {
-                // Usuário cancelou
-                return;
-            }
-            
-            // #014: Ler credenciais de db.properties (nao hardcoded)
-            String host = "localhost";
-            String porta = "5432";
-            String banco = "naviera_eco";
-            String usuario = "postgres";
-            String senha = "";
-            try {
-                java.util.Properties dbProps = new java.util.Properties();
-                try (java.io.FileInputStream fis = new java.io.FileInputStream("db.properties")) {
-                    dbProps.load(fis);
-                }
-                String url = dbProps.getProperty("db.url", "");
-                // Extrai host, porta e banco da URL JDBC: jdbc:postgresql://host:porta/banco
-                if (url.contains("//")) {
-                    String parte = url.substring(url.indexOf("//") + 2);
-                    if (parte.contains(":")) host = parte.substring(0, parte.indexOf(":"));
-                    if (parte.contains(":") && parte.contains("/")) porta = parte.substring(parte.indexOf(":") + 1, parte.indexOf("/"));
-                    if (parte.contains("/")) banco = parte.substring(parte.indexOf("/") + 1);
-                }
-                usuario = dbProps.getProperty("db.usuario", usuario);
-                senha = dbProps.getProperty("db.senha", senha);
-            } catch (Exception ex) {
-                AppLogger.warn("TelaPrincipalController", "Aviso: nao foi possivel ler db.properties para backup. Usando defaults.");
-            }
+            if (arquivoDestino == null) return;
 
-            final String fHost = host;
-            final String fPorta = porta;
-            final String fUsuario = usuario;
-            final String fBanco = banco;
-            final String fSenha = senha;
-
-            // Mostrar alerta de progresso
             Alert alertProgresso = new Alert(AlertType.INFORMATION);
             alertProgresso.setTitle("Backup em Andamento");
             alertProgresso.setHeaderText("Aguarde...");
             alertProgresso.setContentText("Gerando backup do banco de dados.\nIsso pode levar alguns segundos.");
             alertProgresso.show();
-            
-            // Executar pg_dump em daemon thread (fix DP019)
+
+            service.BackupService backupService = new service.BackupService();
+
             Thread backupThread = new Thread(() -> {
-                try {
-                    // Construir comando pg_dump
-                    ProcessBuilder pb = new ProcessBuilder(
-                        "pg_dump",
-                        "-h", fHost,
-                        "-p", fPorta,
-                        "-U", fUsuario,
-                        "-d", fBanco,
-                        "-f", arquivoDestino.getAbsolutePath(),
-                        "--format=plain",
-                        "--no-owner",
-                        "--no-privileges"
-                    );
-                    
-                    // DR025: usar .pgpass temporario em vez de PGPASSWORD no environment
-                    // .pgpass formato: host:porta:banco:usuario:senha
-                    java.io.File pgpassFile = null;
-                    if (fSenha != null && !fSenha.isEmpty()) {
-                        pgpassFile = java.io.File.createTempFile(".pgpass_naviera_", ".tmp");
-                        pgpassFile.deleteOnExit();
-                        // Restringir permissoes (pg_dump exige 0600)
-                        pgpassFile.setReadable(false, false);
-                        pgpassFile.setReadable(true, true);
-                        pgpassFile.setWritable(false, false);
-                        pgpassFile.setWritable(true, true);
-                        java.nio.file.Files.writeString(pgpassFile.toPath(),
-                            fHost + ":" + fPorta + ":" + fBanco + ":" + fUsuario + ":" + fSenha + "\n");
-                        pb.environment().put("PGPASSFILE", pgpassFile.getAbsolutePath());
-                    }
-                    pb.environment().put("PGCONNECT_TIMEOUT", "10");
-
-                    pb.redirectErrorStream(true);
-                    Process processo = pb.start();
-
-                    // Ler saída do processo
-                    StringBuilder output = new StringBuilder();
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(processo.getInputStream()))) {
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            output.append(line).append("\n");
-                        }
-                    }
-
-                    int exitCode = processo.waitFor();
-
-                    // DR025: limpar .pgpass temporario imediatamente apos uso
-                    if (pgpassFile != null && pgpassFile.exists()) pgpassFile.delete();
-                    
-                    // Fechar alerta de progresso e mostrar resultado
-                    Platform.runLater(() -> {
-                        alertProgresso.close();
-                        
-                        if (exitCode == 0 && arquivoDestino.exists()) {
-                            LogService.registrarInfo("Backup realizado com sucesso: " + arquivoDestino.getAbsolutePath());
-                            
-                            Alert sucesso = new Alert(AlertType.INFORMATION);
-                            sucesso.setTitle("Backup Concluído");
-                            sucesso.setHeaderText("Backup realizado com sucesso!");
-                            sucesso.setContentText(
-                                "O arquivo foi salvo em:\n" + arquivoDestino.getAbsolutePath() + 
-                                "\n\nTamanho: " + formatarTamanhoArquivo(arquivoDestino.length())
-                            );
-                            aplicarEstiloAlerta(sucesso);
-                            sucesso.showAndWait();
-                        } else {
-                            LogService.registrarErro("Falha ao gerar backup. Exit code: " + exitCode + ". Output: " + output.toString());
-                            
-                            Alert erro = new Alert(AlertType.ERROR);
-                            erro.setTitle("Erro no Backup");
-                            erro.setHeaderText("Não foi possível gerar o backup");
-                            erro.setContentText(
-                                "Verifique se o PostgreSQL está instalado e se o comando 'pg_dump' está disponível.\n\n" +
-                                "Detalhes: " + output.toString()
-                            );
-                            aplicarEstiloAlerta(erro);
-                            erro.showAndWait();
-                        }
-                    });
-                    
-                } catch (IOException ex) {
-                    Platform.runLater(() -> {
-                        alertProgresso.close();
-                        
-                        LogService.registrarErro("Erro de IO ao executar pg_dump", ex);
-                        
+                service.BackupService.BackupResult resultado = backupService.executarBackup(arquivoDestino);
+                Platform.runLater(() -> {
+                    alertProgresso.close();
+                    if (resultado.isSucesso()) {
+                        LogService.registrarInfo("Backup realizado com sucesso: " + arquivoDestino.getAbsolutePath());
+                        Alert sucesso = new Alert(AlertType.INFORMATION);
+                        sucesso.setTitle("Backup Concluído");
+                        sucesso.setHeaderText("Backup realizado com sucesso!");
+                        sucesso.setContentText(resultado.getMensagem() + "\n\nTamanho: " + resultado.getTamanhoFormatado());
+                        aplicarEstiloAlerta(sucesso);
+                        sucesso.showAndWait();
+                    } else {
+                        LogService.registrarErro("Falha no backup: " + resultado.getMensagem());
                         Alert erro = new Alert(AlertType.ERROR);
                         erro.setTitle("Erro no Backup");
-                        erro.setHeaderText("Comando pg_dump não encontrado");
-                        erro.setContentText(
-                            "O utilitário 'pg_dump' do PostgreSQL não foi encontrado no sistema.\n\n" +
-                            "SOLUÇÃO:\n" +
-                            "1. Verifique se o PostgreSQL está instalado\n" +
-                            "2. Adicione o caminho do PostgreSQL às variáveis de ambiente\n" +
-                            "   Geralmente: C:\\Program Files\\PostgreSQL\\17\\bin\n" +
-                            "3. Reinicie o sistema após configurar"
-                        );
+                        erro.setHeaderText("Não foi possível gerar o backup");
+                        erro.setContentText(resultado.getMensagem());
                         aplicarEstiloAlerta(erro);
                         erro.showAndWait();
-                    });
-                } catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                    LogService.registrarErro("Backup interrompido", ex);
-                }
+                    }
+                });
             });
             backupThread.setDaemon(true);
             backupThread.start();
-            
+
         } catch (Exception ex) {
             LogService.registrarErro("Erro ao iniciar backup", ex);
             AlertHelper.show(AlertType.ERROR, "Erro", "Erro ao iniciar o backup: " + ex.getMessage());
         }
-    }
-    
-    /**
-     * Formata o tamanho do arquivo para exibição
-     */
-    private String formatarTamanhoArquivo(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return String.format("%.2f KB", bytes / 1024.0);
-        if (bytes < 1024 * 1024 * 1024) return String.format("%.2f MB", bytes / (1024.0 * 1024));
-        return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
     }
     
     // =========================================================================

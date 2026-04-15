@@ -540,7 +540,7 @@ public class FinanceiroSaidaController {
     private VBox criarCabecalhoEmpresa() {
         VBox cabecalho = new VBox(5);
         cabecalho.setAlignment(javafx.geometry.Pos.CENTER);
-        DadosEmpresa dados = buscarDadosEmpresa();
+        model.DadosEmpresa dados = buscarDadosEmpresa();
         if (dados.pathLogo != null && !dados.pathLogo.isEmpty()) {
             try {
                 File file = new File(dados.pathLogo);
@@ -736,12 +736,8 @@ public class FinanceiroSaidaController {
         try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.configuringTabela (CSS): " + e.getMessage()); }
     }
     private void configurarTabela() { configuringTabela(); }
-    private static class DadosEmpresa {
-        String nome;
-        String pathLogo;
-    }
-    private DadosEmpresa buscarDadosEmpresa() {
-        DadosEmpresa d = new DadosEmpresa();
+    private model.DadosEmpresa buscarDadosEmpresa() {
+        model.DadosEmpresa d = new model.DadosEmpresa();
         try {
             dao.EmpresaDAO empresaDAO = new dao.EmpresaDAO();
             model.Empresa empresa = empresaDAO.buscarPorId(dao.EmpresaDAO.ID_EMPRESA_PRINCIPAL);

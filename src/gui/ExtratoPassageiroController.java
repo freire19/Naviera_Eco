@@ -7,6 +7,7 @@ import dao.ReciboQuitacaoPassageiroDAO;
 import gui.util.StatusPagamentoView;
 import model.Passageiro;
 import model.Passagem;
+import model.ItemExtratoPassageiro;
 import model.ReciboQuitacaoPassageiro;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -63,14 +64,14 @@ public class ExtratoPassageiroController implements Initializable {
     @FXML private Label lblDivida;
     @FXML private Button btnQuitarTudo;
 
-    @FXML private TableView<ItemExtrato> tabela;
-    @FXML private TableColumn<ItemExtrato, String> colData;
-    @FXML private TableColumn<ItemExtrato, String> colRota;
-    @FXML private TableColumn<ItemExtrato, String> colDescricao;
-    @FXML private TableColumn<ItemExtrato, String> colValor;
-    @FXML private TableColumn<ItemExtrato, String> colPago;
-    @FXML private TableColumn<ItemExtrato, String> colSaldo;
-    @FXML private TableColumn<ItemExtrato, String> colStatus;
+    @FXML private TableView<ItemExtratoPassageiro> tabela;
+    @FXML private TableColumn<ItemExtratoPassageiro, String> colData;
+    @FXML private TableColumn<ItemExtratoPassageiro, String> colRota;
+    @FXML private TableColumn<ItemExtratoPassageiro, String> colDescricao;
+    @FXML private TableColumn<ItemExtratoPassageiro, String> colValor;
+    @FXML private TableColumn<ItemExtratoPassageiro, String> colPago;
+    @FXML private TableColumn<ItemExtratoPassageiro, String> colSaldo;
+    @FXML private TableColumn<ItemExtratoPassageiro, String> colStatus;
 
     private PassagemDAO passagemDAO;
     private PassageiroDAO passageiroDAO;
@@ -78,7 +79,7 @@ public class ExtratoPassageiroController implements Initializable {
     private final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
 
     private List<String> todosNomesPassageiros = new ArrayList<>();
-    private ObservableList<ItemExtrato> listaImprimir;
+    private ObservableList<ItemExtratoPassageiro> listaImprimir;
 
     private double totalDividaCalculada = 0.0;
 
@@ -201,7 +202,7 @@ public class ExtratoPassageiroController implements Initializable {
         colRota.setStyle(centerStyle);
         colStatus.setStyle(centerStyle);
 
-        colStatus.setCellFactory(column -> new TableCell<ItemExtrato, String>() {
+        colStatus.setCellFactory(column -> new TableCell<ItemExtratoPassageiro, String>() {
             @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setText(null); setStyle(""); }
@@ -211,7 +212,7 @@ public class ExtratoPassageiroController implements Initializable {
                 }
             }
         });
-        colSaldo.setCellFactory(column -> new TableCell<ItemExtrato, String>() {
+        colSaldo.setCellFactory(column -> new TableCell<ItemExtratoPassageiro, String>() {
             @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setText(null); setStyle(""); }
@@ -249,7 +250,7 @@ public class ExtratoPassageiroController implements Initializable {
         new Thread(() -> {
             try {
                 List<Passagem> listaBD = passagemDAO.listarExtratoPorPassageiro(nome, "TODOS");
-                ObservableList<ItemExtrato> itens = FXCollections.observableArrayList();
+                ObservableList<ItemExtratoPassageiro> itens = FXCollections.observableArrayList();
 
                 // DL046: calcular totais SOMENTE sobre itens que passam no filtro de status
                 double totalGeral = 0;
@@ -276,7 +277,7 @@ public class ExtratoPassageiroController implements Initializable {
 
                         String rota = (p.getOrigem() != null ? p.getOrigem() : "?") + " > " + (p.getDestino() != null ? p.getDestino() : "?");
                         String desc = "Bil. " + p.getNumBilhete();
-                        itens.add(new ItemExtrato(dataDisplay(p, dtf), rota, desc, nf.format(vTotal), nf.format(vPago), nf.format(vSaldo), stCalculado));
+                        itens.add(new ItemExtratoPassageiro(dataDisplay(p, dtf), rota, desc, nf.format(vTotal), nf.format(vPago), nf.format(vSaldo), stCalculado));
                     }
                 }
 
@@ -332,7 +333,7 @@ public class ExtratoPassageiroController implements Initializable {
         Optional<ReciboQuitacaoPassageiro> result = dialog.showAndWait();
         if (result.isPresent()) {
             ReciboQuitacaoPassageiro reciboSelecionado = result.get();
-            List<ItemExtrato> itensReconstruidos = reconstruirItensDoRecibo(reciboSelecionado.getItensPagos());
+            List<ItemExtratoPassageiro> itensReconstruidos = reconstruirItensDoRecibo(reciboSelecionado.getItensPagos());
 
             // Passa "2ª VIA" no título para cair na lógica correta de impressão
             imprimirReciboQuitacaoTermica(
@@ -345,8 +346,8 @@ public class ExtratoPassageiroController implements Initializable {
         }
     }
 
-    private List<ItemExtrato> reconstruirItensDoRecibo(String itensTexto) {
-        List<ItemExtrato> lista = new ArrayList<>();
+    private List<ItemExtratoPassageiro> reconstruirItensDoRecibo(String itensTexto) {
+        List<ItemExtratoPassageiro> lista = new ArrayList<>();
         if (itensTexto == null || itensTexto.isEmpty()) return lista;
 
         String[] itens = itensTexto.split(";");
@@ -356,7 +357,7 @@ public class ExtratoPassageiroController implements Initializable {
                 if (partes.length >= 3) {
                     // DL058: saldo zero e correto aqui — estes itens foram quitados no momento do recibo
                     // partes[0]=descricao, partes[1]=data, partes[2]=valor pago
-                    lista.add(new ItemExtrato(partes[1], "--", partes[0], partes[2], partes[2], "R$ 0,00", "QUITADO"));
+                    lista.add(new ItemExtratoPassageiro(partes[1], "--", partes[0], partes[2], partes[2], "R$ 0,00", "QUITADO"));
                 }
             } catch (Exception e) { AppLogger.warn("ExtratoPassageiroController", "Erro em ExtratoPassageiroController.reconstruirItensDoRecibo: " + e.getMessage()); }
         }
@@ -370,11 +371,11 @@ public class ExtratoPassageiroController implements Initializable {
         if (totalDividaCalculada <= model.StatusPagamento.TOLERANCIA_PAGAMENTO.doubleValue()) return;
 
         try {
-            List<ItemExtrato> itensSendoPagos = new ArrayList<>();
+            List<ItemExtratoPassageiro> itensSendoPagos = new ArrayList<>();
             StringBuilder itensParaSalvar = new StringBuilder();
 
             if (listaImprimir != null) {
-                for (ItemExtrato item : listaImprimir) {
+                for (ItemExtratoPassageiro item : listaImprimir) {
                     if (!item.getStatus().equals("PAGO")) {
                         itensSendoPagos.add(item);
                         String dataCurta = item.getData().length() >= 5 ? item.getData().substring(0, 5) : "--";
@@ -448,7 +449,7 @@ public class ExtratoPassageiroController implements Initializable {
     // ===========================================================================================
     // IMPRESSÃO TÉRMICA (AJUSTADA: DATAS, N° BILHETE, TÍTULO 2 VIA E CORREÇÃO DO R$ DUPLICADO)
     // ===========================================================================================
-    private void imprimirReciboQuitacaoTermica(String nome, double valorPago, List<ItemExtrato> itensPagos, String infoPagamento, LocalDateTime dataEmissao) {
+    private void imprimirReciboQuitacaoTermica(String nome, double valorPago, List<ItemExtratoPassageiro> itensPagos, String infoPagamento, LocalDateTime dataEmissao) {
         new Thread(() -> {
             PrinterJob job = PrinterJob.getPrinterJob();
             job.setJobName("Recibo - " + nome);
@@ -524,7 +525,7 @@ public class ExtratoPassageiroController implements Initializable {
                     y += 12;
 
                     g2d.setFont(new Font("Arial", Font.PLAIN, 8));
-                    for (ItemExtrato item : itensPagos) {
+                    for (ItemExtratoPassageiro item : itensPagos) {
                         // N° no bilhete
                         String bilheteResumido = item.getDescricao().replace("Bil. ", "");
                         g2d.drawString("N° " + bilheteResumido, xBilhete, y);
@@ -715,7 +716,7 @@ public class ExtratoPassageiroController implements Initializable {
                     g2d.setFont(new Font("Arial", Font.PLAIN, 8));
                     for (int i = 0; i < listaImprimir.size(); i++) {
                         if (y > height - 50) break;
-                        ItemExtrato item = listaImprimir.get(i);
+                        ItemExtratoPassageiro item = listaImprimir.get(i);
 
                         if (i % 2 != 0) {
                             g2d.setColor(new Color(245, 245, 245));
@@ -814,18 +815,4 @@ public class ExtratoPassageiroController implements Initializable {
         stage.close();
     }
 
-    public static class ItemExtrato {
-        private String data, rota, descricao, valorTotal, valorPago, saldoDevedor, status;
-        public ItemExtrato(String data, String rota, String descricao, String valorTotal, String valorPago, String saldoDevedor, String status) {
-            this.data = data; this.rota = rota; this.descricao = descricao;
-            this.valorTotal = valorTotal; this.valorPago = valorPago; this.saldoDevedor = saldoDevedor; this.status = status;
-        }
-        public String getData() { return data; }
-        public String getRota() { return rota; }
-        public String getDescricao() { return descricao; }
-        public String getValorTotal() { return valorTotal; }
-        public String getValorPago() { return valorPago; }
-        public String getSaldoDevedor() { return saldoDevedor; }
-        public String getStatus() { return status; }
-    }
 }

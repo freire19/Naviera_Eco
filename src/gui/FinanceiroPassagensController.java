@@ -8,6 +8,7 @@ import gui.util.PermissaoService;
 import dao.PassagemDAO;
 import dao.AuxiliaresDAO;
 import model.Passagem;
+import model.ResultadoQueryPassagens;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.collections.ObservableList;
@@ -132,17 +133,6 @@ public class FinanceiroPassagensController {
         javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
     }
 
-    /**
-     * Resultado da query de passagens financeiras.
-     */
-    private static class ResultadoQueryPassagens {
-        final ObservableList<PassagemFinanceiro> lista;
-        final java.math.BigDecimal somaPendente;
-        ResultadoQueryPassagens(ObservableList<PassagemFinanceiro> lista, java.math.BigDecimal somaPendente) {
-            this.lista = lista;
-            this.somaPendente = somaPendente;
-        }
-    }
 
     /**
      * Executa a query de passagens financeiras com os filtros informados.
