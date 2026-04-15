@@ -208,16 +208,26 @@ body {
 
 .nav-section {
   padding: 0 8px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .nav-section-title {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  padding: 12px 12px 4px;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  padding: 14px 12px 6px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-section:first-child .nav-section-title {
+  border-top: none;
+  margin-top: 0;
 }
 
 .nav-item {

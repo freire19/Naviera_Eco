@@ -2,13 +2,13 @@ import { useAuth } from '../App.jsx'
 
 const NAV = [
   {
-    title: 'Principal',
+    title: 'Principal', sectionIcon: '\u2302',
     items: [
       { key: 'inicio', icon: '\u2302', label: 'Inicio' }
     ]
   },
   {
-    title: 'Passagens',
+    title: 'Passagens', sectionIcon: '\uD83C\uDFAB',
     items: [
       { key: 'vender-passagem', icon: '\uD83C\uDFAB', label: 'Vender Passagem' },
       { key: 'listar-passageiros', icon: '\uD83D\uDCCB', label: 'Lista Passageiros' },
@@ -16,7 +16,7 @@ const NAV = [
     ]
   },
   {
-    title: 'Encomendas',
+    title: 'Encomendas', sectionIcon: '\uD83D\uDCE6',
     items: [
       { key: 'nova-encomenda', icon: '\uD83D\uDCE6', label: 'Nova Encomenda' },
       { key: 'listar-encomendas', icon: '\uD83D\uDCCB', label: 'Listar Encomendas' },
@@ -26,7 +26,7 @@ const NAV = [
     ]
   },
   {
-    title: 'Fretes',
+    title: 'Fretes', sectionIcon: '\uD83D\uDE9A',
     items: [
       { key: 'lancar-frete', icon: '\uD83D\uDE9A', label: 'Lancar Frete' },
       { key: 'listar-fretes', icon: '\uD83D\uDCCB', label: 'Lista Fretes' },
@@ -36,14 +36,14 @@ const NAV = [
     ]
   },
   {
-    title: 'OCR por Foto',
+    title: 'OCR por Foto', sectionIcon: '\uD83D\uDCF7',
     items: [
       { key: '_ocr-app', icon: '\uD83D\uDCF1', label: 'Lancar por Foto', external: true },
       { key: 'review-ocr-section', icon: '\uD83D\uDD0D', label: 'Conferir Lancamentos', alias: 'review-ocr' }
     ]
   },
   {
-    title: 'Financeiro',
+    title: 'Financeiro', sectionIcon: '\uD83D\uDCB0',
     items: [
       { key: 'financeiro-entrada', icon: '\uD83D\uDCB0', label: 'Lancar Entrada' },
       { key: 'financeiro-saida', icon: '\uD83D\uDCB8', label: 'Lancar Saida' },
@@ -52,7 +52,7 @@ const NAV = [
     ]
   },
   {
-    title: 'Cadastros',
+    title: 'Cadastros', sectionIcon: '\u2699',
     items: [
       { key: 'cadastro-viagem', icon: '\u26F4', label: 'Viagens' },
       { key: 'cadastro-usuario', icon: '\uD83D\uDC64', label: 'Usuarios' },
@@ -69,7 +69,7 @@ const NAV = [
     ]
   },
   {
-    title: 'Sistema',
+    title: 'Sistema', sectionIcon: '\uD83D\uDD27',
     items: [
       { key: 'agenda', icon: '\uD83D\uDCC5', label: 'Agenda' },
       { key: 'recibo-avulso', icon: '\uD83E\uDDFE', label: 'Recibos' },
@@ -123,7 +123,7 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
       <nav className="sidebar-nav">
         {sections.map(section => (
           <div className="nav-section" key={section.title}>
-            <div className="nav-section-title">{section.title}</div>
+            <div className="nav-section-title">{section.sectionIcon && <span>{section.sectionIcon}</span>}{section.title}</div>
             {section.items.map(item => {
               if (item.external) {
                 // Botao que abre naviera-ocr em nova aba
