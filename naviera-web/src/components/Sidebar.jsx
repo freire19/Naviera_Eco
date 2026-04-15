@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../App.jsx'
 
 const NAV = [
@@ -114,7 +114,24 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
   if (isAdminEmpresa) sections.push(NAV_DOCS)
   if (isAdminGlobal) sections.push(NAV_ADMIN)
 
-  const [collapsed, setCollapsed] = useState({})
+  // Por padrao todas colapsadas, exceto a secao que contem a pagina ativa
+  const [collapsed, setCollapsed] = useState(() => {
+    const initial = {}
+    sections.forEach(s => {
+      const hasActive = s.items.some(i => (i.alias || i.key) === currentPage)
+      initial[s.title] = !hasActive
+    })
+    return initial
+  })
+
+  // Expandir automaticamente a secao quando pagina ativa mudar
+  useEffect(() => {
+    sections.forEach(s => {
+      if (s.items.some(i => (i.alias || i.key) === currentPage)) {
+        setCollapsed(prev => ({ ...prev, [s.title]: false }))
+      }
+    })
+  }, [currentPage])
 
   function toggleSection(title) {
     setCollapsed(prev => ({ ...prev, [title]: !prev[title] }))
