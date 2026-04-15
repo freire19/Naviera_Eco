@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 import { printReciboEncomenda } from '../utils/print.js'
 
@@ -49,13 +49,18 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
 
   // Dropdown itens customizado
   const [showItemList, setShowItemList] = useState(false)
+  const itemDropdownRef = useRef(null)
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
     if (!showItemList) return
-    const handler = () => setTimeout(() => setShowItemList(false), 200)
-    document.addEventListener('click', handler)
-    return () => document.removeEventListener('click', handler)
+    const handler = (e) => {
+      if (itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) {
+        setShowItemList(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [showItemList])
 
   // Pagamento modal
@@ -417,49 +422,55 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
               <label style={{ ...L, fontSize: '0.65rem' }}>Qtd</label>
               <input style={{ ...I, textAlign: 'center' }} type="number" min="1" value={novoItem.quantidade} onChange={e => handleNovoItemChange('quantidade', e.target.value)} />
             </div>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} ref={itemDropdownRef}>
               <label style={{ ...L, fontSize: '0.65rem' }}>Descricao do Item (Enter busca)</label>
               <input style={I} value={novoItem.descricao}
-                onChange={e => handleNovoItemChange('descricao', e.target.value)}
+                onChange={e => {
+                  handleNovoItemChange('descricao', e.target.value)
+                  setShowItemList(true)
+                }}
                 onFocus={() => setShowItemList(true)}
                 placeholder="Digite ou selecione um item..." />
-              {showItemList && itensPadrao.length > 0 && (
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                  background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4,
-                  maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)'
-                }}>
-                  {itensPadrao
-                    .filter(ip => !novoItem.descricao || (ip.nome_item || '').toLowerCase().includes(novoItem.descricao.toLowerCase()))
-                    .map((ip, idx) => {
-                    const preco = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
-                    return (
-                      <div key={ip.id || ip.id_item_encomenda || idx}
-                        onClick={() => {
-                          setNovoItem(prev => ({
-                            ...prev,
-                            descricao: ip.nome_item,
-                            valor_unitario: preco,
-                            valor_total: ((parseInt(prev.quantidade) || 1) * preco).toFixed(2)
-                          }))
-                          setShowItemList(false)
-                        }}
-                        style={{
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          padding: '6px 10px', cursor: 'pointer', fontSize: '0.82rem',
-                          background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
-                          borderBottom: '1px solid var(--border)'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--primary)'}
-                        onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'}
-                      >
-                        <span style={{ fontWeight: 500 }}>{ip.nome_item}</span>
-                        <span style={{ fontFamily: 'Space Mono, monospace', color: 'var(--text-muted)' }}>R$ {preco.toFixed(2)}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              {showItemList && (() => {
+                const q = (novoItem.descricao || '').toLowerCase()
+                const filtered = itensPadrao.filter(ip => !q || (ip.nome_item || '').toLowerCase().includes(q))
+                if (filtered.length === 0) return null
+                return (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4,
+                    maxHeight: 220, overflowY: 'auto', boxShadow: 'var(--shadow-lg)'
+                  }}>
+                    {filtered.map((ip, idx) => {
+                      const preco = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
+                      return (
+                        <div key={ip.id || ip.id_item_encomenda || idx}
+                          onMouseDown={() => {
+                            setNovoItem(prev => ({
+                              ...prev,
+                              descricao: ip.nome_item,
+                              valor_unitario: preco,
+                              valor_total: ((parseInt(prev.quantidade) || 1) * preco).toFixed(2)
+                            }))
+                            setShowItemList(false)
+                          }}
+                          style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '8px 12px', cursor: 'pointer', fontSize: '0.85rem',
+                            background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
+                            borderBottom: '1px solid var(--border)'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{ip.nome_item}</span>
+                          <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.82rem' }}>R$ {preco.toFixed(2)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>V. Unit.</label>
