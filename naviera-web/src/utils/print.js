@@ -9,12 +9,17 @@ function formatMoney(val) {
 
 function formatDate(dateStr) {
   if (!dateStr) return '\u2014'
+  const s = String(dateStr)
+  // Ja formatado DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s
   try {
-    return new Date(dateStr).toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric'
-    })
+    // ISO date: pegar apenas YYYY-MM-DD para evitar problema de timezone
+    const iso = s.includes('T') ? s.substring(0, 10) : s
+    const parts = iso.split('-')
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+    return new Date(s).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   } catch {
-    return dateStr
+    return s
   }
 }
 
@@ -229,8 +234,8 @@ export async function printBilhete(passagem, viagem, empresaData) {
   const origem = viagem?.origem || ''
   const destino = viagem?.destino || ''
   const rota = (origem && destino) ? `${origem} - ${destino}` : (viagem?.nome_rota || '\u2014')
-  const dataViagem = viagem?.data_viagem || '\u2014'
-  const dataChegada = viagem?.data_chegada || '\u2014'
+  const dataViagem = formatDate(viagem?.data_viagem)
+  const dataChegada = formatDate(viagem?.data_chegada)
   const numBilhete = passagem.numero_bilhete || passagem.num_bilhete || passagem.id_passagem || '\u2014'
   const vTotal = parseFloat(passagem.valor_total) || 0
   const vPago = parseFloat(passagem.valor_pago) || 0
@@ -252,10 +257,10 @@ export async function printBilhete(passagem, viagem, empresaData) {
 
   /* Header empresa */
   .emp-header { text-align: center; border-bottom: 2.5px solid #000; padding-bottom: 6px; margin-bottom: 6px; }
-  .emp-nome { font-size: 16px; font-weight: 700; }
-  .emp-prop { font-size: 10px; }
-  .emp-info { font-size: 9px; color: #444; }
-  .emp-frase { font-size: 8px; font-style: italic; color: #666; margin-top: 2px; }
+  .emp-nome { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  .emp-prop { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .emp-info { font-size: 9px; color: #444; margin-top: 1px; }
+  .emp-frase { font-size: 9px; font-style: italic; color: #333; margin-top: 3px; }
 
   /* Secoes */
   .sec-title { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #059669; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin: 6px 0 4px; }
@@ -282,9 +287,9 @@ export async function printBilhete(passagem, viagem, empresaData) {
   <!-- PAINEL ESQUERDO -->
   <div class="left">
     <div class="emp-header">
-      <div class="emp-nome">${emp.companhia || emp.nome_embarcacao || 'NAVIERA'}</div>
-      <div class="emp-prop">${emp.proprietario || ''}</div>
-      <div class="emp-info">${[emp.cnpj, emp.telefone].filter(Boolean).join(' | ')}</div>
+      <div class="emp-nome">${emp.nome_embarcacao ? 'F/B ' + emp.nome_embarcacao : emp.companhia || 'NAVIERA'}</div>
+      <div class="emp-prop">${emp.companhia || emp.proprietario || ''}</div>
+      <div class="emp-info">CNPJ: ${emp.cnpj || '—'} | ${emp.telefone || ''}</div>
       ${emp.frase_relatorio ? `<div class="emp-frase">${emp.frase_relatorio}</div>` : ''}
     </div>
 
@@ -295,28 +300,29 @@ export async function printBilhete(passagem, viagem, empresaData) {
     <div class="row"><span class="lbl">Acom.:</span><span class="val">${passagem.nome_acomodacao || '\u2014'} | Agente: ${passagem.nome_agente || '\u2014'}</span></div>
 
     <div class="sec-title">PASSAGEIRO</div>
-    <div class="row"><span class="lbl">Nome:</span><span class="val">${passagem.nome_passageiro || '\u2014'}</span></div>
-    <div class="row"><span class="lbl">Doc:</span><span class="val">${passagem.numero_doc || '\u2014'} | Nac: ${passagem.nome_nacionalidade || '\u2014'}</span></div>
-    <div class="row"><span class="lbl">DN:</span><span class="val">${formatDate(passagem.data_nascimento)} | Sx: ${passagem.nome_sexo || '\u2014'}</span></div>
+    <div class="row"><span class="lbl">Nome:</span><span class="val"><strong>${passagem.nome_passageiro || '\u2014'}</strong></span></div>
+    <div class="row"><span class="lbl">Doc:</span><span class="val"><strong>${passagem.numero_doc || '\u2014'}</strong>  Nac: <strong>${passagem.nome_nacionalidade || '\u2014'}</strong></span></div>
+    <div class="row"><span class="lbl">DN:</span><span class="val"><strong>${formatDate(passagem.data_nascimento)}</strong>  Id: <strong>${calcIdadePrint(passagem.data_nascimento)}a</strong>  Sx: <strong>${passagem.nome_sexo || '\u2014'}</strong></span></div>
 
-    <div class="sec-title">PAGAMENTO</div>
-    <div class="pag-grid">
-      <div class="pag-col">
-        <div class="row"><span class="lbl">Alim.:</span><span class="val">${formatMoney(passagem.valor_alimentacao)}</span></div>
-        <div class="row"><span class="lbl">Transp.:</span><span class="val">${formatMoney(passagem.valor_transporte)}</span></div>
+    <div style="display:flex; gap:6px; margin-top:6px; border-top:1px solid #999; padding-top:4px;">
+      <div style="flex:1;">
+        <div style="font-size:9px; font-weight:700; margin-bottom:3px;">TARIFAS</div>
+        <div class="row"><span class="lbl">Alim:</span><span class="val">${formatMoney(passagem.valor_alimentacao)}</span></div>
+        <div class="row"><span class="lbl">Transp:</span><span class="val">${formatMoney(passagem.valor_transporte)}</span></div>
         <div class="row"><span class="lbl">Carga:</span><span class="val">${formatMoney(passagem.valor_cargas)}</span></div>
       </div>
-      <div class="pag-col" style="text-align:right;">
-        <div class="pag-total">TOTAL: ${formatMoney(vTotal)}</div>
-        ${passagem.valor_desconto_geral > 0 ? `<div class="row" style="justify-content:flex-end;"><span>Desc.: ${formatMoney(passagem.valor_desconto_geral)}</span></div>` : ''}
-        <div class="row" style="justify-content:flex-end;"><span>Pago: ${formatMoney(vPago)}</span></div>
-        ${troco > 0 ? `<div class="row" style="justify-content:flex-end;"><span>Troco: ${formatMoney(troco)}</span></div>` : ''}
-        ${vDevedor > 0.01 ? `<div class="row" style="justify-content:flex-end; color:#DC2626;"><span>Falta: ${formatMoney(vDevedor)}</span></div>` : ''}
+      <div style="flex:1; text-align:right;">
+        <div style="font-size:9px; font-weight:700; margin-bottom:3px;">PAGAMENTO</div>
+        <div style="font-size:16px; font-weight:700;">TOTAL: ${formatMoney(vTotal)}</div>
+        ${parseFloat(passagem.valor_desconto_geral) > 0 ? `<div style="font-size:9px;">Desc.: ${formatMoney(passagem.valor_desconto_geral)}</div>` : ''}
+        <div style="font-size:9px;">Pago: ${formatMoney(vPago)}</div>
+        ${troco > 0 ? `<div style="font-size:9px;">Troco: ${formatMoney(troco)}</div>` : ''}
+        ${vDevedor > 0.01 ? `<div style="font-size:9px; color:#DC2626;">Falta: ${formatMoney(vDevedor)}</div>` : ''}
         <div class="row" style="justify-content:flex-end; font-weight:600;"><span>Situacao: ${situacao}</span></div>
       </div>
     </div>
 
-    <div class="footer">Emissao: ${new Date().toLocaleString('pt-BR')}</div>
+    <div class="footer">Emissao: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
   </div>
 
   <!-- PAINEL DIREITO -->
