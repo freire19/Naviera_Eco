@@ -88,10 +88,9 @@ export default function RelatorioEncomendas({ viagemAtiva, onNavigate }) {
           // Carregar itens de cada encomenda
           let itensData = []
           try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`/api/encomendas/${e.id_encomenda}/itens`, { headers: { Authorization: `Bearer ${token}` } })
-            if (res.ok) itensData = await res.json()
-          } catch {}
+            itensData = await api.get(`/encomendas/${e.id_encomenda}/itens`)
+            if (!Array.isArray(itensData)) itensData = []
+          } catch { itensData = [] }
 
           const devedor = Math.max(0, (parseFloat(e.total_a_pagar) || 0) - (parseFloat(e.desconto) || 0) - (parseFloat(e.valor_pago) || 0))
 
