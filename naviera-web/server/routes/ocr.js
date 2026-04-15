@@ -12,7 +12,7 @@ import { parseOcrText } from '../helpers/parseOcrText.js'
 import { criarFreteComItens } from '../helpers/criarFrete.js'
 import { geminiParseOCR } from '../helpers/geminiParser.js'
 import { geminiVisionAnalyze } from '../helpers/geminiVision.js'
-import { geminiParseEncomenda } from '../helpers/geminiEncomendaParser.js'
+import { geminiParseEncomenda, geminiParseLote } from '../helpers/geminiEncomendaParser.js'
 import { OCR_STATUS, EDITAVEIS } from '../helpers/ocrStatus.js'
 import log from '../logger.js'
 
@@ -67,15 +67,67 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
 
   const empresaId = req.user.empresa_id
   const { viagem_id, tipo, client_uuid } = req.body
-  const tipoLanc = tipo === 'encomenda' ? 'encomenda' : 'frete'
+  const tipoLanc = ['encomenda', 'lote'].includes(tipo) ? tipo : 'frete'
 
   try {
     let ocrResult = { text: '', confidence: 0, fullResponse: null }
     let dados
 
-    if (tipoLanc === 'encomenda') {
-      // ENCOMENDA: primeiro tenta Vision OCR para detectar texto (protocolo manuscrito)
-      // Se detectar texto substancial → parser de encomenda (Gemini text)
+    if (tipoLanc === 'lote') {
+      // LOTE: foto de protocolo com N encomendas separadas
+      try {
+        ocrResult = await callVisionOCR(req.file.path)
+      } catch (err) {
+        log.error('OCR', 'Vision OCR falhou para lote', { empresa_id: empresaId, erro: err.message })
+      }
+
+      if (!ocrResult.text || ocrResult.text.length < 30) {
+        return res.status(400).json({ error: 'Nao foi possivel ler texto na foto. Use uma foto do protocolo manuscrito.' })
+      }
+
+      const padrao = await pool.query(
+        'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+        [empresaId]
+      )
+
+      const loteResult = await geminiParseLote(ocrResult.text, padrao.rows)
+      log.info('OCR', 'Lote parser OK', { empresa_id: empresaId, encomendas: loteResult.encomendas.length })
+
+      // Criar N lancamentos — 1 por encomenda
+      const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
+      const loteUuid = crypto.randomUUID()
+      const lancamentos = []
+
+      for (let i = 0; i < loteResult.encomendas.length; i++) {
+        const enc = loteResult.encomendas[i]
+        const encUuid = client_uuid ? `${client_uuid}-${i}` : crypto.randomUUID()
+        const encDados = { ...enc, rota: enc.rota || loteResult.rota || '' }
+
+        const result = await pool.query(`
+          INSERT INTO ocr_lancamentos (uuid, empresa_id, id_viagem, foto_path, foto_original_name,
+            ocr_texto_bruto, ocr_confianca, dados_extraidos,
+            status, id_usuario_criou, nome_usuario_criou, tipo, lote_uuid, lote_index)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10, 'lote', $11, $12)
+          ON CONFLICT (uuid) DO UPDATE SET uuid = ocr_lancamentos.uuid
+          RETURNING *
+        `, [
+          encUuid, empresaId, viagem_id || null, fotoRelPath, req.file.originalname,
+          ocrResult.text, ocrResult.confidence, JSON.stringify(encDados),
+          req.user.id, req.user.login || null, loteUuid, i
+        ])
+        lancamentos.push({ lancamento: result.rows[0], dados_extraidos: encDados })
+      }
+
+      return res.status(201).json({
+        tipo: 'lote',
+        lote_uuid: loteUuid,
+        lancamentos,
+        ocr_confianca: ocrResult.confidence
+      })
+
+    } else if (tipoLanc === 'encomenda') {
+      // ENCOMENDA: primeiro tenta Vision OCR para detectar texto
+      // Se detectar texto substancial → parser de encomenda
       // Se pouco/nenhum texto → Gemini Vision (foto de item fisico)
       try {
         ocrResult = await callVisionOCR(req.file.path)
@@ -88,20 +140,15 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
         [empresaId]
       )
 
-      const MIN_TEXT_LENGTH = 30 // protocolo manuscrito tem pelo menos 30 chars
-      if (ocrResult.text && ocrResult.text.length >= MIN_TEXT_LENGTH) {
-        // Texto detectado — protocolo manuscrito ou documento
+      if (ocrResult.text && ocrResult.text.length >= 30) {
         try {
           dados = await geminiParseEncomenda(ocrResult.text, padrao.rows)
-          log.info('OCR', 'Gemini encomenda parser OK (protocolo)', { empresa_id: empresaId, itens: dados.itens?.length || 0, textLen: ocrResult.text.length })
+          log.info('OCR', 'Gemini encomenda parser OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
         } catch (geminiErr) {
           log.warn('OCR', 'Gemini encomenda parser falhou, tentando Vision', { empresa_id: empresaId, erro: geminiErr.message })
-          // Fallback: Gemini Vision na imagem
           dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
-          log.info('OCR', 'Gemini Vision (encomenda fallback) OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
         }
       } else {
-        // Pouco/nenhum texto — foto de item fisico
         try {
           dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
           ocrResult.confidence = 85
@@ -260,7 +307,7 @@ router.post('/lancamentos/:id/ia-review', async (req, res) => {
     const { ocr_texto_bruto, tipo, foto_path } = lancResult.rows[0]
     let dados
 
-    if (tipo === 'encomenda') {
+    if (tipo === 'encomenda' || tipo === 'lote') {
       const padrao = await pool.query(
         'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
         [empresaId]
@@ -381,7 +428,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
 
     let resultado
 
-    if (lanc.tipo === 'encomenda') {
+    if (lanc.tipo === 'encomenda' || lanc.tipo === 'lote' || tipo === 'lote') {
       // ENCOMENDA: criar registro em encomendas + encomenda_itens
       const totalAPagar = dados.total_a_pagar || dados.valor_total || (dados.itens || []).reduce((s, i) => s + ((i.subtotal || i.valor_total || 0) || (i.quantidade || 1) * (i.preco_unitario || i.valor_unitario || 0)), 0)
       const totalVolumes = dados.total_volumes || (dados.itens || []).reduce((s, i) => s + (i.quantidade || 1), 0)
@@ -503,12 +550,18 @@ router.delete('/lancamentos/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado ou ja aprovado/rejeitado' })
 
-    // Limpar foto do disco para evitar orfaos
+    // Limpar foto do disco — mas so se nenhum outro lancamento do lote usa a mesma foto
     const fotoPath = result.rows[0].foto_path
     if (fotoPath) {
-      const fullPath = path.resolve(UPLOAD_PATH, fotoPath)
-      if (fullPath.startsWith(path.resolve(UPLOAD_PATH))) {
-        await unlink(fullPath).catch(() => {})
+      const others = await pool.query(
+        'SELECT COUNT(*) FROM ocr_lancamentos WHERE foto_path = $1 AND id != $2',
+        [fotoPath, req.params.id]
+      )
+      if (parseInt(others.rows[0].count) === 0) {
+        const fullPath = path.resolve(UPLOAD_PATH, fotoPath)
+        if (fullPath.startsWith(path.resolve(UPLOAD_PATH))) {
+          await unlink(fullPath).catch(() => {})
+        }
       }
     }
 
@@ -534,7 +587,7 @@ router.put('/lancamentos/:id/reanalisar', async (req, res) => {
     const { ocr_texto_bruto, tipo, foto_path } = lancResult.rows[0]
     let dados
 
-    if (tipo === 'encomenda') {
+    if (tipo === 'encomenda' || tipo === 'lote') {
       const padrao = await pool.query(
         'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
         [empresaId]

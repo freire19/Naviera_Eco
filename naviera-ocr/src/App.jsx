@@ -11,6 +11,7 @@ import CapturaScreen from './screens/CapturaScreen.jsx'
 import RevisaoScreen from './screens/RevisaoScreen.jsx'
 import ConfirmadoScreen from './screens/ConfirmadoScreen.jsx'
 import HistoricoScreen from './screens/HistoricoScreen.jsx'
+import RevisaoLoteScreen from './screens/RevisaoLoteScreen.jsx'
 
 import useOfflineQueue from './hooks/useOfflineQueue.js'
 
@@ -30,6 +31,7 @@ export default function App() {
   const [screen, setScreen] = useState('captura') // captura | revisao | confirmado | historico
   const [lancamentoAtual, setLancamentoAtual] = useState(null)
   const [dadosAtual, setDadosAtual] = useState(null)
+  const [loteData, setLoteData] = useState(null)
 
   // Toast
   const [toast, setToast] = useState(null)
@@ -65,9 +67,14 @@ export default function App() {
 
   // OCR result from upload
   const handleOcrResult = (result) => {
-    setLancamentoAtual(result.lancamento)
-    setDadosAtual(result.dados_extraidos)
-    setScreen('revisao')
+    if (result.tipo === 'lote') {
+      setLoteData(result.lancamentos)
+      setScreen('revisao-lote')
+    } else {
+      setLancamentoAtual(result.lancamento)
+      setDadosAtual(result.dados_extraidos)
+      setScreen('revisao')
+    }
   }
 
   // After operator confirms review
@@ -77,8 +84,16 @@ export default function App() {
     showToast('Lancamento enviado para revisao do conferente', 'success')
   }
 
+  // After operator confirms lote
+  const handleLoteConfirm = (ids) => {
+    setLoteData(null)
+    setLancamentoAtual({ id: ids[0] })
+    setScreen('confirmado')
+    showToast(`${ids.length} encomendas enviadas para revisao do conferente`, 'success')
+  }
+
   // Navigation
-  const goCaptura = () => { setScreen('captura'); setTab('captura'); setLancamentoAtual(null); setDadosAtual(null) }
+  const goCaptura = () => { setScreen('captura'); setTab('captura'); setLancamentoAtual(null); setDadosAtual(null); setLoteData(null) }
   const goHistorico = () => { setScreen('historico'); setTab('historico') }
   const handleTab = (key) => {
     setTab(key)
@@ -101,6 +116,16 @@ export default function App() {
           lancamento={lancamentoAtual}
           dados={dadosAtual}
           onConfirm={handleConfirm}
+          showToast={showToast}
+        />
+      ) : null
+      break
+    case 'revisao-lote':
+      content = loteData ? (
+        <RevisaoLoteScreen
+          t={t}
+          lancamentos={loteData}
+          onConfirm={handleLoteConfirm}
           showToast={showToast}
         />
       ) : null
