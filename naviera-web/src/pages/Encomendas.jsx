@@ -195,7 +195,6 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
 
   // FINALIZAR
   async function handleFinalizar() {
-    if (!remetente.trim()) { showToast('Informe o remetente', 'error'); return }
     if (!destinatario.trim()) { showToast('Informe o destinatario', 'error'); return }
 
     // Abrir modal pagamento

@@ -57,7 +57,7 @@ router.get('/:id/itens', async (req, res) => {
 })
 
 // POST /api/encomendas
-router.post('/', validate({ id_viagem: 'required|integer', remetente: 'required|string', destinatario: 'required|string', total_a_pagar: 'required|number' }), async (req, res) => {
+router.post('/', validate({ id_viagem: 'required|integer', destinatario: 'required|string', total_a_pagar: 'required|number' }), async (req, res) => {
   const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
@@ -65,7 +65,7 @@ router.post('/', validate({ id_viagem: 'required|integer', remetente: 'required|
       id_viagem, remetente, destinatario, observacoes, total_volumes,
       total_a_pagar, valor_pago, desconto, forma_pagamento, rota, id_caixa, local_pagamento, itens
     } = req.body
-    if (!id_viagem || !remetente || !destinatario || !total_a_pagar) {
+    if (!id_viagem || !destinatario || !total_a_pagar) {
       return res.status(400).json({ error: 'Campos obrigatorios: id_viagem, remetente, destinatario, total_a_pagar' })
     }
 
