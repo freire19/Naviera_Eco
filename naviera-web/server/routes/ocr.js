@@ -662,6 +662,57 @@ Responda APENAS com JSON valido (sem markdown):
 })
 
 // ============================================================================
+// GET /api/ocr/documentos — Listar todos documentos arquivados (ADMIN ONLY)
+// Retorna lancamentos que possuem doc_remetente, agrupados por categoria
+// ============================================================================
+router.get('/documentos', async (req, res) => {
+  try {
+    const funcao = (req.user.funcao || '').toLowerCase()
+    if (funcao !== 'administrador' && funcao !== 'admin') {
+      return res.status(403).json({ error: 'Acesso restrito a administradores' })
+    }
+    const empresaId = req.user.empresa_id
+    const { categoria } = req.query // frete, encomenda, lote, ou vazio = todos
+
+    let sql = `SELECT id, tipo, status, dados_revisados, dados_extraidos,
+      nome_usuario_criou, criado_em, id_frete, id_encomenda
+      FROM ocr_lancamentos WHERE empresa_id = $1
+      AND (dados_revisados ? 'doc_remetente' OR dados_extraidos ? 'doc_remetente')`
+    const params = [empresaId]
+    let idx = 2
+
+    if (categoria) {
+      sql += ` AND tipo = $${idx++}`
+      params.push(categoria)
+    }
+
+    sql += ' ORDER BY criado_em DESC LIMIT 200'
+    const result = await pool.query(sql, params)
+
+    const docs = result.rows.map(r => {
+      const dados = r.dados_revisados || r.dados_extraidos || {}
+      return {
+        id: r.id,
+        tipo: r.tipo,
+        status: r.status,
+        remetente: dados.remetente || '',
+        destinatario: dados.destinatario || '',
+        doc_remetente: dados.doc_remetente || null,
+        id_frete: r.id_frete,
+        id_encomenda: r.id_encomenda,
+        operador: r.nome_usuario_criou,
+        criado_em: r.criado_em
+      }
+    }).filter(d => d.doc_remetente)
+
+    res.json(docs)
+  } catch (err) {
+    log.error('OCR', 'Erro ao listar documentos', { erro: err.message })
+    res.status(500).json({ error: 'Erro ao listar documentos' })
+  }
+})
+
+// ============================================================================
 // GET /api/ocr/lancamentos/:id/doc-foto — Servir foto do documento do remetente
 // ADMIN ONLY — dados sensiveis, acesso restrito
 // ============================================================================

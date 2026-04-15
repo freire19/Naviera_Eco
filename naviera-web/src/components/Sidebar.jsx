@@ -81,7 +81,8 @@ const NAV_ADMIN = {
   title: 'Admin',
   items: [
     { key: 'admin-empresas', icon: '\uD83C\uDFE2', label: 'Empresas' },
-    { key: 'admin-metricas', icon: '\uD83D\uDCCA', label: 'Metricas' }
+    { key: 'admin-metricas', icon: '\uD83D\uDCCA', label: 'Metricas' },
+    { key: 'admin-documentos', icon: '\uD83D\uDD12', label: 'Documentos' }
   ]
 }
 

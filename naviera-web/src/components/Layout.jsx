@@ -45,6 +45,7 @@ import CadastroClienteEncomenda from '../pages/CadastroClienteEncomenda.jsx'
 // Admin
 import AdminEmpresas from '../pages/AdminEmpresas.jsx'
 import AdminMetricas from '../pages/AdminMetricas.jsx'
+import DocumentosAdmin from '../pages/DocumentosAdmin.jsx'
 
 // OCR
 import ReviewOCR from '../pages/ReviewOCR.jsx'
@@ -92,7 +93,8 @@ const PAGES = {
   agenda: { component: Agenda, label: 'Agenda', section: 'sistema' },
   'configurar-api': { component: ConfigurarApi, label: 'Configurar API', section: 'sistema' },
   'admin-empresas': { component: AdminEmpresas, label: 'Gestao de Empresas', section: 'admin' },
-  'admin-metricas': { component: AdminMetricas, label: 'Metricas da Plataforma', section: 'admin' }
+  'admin-metricas': { component: AdminMetricas, label: 'Metricas da Plataforma', section: 'admin' },
+  'admin-documentos': { component: DocumentosAdmin, label: 'Documentos Arquivados', section: 'admin' }
 }
 
 export default function Layout() {
