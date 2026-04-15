@@ -501,11 +501,31 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
                   <tr><td colSpan="6" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>Nao ha conteudo na tabela</td></tr>
                 ) : itens.map((item, idx) => (
                   <tr key={idx}>
-                    <td style={{ textAlign: 'center' }}>{item.quantidade}</td>
-                    <td>{item.descricao}</td>
-                    <td className="money">{formatMoney(item.valor_unitario)}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <input type="number" min="1" value={item.quantidade} style={{ width: 40, textAlign: 'center', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit', fontFamily: 'inherit', padding: '2px' }}
+                        onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                        onBlur={e => e.target.style.borderColor = 'transparent'}
+                        onChange={e => { const v = parseInt(e.target.value) || 1; setItens(prev => prev.map((it, i) => i === idx ? { ...it, quantidade: v, valor_total: (v * (parseFloat(it.valor_unitario) || 0)).toFixed(2) } : it)) }} />
+                    </td>
+                    <td>
+                      <input value={item.descricao} style={{ width: '100%', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit', fontFamily: 'inherit', padding: '2px' }}
+                        onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                        onBlur={e => e.target.style.borderColor = 'transparent'}
+                        onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, descricao: e.target.value } : it))} />
+                    </td>
+                    <td>
+                      <input type="number" step="0.01" value={item.valor_unitario} style={{ width: 70, textAlign: 'right', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit', fontFamily: 'Space Mono, monospace', padding: '2px' }}
+                        onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                        onBlur={e => e.target.style.borderColor = 'transparent'}
+                        onChange={e => { const v = parseFloat(e.target.value) || 0; setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: v, valor_total: ((parseInt(it.quantidade) || 1) * v).toFixed(2) } : it)) }} />
+                    </td>
                     <td className="money">{formatMoney(item.valor_total)}</td>
-                    <td>{item.local_armazenamento || '—'}</td>
+                    <td>
+                      <input value={item.local_armazenamento || ''} style={{ width: '100%', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit', fontFamily: 'inherit', padding: '2px' }}
+                        onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                        onBlur={e => e.target.style.borderColor = 'transparent'}
+                        onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, local_armazenamento: e.target.value } : it))} />
+                    </td>
                     <td><button className="btn-sm danger" onClick={() => handleRemoverItem(idx)} style={{ padding: '2px 6px' }}>×</button></td>
                   </tr>
                 ))}
