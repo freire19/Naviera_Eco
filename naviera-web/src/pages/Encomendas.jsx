@@ -401,20 +401,22 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
         {/* PAINEL DIREITO — Itens */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Entrada de item */}
-          <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 100px 100px auto', gap: 8, padding: 10, background: 'rgba(5,150,105,0.05)', borderRadius: 6, border: '1px solid var(--primary)', marginBottom: 8, alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 90px 90px auto', gap: 10, padding: 10, background: 'rgba(5,150,105,0.05)', borderRadius: 6, border: '1px solid var(--primary)', marginBottom: 8, alignItems: 'end' }}>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>Qtd</label>
               <input style={{ ...I, textAlign: 'center' }} type="number" min="1" value={novoItem.quantidade} onChange={e => handleNovoItemChange('quantidade', e.target.value)} />
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>Descricao do Item (Enter busca)</label>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <input style={{ ...I, flex: 1 }} value={novoItem.descricao} onChange={e => handleNovoItemChange('descricao', e.target.value)} placeholder="Digite ou selecione..." />
-                <select style={{ ...I, width: 'auto', maxWidth: 40 }} onChange={handleSelectItemPadrao} value="">
-                  <option value="">▼</option>
-                  {itensPadrao.map(ip => <option key={ip.id} value={ip.id}>{ip.nome_item}</option>)}
-                </select>
-              </div>
+              <select style={I} onChange={handleSelectItemPadrao} value="">
+                <option value="">-- Selecione um item cadastrado ou digite abaixo --</option>
+                {itensPadrao.map(ip => (
+                  <option key={ip.id || ip.id_item_encomenda} value={ip.id || ip.id_item_encomenda}>
+                    {ip.nome_item} — R$ {Number(ip.preco_padrao || ip.preco_unitario_padrao || 0).toFixed(2)}
+                  </option>
+                ))}
+              </select>
+              <input style={{ ...I, marginTop: 4 }} value={novoItem.descricao} onChange={e => handleNovoItemChange('descricao', e.target.value)} placeholder="Ou digite o nome do item..." />
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>V. Unit.</label>
