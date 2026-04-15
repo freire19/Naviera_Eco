@@ -74,9 +74,10 @@ public class PassagemDAO {
             stmt.setBigDecimal(20, passagem.getDevedor());
             
             stmt.setObject(21, auxiliaresDAO.obterIdAuxiliar("caixas", "nome_caixa", "id_caixa", passagem.getCaixa()));
+            // DR221: logging em WARN se sessao estiver corrompida (inserir sem usuario = auditoria incompleta)
             Integer sessaoUserId = null;
             try { if(SessaoUsuario.isUsuarioLogado()) sessaoUserId = SessaoUsuario.getUsuarioLogado().getId(); }
-            catch(Exception e) { AppLogger.warn("PassagemDAO", "Erro ao obter usuario da sessao: " + e.getMessage()); }
+            catch(Exception e) { AppLogger.warn("PassagemDAO", "AVISO: passagem sera inserida sem usuario emissor: " + e.getMessage()); }
             stmt.setObject(22, sessaoUserId);
             stmt.setString(23, passagem.getStatusPassagem());
             stmt.setString(24, passagem.getObservacoes());
@@ -179,8 +180,8 @@ public class PassagemDAO {
         return false;
     }
 
-    /** Campo de instancia setado uma vez por query, antes do loop. */
-    private boolean temDataChegada = false;
+    // DR207: variavel local de thread em vez de campo de instancia (thread-safe)
+    private final ThreadLocal<Boolean> temDataChegadaTL = ThreadLocal.withInitial(() -> false);
 
     private Passagem mapResultSetToPassagem(ResultSet rs) throws SQLException {
         Passagem p = new Passagem();
@@ -225,7 +226,7 @@ public class PassagemDAO {
         if(rs.getDate("data_viagem") != null) p.setDataViagem(rs.getDate("data_viagem").toLocalDate());
         
         // data_chegada e opcional (presente apenas em queries com JOIN viagens)
-        if (temDataChegada) {
+        if (temDataChegadaTL.get()) {
             if (rs.getDate("data_chegada") != null) {
                 p.setStrViagem(p.getStrViagem() + "||" + rs.getDate("data_chegada").toString());
             }
@@ -252,7 +253,7 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
-            temDataChegada = detectarTemDataChegada(rs);
+            temDataChegadaTL.set(detectarTemDataChegada(rs));
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
         } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
@@ -268,7 +269,7 @@ public class PassagemDAO {
             stmt.setInt(1, DAOUtils.empresaId());
             stmt.setLong(2, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
-                temDataChegada = detectarTemDataChegada(rs);
+                temDataChegadaTL.set(detectarTemDataChegada(rs));
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
         } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
@@ -315,7 +316,7 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sqlBuilder.toString())) {
             for (int i = 0; i < params.size(); i++) stmt.setObject(i + 1, params.get(i));
             try (ResultSet rs = stmt.executeQuery()) {
-                temDataChegada = detectarTemDataChegada(rs);
+                temDataChegadaTL.set(detectarTemDataChegada(rs));
             while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
             }
         }
@@ -363,7 +364,7 @@ public class PassagemDAO {
             stmt.setInt(1, DAOUtils.empresaId());
             stmt.setString(2, "%" + nomePassageiro + "%");
             try (ResultSet rs = stmt.executeQuery()) {
-                temDataChegada = detectarTemDataChegada(rs);
+                temDataChegadaTL.set(detectarTemDataChegada(rs));
                 while (rs.next()) lista.add(mapResultSetToPassagem(rs));
             }
         } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }

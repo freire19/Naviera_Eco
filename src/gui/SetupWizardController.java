@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Wizard de primeira configuracao — fluxo simplificado com codigo de ativacao.
@@ -64,18 +65,22 @@ public class SetupWizardController implements Initializable {
 
     private int currentStep = 1;
 
-    // Dados recebidos da API apos ativacao
-    private long empresaId;
-    private String nomeEmpresa;
-    private String slugEmpresa;
-    private String operadorNome;
-    private String operadorEmail;
+    // DR218: volatile — escritos pela bg thread, lidos pela FX thread via Platform.runLater
+    private volatile long empresaId;
+    private volatile String nomeEmpresa;
+    private volatile String slugEmpresa;
+    private volatile String operadorNome;
+    private volatile String operadorEmail;
 
     // Log de setup para suporte
-    private final StringBuilder logCompleto = new StringBuilder();
+    // DR204: StringBuffer (thread-safe) — acessado de bg thread (log) e FX thread (copiarLog)
+    private final StringBuffer logCompleto = new StringBuffer();
 
-    // URL da API central
-    private static final String API_URL = "https://api.naviera.com.br";
+    // URLs da API central (tenta HTTPS, fallback HTTP direto no IP)
+    private static final String[] API_URLS = {
+        "https://api.naviera.com.br",
+        "http://72.62.166.247:8081"
+    };
 
     // Credenciais do PG local (geradas automaticamente, operador nunca ve)
     private String pgSenhaLocal;
@@ -116,9 +121,67 @@ public class SetupWizardController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Gerar senha aleatoria para o PostgreSQL local
-        pgSenhaLocal = "nav_" + UUID.randomUUID().toString().substring(0, 12);
+        // Gerar senha aleatoria para o PostgreSQL local (apenas alfanumericos, sem hifens)
+        pgSenhaLocal = "nav" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+
+        // Auto-format do campo de codigo: uppercase + prefixo NAV- automatico + traco auto
+        txtCodigoAtivacao.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null) return;
+            String upper = newVal.toUpperCase().replaceAll("[^A-Z0-9\\-]", "");
+
+            // Se digitou algo sem NAV- no inicio, formatar
+            if (!upper.startsWith("NAV-") && !upper.startsWith("NAV")) {
+                // Se tem 4+ chars alfanumericos, assumir que e o codigo sem prefixo
+                String digits = upper.replaceAll("[^A-Z0-9]", "");
+                if (digits.length() >= 1) {
+                    upper = "NAV-" + digits;
+                }
+            }
+            // Se digitou "NAV" sem traco e tem mais chars, inserir traco
+            if (upper.startsWith("NAV") && upper.length() > 3 && upper.charAt(3) != '-') {
+                upper = "NAV-" + upper.substring(3);
+            }
+
+            // Limitar a 8 chars (NAV-XXXX)
+            if (upper.length() > 8) upper = upper.substring(0, 8);
+
+            if (!upper.equals(newVal)) {
+                final String formatted = upper;
+                Platform.runLater(() -> {
+                    txtCodigoAtivacao.setText(formatted);
+                    txtCodigoAtivacao.positionCaret(formatted.length());
+                });
+            }
+        });
+        txtCodigoAtivacao.setPromptText("NAV-0000");
+        txtCodigoAtivacao.setStyle(txtCodigoAtivacao.getStyle() + "-fx-font-size: 18px; -fx-alignment: center; -fx-font-weight: bold;");
+
         updateStepView();
+    }
+
+    /**
+     * Retorna SSLSocketFactory que confia em qualquer certificado.
+     * Necessario porque o JRE empacotado pelo jpackage pode nao ter
+     * os certificados Let's Encrypt no cacerts.
+     */
+    // DR225: volatile para evitar race condition em acesso concorrente
+    private static volatile javax.net.ssl.SSLSocketFactory trustAllFactory;
+    private static synchronized javax.net.ssl.SSLSocketFactory getTrustAllSocketFactory() {
+        if (trustAllFactory != null) return trustAllFactory;
+        try {
+            javax.net.ssl.TrustManager[] tm = { new javax.net.ssl.X509TrustManager() {
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+                public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
+            }};
+            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
+            sc.init(null, tm, new java.security.SecureRandom());
+            trustAllFactory = sc.getSocketFactory();
+        } catch (Exception e) {
+            // Fallback: usar default (pode falhar com Let's Encrypt)
+            trustAllFactory = (javax.net.ssl.SSLSocketFactory) javax.net.ssl.SSLSocketFactory.getDefault();
+        }
+        return trustAllFactory;
     }
 
     // ========================================================================
@@ -140,15 +203,43 @@ public class SetupWizardController implements Initializable {
 
         Thread bg = new Thread(() -> {
             try {
-                // Chamar API: GET /public/ativar/{codigo}
-                String urlStr = API_URL + "/api/public/ativar/" + codigo;
-                HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
+                // Tentar cada URL da API ate uma funcionar
+                int status = -1;
+                String body = "";
+                Exception lastError = null;
 
-                int status = conn.getResponseCode();
-                String body = readResponse(conn);
+                for (String baseUrl : API_URLS) {
+                    HttpURLConnection conn = null;
+                    try {
+                        String urlStr = baseUrl + "/api/public/ativar/" + codigo;
+                        log("Tentando: " + urlStr);
+                        conn = (HttpURLConnection) new URL(urlStr).openConnection();
+
+                        // Trust-all SSL para HTTPS
+                        if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+                            javax.net.ssl.HttpsURLConnection https = (javax.net.ssl.HttpsURLConnection) conn;
+                            https.setSSLSocketFactory(getTrustAllSocketFactory());
+                            https.setHostnameVerifier((h, s) -> true);
+                        }
+
+                        conn.setRequestMethod("GET");
+                        conn.setConnectTimeout(10000);
+                        conn.setReadTimeout(10000);
+
+                        status = conn.getResponseCode();
+                        body = readResponse(conn);
+                        log("Resposta " + status + " de " + baseUrl);
+                        break; // Sucesso, nao tenta proxima URL
+                    } catch (Exception e) {
+                        lastError = e;
+                        log("Falha em " + baseUrl + ": " + e.getClass().getSimpleName() + " - " + e.getMessage());
+                    } finally {
+                        // DR205: sempre desconectar para evitar resource leak
+                        if (conn != null) conn.disconnect();
+                    }
+                }
+
+                if (status == -1) throw lastError != null ? lastError : new Exception("Todas as URLs falharam");
 
                 if (status == 200) {
                     // Parse JSON simples (sem lib externa)
@@ -179,10 +270,20 @@ public class SetupWizardController implements Initializable {
                     });
                 }
             } catch (Exception e) {
-                log("Erro na ativacao: " + e.getMessage());
+                log("Erro na ativacao: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+                String errMsg;
+                if (e instanceof java.net.UnknownHostException) {
+                    errMsg = "Sem conexao com a internet. Conecte e tente novamente.";
+                } else if (e instanceof java.net.SocketTimeoutException) {
+                    errMsg = "Servidor demorou para responder. Tente novamente.";
+                } else if (e instanceof javax.net.ssl.SSLException) {
+                    errMsg = "Erro de seguranca (SSL). Tente novamente.";
+                } else {
+                    errMsg = "Erro: " + e.getMessage();
+                }
                 Platform.runLater(() -> {
                     lblStatusAtivacao.setTextFill(javafx.scene.paint.Color.web("#DC2626"));
-                    lblStatusAtivacao.setText("Sem conexao com a internet. Conecte e tente novamente.");
+                    lblStatusAtivacao.setText(errMsg);
                     btnAtivar.setDisable(false);
                 });
             }
@@ -352,7 +453,7 @@ public class SetupWizardController implements Initializable {
     /**
      * Tenta encontrar uma senha que funcione para o PostgreSQL local.
      * Testa: senha do instalador silencioso, senhas comuns, sem senha.
-     * Fallback Linux: reset via peer auth se nenhuma senha funcionar.
+     * Se nenhuma funcionar, tenta resetar a senha via peer auth (socket local).
      */
     private String encontrarSenhaPg() {
         String[] senhasCandidatas = {
@@ -376,44 +477,58 @@ public class SetupWizardController implements Initializable {
             } catch (SQLException ignored) {}
         }
 
-        // Fallback Linux: resetar senha via peer auth (sudo -u postgres psql)
-        String os = System.getProperty("os.name", "").toLowerCase();
-        if (os.contains("linux")) {
-            log("Nenhuma senha conhecida funcionou. Resetando senha PG via peer auth...");
+        // Nenhuma senha funcionou — resetar via peer auth (sudo su - postgres)
+        log("Nenhuma senha conhecida funcionou. Resetando senha PG via peer auth...");
+        if (resetarSenhaPgViaPeer()) {
             try {
-                ProcessBuilder pb = new ProcessBuilder(
-                    "sudo", "-u", "postgres", "psql", "-c",
-                    "ALTER ROLE postgres PASSWORD '" + pgSenhaLocal + "';"
-                );
-                pb.redirectErrorStream(true);
-                Process proc = pb.start();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) { log("[pg-reset] " + line); }
-                }
-                int exitCode = proc.waitFor();
-                log("Reset senha PG exit code: " + exitCode);
-
-                if (exitCode == 0) {
-                    // Testar com a senha recém-definida
-                    try {
-                        DriverManager.setLoginTimeout(3);
-                        try (Connection conn = DriverManager.getConnection(url, "postgres", pgSenhaLocal)) {
-                            if (conn.isValid(2)) {
-                                log("Conexao PG OK apos reset via peer auth");
-                                return pgSenhaLocal;
-                            }
-                        }
-                    } catch (SQLException e) {
-                        log("Falha mesmo apos reset: " + e.getMessage());
+                DriverManager.setLoginTimeout(3);
+                try (Connection conn = DriverManager.getConnection(url, "postgres", pgSenhaLocal)) {
+                    if (conn.isValid(2)) {
+                        log("Conexao PG OK apos reset de senha.");
+                        return pgSenhaLocal;
                     }
                 }
-            } catch (Exception e) {
-                log("Erro no reset via peer auth: " + e.getMessage());
+            } catch (SQLException e) {
+                log("Falha mesmo apos reset: " + e.getMessage());
             }
         }
 
         return null;
+    }
+
+    /**
+     * Reseta a senha do postgres via peer auth (socket local) usando pkexec.
+     * Funciona mesmo quando nenhuma senha TCP e conhecida.
+     */
+    private boolean resetarSenhaPgViaPeer() {
+        try {
+            String script =
+                "su - postgres -c \"psql -c \\\"ALTER USER postgres PASSWORD '" + pgSenhaLocal + "';\\\"\"";
+
+            ProcessBuilder pb = new ProcessBuilder("pkexec", "bash", "-c", script);
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("[pg-reset] " + line);
+                }
+            }
+
+            if (!proc.waitFor(30, TimeUnit.SECONDS)) {
+                proc.destroyForcibly();
+                log("Reset de senha PG excedeu timeout.");
+                return false;
+            }
+
+            int exitCode = proc.exitValue();
+            log("Reset senha PG exit code: " + exitCode);
+            return exitCode == 0;
+        } catch (Exception e) {
+            log("Erro ao resetar senha PG: " + e.getMessage());
+            return false;
+        }
     }
 
     private boolean instalarPostgresSilencioso() {
@@ -430,22 +545,52 @@ public class SetupWizardController implements Initializable {
     private boolean instalarPostgresLinux() {
         try {
             log("Instalando PostgreSQL via apt (Linux)...");
-            ProcessBuilder pb = new ProcessBuilder(
-                "pkexec", "bash", "-c",
-                "apt-get update -qq && apt-get install -y postgresql postgresql-client && " +
-                "sudo -u postgres psql -c \"ALTER USER postgres PASSWORD '" + pgSenhaLocal + "';\""
-            );
+            // Script:
+            // 1. Instalar PG via apt
+            // 2. Iniciar servico
+            // 3. Garantir pg_hba.conf com peer para local postgres (permite ALTER sem senha)
+            // 4. ALTER USER postgres PASSWORD
+            // 5. Garantir pg_hba.conf com md5 para TCP (JDBC precisa)
+            // 6. Reload final
+            String script =
+                "set -e\n" +
+                "apt-get update -qq\n" +
+                "apt-get install -y postgresql postgresql-client\n" +
+                "systemctl start postgresql\n" +
+                "sleep 3\n" +
+                "PG_HBA=$(find /etc/postgresql -name pg_hba.conf 2>/dev/null | head -1)\n" +
+                "if [ -z \"$PG_HBA\" ]; then echo 'pg_hba.conf nao encontrado'; exit 1; fi\n" +
+                // Garantir peer para socket local (para poder ALTER sem senha)
+                "sed -i '/^local.*all.*postgres/d' $PG_HBA\n" +
+                "sed -i '1i local all postgres peer' $PG_HBA\n" +
+                // Garantir md5 para TCP (JDBC conecta via TCP)
+                "grep -q '^host.*all.*all.*127.0.0.1.*md5' $PG_HBA || " +
+                "sed -i '2i host all all 127.0.0.1/32 md5' $PG_HBA\n" +
+                "systemctl reload postgresql\n" +
+                "sleep 2\n" +
+                // ALTER via peer auth (socket, sem senha)
+                "su - postgres -c \"psql -c \\\"ALTER USER postgres PASSWORD '" + pgSenhaLocal + "';\\\"\"\n" +
+                "echo 'Senha PG alterada com sucesso'\n";
+
+            log("Executando script de instalacao PG...");
+            ProcessBuilder pb = new ProcessBuilder("pkexec", "bash", "-c", script);
             pb.redirectErrorStream(true);
             Process proc = pb.start();
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    log("[apt] " + line);
+                    log("[pg-setup] " + line);
                 }
             }
-            int exitCode = proc.waitFor();
-            log("apt install exit code: " + exitCode);
+            // DR201: timeout de 5 minutos para evitar bloqueio indefinido
+            if (!proc.waitFor(5, TimeUnit.MINUTES)) {
+                proc.destroyForcibly();
+                log("Instalacao PG excedeu timeout de 5 minutos — processo encerrado.");
+                return false;
+            }
+            int exitCode = proc.exitValue();
+            log("PG setup exit code: " + exitCode);
             return exitCode == 0;
         } catch (Exception e) {
             log("Erro ao instalar PostgreSQL Linux: " + e.getMessage());
@@ -470,7 +615,13 @@ public class SetupWizardController implements Initializable {
                     log("[winget] " + line);
                 }
             }
-            int exitCode = proc.waitFor();
+            // DR201: timeout de 5 minutos para evitar bloqueio indefinido
+            if (!proc.waitFor(5, TimeUnit.MINUTES)) {
+                proc.destroyForcibly();
+                log("winget excedeu timeout de 5 minutos — processo encerrado.");
+                return false;
+            }
+            int exitCode = proc.exitValue();
             log("winget exit code: " + exitCode);
 
             if (exitCode == 0) return true;
@@ -526,7 +677,14 @@ public class SetupWizardController implements Initializable {
                 String line;
                 while ((line = reader.readLine()) != null) { log("[installer] " + line); }
             }
-            int exitCode = proc.waitFor();
+            // DR201: timeout de 10 minutos para instalador (download + install)
+            if (!proc.waitFor(10, TimeUnit.MINUTES)) {
+                proc.destroyForcibly();
+                log("Instalador PG excedeu timeout de 10 minutos — processo encerrado.");
+                Files.deleteIfExists(tempInstaller);
+                return false;
+            }
+            int exitCode = proc.exitValue();
             Files.deleteIfExists(tempInstaller);
             log("Installer exit code: " + exitCode);
             return exitCode == 0;
@@ -625,7 +783,7 @@ public class SetupWizardController implements Initializable {
     private void salvarSyncConfig() throws IOException {
         StringBuilder sc = new StringBuilder();
         sc.append("# Configuracao de sincronizacao — gerado pelo Setup\n");
-        sc.append("server.url=").append(API_URL).append("\n");
+        sc.append("server.url=").append(API_URLS[0]).append("\n");
         sc.append("operador.login=").append(operadorEmail != null ? operadorEmail : "").append("\n");
         sc.append("operador.senha=\n");
         sc.append("api.token=\n");

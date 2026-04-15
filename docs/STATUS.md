@@ -53,7 +53,7 @@ Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaF
 | **Security** | **47** | **47** | **0** | **100%** | LIMPO |
 | **Logic** | **75** | **75** | **0** | **100%** | LIMPO |
 | **Bugs** | **36** | **36** | **0** | **100%** | **LIMPO** — 35 deep + 6 AUDIT anteriores, todas verificadas |
-| **Resilience** | **67** | **65** | **2** | **97%** | **QUASE LIMPO** (restam DR025 pg_dump + DR028 testes) |
+| **Resilience** | **116** | **116** | **0** | **100%** | **LIMPO** — 49 novas V5.0 + 2 antigas, todas corrigidas |
 | **Performance** | **39** | **37** | **2** | **95%** | **QUASE LIMPO** (restam #048 JSON parser + #DP023 JARs) |
 | **Maintainability** | **76** | **71** | **~5** | **93%** | **0 CRIT, 0 ALTA, 0 MEDIA, 0 BAIXA corrigivel — restam 5 estruturais** |
 
@@ -95,9 +95,9 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 | Scan Geral | V1.1 | 2026-04-08 | 54 original | Arquivado | [AUDIT_V1.1](audits/archive/AUDIT_V1.1.md) |
 | Scan Geral | V1.0 | 2026-04-07 | ~194 original | Arquivado | [AUDIT_V1.0](audits/archive/AUDIT_V1.0.md) |
 | Deep Security | V3.0 | 2026-04-08 | 0 | 100% LIMPO | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
-| **Deep Logic** | **V5.0** | **2026-04-14** | **34 ativos (0 CRIT)** | **25/25 V1.2 resolvidas + 24 novos parcialmente corrigidos** | **[DEEP_LOGIC](audits/current/DEEP_LOGIC.md)** |
+| **Deep Logic** | **V5.0** | **2026-04-14** | **0** | **100% LIMPO — 25/25 V1.2 + 54/54 novos** | **[DEEP_LOGIC](audits/current/DEEP_LOGIC.md)** |
 | Deep Bugs | V1.1 | 2026-04-09 | 0 | 100% LIMPO | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
-| Deep Resilience | V4.0 | 2026-04-08 | 2 ativas | 97% LIMPO | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
+| **Deep Resilience** | **V5.0** | **2026-04-14** | **0** | **100% LIMPO — 49/49 novas + 2 antigas corrigidas** | **[DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)** |
 | Deep Performance | V3.0 | 2026-04-09 | 2 (infra) | 95% LIMPO | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
 | Deep Maintainability | V3.0 | 2026-04-09 | ~5 (estruturais) | 90% reduzido | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
 | MVP Plan | V4.0 | 2026-04-10 | 3 bloqueadores | 77% pronto | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
@@ -164,6 +164,7 @@ Error Boundaries React, paginacao endpoints BFF, formatMoney centralizar, N+1 qu
 | 2026-04-08 | AUDIT_V1.1 — 54 issues novas (6 criticas) |
 | 2026-04-08 | **DEEP_SECURITY V3.0 — Categoria 100% limpa** (47/47) |
 | 2026-04-08 | DEEP_BUGS V1.0 — 30 novas + 8 criticas corrigidas |
+| 2026-04-14 | **DEEP_RESILIENCE V5.0 — 49 novas (Desktop+Web+API+App), 3 CRITICAS, cobertura 193 arquivos** |
 | 2026-04-08 | DEEP_RESILIENCE V4.0 — 30 novas, 41 ativas |
 | 2026-04-08 | Fix criticas V1.1 — 7 criticas + 15 altas resolvidas |
 | 2026-04-08 | DEEP_LOGIC V4.0 — 36 novas (auditoria profunda 134 arquivos) |

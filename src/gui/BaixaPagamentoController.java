@@ -46,10 +46,15 @@ public class BaixaPagamentoController {
         txtDesconto.textProperty().addListener((obs, old, novo) -> calcularTotais());
         txtValorRecebido.textProperty().addListener((obs, old, novo) -> calcularTotais());
 
-        // DR010: carrega combos em background
+        // DR010+DR219: carrega combos em background com try-catch
         Thread bg = new Thread(() -> {
-            carregarFormasPagamento();
-            carregarUsuariosCaixa();
+            try {
+                carregarFormasPagamento();
+                carregarUsuariosCaixa();
+            } catch (Exception e) {
+                AppLogger.warn("BaixaPagamentoController", "Erro ao carregar combos: " + e.getMessage());
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("carregar formas de pagamento", e));
+            }
         });
         bg.setDaemon(true);
         bg.start();

@@ -1,3 +1,11 @@
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[FATAL] Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err);
+  process.exit(1);
+});
+
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
@@ -73,6 +81,7 @@ app.get('/api/health', (req, res) => {
 const server = app.listen(PORT, () => {
   log.info('Server', `Naviera Web BFF running on http://localhost:${PORT}`)
 })
+server.timeout = 120_000
 
 function shutdown(signal) {
   log.info('Server', `${signal} received — shutting down`)

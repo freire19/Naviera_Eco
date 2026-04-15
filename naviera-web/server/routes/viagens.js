@@ -117,8 +117,11 @@ router.put('/:id/ativar', async (req, res) => {
       'UPDATE viagens SET is_atual = $1 WHERE id_viagem = $2 AND empresa_id = $3 RETURNING *',
       [ativa !== false, req.params.id, empresaId]
     )
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Viagem nao encontrada' })
+    }
     await client.query('COMMIT')
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Viagem nao encontrada' })
     res.json(result.rows[0])
   } catch (err) {
     await client.query('ROLLBACK')

@@ -152,37 +152,51 @@ public class FinanceiroSaidaController {
             AppLogger.warn("FinanceiroSaidaController", "Erro ao carregar viagens: " + e.getMessage());
         }
     }
+    // DR211: buscar dados em background thread para nao bloquear FX thread
     public void filtrar() {
         // Se o combo estiver nulo (ainda carregando), não faz nada
         if(cmbFiltroViagem.getValue() == null) return;
         int idFiltro = cmbFiltroViagem.getValue().id;
-        ObservableList<Despesa> lista = FXCollections.observableArrayList();
-        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
         String categoriaFiltro = cmbFiltroCategoria.getValue();
         String formaFiltro = cmbFiltroPagamento.getValue();
         java.time.LocalDate dataFiltro = dpFiltroData.getValue();
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        java.util.List<java.util.Map<String, Object>> rows = despesaDAO.buscarDespesas(
-                idFiltro, categoriaFiltro, formaFiltro, dataFiltro, true);
-        for (java.util.Map<String, Object> row : rows) {
-            java.sql.Date dtVenc = (java.sql.Date) row.get("data_vencimento");
-            Despesa d = new Despesa(
-                (int) row.get("id"),
-                dtVenc != null ? sdf.format(dtVenc) : "",
-                (String) row.get("descricao"),
-                (String) row.get("cat_nome"),
-                (String) row.get("forma_pagamento"),
-                (java.math.BigDecimal) row.get("valor_total"),
-                (String) row.get("status"),
-                (boolean) row.get("is_excluido")
-            );
-            lista.add(d);
-            if (!d.isExcluido() && d.getValor() != null) {
-                total = total.add(d.getValor());
+
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<Despesa> lista = FXCollections.observableArrayList();
+                java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                java.util.List<java.util.Map<String, Object>> rows = despesaDAO.buscarDespesas(
+                        idFiltro, categoriaFiltro, formaFiltro, dataFiltro, true);
+                for (java.util.Map<String, Object> row : rows) {
+                    java.sql.Date dtVenc = (java.sql.Date) row.get("data_vencimento");
+                    Despesa d = new Despesa(
+                        (int) row.get("id"),
+                        dtVenc != null ? sdf.format(dtVenc) : "",
+                        (String) row.get("descricao"),
+                        (String) row.get("cat_nome"),
+                        (String) row.get("forma_pagamento"),
+                        (java.math.BigDecimal) row.get("valor_total"),
+                        (String) row.get("status"),
+                        (boolean) row.get("is_excluido")
+                    );
+                    lista.add(d);
+                    if (!d.isExcluido() && d.getValor() != null) {
+                        total = total.add(d.getValor());
+                    }
+                }
+                final java.math.BigDecimal finalTotal = total;
+                Platform.runLater(() -> {
+                    tabela.setItems(lista);
+                    lblTotalGasto.setText(nf.format(finalTotal));
+                });
+            } catch (Exception e) {
+                AppLogger.error("FinanceiroSaidaController", e.getMessage(), e);
+                Platform.runLater(() -> AlertHelper.errorSafe("filtrar despesas", e));
             }
-        }
-        tabela.setItems(lista);
-        lblTotalGasto.setText(nf.format(total));
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     public void sair() {
         Node nodeRef = (btnSair != null) ? btnSair : txtDescricao;

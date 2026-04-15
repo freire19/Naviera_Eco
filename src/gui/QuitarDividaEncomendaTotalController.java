@@ -91,8 +91,10 @@ public class QuitarDividaEncomendaTotalController {
         try(Connection c = ConexaoBD.getConnection();
             java.sql.PreparedStatement ps = c.prepareStatement("SELECT nome_caixa FROM caixas WHERE empresa_id = ? ORDER BY nome_caixa")) {
             ps.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet rs = ps.executeQuery();
+            // DR213: try-with-resources para ResultSet
+            try (ResultSet rs = ps.executeQuery()) {
             while(rs.next()) l.add(rs.getString(1));
+            }
         } catch(Exception e) {
             AppLogger.warn("QuitarDividaEncomendaTotalController", "Erro ao carregar caixas: " + e.getMessage());
             l.add("CAIXA PRINCIPAL");

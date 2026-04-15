@@ -59,7 +59,8 @@ public class RotaDAO {
         } catch (SQLException e) {
             AppLogger.warn("RotaDAO", "Erro SQL em RotaDAO: " + e.getMessage());
         }
-        return -1;
+        // DR223: retorna 0 em falha (consistente com outros DAOs)
+        return 0;
     }
 
     public boolean inserir(Rota rota) {

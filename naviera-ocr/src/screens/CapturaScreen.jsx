@@ -18,7 +18,10 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
         const ativa = v.find(vi => vi.ativa || vi.status === 'ativa')
         if (ativa) setViagemId(String(ativa.id_viagem))
       }
-    }).catch(() => {})
+    }).catch((err) => {
+      // DR246: exibir erro ao usuario em vez de silenciar
+      if (showToast) showToast('Erro ao carregar viagens: ' + (err.message || 'sem conexao'))
+    })
   }, [])
 
   const handleCapture = (blob, name) => {

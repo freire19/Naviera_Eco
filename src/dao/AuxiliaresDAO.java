@@ -25,11 +25,11 @@ public class AuxiliaresDAO {
     /** Whitelist de tabelas permitidas (previne SQL injection via nome de tabela). */
     private static final List<String> TABELAS_PERMITIDAS = Arrays.asList(
         "aux_tipos_documento", "aux_sexo", "aux_nacionalidades", "aux_tipos_passagem",
-        "aux_agentes", "aux_horarios_saida", "aux_acomodacoes", "aux_formas_pagamento", "caixas", "rotas"
+        "aux_agentes", "aux_horarios_saida", "aux_acomodacoes", "aux_formas_pagamento", "caixas", "rotas", "embarcacoes"
     );
 
     /** Tabelas que possuem empresa_id (tenant-scoped, nao compartilhadas). */
-    private static final List<String> TABELAS_COM_TENANT = Arrays.asList("caixas", "rotas");
+    private static final List<String> TABELAS_COM_TENANT = Arrays.asList("caixas", "rotas", "embarcacoes");
 
     private static boolean isTenantScoped(String tabela) {
         return TABELAS_COM_TENANT.contains(tabela);
@@ -48,6 +48,7 @@ public class AuxiliaresDAO {
         COLUNAS_PERMITIDAS.put("aux_formas_pagamento", new java.util.HashSet<>(Arrays.asList("id_forma_pagamento", "nome_forma_pagamento")));
         COLUNAS_PERMITIDAS.put("caixas", new java.util.HashSet<>(Arrays.asList("id_caixa", "nome_caixa")));
         COLUNAS_PERMITIDAS.put("rotas", new java.util.HashSet<>(Arrays.asList("id", "origem", "destino")));
+        COLUNAS_PERMITIDAS.put("embarcacoes", new java.util.HashSet<>(Arrays.asList("id_embarcacao", "nome")));
     }
 
     private static void validarTabela(String tabela) {

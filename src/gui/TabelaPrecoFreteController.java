@@ -95,18 +95,20 @@ public class TabelaPrecoFreteController implements Initializable {
         Thread bg = new Thread(() -> {
             try {
                 java.util.List<ItemFrete> dados = new java.util.ArrayList<>();
-                String sql = "SELECT * FROM itens_frete_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item";
+                String sql = "SELECT * FROM itens_frete_padrao WHERE empresa_id = ? ORDER BY nome_item";
                 try (Connection conn = ConexaoBD.getConnection();
-                     PreparedStatement stmt = conn.prepareStatement(sql);
-                     ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        int id = rs.getInt("id_item_frete");
-                        String nome = rs.getString("nome_item");
-                        String desc = rs.getString("descricao");
-                        if (desc == null) desc = "";
-                        BigDecimal pNormal = rs.getBigDecimal("preco_unitario_padrao");
-                        BigDecimal pDesc = rs.getBigDecimal("preco_unitario_desconto");
-                        dados.add(new ItemFrete(id, nome, desc, "UN", pNormal, pDesc, true));
+                     PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setInt(1, dao.DAOUtils.empresaId());
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            int id = rs.getInt("id_item_frete");
+                            String nome = rs.getString("nome_item");
+                            String desc = rs.getString("descricao");
+                            if (desc == null) desc = "";
+                            BigDecimal pNormal = rs.getBigDecimal("preco_unitario_padrao");
+                            BigDecimal pDesc = rs.getBigDecimal("preco_unitario_desconto");
+                            dados.add(new ItemFrete(id, nome, desc, "UN", pNormal, pDesc, true));
+                        }
                     }
                 }
                 Platform.runLater(() -> listaItens.setAll(dados));

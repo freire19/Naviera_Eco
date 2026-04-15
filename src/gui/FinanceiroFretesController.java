@@ -126,67 +126,80 @@ public class FinanceiroFretesController {
         ObservableList<OpcaoViagem> finalLista = lista;
         Platform.runLater(() -> cmbViagem.setItems(finalLista));
     }
+    // DR211: buscar dados em background thread para nao bloquear FX thread
     public void carregarDados() {
         if (cmbViagem.getValue() == null) return;
         int idViagem = cmbViagem.getValue().id;
-        ObservableList<FreteFinanceiro> lista = FXCollections.observableArrayList();
-        java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
-        StringBuilder sql = new StringBuilder();
-        sql.append("SELECT f.id_frete, f.numero_frete, v.data_viagem, ");
-        sql.append("f.remetente_nome_temp AS remetente, f.destinatario_nome_temp AS destinatario, ");
-        sql.append("f.valor_total_itens AS valor_nominal, f.valor_pago, f.valor_devedor, ");
-        sql.append("(SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi WHERE fi.id_frete = f.id_frete) AS total_volumes ");
-        sql.append("FROM fretes f ");
-        sql.append("LEFT JOIN viagens v ON f.id_viagem = v.id_viagem ");
-        sql.append("WHERE f.empresa_id = ? AND f.status_frete != 'CANCELADO' ");
-        // D003: parametriza idViagem
-        java.util.List<Object> params = new java.util.ArrayList<>();
-        params.add(dao.DAOUtils.empresaId());
-        if (idViagem > 0) { sql.append(" AND f.id_viagem = ?"); params.add(idViagem); }
-        if (chkApenasDevedores.isSelected()) sql.append(" AND (f.valor_devedor > 0.01 OR f.valor_pago IS NULL OR f.valor_pago < f.valor_total_itens) ");
-        String busca = txtBusca.getText().toLowerCase();
-        if (!busca.isEmpty()) {
-            String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-            sql.append(" AND (LOWER(f.remetente_nome_temp) LIKE ? ESCAPE '\\' OR LOWER(f.destinatario_nome_temp) LIKE ? ESCAPE '\\') ");
-            params.add("%" + buscaEscapada + "%");
-            params.add("%" + buscaEscapada + "%");
-        }
-        sql.append(" ORDER BY f.id_frete DESC");
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                Object p = params.get(i);
-                if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
-                else stmt.setString(i + 1, p.toString());
+        boolean apenasDevedores = chkApenasDevedores.isSelected();
+        String busca = txtBusca.getText() != null ? txtBusca.getText().toLowerCase() : "";
+
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<FreteFinanceiro> lista = FXCollections.observableArrayList();
+                java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
+                StringBuilder sql = new StringBuilder();
+                sql.append("SELECT f.id_frete, f.numero_frete, v.data_viagem, ");
+                sql.append("f.remetente_nome_temp AS remetente, f.destinatario_nome_temp AS destinatario, ");
+                sql.append("f.valor_total_itens AS valor_nominal, f.valor_pago, f.valor_devedor, ");
+                sql.append("(SELECT COALESCE(SUM(fi.quantidade), 0) FROM frete_itens fi WHERE fi.id_frete = f.id_frete) AS total_volumes ");
+                sql.append("FROM fretes f ");
+                sql.append("LEFT JOIN viagens v ON f.id_viagem = v.id_viagem ");
+                sql.append("WHERE f.empresa_id = ? AND f.status_frete != 'CANCELADO' ");
+                java.util.List<Object> params = new java.util.ArrayList<>();
+                params.add(dao.DAOUtils.empresaId());
+                if (idViagem > 0) { sql.append(" AND f.id_viagem = ?"); params.add(idViagem); }
+                if (apenasDevedores) sql.append(" AND (f.valor_devedor > 0.01 OR f.valor_pago IS NULL OR f.valor_pago < f.valor_total_itens) ");
+                if (!busca.isEmpty()) {
+                    String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+                    sql.append(" AND (LOWER(f.remetente_nome_temp) LIKE ? ESCAPE '\\' OR LOWER(f.destinatario_nome_temp) LIKE ? ESCAPE '\\') ");
+                    params.add("%" + buscaEscapada + "%");
+                    params.add("%" + buscaEscapada + "%");
+                }
+                sql.append(" ORDER BY f.id_frete DESC");
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement stmt = con.prepareStatement(sql.toString())) {
+                    for (int i = 0; i < params.size(); i++) {
+                        Object p = params.get(i);
+                        if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
+                        else stmt.setString(i + 1, p.toString());
+                    }
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                        while (rs.next()) {
+                            java.math.BigDecimal totalBD = rs.getBigDecimal("valor_nominal");
+                            java.math.BigDecimal pagoBD = rs.getBigDecimal("valor_pago");
+                            java.math.BigDecimal devendoBD = rs.getBigDecimal("valor_devedor");
+                            if (totalBD == null) totalBD = java.math.BigDecimal.ZERO;
+                            if (pagoBD == null) pagoBD = java.math.BigDecimal.ZERO;
+                            if (devendoBD == null) devendoBD = java.math.BigDecimal.ZERO;
+                            int volumes = rs.getInt("total_volumes");
+                            String dataFmt = "";
+                            if (rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
+                            lista.add(new FreteFinanceiro(
+                                    rs.getLong("id_frete"),
+                                    rs.getString("numero_frete"),
+                                    dataFmt,
+                                    rs.getString("remetente"),
+                                    rs.getString("destinatario"),
+                                    volumes,
+                                    totalBD, pagoBD
+                            ));
+                            if (devendoBD.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendoBD);
+                        }
+                    }
+                }
+                final java.math.BigDecimal totalPend = somaPendente;
+                Platform.runLater(() -> {
+                    tabela.setItems(lista);
+                    lblTotalPendente.setText(String.format("R$ %,.2f", totalPend));
+                });
+            } catch (Exception e) {
+                AppLogger.error("FinanceiroFretesController", e.getMessage(), e);
+                Platform.runLater(() -> AlertHelper.errorSafe("carregar fretes financeiro", (Exception) e));
             }
-            ResultSet rs = stmt.executeQuery();
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-            while (rs.next()) {
-                java.math.BigDecimal totalBD = rs.getBigDecimal("valor_nominal");
-                java.math.BigDecimal pagoBD = rs.getBigDecimal("valor_pago");
-                java.math.BigDecimal devendoBD = rs.getBigDecimal("valor_devedor");
-                if (totalBD == null) totalBD = java.math.BigDecimal.ZERO;
-                if (pagoBD == null) pagoBD = java.math.BigDecimal.ZERO;
-                if (devendoBD == null) devendoBD = java.math.BigDecimal.ZERO;
-                int volumes = rs.getInt("total_volumes");
-                String dataFmt = "";
-                if (rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
-                lista.add(new FreteFinanceiro(
-                        rs.getLong("id_frete"),
-                        rs.getString("numero_frete"),
-                        dataFmt,
-                        rs.getString("remetente"),
-                        rs.getString("destinatario"),
-                        volumes,
-                        totalBD, pagoBD
-                ));
-                if (devendoBD.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendoBD);
-            }
-            tabela.setItems(lista);
-            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
-        } catch (SQLException e) {
-            AppLogger.error("FinanceiroFretesController", e.getMessage(), e);
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     public void darBaixa() {
         FreteFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();

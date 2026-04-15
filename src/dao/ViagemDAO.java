@@ -152,7 +152,8 @@ public class ViagemDAO {
     }
 
     // DP013: cache da viagem ativa (muda raramente, evita 3-5 queries redundantes/ciclo)
-    private static Viagem cacheViagemAtiva = null;
+    // DR206: volatile para visibilidade entre threads (SyncClient bg + FX thread)
+    private static volatile Viagem cacheViagemAtiva = null;
     public static void invalidarCacheViagem() { cacheViagemAtiva = null; }
 
     public Viagem buscarViagemAtiva() {
@@ -200,8 +201,9 @@ public class ViagemDAO {
         viagem.setDescricao(rs.getString("descricao"));
         
         // Mapeia colunas booleanas com segurança
-        try { viagem.setAtiva(rs.getBoolean("ativa")); } catch(Exception e) { /* coluna opcional */ }
-        try { viagem.setIsAtual(rs.getBoolean("is_atual")); } catch(Exception e) { /* coluna opcional */ }
+        // DR226: logging em vez de silenciar (colunas existem no schema atual)
+        try { viagem.setAtiva(rs.getBoolean("ativa")); } catch(SQLException e) { AppLogger.warn("ViagemDAO", "Coluna ativa: " + e.getMessage()); }
+        try { viagem.setIsAtual(rs.getBoolean("is_atual")); } catch(SQLException e) { AppLogger.warn("ViagemDAO", "Coluna is_atual: " + e.getMessage()); }
         
         viagem.setIdEmbarcacao(rs.getLong("id_embarcacao"));
         viagem.setNomeEmbarcacao(rs.getString("nome_embarcacao"));

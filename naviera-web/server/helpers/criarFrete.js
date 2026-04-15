@@ -16,18 +16,28 @@ export async function criarFreteComItens(client, empresaId, payload) {
     valor_notafiscal, peso_notafiscal, troco, status_frete
   } = payload
 
-  // Gerar proximo ID e numero de frete
-  const idResult = await client.query(
-    'SELECT COALESCE(MAX(id_frete), 0) + 1 AS next_id FROM fretes WHERE empresa_id = $1',
-    [empresaId]
-  )
-  const nextIdFrete = idResult.rows[0].next_id
-
-  const seqResult = await client.query(
-    'SELECT COALESCE(MAX(numero_frete), 0) + 1 AS next_num FROM fretes WHERE empresa_id = $1',
-    [empresaId]
-  )
-  const numFrete = seqResult.rows[0].next_num
+  // Gerar proximo ID e numero de frete via sequences (atomico, sem race condition)
+  let nextIdFrete, numFrete
+  try {
+    const idRes = await client.query("SELECT nextval('fretes_id_frete_seq') AS next_id")
+    nextIdFrete = idRes.rows[0].next_id
+  } catch (e) {
+    const idResult = await client.query(
+      'SELECT COALESCE(MAX(id_frete), 0) + 1 AS next_id FROM fretes WHERE empresa_id = $1',
+      [empresaId]
+    )
+    nextIdFrete = idResult.rows[0].next_id
+  }
+  try {
+    const seqRes = await client.query("SELECT nextval('seq_numero_frete') AS next_num")
+    numFrete = seqRes.rows[0].next_num
+  } catch (e) {
+    const seqResult = await client.query(
+      'SELECT COALESCE(MAX(numero_frete), 0) + 1 AS next_num FROM fretes WHERE empresa_id = $1',
+      [empresaId]
+    )
+    numFrete = seqResult.rows[0].next_num
+  }
 
   // Calcular valores
   const vItens = parseFloat(valor_total_itens) || 0

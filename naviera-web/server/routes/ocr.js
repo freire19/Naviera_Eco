@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import path from 'path'
-import { readFile } from 'fs/promises'
+import { readFile, unlink } from 'fs/promises'
 import { existsSync, mkdirSync } from 'fs'
 import jwt from 'jsonwebtoken'
 import pool from '../db.js'
@@ -101,6 +101,9 @@ router.post('/upload', upload.single('foto'), async (req, res) => {
       ocr_confianca: ocrResult.confidence
     })
   } catch (err) {
+    if (req.file?.path) {
+      await unlink(req.file.path).catch(() => {})
+    }
     console.error('[OCR] Erro no upload:', err.message)
     res.status(500).json({ error: 'Erro ao processar foto' })
   }
@@ -274,8 +277,8 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
     await client.query(`
       UPDATE ocr_lancamentos SET status = 'aprovado', id_frete = $1,
         id_usuario_revisou = $2, nome_usuario_revisou = $3, data_revisao = CURRENT_TIMESTAMP
-      WHERE id = $4
-    `, [frete.id_frete, req.user.id, req.user.login, lanc.id])
+      WHERE id = $4 AND empresa_id = $5
+    `, [frete.id_frete, req.user.id, req.user.login, lanc.id, empresaId])
 
     await client.query('COMMIT')
 

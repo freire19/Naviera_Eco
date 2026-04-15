@@ -76,31 +76,32 @@ public class ReciboAvulsoDAO {
         return lista;
     }
 
-    private String colId = null;
-    private boolean temTipoRecibo = false;
+    // DR208: ThreadLocal em vez de campos de instancia (thread-safe)
+    private final ThreadLocal<String> colIdTL = ThreadLocal.withInitial(() -> "id_recibo");
+    private final ThreadLocal<Boolean> temTipoReciboTL = ThreadLocal.withInitial(() -> false);
 
     /** Detecta colunas uma vez por query (chamado antes do while loop). */
     private void detectarColunas(ResultSet rs) throws SQLException {
         java.sql.ResultSetMetaData meta = rs.getMetaData();
-        colId = "id_recibo"; // default
-        temTipoRecibo = false;
+        colIdTL.set("id_recibo");
+        temTipoReciboTL.set(false);
         for (int i = 1; i <= meta.getColumnCount(); i++) {
             String col = meta.getColumnName(i).toLowerCase();
-            if (col.equals("id") || col.equals("id_recibo")) colId = meta.getColumnName(i);
-            if (col.equals("tipo_recibo")) temTipoRecibo = true;
+            if (col.equals("id") || col.equals("id_recibo")) colIdTL.set(meta.getColumnName(i));
+            if (col.equals("tipo_recibo")) temTipoReciboTL.set(true);
         }
     }
 
     private ReciboAvulso montarObjeto(ResultSet rs) throws SQLException {
         ReciboAvulso r = new ReciboAvulso();
-        r.setId(rs.getInt(colId));
+        r.setId(rs.getInt(colIdTL.get()));
         r.setIdViagem(rs.getInt("id_viagem"));
         r.setNomePagador(rs.getString("nome_pagador"));
         r.setReferenteA(rs.getString("referente_a"));
         r.setValor(rs.getBigDecimal("valor"));
         java.sql.Date dtEmissao = rs.getDate("data_emissao");
         r.setDataEmissao(dtEmissao != null ? dtEmissao.toLocalDate() : null);
-        r.setTipoRecibo(temTipoRecibo ? rs.getString("tipo_recibo") : "PADRAO");
+        r.setTipoRecibo(temTipoReciboTL.get() ? rs.getString("tipo_recibo") : "PADRAO");
         return r;
     }
 }

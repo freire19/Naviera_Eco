@@ -34,6 +34,21 @@ public class AdminService {
     }
 
     /**
+     * Gera codigo de ativacao unico no formato NAV-XXXX (4 hex).
+     * Tenta ate 10 vezes; fallback com 6 hex se colidir muito.
+     */
+    private String gerarCodigoAtivacaoUnico() {
+        for (int tentativa = 0; tentativa < 10; tentativa++) {
+            String codigo = "NAV-" + String.format("%04X", RANDOM.nextInt(0xFFFF));
+            List<Map<String, Object>> existente = jdbc.queryForList(
+                "SELECT 1 FROM empresas WHERE codigo_ativacao = ?", codigo);
+            if (existente.isEmpty()) return codigo;
+        }
+        // Fallback com mais entropia se 4 hex colidir muito
+        return "NAV-" + String.format("%06X", RANDOM.nextInt(0xFFFFFF));
+    }
+
+    /**
      * Cria empresa + primeiro usuario administrador + codigo de ativacao.
      * Se operador_nome/operador_email nao forem informados, gera empresa sem usuario
      * (para retrocompatibilidade, mas o BFF sempre envia).
@@ -44,7 +59,7 @@ public class AdminService {
         String slug = (String) dados.get("slug");
         if (nome == null || nome.isBlank()) throw ApiException.badRequest("Nome e obrigatorio");
 
-        String codigo = "NAV-" + String.format("%04X", RANDOM.nextInt(0xFFFF));
+        String codigo = gerarCodigoAtivacaoUnico();
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(con -> {

@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
     let sql = `
       SELECT p.*, pas.nome_passageiro, pas.numero_documento AS numero_doc
       FROM passagens p
-      LEFT JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro
+      LEFT JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro AND pas.empresa_id = p.empresa_id
       WHERE p.empresa_id = $1
     `
     const params = [empresaId]
@@ -120,7 +120,8 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total: 'require
 
     const vTotal = parseFloat(valor_total) || 0
     const vPago = parseFloat(valor_pago) || 0
-    const vDevedor = vTotal - vPago
+    // Aritmetica em centavos para evitar erros de IEEE 754
+    const vDevedor = Math.round((vTotal - vPago) * 100) / 100
     const status = vDevedor <= 0.01 ? 'PAGO' : 'PENDENTE'
 
     const params = [

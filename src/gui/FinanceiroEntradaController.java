@@ -141,6 +141,7 @@ public class FinanceiroEntradaController {
         });
     }
 
+    // DR211: buscar dados em background thread para nao bloquear FX thread
     @FXML
     public void atualizarDashboard() {
         OpcaoViagem viagemSel = cmbFiltroViagem.getValue();
@@ -152,105 +153,116 @@ public class FinanceiroEntradaController {
         String catSel = cmbFiltroCategoria.getValue();
         String pagSel = cmbFiltroPagamento.getValue();
         String usrSel = cmbFiltroCaixa.getValue();
+        int idViagem = this.idViagemSelecionada;
 
-        BigDecimal total = BigDecimal.ZERO, recebido = BigDecimal.ZERO, pendente = BigDecimal.ZERO;
-        BigDecimal somaPassagem = BigDecimal.ZERO, somaEncomenda = BigDecimal.ZERO, somaFrete = BigDecimal.ZERO;
-        BigDecimal somaPix = BigDecimal.ZERO, somaDinheiro = BigDecimal.ZERO, somaCartao = BigDecimal.ZERO;
+        Thread bg = new Thread(() -> {
+            try {
+                BigDecimal total = BigDecimal.ZERO, recebido = BigDecimal.ZERO, pendente = BigDecimal.ZERO;
+                BigDecimal somaPassagem = BigDecimal.ZERO, somaEncomenda = BigDecimal.ZERO, somaFrete = BigDecimal.ZERO;
+                BigDecimal somaPix = BigDecimal.ZERO, somaDinheiro = BigDecimal.ZERO, somaCartao = BigDecimal.ZERO;
 
-        StringBuilder sql = new StringBuilder();
-        java.util.List<Object> params = new java.util.ArrayList<>();
+                StringBuilder sql = new StringBuilder();
+                java.util.List<Object> params = new java.util.ArrayList<>();
 
-        // 1. ENCOMENDAS — #012: parametrizado
-        sql.append("SELECT 'ENCOMENDA' as origem, total_a_pagar as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, caixa as usuario ");
-        sql.append("FROM encomendas WHERE empresa_id = ? ");
-        params.add(dao.DAOUtils.empresaId());
-        if (idViagemSelecionada > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagemSelecionada); }
+                // 1. ENCOMENDAS — #012: parametrizado
+                sql.append("SELECT 'ENCOMENDA' as origem, total_a_pagar as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, caixa as usuario ");
+                sql.append("FROM encomendas WHERE empresa_id = ? ");
+                params.add(dao.DAOUtils.empresaId());
+                if (idViagem > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagem); }
 
-        sql.append(" UNION ALL ");
+                sql.append(" UNION ALL ");
 
-        // 2. FRETES
-        sql.append("SELECT 'FRETE' as origem, valor_frete_calculado as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, nome_caixa as usuario ");
-        sql.append("FROM fretes WHERE empresa_id = ? ");
-        params.add(dao.DAOUtils.empresaId());
-        if (idViagemSelecionada > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagemSelecionada); }
+                // 2. FRETES
+                sql.append("SELECT 'FRETE' as origem, valor_frete_calculado as total, valor_pago as pago, COALESCE(tipo_pagamento, 'PENDENTE') as pgto, nome_caixa as usuario ");
+                sql.append("FROM fretes WHERE empresa_id = ? ");
+                params.add(dao.DAOUtils.empresaId());
+                if (idViagem > 0) { sql.append(" AND id_viagem = ?"); params.add(idViagem); }
 
-        sql.append(" UNION ALL ");
+                sql.append(" UNION ALL ");
 
-        // 3. PASSAGENS
-        sql.append(" SELECT 'PASSAGEM' as origem, p.valor_total as total, p.valor_pago as pago, ");
-        sql.append(" COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') as pgto, 'SISTEMA' as usuario ");
-        sql.append(" FROM passagens p ");
-        sql.append(" LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento ");
-        sql.append(" WHERE p.empresa_id = ? ");
-        params.add(dao.DAOUtils.empresaId());
-        if (idViagemSelecionada > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagemSelecionada); }
+                // 3. PASSAGENS
+                sql.append(" SELECT 'PASSAGEM' as origem, p.valor_total as total, p.valor_pago as pago, ");
+                sql.append(" COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') as pgto, 'SISTEMA' as usuario ");
+                sql.append(" FROM passagens p ");
+                sql.append(" LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento ");
+                sql.append(" WHERE p.empresa_id = ? ");
+                params.add(dao.DAOUtils.empresaId());
+                if (idViagem > 0) { sql.append(" AND p.id_viagem = ?"); params.add(idViagem); }
 
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                stmt.setObject(i + 1, params.get(i));
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement stmt = con.prepareStatement(sql.toString())) {
+                    for (int i = 0; i < params.size(); i++) {
+                        stmt.setObject(i + 1, params.get(i));
+                    }
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            String tipo = rs.getString("origem");
+                            BigDecimal vTot = rs.getBigDecimal("total");
+                            BigDecimal vPag = rs.getBigDecimal("pago");
+                            if (vTot == null) vTot = BigDecimal.ZERO;
+                            if (vPag == null) vPag = BigDecimal.ZERO;
+                            String pgto = rs.getString("pgto");
+                            String user = rs.getString("usuario");
+
+                            if (catSel != null && !catSel.equals("Todas")) {
+                                if (!tipo.equalsIgnoreCase(catSel)) continue;
+                            }
+                            if (pagSel != null && !pagSel.equals("Todas")) {
+                                if (pgto == null || !pgto.toUpperCase().contains(pagSel.toUpperCase())) continue;
+                            }
+                            if (usrSel != null && !usrSel.equals("Todos")) {
+                                if (user == null || !user.equalsIgnoreCase(usrSel)) continue;
+                            }
+
+                            total = total.add(vTot);
+                            recebido = recebido.add(vPag);
+                            pendente = pendente.add(vTot.subtract(vPag));
+
+                            if (tipo.equals("PASSAGEM")) somaPassagem = somaPassagem.add(vTot);
+                            else if (tipo.equals("ENCOMENDA")) somaEncomenda = somaEncomenda.add(vTot);
+                            else if (tipo.equals("FRETE")) somaFrete = somaFrete.add(vTot);
+
+                            if (vPag.compareTo(BigDecimal.ZERO) > 0 && pgto != null) {
+                                String pgtoUpper = pgto.toUpperCase();
+                                if (pgtoUpper.contains("PIX")) somaPix = somaPix.add(vPag);
+                                else if (pgtoUpper.contains("CART") || pgtoUpper.contains("CREDITO") || pgtoUpper.contains("DEBITO")) somaCartao = somaCartao.add(vPag);
+                                else somaDinheiro = somaDinheiro.add(vPag);
+                            }
+                        }
+                    }
+                }
+
+                final BigDecimal fTotal = total, fRecebido = recebido, fPendente = pendente;
+                final BigDecimal fPassagem = somaPassagem, fEncomenda = somaEncomenda, fFrete = somaFrete;
+                final BigDecimal fDinheiro = somaDinheiro, fPix = somaPix, fCartao = somaCartao;
+
+                javafx.application.Platform.runLater(() -> {
+                    lblTotalGeral.setText(String.format("R$ %.2f", fTotal));
+                    lblRecebido.setText(String.format("R$ %.2f", fRecebido));
+                    lblPendente.setText(String.format("R$ %.2f", fPendente));
+
+                    ObservableList<PieChart.Data> dadosPizza = FXCollections.observableArrayList();
+                    if (fPassagem.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Passagens", fPassagem.doubleValue()));
+                    if (fEncomenda.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Encomendas", fEncomenda.doubleValue()));
+                    if (fFrete.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Fretes", fFrete.doubleValue()));
+                    graficoPizza.setData(dadosPizza);
+
+                    XYChart.Series<String, Number> serie = new XYChart.Series<>();
+                    serie.setName("Recebido");
+                    if (fDinheiro.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Dinheiro", fDinheiro.doubleValue()));
+                    if (fPix.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Pix", fPix.doubleValue()));
+                    if (fCartao.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Cartão", fCartao.doubleValue()));
+
+                    graficoBarra.getData().clear();
+                    graficoBarra.getData().add(serie);
+                });
+            } catch (Exception e) {
+                AppLogger.error("FinanceiroEntradaController", e.getMessage(), e);
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("dashboard entradas", e));
             }
-            try (ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                String tipo = rs.getString("origem");
-                BigDecimal vTot = rs.getBigDecimal("total");
-                BigDecimal vPag = rs.getBigDecimal("pago");
-                if (vTot == null) vTot = BigDecimal.ZERO;
-                if (vPag == null) vPag = BigDecimal.ZERO;
-                String pgto = rs.getString("pgto");
-                String user = rs.getString("usuario");
-
-                if (catSel != null && !catSel.equals("Todas")) {
-                    if (!tipo.equalsIgnoreCase(catSel)) continue;
-                }
-                if (pagSel != null && !pagSel.equals("Todas")) {
-                    if (pgto == null || !pgto.toUpperCase().contains(pagSel.toUpperCase())) continue;
-                }
-                if (usrSel != null && !usrSel.equals("Todos")) {
-                    if (user == null || !user.equalsIgnoreCase(usrSel)) continue;
-                }
-
-                total = total.add(vTot);
-                recebido = recebido.add(vPag);
-                pendente = pendente.add(vTot.subtract(vPag));
-
-                if (tipo.equals("PASSAGEM")) somaPassagem = somaPassagem.add(vTot);
-                else if (tipo.equals("ENCOMENDA")) somaEncomenda = somaEncomenda.add(vTot);
-                else if (tipo.equals("FRETE")) somaFrete = somaFrete.add(vTot);
-
-                if (vPag.compareTo(BigDecimal.ZERO) > 0 && pgto != null) {
-                    String pgtoUpper = pgto.toUpperCase();
-                    if (pgtoUpper.contains("PIX")) somaPix = somaPix.add(vPag);
-                    else if (pgtoUpper.contains("CART") || pgtoUpper.contains("CREDITO") || pgtoUpper.contains("DEBITO")) somaCartao = somaCartao.add(vPag);
-                    else somaDinheiro = somaDinheiro.add(vPag);
-                }
-            }
-
-            lblTotalGeral.setText(String.format("R$ %.2f", total));
-            lblRecebido.setText(String.format("R$ %.2f", recebido));
-            lblPendente.setText(String.format("R$ %.2f", pendente));
-
-            ObservableList<PieChart.Data> dadosPizza = FXCollections.observableArrayList();
-            if (somaPassagem.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Passagens", somaPassagem.doubleValue()));
-            if (somaEncomenda.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Encomendas", somaEncomenda.doubleValue()));
-            if (somaFrete.compareTo(BigDecimal.ZERO) > 0) dadosPizza.add(new PieChart.Data("Fretes", somaFrete.doubleValue()));
-            graficoPizza.setData(dadosPizza);
-
-            XYChart.Series<String, Number> serie = new XYChart.Series<>();
-            serie.setName("Recebido");
-            if (somaDinheiro.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Dinheiro", somaDinheiro.doubleValue()));
-            if (somaPix.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Pix", somaPix.doubleValue()));
-            if (somaCartao.compareTo(BigDecimal.ZERO) > 0) serie.getData().add(new XYChart.Data<>("Cartão", somaCartao.doubleValue()));
-            
-            graficoBarra.getData().clear();
-            graficoBarra.getData().add(serie);
-
-            }
-        } catch (SQLException e) {
-            AppLogger.error("FinanceiroEntradaController", e.getMessage(), e);
-            AppLogger.warn("FinanceiroEntradaController", "Erro SQL Dashboard: " + e.getMessage());
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     @FXML void abrirTelaEncomendas() { abrirTelaDetalhes("ENCOMENDA"); }

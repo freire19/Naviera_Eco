@@ -104,6 +104,9 @@ router.post('/trocar-senha', authMiddleware, async (req, res) => {
   if (nova_senha.length < 6) {
     return res.status(400).json({ error: 'Nova senha deve ter no minimo 6 caracteres' })
   }
+  if (nova_senha.length > 128) {
+    return res.status(400).json({ error: 'Senha deve ter no maximo 128 caracteres' })
+  }
 
   try {
     const result = await pool.query(

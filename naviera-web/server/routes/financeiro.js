@@ -60,12 +60,13 @@ router.get('/balanco', async (req, res) => {
     ])
 
     const receitas = {
-      passagens: parseFloat(passagens.rows[0].total),
-      encomendas: parseFloat(encomendas.rows[0].total),
-      fretes: parseFloat(fretes.rows[0].total)
+      passagens: Number(passagens.rows[0].total) || 0,
+      encomendas: Number(encomendas.rows[0].total) || 0,
+      fretes: Number(fretes.rows[0].total) || 0
     }
-    const totalReceitas = receitas.passagens + receitas.encomendas + receitas.fretes
-    const totalDespesas = parseFloat(saidas.rows[0].total)
+    // Aritmetica em centavos para evitar erros IEEE 754
+    const totalReceitas = Math.round((receitas.passagens + receitas.encomendas + receitas.fretes) * 100) / 100
+    const totalDespesas = Number(saidas.rows[0].total) || 0
 
     res.json({
       receitas,
@@ -269,6 +270,7 @@ router.post('/boleto', validate({ descricao: 'required|string', valor_total: 're
 
 // POST /api/financeiro/boleto/batch — Create multiple boletos (parcelas)
 router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor_total: 'required|number', parcelas: 'required|integer' }), async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
     const {
@@ -278,11 +280,14 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
     if (!descricao_base || !valor_total || !parcelas || parcelas < 1) {
       return res.status(400).json({ error: 'Campos obrigatorios: descricao_base, valor_total, parcelas (>= 1)' })
     }
+    if (parcelas > 120) return res.status(400).json({ error: 'Maximo de 120 parcelas permitido' })
     const valorParcela = Math.floor(valor_total * 100 / parcelas) / 100
     const valorUltimaParcela = Math.round((valor_total - valorParcela * (parcelas - 1)) * 100) / 100
     const intervalo = parseInt(intervalo_dias) || 30
     const dataBase = data_primeira_vencimento ? new Date(data_primeira_vencimento) : new Date()
     const boletos = []
+
+    await client.query('BEGIN')
 
     for (let i = 0; i < parcelas; i++) {
       const dataVenc = new Date(dataBase)
@@ -291,7 +296,7 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
       const descricao = `${descricao_base} (${i + 1}/${parcelas})`
       const valorEsta = (i === parcelas - 1) ? valorUltimaParcela : valorParcela
 
-      const result = await pool.query(`
+      const result = await client.query(`
         INSERT INTO financeiro_saidas (id_viagem, descricao, valor_total, data_vencimento, id_categoria, forma_pagamento,
           valor_pago, status, numero_parcela, total_parcelas, observacoes, is_excluido, empresa_id)
         VALUES ($1, $2, $3, $4, $5, 'BOLETO', 0, 'PENDENTE', $6, $7, NULL, FALSE, $8)
@@ -303,16 +308,20 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
       boletos.push(result.rows[0])
 
       // Create agenda entry for each parcela
-      await pool.query(
+      await client.query(
         'INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES ($1, $2, FALSE, $3)',
         [dataStr, `Boleto: ${descricao} - R$ ${valorEsta.toFixed(2)}`, empresaId]
       )
     }
 
+    await client.query('COMMIT')
     res.status(201).json(boletos)
   } catch (err) {
+    await client.query('ROLLBACK')
     console.error('[Financeiro] Erro ao criar boletos em lote:', err.message)
     res.status(500).json({ error: 'Erro ao criar boletos em lote' })
+  } finally {
+    client.release()
   }
 })
 

@@ -43,17 +43,24 @@ function useGps(authHeaders) {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
   const timerRef = useRef(null);
+  const abortRef = useRef(null);
 
   const fetchGps = useCallback(async (silent = false) => {
+    // Cancel previous in-flight fetch
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     if (!silent) setLoading(true);
     setErro("");
     try {
       const headers = authHeaders?.Authorization ? { ...authHeaders } : {};
-      const r = await fetch(`${API}/gps/embarcacoes`, { headers });
+      const r = await fetch(`${API}/gps/embarcacoes`, { headers, signal: controller.signal });
       if (!r.ok) throw new Error("Erro ao carregar posicoes GPS");
       const d = await r.json();
       setData(d);
     } catch (e) {
+      if (e.name === 'AbortError') return;
       setErro(e.message || "Erro ao carregar dados GPS.");
     } finally {
       setLoading(false);
@@ -63,7 +70,10 @@ function useGps(authHeaders) {
   useEffect(() => {
     fetchGps();
     timerRef.current = setInterval(() => fetchGps(true), REFRESH_MS);
-    return () => clearInterval(timerRef.current);
+    return () => {
+      clearInterval(timerRef.current);
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [fetchGps]);
 
   const refresh = useCallback(() => fetchGps(false), [fetchGps]);

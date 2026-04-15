@@ -106,8 +106,10 @@ public class ExtratoClienteEncomendaController {
              PreparedStatement stmt = con.prepareStatement(sql)) {
              stmt.setInt(1, dao.DAOUtils.empresaId());
              stmt.setInt(2, dao.DAOUtils.empresaId());
-             ResultSet rs = stmt.executeQuery();
+             // DR213: try-with-resources para ResultSet
+             try (ResultSet rs = stmt.executeQuery()) {
              while(rs.next()) nomes.add(rs.getString("nome"));
+             }
         } catch (Exception e) { AppLogger.error("ExtratoClienteEncomendaController", e.getMessage(), e); }
         javafx.application.Platform.runLater(() -> {
             listaTodosClientes.setAll(nomes);
@@ -149,83 +151,96 @@ public class ExtratoClienteEncomendaController {
         }
     }
 
+    // DR211: buscar dados em background thread para nao bloquear FX thread
     private void buscarDados() {
-        ObservableList<ItemExtrato> lista = FXCollections.observableArrayList();
-        BigDecimal totalGeral = BigDecimal.ZERO;
-        BigDecimal totalPago = BigDecimal.ZERO;
-        this.dividaTotalAtual = BigDecimal.ZERO;
-        
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         String statusFiltro = cmbStatus.getValue();
+        String clienteNome = nomeClienteAtual != null ? nomeClienteAtual.trim() : "";
+        if (clienteNome.isEmpty()) return;
 
-        String sql = "SELECT e.id_encomenda, e.numero_encomenda, e.remetente, e.total_a_pagar, e.valor_pago, " +
-                     "v.data_viagem, v.data_chegada, r.origem, r.destino " +
-                     "FROM encomendas e " +
-                     "LEFT JOIN viagens v ON e.id_viagem = v.id_viagem " +
-                     "LEFT JOIN rotas r ON v.id_rota = r.id " +
-                     "WHERE UPPER(TRIM(e.destinatario)) = UPPER(TRIM(?)) " +
-                     "AND e.empresa_id = ? " +
-                     "ORDER BY v.data_viagem DESC";
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<ItemExtrato> lista = FXCollections.observableArrayList();
+                BigDecimal totalGeral = BigDecimal.ZERO;
+                BigDecimal totalPago = BigDecimal.ZERO;
+                BigDecimal dividaTotal = BigDecimal.ZERO;
 
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql)) {
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
-            stmt.setString(1, nomeClienteAtual.trim());
-            stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
+                String sql = "SELECT e.id_encomenda, e.numero_encomenda, e.remetente, e.total_a_pagar, e.valor_pago, " +
+                             "v.data_viagem, v.data_chegada, r.origem, r.destino " +
+                             "FROM encomendas e " +
+                             "LEFT JOIN viagens v ON e.id_viagem = v.id_viagem " +
+                             "LEFT JOIN rotas r ON v.id_rota = r.id " +
+                             "WHERE UPPER(TRIM(e.destinatario)) = UPPER(TRIM(?)) " +
+                             "AND e.empresa_id = ? " +
+                             "ORDER BY v.data_viagem DESC";
 
-            while (rs.next()) {
-                BigDecimal val = rs.getBigDecimal("total_a_pagar");
-                BigDecimal pag = rs.getBigDecimal("valor_pago");
-                if (val == null) val = BigDecimal.ZERO;
-                if (pag == null) pag = BigDecimal.ZERO;
-                BigDecimal saldo = val.subtract(pag).max(BigDecimal.ZERO);
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement stmt = con.prepareStatement(sql)) {
 
-                String status = (saldo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) ? "PAGO" : "PENDENTE";
+                    stmt.setString(1, clienteNome);
+                    stmt.setInt(2, dao.DAOUtils.empresaId());
+                    try (ResultSet rs = stmt.executeQuery()) {
 
-                if (statusFiltro != null) {
-                    if (statusFiltro.equals("PENDENTES") && status.equals("PAGO")) continue;
-                    if (statusFiltro.equals("PAGOS") && !status.equals("PAGO")) continue;
-                }
+                    while (rs.next()) {
+                        BigDecimal val = rs.getBigDecimal("total_a_pagar");
+                        BigDecimal pag = rs.getBigDecimal("valor_pago");
+                        if (val == null) val = BigDecimal.ZERO;
+                        if (pag == null) pag = BigDecimal.ZERO;
+                        BigDecimal saldo = val.subtract(pag).max(BigDecimal.ZERO);
 
-                totalGeral = totalGeral.add(val);
-                totalPago = totalPago.add(pag);
-                dividaTotalAtual = dividaTotalAtual.add(saldo);
-                
-                String dataViagemStr = "--";
-                if(rs.getDate("data_viagem") != null) {
-                    dataViagemStr = sdf.format(rs.getDate("data_viagem"));
-                    if(rs.getDate("data_chegada") != null) {
-                        dataViagemStr += " - " + sdf.format(rs.getDate("data_chegada"));
+                        String status = (saldo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0) ? "PAGO" : "PENDENTE";
+
+                        if (statusFiltro != null) {
+                            if (statusFiltro.equals("PENDENTES") && status.equals("PAGO")) continue;
+                            if (statusFiltro.equals("PAGOS") && !status.equals("PAGO")) continue;
+                        }
+
+                        totalGeral = totalGeral.add(val);
+                        totalPago = totalPago.add(pag);
+                        dividaTotal = dividaTotal.add(saldo);
+
+                        String dataViagemStr = "--";
+                        if(rs.getDate("data_viagem") != null) {
+                            dataViagemStr = sdf.format(rs.getDate("data_viagem"));
+                            if(rs.getDate("data_chegada") != null) {
+                                dataViagemStr += " - " + sdf.format(rs.getDate("data_chegada"));
+                            }
+                        }
+
+                        String rotaStr = "Geral";
+                        String orig = rs.getString("origem");
+                        String dest = rs.getString("destino");
+                        if(orig != null && dest != null) rotaStr = orig + " -> " + dest;
+
+                        String num = rs.getString("numero_encomenda");
+                        String rem = rs.getString("remetente");
+                        String desc = "N° Enc. " + num + " (De: " + rem + ")";
+
+                        lista.add(new ItemExtrato(dataViagemStr, rotaStr, desc, val.doubleValue(), pag.doubleValue(), saldo.doubleValue()));
+                    }
                     }
                 }
-                
-                String rotaStr = "Geral";
-                String orig = rs.getString("origem");
-                String dest = rs.getString("destino");
-                if(orig != null && dest != null) rotaStr = orig + " -> " + dest;
 
-                String num = rs.getString("numero_encomenda");
-                String rem = rs.getString("remetente");
-                String desc = "N° Enc. " + num + " (De: " + rem + ")";
+                final BigDecimal fTotalGeral = totalGeral;
+                final BigDecimal fTotalPago = totalPago;
+                final BigDecimal fDividaTotal = dividaTotal;
+                javafx.application.Platform.runLater(() -> {
+                    dividaTotalAtual = fDividaTotal;
+                    tabela.setItems(lista);
+                    lblTotalGeral.setText(nf.format(fTotalGeral));
+                    lblTotalPago.setText(nf.format(fTotalPago));
+                    lblTotalDivida.setText(nf.format(fDividaTotal));
+                    btnQuitarTudo.setDisable(fDividaTotal.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0);
+                });
 
-                lista.add(new ItemExtrato(dataViagemStr, rotaStr, desc, val.doubleValue(), pag.doubleValue(), saldo.doubleValue()));
+            } catch (Exception e) {
+                AppLogger.error("ExtratoClienteEncomendaController", e.getMessage(), e);
+                javafx.application.Platform.runLater(() -> AlertHelper.errorSafe("buscar extrato encomendas", e));
             }
-
-            tabela.setItems(lista);
-
-            lblTotalGeral.setText(nf.format(totalGeral));
-            lblTotalPago.setText(nf.format(totalPago));
-            lblTotalDivida.setText(nf.format(dividaTotalAtual));
-
-            btnQuitarTudo.setDisable(dividaTotalAtual.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) <= 0);
-
-        } catch (Exception e) {
-            AppLogger.error("ExtratoClienteEncomendaController", e.getMessage(), e);
-            Alert a = new Alert(Alert.AlertType.ERROR);
-            a.setContentText("Erro ao buscar dados: " + e.getMessage());
-            a.show();
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     // --- FUNÇÃO ATUALIZADA: CHAMADA DA NOVA TELA DE QUITAÇÃO ---

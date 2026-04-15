@@ -304,6 +304,7 @@ router.post('/usuarios', validate({ nome: 'required|string|min:2', senha: 'requi
     const empresaId = req.user.empresa_id
     const { nome, email, senha, funcao, permissao } = req.body
     if (!nome || !senha) return res.status(400).json({ error: 'nome e senha obrigatorios' })
+    if (senha.length > 128) return res.status(400).json({ error: 'Senha deve ter no maximo 128 caracteres' })
     const senhaHash = await bcrypt.hash(senha, 10)
     const result = await pool.query(
       'INSERT INTO usuarios (nome, email, senha, funcao, permissao, excluido, empresa_id) VALUES ($1,$2,$3,$4,$5,FALSE,$6) RETURNING id, nome, email, funcao, permissao',
@@ -322,6 +323,7 @@ router.put('/usuarios/:id', async (req, res) => {
     const { nome, email, funcao, permissao, senha } = req.body
     let sql, params
     if (senha) {
+      if (senha.length > 128) return res.status(400).json({ error: 'Senha deve ter no maximo 128 caracteres' })
       const senhaHash = await bcrypt.hash(senha, 10)
       sql = 'UPDATE usuarios SET nome = COALESCE($1, nome), email = COALESCE($2, email), funcao = COALESCE($3, funcao), permissao = COALESCE($4, permissao), senha = $5 WHERE id = $6 AND empresa_id = $7 RETURNING id, nome, email, funcao, permissao'
       params = [nome, email, funcao, permissao, senhaHash, req.params.id, empresaId]

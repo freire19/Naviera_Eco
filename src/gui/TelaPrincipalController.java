@@ -532,10 +532,10 @@ public class TelaPrincipalController implements Initializable {
         cmbFrequencia.getSelectionModel().select(1); 
 
         // CARREGA BARCOS
-        carregarDadosComboSimples(cmbBarcos, "SELECT nome FROM embarcacoes WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome");
+        carregarDadosComboParam(cmbBarcos, "SELECT nome FROM embarcacoes WHERE empresa_id = ? ORDER BY nome");
 
         // CORREÇÃO AQUI: Usa 'origem' e 'destino' em vez de 'nome'
-        carregarDadosComboSimples(cmbRotas, "SELECT origem || ' / ' || destino FROM rotas WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY origem");
+        carregarDadosComboParam(cmbRotas, "SELECT origem || ' / ' || destino FROM rotas WHERE empresa_id = ? ORDER BY origem");
 
         grid.add(new Label("Embarcação:"), 0, 0);
         grid.add(cmbBarcos, 1, 0);
@@ -569,6 +569,23 @@ public class TelaPrincipalController implements Initializable {
 
             gerarLembretesNoBanco(barcoNome, rotaNome, inicio, fim, diasIntervalo);
             construirCalendario();
+        }
+    }
+
+    private void carregarDadosComboParam(ComboBox<String> combo, String sql) {
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, dao.DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                ObservableList<String> itens = FXCollections.observableArrayList();
+                while (rs.next()) {
+                    itens.add(rs.getString(1));
+                }
+                combo.setItems(itens);
+                if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
+            }
+        } catch (SQLException e) {
+            AppLogger.error("TelaPrincipalController", e.getMessage(), e);
         }
     }
 
@@ -1063,14 +1080,26 @@ public class TelaPrincipalController implements Initializable {
                         "--no-privileges"
                     );
                     
-                    // Configurar variável de ambiente para senha (se necessário)
+                    // DR025: usar .pgpass temporario em vez de PGPASSWORD no environment
+                    // .pgpass formato: host:porta:banco:usuario:senha
+                    java.io.File pgpassFile = null;
                     if (fSenha != null && !fSenha.isEmpty()) {
-                        pb.environment().put("PGPASSWORD", fSenha);
+                        pgpassFile = java.io.File.createTempFile(".pgpass_naviera_", ".tmp");
+                        pgpassFile.deleteOnExit();
+                        // Restringir permissoes (pg_dump exige 0600)
+                        pgpassFile.setReadable(false, false);
+                        pgpassFile.setReadable(true, true);
+                        pgpassFile.setWritable(false, false);
+                        pgpassFile.setWritable(true, true);
+                        java.nio.file.Files.writeString(pgpassFile.toPath(),
+                            fHost + ":" + fPorta + ":" + fBanco + ":" + fUsuario + ":" + fSenha + "\n");
+                        pb.environment().put("PGPASSFILE", pgpassFile.getAbsolutePath());
                     }
-                    
+                    pb.environment().put("PGCONNECT_TIMEOUT", "10");
+
                     pb.redirectErrorStream(true);
                     Process processo = pb.start();
-                    
+
                     // Ler saída do processo
                     StringBuilder output = new StringBuilder();
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(processo.getInputStream()))) {
@@ -1079,8 +1108,11 @@ public class TelaPrincipalController implements Initializable {
                             output.append(line).append("\n");
                         }
                     }
-                    
+
                     int exitCode = processo.waitFor();
+
+                    // DR025: limpar .pgpass temporario imediatamente apos uso
+                    if (pgpassFile != null && pgpassFile.exists()) pgpassFile.delete();
                     
                     // Fechar alerta de progresso e mostrar resultado
                     Platform.runLater(() -> {

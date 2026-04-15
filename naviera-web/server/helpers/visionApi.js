@@ -28,7 +28,8 @@ export async function callVisionOCR(imagePath) {
   const res = await fetch(`${VISION_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000)
   })
 
   if (!res.ok) {

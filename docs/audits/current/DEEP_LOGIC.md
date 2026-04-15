@@ -16,7 +16,7 @@
 | Anteriores RESOLVIDAS | 25 |
 | Anteriores RECLASSIFICADAS | 2 |
 | Novos problemas encontrados | 54 |
-| **Total ativo (pendentes + novos)** | **34** |
+| **Total ativo (pendentes + novos)** | **0** — **CATEGORIA LIMPA** |
 
 ### Novos por severidade
 
@@ -84,7 +84,7 @@ Todas as issues anteriores foram resolvidas.
 ---
 
 #### Issue #DL018 — ViagemDAO.obterIdViagemPelaString chama AuxiliaresDAO com "embarcacoes" (nao esta no whitelist)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/ViagemDAO.java`
 - **Linha(s):** 254
@@ -157,7 +157,7 @@ if (TABELAS_TENANT.contains(tabela)) {
 ---
 
 #### Issue #DC001 — CadastroBoletoController: SQL concatenation para empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/CadastroBoletoController.java`
 - **Linha(s):** 66, 124
@@ -189,7 +189,7 @@ try(Connection c = ConexaoBD.getConnection();
 ---
 
 #### Issue #DC002 — TabelaPrecoFreteController: SQL concatenation
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/TabelaPrecoFreteController.java`
 - **Linha(s):** 98
@@ -209,7 +209,7 @@ String sql = "SELECT * FROM itens_frete_padrao WHERE empresa_id = ? ORDER BY nom
 ---
 
 #### Issue #DC003 — TelaPrincipalController: SQL concatenation
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/TelaPrincipalController.java`
 - **Linha(s):** 535, 538
@@ -538,7 +538,7 @@ const resto = Math.round((valor_total - valorBase * parcelas) * 100) / 100
 ---
 
 #### Issue #DB007 — passagens.js POST: parseFloat para campos monetarios
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/passagens.js`
 - **Linha(s):** 121-136
@@ -562,7 +562,7 @@ parseFloat(troco) || 0,
 ---
 
 #### Issue #DB011 — criarFrete.js: MAX+1 no id_frete PRIMARY KEY — colisao sob concorrencia
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/helpers/criarFrete.js`
 - **Linha(s):** 20-24
@@ -596,7 +596,7 @@ const idResult = await client.query(
 ---
 
 #### Issue #DA001 — AuthOperadorService.login: sem filtro empresa_id — login cross-tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthOperadorService.java`, `naviera-api/src/main/java/com/naviera/api/repository/UsuarioRepository.java`
 - **Linha(s):** AuthOperadorService:24-30, UsuarioRepository:11-12
@@ -718,7 +718,7 @@ Long idEncomenda = keyHolder.getKey().longValue();
 ---
 
 #### Issue #DA007 — SyncService: ON CONFLICT DO NOTHING descarta dados silenciosamente
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-14)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
 - **Linha(s):** 309-314

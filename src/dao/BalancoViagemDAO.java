@@ -115,6 +115,7 @@ public class BalancoViagemDAO {
                                "WHERE d.id_viagem = ? AND d.empresa_id = ? " +
                                "GROUP BY c.nome";
 
+            // DR216: try-catch individual para query de Saidas (consistente com Passagens/Encomendas/Fretes)
             BigDecimal somaSaidas = BigDecimal.ZERO;
             try (PreparedStatement stmt = connection.prepareStatement(sqlSaidas)) {
                 stmt.setInt(1, idViagem);
@@ -127,6 +128,9 @@ public class BalancoViagemDAO {
                         somaSaidas = somaSaidas.add(valor);
                     }
                 }
+            } catch (SQLException e) {
+                AppLogger.warn("BalancoViagemDAO", "Erro SQL Saidas: " + e.getMessage());
+                dados.marcarIncompleto("Saidas", e.getMessage());
             }
             dados.setTotalSaidas(somaSaidas);
 

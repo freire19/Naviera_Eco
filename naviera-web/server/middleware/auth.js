@@ -8,7 +8,7 @@ if (!SECRET) {
 
 export function generateToken(user) {
   return jwt.sign(
-    { id: user.id, login: user.login_usuario, funcao: user.funcao, empresa_id: user.empresa_id },
+    { id: user.id, login: user.login_usuario || user.nome || user.login, funcao: user.funcao, empresa_id: user.empresa_id },
     SECRET,
     { expiresIn: '8h' }
   )

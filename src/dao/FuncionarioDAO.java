@@ -237,8 +237,11 @@ public class FuncionarioDAO {
                 while (rs.next()) {
                     String forma = rs.getString("forma_pagamento");
                     String tipo = (forma != null && (forma.equals("DESCONTO") || forma.equals("RETIDO"))) ? "DESCONTO" : "DINHEIRO";
+                    // DR202: null check em data_pagamento (pode ser NULL para despesas pendentes)
+                    java.sql.Date dpDate = rs.getDate("data_pagamento");
+                    if (dpDate == null) continue; // pular registros sem data
                     historico.add(new PagamentoHistorico(
-                        rs.getDate("data_pagamento").toLocalDate(),
+                        dpDate.toLocalDate(),
                         rs.getString("descricao"),
                         rs.getDouble("valor_pago"),
                         tipo
@@ -260,8 +263,11 @@ public class FuncionarioDAO {
             stmt.setInt(4, ano);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
+                    // DR202: null check em data_evento (pode ser NULL em eventos importados)
+                    java.sql.Date deDate = rs.getDate("data_evento");
+                    if (deDate == null) continue; // pular registros sem data
                     historico.add(new PagamentoHistorico(
-                        rs.getDate("data_evento").toLocalDate(),
+                        deDate.toLocalDate(),
                         rs.getString("descricao"),
                         rs.getDouble("valor"),
                         "DESCONTO"
@@ -291,13 +297,19 @@ public class FuncionarioDAO {
         f.setEndereco(rs.getString("endereco"));
         if (rs.getDate("data_nascimento") != null) f.setDataNascimento(rs.getDate("data_nascimento").toLocalDate());
 
+        // DR214: catch com logging (colunas existem no schema atual — erros nao devem ser silenciados)
         try { if (rs.getDate("data_inicio_calculo") != null) f.setDataInicioCalculo(rs.getDate("data_inicio_calculo").toLocalDate()); }
-        catch (Exception e) { /* coluna opcional */ }
-        try { f.setRecebe13(rs.getBoolean("recebe_decimo_terceiro")); } catch (Exception e) { f.setRecebe13(false); }
-        try { f.setClt(rs.getBoolean("is_clt")); } catch (Exception e) { f.setClt(false); }
-        try { f.setValorInss(rs.getDouble("valor_inss")); } catch (Exception e) { f.setValorInss(0.0); }
-        try { f.setDescontarInss(rs.getBoolean("descontar_inss")); } catch (Exception e) { f.setDescontarInss(false); }
-        try { f.setAtivo(rs.getBoolean("ativo")); } catch (Exception e) { f.setAtivo(true); }
+        catch (SQLException e) { AppLogger.warn("FuncionarioDAO", "Coluna data_inicio_calculo: " + e.getMessage()); }
+        try { f.setRecebe13(rs.getBoolean("recebe_decimo_terceiro")); }
+        catch (SQLException e) { f.setRecebe13(false); AppLogger.warn("FuncionarioDAO", "Coluna recebe_decimo_terceiro: " + e.getMessage()); }
+        try { f.setClt(rs.getBoolean("is_clt")); }
+        catch (SQLException e) { f.setClt(false); AppLogger.warn("FuncionarioDAO", "Coluna is_clt: " + e.getMessage()); }
+        try { f.setValorInss(rs.getDouble("valor_inss")); }
+        catch (SQLException e) { f.setValorInss(0.0); AppLogger.warn("FuncionarioDAO", "Coluna valor_inss: " + e.getMessage()); }
+        try { f.setDescontarInss(rs.getBoolean("descontar_inss")); }
+        catch (SQLException e) { f.setDescontarInss(false); AppLogger.warn("FuncionarioDAO", "Coluna descontar_inss: " + e.getMessage()); }
+        try { f.setAtivo(rs.getBoolean("ativo")); }
+        catch (SQLException e) { f.setAtivo(true); AppLogger.warn("FuncionarioDAO", "Coluna ativo: " + e.getMessage()); }
 
         return f;
     }

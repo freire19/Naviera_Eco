@@ -306,10 +306,17 @@ public class SyncService {
             valores.add(true);
         }
 
+        // ON CONFLICT DO UPDATE: se uuid ja existe, atualiza com dados mais recentes do cliente
+        List<String> updateSets = new ArrayList<>();
+        for (String col : colunas) {
+            if (!"uuid".equals(col)) {
+                updateSets.add(col + " = EXCLUDED." + col);
+            }
+        }
         String sql = "INSERT INTO " + tabela
             + " (" + String.join(", ", colunas) + ")"
             + " VALUES (" + String.join(", ", placeholders) + ")"
-            + " ON CONFLICT (uuid) DO NOTHING"; // evita duplicatas se uuid ja existe
+            + " ON CONFLICT (uuid) DO UPDATE SET " + String.join(", ", updateSets);
 
         jdbc.update(sql, valores.toArray());
     }

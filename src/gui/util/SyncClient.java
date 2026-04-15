@@ -71,17 +71,18 @@ public class SyncClient {
     private static final int READ_TIMEOUT = 60_000;
 
     // Configuracoes
-    private String serverUrl = "http://localhost:8081";
-    private String login = "";
-    private String senha = "";
+    // DR209: volatile para visibilidade entre threads (FX thread escreve, scheduler lê)
+    private volatile String serverUrl = "http://localhost:8081";
+    private volatile String login = "";
+    private volatile String senha = "";
     private volatile String jwtToken = "";
     private volatile boolean autoSyncEnabled = false;
     private volatile int syncIntervalMinutes = 5;
 
     // DR108: volatile para visibilidade entre threads (scheduler, FX, CompletableFuture)
     private volatile LocalDateTime ultimaSincronizacao;
-    // #039/#032: nao-final para permitir recriar apos shutdown via pararSyncAutomatica()
-    private ScheduledExecutorService scheduler;
+    // DR210: volatile + nao-final para permitir recriar apos shutdown via pararSyncAutomatica()
+    private volatile ScheduledExecutorService scheduler;
     // DR108: CopyOnWriteArrayList para acesso thread-safe
     private final List<SyncListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 

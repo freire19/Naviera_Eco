@@ -26,7 +26,8 @@ public class ReciboQuitacaoPassageiroDAO {
             stmt.setInt(6, DAOUtils.empresaId());
             
             stmt.executeUpdate();
-        } catch (Exception e) {
+        // DR217: catch SQLException em vez de Exception generico
+        } catch (SQLException e) {
             AppLogger.warn("ReciboQuitacaoPassageiroDAO", "Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
         }
     }
@@ -54,7 +55,8 @@ public class ReciboQuitacaoPassageiroDAO {
                     lista.add(r);
                 }
             }
-        } catch (Exception e) {
+        // DR217: catch SQLException em vez de Exception generico
+        } catch (SQLException e) {
             AppLogger.warn("ReciboQuitacaoPassageiroDAO", "Erro SQL em ReciboQuitacaoPassageiroDAO: " + e.getMessage());
         }
         return lista;

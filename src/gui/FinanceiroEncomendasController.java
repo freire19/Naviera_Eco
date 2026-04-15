@@ -129,59 +129,74 @@ public class FinanceiroEncomendasController {
         ObservableList<OpcaoViagem> finalLista = lista;
         javafx.application.Platform.runLater(() -> cmbViagem.setItems(finalLista));
     }
+    // DR211: buscar dados em background thread para nao bloquear FX thread
     public void carregarDados() {
         if (cmbViagem.getValue() == null) return;
         int idViagem = cmbViagem.getValue().id;
-        ObservableList<EncomendaFinanceiro> lista = FXCollections.observableArrayList();
-        java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
-        StringBuilder sql = new StringBuilder();
-        sql.append("SELECT e.id_encomenda, e.numero_encomenda, v.data_viagem, e.remetente, e.destinatario, e.total_a_pagar, e.valor_pago ");
-        sql.append("FROM encomendas e JOIN viagens v ON e.id_viagem = v.id_viagem WHERE e.empresa_id = ? ");
-        // D003: parametriza idViagem em vez de concatenar
-        java.util.List<Object> params = new java.util.ArrayList<>();
-        params.add(dao.DAOUtils.empresaId());
-        if (idViagem > 0) { sql.append(" AND e.id_viagem = ?"); params.add(idViagem); }
-        if (chkApenasDevedores.isSelected()) sql.append(" AND (e.valor_pago < e.total_a_pagar OR e.valor_pago IS NULL) ");
-        String busca = txtBusca.getText().toLowerCase();
-        if (!busca.isEmpty()) {
-            // DS003: escape de wildcards LIKE para evitar exfiltracao
-            String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-            sql.append(" AND (LOWER(e.remetente) LIKE ? ESCAPE '\\' OR LOWER(e.destinatario) LIKE ? ESCAPE '\\') ");
-            params.add("%" + buscaEscapada + "%");
-            params.add("%" + buscaEscapada + "%");
-        }
-        sql.append(" ORDER BY e.id_encomenda DESC");
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                Object p = params.get(i);
-                if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
-                else stmt.setString(i + 1, p.toString());
-            }
-            ResultSet rs = stmt.executeQuery();
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        boolean apenasDevedores = chkApenasDevedores.isSelected();
+        String busca = txtBusca.getText() != null ? txtBusca.getText().toLowerCase() : "";
 
-            while (rs.next()) {
-                java.math.BigDecimal total = rs.getBigDecimal("total_a_pagar");
-                java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
-                if (total == null) total = java.math.BigDecimal.ZERO;
-                if (pago == null) pago = java.math.BigDecimal.ZERO;
-                java.math.BigDecimal devendo = total.subtract(pago);
-                String dataFmt = "";
-                if(rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
-                lista.add(new EncomendaFinanceiro(
-                    rs.getInt("id_encomenda"),
-                    rs.getString("numero_encomenda"),
-                    dataFmt,
-                    rs.getString("remetente"),
-                    rs.getString("destinatario"),
-                    total, pago
-                ));
-                if(devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<EncomendaFinanceiro> lista = FXCollections.observableArrayList();
+                java.math.BigDecimal somaPendente = java.math.BigDecimal.ZERO;
+                StringBuilder sql = new StringBuilder();
+                sql.append("SELECT e.id_encomenda, e.numero_encomenda, v.data_viagem, e.remetente, e.destinatario, e.total_a_pagar, e.valor_pago ");
+                sql.append("FROM encomendas e JOIN viagens v ON e.id_viagem = v.id_viagem WHERE e.empresa_id = ? ");
+                // D003: parametriza idViagem em vez de concatenar
+                java.util.List<Object> params = new java.util.ArrayList<>();
+                params.add(dao.DAOUtils.empresaId());
+                if (idViagem > 0) { sql.append(" AND e.id_viagem = ?"); params.add(idViagem); }
+                if (apenasDevedores) sql.append(" AND (e.valor_pago < e.total_a_pagar OR e.valor_pago IS NULL) ");
+                if (!busca.isEmpty()) {
+                    // DS003: escape de wildcards LIKE para evitar exfiltracao
+                    String buscaEscapada = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+                    sql.append(" AND (LOWER(e.remetente) LIKE ? ESCAPE '\\' OR LOWER(e.destinatario) LIKE ? ESCAPE '\\') ");
+                    params.add("%" + buscaEscapada + "%");
+                    params.add("%" + buscaEscapada + "%");
+                }
+                sql.append(" ORDER BY e.id_encomenda DESC");
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement stmt = con.prepareStatement(sql.toString())) {
+                    for (int i = 0; i < params.size(); i++) {
+                        Object p = params.get(i);
+                        if (p instanceof Integer) stmt.setInt(i + 1, (Integer) p);
+                        else stmt.setString(i + 1, p.toString());
+                    }
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                        while (rs.next()) {
+                            java.math.BigDecimal total = rs.getBigDecimal("total_a_pagar");
+                            java.math.BigDecimal pago = rs.getBigDecimal("valor_pago");
+                            if (total == null) total = java.math.BigDecimal.ZERO;
+                            if (pago == null) pago = java.math.BigDecimal.ZERO;
+                            java.math.BigDecimal devendo = total.subtract(pago);
+                            String dataFmt = "";
+                            if (rs.getDate("data_viagem") != null) dataFmt = sdf.format(rs.getDate("data_viagem"));
+                            lista.add(new EncomendaFinanceiro(
+                                rs.getInt("id_encomenda"),
+                                rs.getString("numero_encomenda"),
+                                dataFmt,
+                                rs.getString("remetente"),
+                                rs.getString("destinatario"),
+                                total, pago
+                            ));
+                            if (devendo.compareTo(model.StatusPagamento.TOLERANCIA_PAGAMENTO) > 0) somaPendente = somaPendente.add(devendo);
+                        }
+                    }
+                }
+                final java.math.BigDecimal totalPend = somaPendente;
+                javafx.application.Platform.runLater(() -> {
+                    tabela.setItems(lista);
+                    lblTotalPendente.setText(String.format("R$ %,.2f", totalPend));
+                });
+            } catch (Exception e) {
+                AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e);
+                javafx.application.Platform.runLater(() -> AlertHelper.errorSafe("carregar encomendas financeiro", e));
             }
-            tabela.setItems(lista);
-            lblTotalPendente.setText(String.format("R$ %,.2f", somaPendente));
-        } catch (SQLException e) { AppLogger.error("FinanceiroEncomendasController", e.getMessage(), e); }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     public void darBaixa() {
         EncomendaFinanceiro selecionada = tabela.getSelectionModel().getSelectedItem();

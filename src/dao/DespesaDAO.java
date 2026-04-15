@@ -284,9 +284,12 @@ public class DespesaDAO {
         return lista;
     }
 
-    /** Retorna o id de uma categoria pelo nome (case-insensitive). */
+    // DR215: retorna -1 em caso de nao encontrado (em vez de 1 silencioso)
     public int buscarIdCategoria(String nome) {
-        if (nome == null || nome.isEmpty()) return 1;
+        if (nome == null || nome.isEmpty()) {
+            AppLogger.warn("DespesaDAO", "buscarIdCategoria chamado com nome vazio");
+            return -1;
+        }
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(
                      "SELECT id FROM categorias_despesa WHERE nome = ? AND empresa_id = ?")) {
@@ -298,7 +301,8 @@ public class DespesaDAO {
         } catch (SQLException e) {
             AppLogger.warn("DespesaDAO", "Erro SQL em DespesaDAO.buscarIdCategoria: " + e.getMessage());
         }
-        return 1;
+        AppLogger.warn("DespesaDAO", "Categoria nao encontrada: '" + nome + "'");
+        return -1;
     }
 
     /**
@@ -385,7 +389,8 @@ public class DespesaDAO {
                     row.put("descricao", rs.getString("descricao"));
                     row.put("numero_parcela", rs.getInt("numero_parcela"));
                     row.put("total_parcelas", rs.getInt("total_parcelas"));
-                    row.put("valor_total", rs.getDouble("valor_total"));
+                    // DR224: getBigDecimal para consistencia com padrao do projeto
+                    row.put("valor_total", rs.getBigDecimal("valor_total"));
                     row.put("status", rs.getString("status"));
                     resultado.add(row);
                 }

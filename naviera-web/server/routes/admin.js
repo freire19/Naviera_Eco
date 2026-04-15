@@ -12,7 +12,7 @@ router.use(authMiddleware)
 // Admin-only middleware: must be Administrador AND on admin subdomain
 function adminOnly(req, res, next) {
   const host = req.hostname || req.headers.host || ''
-  const isAdminSubdomain = host.startsWith('admin.') || host === 'localhost'
+  const isAdminSubdomain = host.startsWith('admin.') || (process.env.NODE_ENV !== 'production' && host === 'localhost')
   if (!isAdminSubdomain) {
     return res.status(403).json({ error: 'Acesso restrito ao painel admin' })
   }

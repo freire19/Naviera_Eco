@@ -56,17 +56,20 @@ public class CompanyDataLoader {
                      PreparedStatement stmt = con.prepareStatement(
                          "SELECT nome_embarcacao, cnpj, telefone, endereco, path_logo FROM configuracao_empresa WHERE empresa_id = ? LIMIT 1")) {
                     stmt.setInt(1, dao.DAOUtils.empresaId());
-                    ResultSet rs = stmt.executeQuery();
-                    if (rs.next()) {
-                        nomeEmpresa = rs.getString("nome_embarcacao");
-                        cnpj = rs.getString("cnpj");
-                        telefone = rs.getString("telefone");
-                        endereco = rs.getString("endereco");
-                        caminhoLogo = rs.getString("path_logo");
+                    // DR213: try-with-resources para ResultSet
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            nomeEmpresa = rs.getString("nome_embarcacao");
+                            cnpj = rs.getString("cnpj");
+                            telefone = rs.getString("telefone");
+                            endereco = rs.getString("endereco");
+                            caminhoLogo = rs.getString("path_logo");
+                        }
                     }
                 }
-            }
         } catch (Exception e) {
+            // DR220: logar erro em vez de silenciar completamente
+            AppLogger.warn("CompanyDataLoader", "Erro ao carregar dados da empresa: " + e.getMessage());
             nomeEmpresa = "SISTEMA";
         }
 

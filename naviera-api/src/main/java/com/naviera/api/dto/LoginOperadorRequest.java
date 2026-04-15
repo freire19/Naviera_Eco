@@ -7,5 +7,7 @@ public record LoginOperadorRequest(
     String login,
 
     @NotBlank(message = "Senha e obrigatoria")
-    String senha
+    String senha,
+
+    Integer empresa_id
 ) {}

@@ -80,12 +80,18 @@ public class RateLimitFilter implements Filter {
         chain.doFilter(request, response);
     }
 
+    // DR245: usar remoteAddr como fonte primaria (Nginx e o unico proxy confiavel)
+    // X-Forwarded-For so e usado se vier de localhost/proxy confiavel
     private String getClientIp(HttpServletRequest req) {
-        String xff = req.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+        String remoteAddr = req.getRemoteAddr();
+        // So confia em XFF se a request vier do proxy local (Nginx)
+        if ("127.0.0.1".equals(remoteAddr) || "0:0:0:0:0:0:0:1".equals(remoteAddr)) {
+            String xff = req.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                return xff.split(",")[0].trim();
+            }
         }
-        return req.getRemoteAddr();
+        return remoteAddr;
     }
 
     private static class RateEntry {

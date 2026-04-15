@@ -63,8 +63,9 @@ public class CadastroBoletoController {
                 buscarViagemAtual();
                 // DR104: buscar categorias em bg, atualizar ComboBox na FX thread
                 ObservableList<String> cats = FXCollections.observableArrayList();
-                try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome").executeQuery()){
-                    while(rs.next()) cats.add(rs.getString(1));
+                try(Connection c = ConexaoBD.getConnection(); PreparedStatement ps = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = ? ORDER BY nome")) {
+                    ps.setInt(1, dao.DAOUtils.empresaId());
+                    try (ResultSet rs = ps.executeQuery()) { while(rs.next()) cats.add(rs.getString(1)); }
                 } catch(Exception e) { AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
                 final ObservableList<String> finalCats = cats;
                 javafx.application.Platform.runLater(() -> {
@@ -91,17 +92,21 @@ public class CadastroBoletoController {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet rs = pst.executeQuery();
+            // DR213: try-with-resources para ResultSet
+            try (ResultSet rs = pst.executeQuery()) {
             if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
             else buscarUltimaViagem();
+            }
         } catch (Exception e) { buscarUltimaViagem(); }
     }
     
     private void buscarUltimaViagem() {
         try(Connection c = ConexaoBD.getConnection(); PreparedStatement pst = c.prepareStatement("SELECT id_viagem FROM viagens WHERE empresa_id = ? ORDER BY id_viagem DESC LIMIT 1")) {
             pst.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet rs = pst.executeQuery();
+            // DR213: try-with-resources para ResultSet
+            try (ResultSet rs = pst.executeQuery()) {
             if(rs.next()) idViagemAtual = rs.getInt("id_viagem");
+            }
         } catch(Exception e){ AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.buscarUltimaViagem: " + e.getMessage()); }
     }
 
@@ -121,8 +126,9 @@ public class CadastroBoletoController {
 
     private void carregarCategorias() {
         ObservableList<String> cats = FXCollections.observableArrayList();
-        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome").executeQuery()){
-            while(rs.next()) cats.add(rs.getString(1));
+        try(Connection c = ConexaoBD.getConnection(); PreparedStatement ps = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = ? ORDER BY nome")) {
+            ps.setInt(1, dao.DAOUtils.empresaId());
+            try (ResultSet rs = ps.executeQuery()) { while(rs.next()) cats.add(rs.getString(1)); }
         } catch(Exception e) { AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(cats);
         configurarAutocomplete(cmbCategoria, cats);
@@ -253,44 +259,57 @@ public class CadastroBoletoController {
         try { tabela.getStylesheets().add(getClass().getResource("/css/main.css").toExternalForm()); } catch(Exception e){ AppLogger.warn("CadastroBoletoController", "Erro em CadastroBoletoController.configurarTabela (CSS): " + e.getMessage()); }
     }
     
+    // DR211: buscar dados em background thread para nao bloquear FX thread
     @FXML
     public void filtrar() {
-        ObservableList<Boleto> lista = FXCollections.observableArrayList();
-        // DL049: filtrar boletos pela viagem ativa
-        StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE empresa_id = ? AND forma_pagamento = 'BOLETO' ");
-        java.util.List<Object> params = new java.util.ArrayList<>();
-        params.add(dao.DAOUtils.empresaId());
+        int idViagem = idViagemAtual;
+        java.time.LocalDate dataFiltro = dpFiltroData.getValue();
 
-        if (idViagemAtual > 0) {
-            sql.append(" AND id_viagem = ?");
-            params.add(idViagemAtual);
-        }
-        if(dpFiltroData.getValue() != null) {
-            sql.append(" AND data_vencimento = ?");
-            params.add(java.sql.Date.valueOf(dpFiltroData.getValue()));
-        }
-        sql.append(" ORDER BY data_vencimento ASC");
+        Thread bg = new Thread(() -> {
+            try {
+                ObservableList<Boleto> lista = FXCollections.observableArrayList();
+                StringBuilder sql = new StringBuilder("SELECT * FROM financeiro_saidas WHERE empresa_id = ? AND forma_pagamento = 'BOLETO' ");
+                java.util.List<Object> params = new java.util.ArrayList<>();
+                params.add(dao.DAOUtils.empresaId());
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        try(Connection c = ConexaoBD.getConnection(); PreparedStatement ps = c.prepareStatement(sql.toString())){
-            for (int i = 0; i < params.size(); i++) {
-                Object param = params.get(i);
-                if (param instanceof Integer) ps.setInt(i + 1, (Integer) param);
-                else if (param instanceof java.sql.Date) ps.setDate(i + 1, (java.sql.Date) param);
+                if (idViagem > 0) {
+                    sql.append(" AND id_viagem = ?");
+                    params.add(idViagem);
+                }
+                if (dataFiltro != null) {
+                    sql.append(" AND data_vencimento = ?");
+                    params.add(java.sql.Date.valueOf(dataFiltro));
+                }
+                sql.append(" ORDER BY data_vencimento ASC");
+
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                try (Connection c = ConexaoBD.getConnection(); PreparedStatement ps = c.prepareStatement(sql.toString())) {
+                    for (int i = 0; i < params.size(); i++) {
+                        Object param = params.get(i);
+                        if (param instanceof Integer) ps.setInt(i + 1, (Integer) param);
+                        else if (param instanceof java.sql.Date) ps.setDate(i + 1, (java.sql.Date) param);
+                    }
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            lista.add(new Boleto(
+                                rs.getInt("id"),
+                                sdf.format(rs.getDate("data_vencimento")),
+                                rs.getString("descricao"),
+                                rs.getInt("numero_parcela") + "/" + rs.getInt("total_parcelas"),
+                                rs.getDouble("valor_total"),
+                                rs.getString("status")
+                            ));
+                        }
+                    }
+                }
+                javafx.application.Platform.runLater(() -> tabela.setItems(lista));
+            } catch (Exception e) {
+                AppLogger.error("CadastroBoletoController", e.getMessage(), e);
+                javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("filtrar boletos", e));
             }
-            ResultSet rs = ps.executeQuery();
-            while(rs.next()){
-                lista.add(new Boleto(
-                    rs.getInt("id"),
-                    sdf.format(rs.getDate("data_vencimento")),
-                    rs.getString("descricao"),
-                    rs.getInt("numero_parcela") + "/" + rs.getInt("total_parcelas"),
-                    rs.getDouble("valor_total"),
-                    rs.getString("status")
-                ));
-            }
-            tabela.setItems(lista);
-        } catch(Exception e){AppLogger.error("CadastroBoletoController", e.getMessage(), e);}
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
     
     @FXML public void limparFiltros() { dpFiltroData.setValue(null); filtrar(); }

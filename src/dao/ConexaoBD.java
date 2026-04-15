@@ -184,7 +184,8 @@ public class ConexaoBD {
     private static class PooledConnection implements Connection {
 
         private final Connection real;
-        private boolean closed = false;
+        // DR222: volatile para visibilidade entre threads
+        private volatile boolean closed = false;
 
         PooledConnection(Connection real) {
             this.real = real;
