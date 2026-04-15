@@ -64,7 +64,11 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
     setActionLoading(id)
     try {
       const result = await api.put(`/ocr/lancamentos/${id}/aprovar`, { auto_cadastrar: autoCadastrar })
-      showToast(`Frete #${result.frete?.numero_frete || result.frete?.id_frete} criado com sucesso!`)
+      if (result.encomenda) {
+        showToast(`Encomenda #${result.encomenda.numero_encomenda || result.encomenda.id_encomenda} criada!`)
+      } else {
+        showToast(`Frete #${result.frete?.numero_frete || result.frete?.id_frete} criado!`)
+      }
       carregar()
       setExpandido(null)
     } catch (err) {
@@ -204,6 +208,9 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                         <span className={`badge ${STATUS_CLASSES[l.status] || 'info'}`}>
                           {STATUS_LABELS[l.status] || l.status}
                         </span>
+                        {l.tipo === 'encomenda' && (
+                          <span className="badge info" style={{ marginLeft: 4 }}>Encomenda</span>
+                        )}
                       </td>
                       <td>{dados.remetente || '\u2014'}</td>
                       <td>{dados.destinatario || '\u2014'}</td>

@@ -6,6 +6,7 @@ import Card from '../components/Card.jsx'
 export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, showToast, usuario }) {
   const [viagens, setViagens] = useState([])
   const [viagemId, setViagemId] = useState('')
+  const [tipo, setTipo] = useState('frete')
   const [fotoBlob, setFotoBlob] = useState(null)
   const [fotoName, setFotoName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -14,12 +15,10 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
     apiGet('/viagens').then(v => {
       if (v) {
         setViagens(v)
-        // Selecionar viagem ativa por padrao
         const ativa = v.find(vi => vi.ativa || vi.status === 'ativa')
         if (ativa) setViagemId(String(ativa.id_viagem))
       }
     }).catch((err) => {
-      // DR246: exibir erro ao usuario em vez de silenciar
       if (showToast) showToast('Erro ao carregar viagens: ' + (err.message || 'sem conexao'))
     })
   }, [])
@@ -35,7 +34,6 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
       return
     }
 
-    // Se offline, salvar na fila
     if (!isOnline) {
       await onOfflineAdd(fotoBlob, viagemId || null, usuario?.empresa_id || null)
       showToast('Foto salva na fila offline. Sera enviada quando houver internet.', 'warn')
@@ -45,14 +43,14 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
     }
 
     setLoading(true)
-    showToast('Enviando foto e processando OCR...', 'info')
+    const msg = tipo === 'encomenda' ? 'Identificando item com IA...' : 'Processando OCR...'
+    showToast(msg, 'info')
     try {
-      // fotoBlob pode ser File ou Blob — garantir que e File
       let file = fotoBlob
       if (!(fotoBlob instanceof File)) {
         file = new File([fotoBlob], fotoName || 'foto.jpg', { type: fotoBlob.type || 'image/jpeg' })
       }
-      const result = await uploadFoto(file, viagemId || null)
+      const result = await uploadFoto(file, viagemId || null, tipo)
       if (result) {
         showToast('Foto processada! Revise os itens.', 'success')
         onResult(result)
@@ -67,9 +65,26 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
     }
   }
 
+  const tabStyle = (active) => ({
+    flex: 1, padding: '10px 0', textAlign: 'center', fontWeight: 600, fontSize: '0.9rem',
+    cursor: 'pointer', borderRadius: 8, border: 'none', transition: 'all 0.2s',
+    background: active ? t.pri : t.soft,
+    color: active ? '#fff' : t.txMuted
+  })
+
   return (
     <div className="screen-enter" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h2 style={{ color: t.tx, fontSize: '1.1rem', fontWeight: 600 }}>Nova Captura</h2>
+
+      {/* Toggle Frete / Encomenda */}
+      <div style={{ display: 'flex', gap: 8, background: t.soft, borderRadius: 10, padding: 4 }}>
+        <button style={tabStyle(tipo === 'frete')} onClick={() => setTipo('frete')}>
+          Frete
+        </button>
+        <button style={tabStyle(tipo === 'encomenda')} onClick={() => setTipo('encomenda')}>
+          Encomenda
+        </button>
+      </div>
 
       {/* Seletor de viagem */}
       <Card t={t}>
@@ -94,7 +109,7 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
       {/* Camera */}
       <Card t={t}>
         <label style={{ color: t.txSoft, fontSize: '0.85rem', fontWeight: 500, marginBottom: 10, display: 'block' }}>
-          Foto da nota / cupom / caderno
+          {tipo === 'encomenda' ? 'Foto do item / pacote / mercadoria' : 'Foto da nota / cupom / caderno'}
         </label>
         <CameraCapture t={t} onCapture={handleCapture} disabled={loading} />
       </Card>
@@ -108,7 +123,7 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
           style={{ background: t.priGrad, color: '#fff', padding: 16, fontSize: '1rem' }}
         >
           {loading ? (
-            <span className="pulse">Processando OCR...</span>
+            <span className="pulse">{tipo === 'encomenda' ? 'Identificando item...' : 'Processando OCR...'}</span>
           ) : isOnline ? (
             'Enviar para analise'
           ) : (
@@ -119,7 +134,10 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
 
       {/* Dica */}
       <p style={{ color: t.txMuted, fontSize: '0.8rem', textAlign: 'center' }}>
-        Tire uma foto legivel da nota fiscal, cupom ou caderno. O sistema vai extrair os itens automaticamente.
+        {tipo === 'encomenda'
+          ? 'Tire uma foto do item ou pacote. A IA vai identificar o que e e criar a encomenda.'
+          : 'Tire uma foto legivel da nota fiscal, cupom ou caderno. O sistema vai extrair os itens automaticamente.'
+        }
       </p>
     </div>
   )

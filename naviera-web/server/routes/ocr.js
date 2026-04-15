@@ -10,6 +10,7 @@ import { callVisionOCR } from '../helpers/visionApi.js'
 import { parseOcrText } from '../helpers/parseOcrText.js'
 import { criarFreteComItens } from '../helpers/criarFrete.js'
 import { geminiParseOCR } from '../helpers/geminiParser.js'
+import { geminiVisionAnalyze } from '../helpers/geminiVision.js'
 
 const router = Router()
 
@@ -53,59 +54,73 @@ router.post('/upload', upload.single('foto'), async (req, res) => {
   }
 
   const empresaId = req.user.empresa_id
-  const { viagem_id } = req.body
+  const { viagem_id, tipo } = req.body
+  const tipoLanc = tipo === 'encomenda' ? 'encomenda' : 'frete'
 
   try {
-    // 1. Chamar Google Cloud Vision
     let ocrResult = { text: '', confidence: 0, fullResponse: null }
-    try {
-      ocrResult = await callVisionOCR(req.file.path)
-    } catch (err) {
-      console.error('[OCR] Erro na Vision API:', err.message)
-      // Continua sem OCR — operador digita manualmente
-    }
-
-    // 2. Buscar itens padrao da empresa para comparacao de precos
-    const padrao = await pool.query(
-      'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
-      [empresaId]
-    )
-
-    // 3. Parsear texto OCR → itens estruturados
-    // Gemini como parser primario (muito superior ao regex)
-    // Regex como fallback se Gemini falhar ou nao estiver configurado
     let dados
-    if (ocrResult.text) {
+
+    if (tipoLanc === 'encomenda') {
+      // ENCOMENDA: Gemini Vision analisa a IMAGEM diretamente (item fisico)
       try {
-        dados = await geminiParseOCR(ocrResult.text, padrao.rows)
-        console.log('[OCR] Gemini parser: OK -', (dados.itens?.length || 0), 'itens extraidos')
-      } catch (geminiErr) {
-        console.warn('[OCR] Gemini falhou, usando regex:', geminiErr.message)
-        dados = parseOcrText(ocrResult.text, padrao.rows)
+        const padrao = await pool.query(
+          'SELECT nome_item, preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+          [empresaId]
+        )
+        dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
+        ocrResult.confidence = 85
+        console.log('[OCR] Gemini Vision (encomenda): OK -', (dados.itens?.length || 0), 'itens identificados')
+      } catch (err) {
+        console.error('[OCR] Gemini Vision falhou:', err.message)
+        dados = { remetente: '', destinatario: '', itens: [], total_volumes: 0, total_a_pagar: 0, observacoes: 'Gemini Vision falhou — preencha manualmente' }
       }
     } else {
-      dados = parseOcrText('', padrao.rows)
+      // FRETE: Google Vision OCR + Gemini text parser (fluxo original)
+      try {
+        ocrResult = await callVisionOCR(req.file.path)
+      } catch (err) {
+        console.error('[OCR] Erro na Vision API:', err.message)
+      }
+
+      const padrao = await pool.query(
+        'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+        [empresaId]
+      )
+
+      if (ocrResult.text) {
+        try {
+          dados = await geminiParseOCR(ocrResult.text, padrao.rows)
+          console.log('[OCR] Gemini parser: OK -', (dados.itens?.length || 0), 'itens extraidos')
+        } catch (geminiErr) {
+          console.warn('[OCR] Gemini falhou, usando regex:', geminiErr.message)
+          dados = parseOcrText(ocrResult.text, padrao.rows)
+        }
+      } else {
+        dados = parseOcrText('', padrao.rows)
+      }
     }
 
-    // 4. Salvar no banco
+    // Salvar no banco
     const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
     const result = await pool.query(`
       INSERT INTO ocr_lancamentos (empresa_id, id_viagem, foto_path, foto_original_name,
         ocr_texto_bruto, ocr_json, ocr_confianca, dados_extraidos,
-        status, id_usuario_criou, nome_usuario_criou)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10)
+        status, id_usuario_criou, nome_usuario_criou, tipo)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10, $11)
       RETURNING *
     `, [
       empresaId,
       viagem_id || null,
       fotoRelPath,
       req.file.originalname,
-      ocrResult.text,
+      ocrResult.text || null,
       JSON.stringify(ocrResult.fullResponse),
       ocrResult.confidence,
       JSON.stringify(dados),
       req.user.id,
-      req.user.login || null
+      req.user.login || null,
+      tipoLanc
     ])
 
     res.status(201).json({
@@ -129,7 +144,7 @@ router.get('/lancamentos', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { status, viagem_id } = req.query
-    let sql = 'SELECT id, uuid, id_viagem, id_frete, foto_original_name, ocr_confianca, dados_extraidos, dados_revisados, status, motivo_rejeicao, nome_usuario_criou, nome_usuario_revisou, data_revisao, criado_em FROM ocr_lancamentos WHERE empresa_id = $1'
+    let sql = 'SELECT id, uuid, id_viagem, id_frete, id_encomenda, tipo, foto_original_name, ocr_confianca, dados_extraidos, dados_revisados, status, motivo_rejeicao, nome_usuario_criou, nome_usuario_revisou, data_revisao, criado_em FROM ocr_lancamentos WHERE empresa_id = $1'
     const params = [empresaId]
     let idx = 2
 
@@ -292,41 +307,84 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
       )
     }
 
-    // Montar payload para criarFreteComItens
-    const valor_total_itens = dados.itens
-      ? dados.itens.reduce((sum, i) => sum + (i.subtotal || i.preco_unitario * i.quantidade || 0), 0)
-      : 0
+    let resultado
 
-    const fretePayload = {
-      id_viagem: lanc.id_viagem,
-      remetente_nome_temp: dados.remetente || null,
-      destinatario_nome_temp: dados.destinatario || null,
-      rota_temp: dados.rota || null,
-      observacoes: `[OCR #${lanc.id}] ${dados.observacoes || ''}`.trim(),
-      valor_total_itens,
-      desconto: 0,
-      valor_pago: 0,
-      itens: (dados.itens || []).map(i => ({
-        nome_item: i.nome_item,
-        quantidade: i.quantidade,
-        preco_unitario: i.preco_unitario,
-        subtotal_item: i.subtotal || i.preco_unitario * i.quantidade
-      }))
+    if (lanc.tipo === 'encomenda') {
+      // ENCOMENDA: criar registro em encomendas + encomenda_itens
+      const totalAPagar = dados.total_a_pagar || (dados.itens || []).reduce((s, i) => s + ((i.valor_total || 0) || (i.quantidade || 1) * (i.valor_unitario || 0)), 0)
+      const totalVolumes = dados.total_volumes || (dados.itens || []).reduce((s, i) => s + (i.quantidade || 1), 0)
+
+      await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
+      const seqResult = await client.query(
+        'SELECT COALESCE(MAX(numero_encomenda), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1',
+        [empresaId]
+      )
+      const numEncomenda = seqResult.rows[0].next_num
+
+      const encResult = await client.query(`
+        INSERT INTO encomendas (id_viagem, numero_encomenda, remetente, destinatario, observacoes,
+          total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento,
+          forma_pagamento, entregue, rota, data_lancamento, empresa_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,0,0,'PENDENTE',NULL,FALSE,$8,CURRENT_DATE,$9)
+        RETURNING *
+      `, [
+        lanc.id_viagem, numEncomenda, dados.remetente || null, dados.destinatario || null,
+        `[OCR #${lanc.id}] ${dados.observacoes || ''}`.trim(),
+        totalVolumes, totalAPagar, dados.rota || null, empresaId
+      ])
+
+      const encId = encResult.rows[0].id_encomenda
+      for (const item of (dados.itens || [])) {
+        await client.query(`
+          INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [encId, item.quantidade || 1, item.descricao || item.nome_item || '', item.valor_unitario || 0, item.valor_total || (item.quantidade || 1) * (item.valor_unitario || 0)])
+      }
+
+      await client.query(`
+        UPDATE ocr_lancamentos SET status = 'aprovado', id_encomenda = $1,
+          id_usuario_revisou = $2, nome_usuario_revisou = $3, data_revisao = CURRENT_TIMESTAMP
+        WHERE id = $4 AND empresa_id = $5
+      `, [encId, req.user.id, req.user.login, lanc.id, empresaId])
+
+      resultado = { lancamento_id: lanc.id, encomenda: encResult.rows[0] }
+    } else {
+      // FRETE: fluxo original
+      const valor_total_itens = dados.itens
+        ? dados.itens.reduce((sum, i) => sum + (i.subtotal || i.preco_unitario * i.quantidade || 0), 0)
+        : 0
+
+      const fretePayload = {
+        id_viagem: lanc.id_viagem,
+        remetente_nome_temp: dados.remetente || null,
+        destinatario_nome_temp: dados.destinatario || null,
+        rota_temp: dados.rota || null,
+        observacoes: `[OCR #${lanc.id}] ${dados.observacoes || ''}`.trim(),
+        valor_total_itens,
+        desconto: 0,
+        valor_pago: 0,
+        itens: (dados.itens || []).map(i => ({
+          nome_item: i.nome_item,
+          quantidade: i.quantidade,
+          preco_unitario: i.preco_unitario,
+          subtotal_item: i.subtotal || i.preco_unitario * i.quantidade
+        }))
+      }
+
+      const frete = await criarFreteComItens(client, empresaId, fretePayload)
+
+      await client.query(`
+        UPDATE ocr_lancamentos SET status = 'aprovado', id_frete = $1,
+          id_usuario_revisou = $2, nome_usuario_revisou = $3, data_revisao = CURRENT_TIMESTAMP
+        WHERE id = $4 AND empresa_id = $5
+      `, [frete.id_frete, req.user.id, req.user.login, lanc.id, empresaId])
+
+      resultado = { lancamento_id: lanc.id, frete }
     }
-
-    // Criar frete real
-    const frete = await criarFreteComItens(client, empresaId, fretePayload)
-
-    // Atualizar lancamento OCR
-    await client.query(`
-      UPDATE ocr_lancamentos SET status = 'aprovado', id_frete = $1,
-        id_usuario_revisou = $2, nome_usuario_revisou = $3, data_revisao = CURRENT_TIMESTAMP
-      WHERE id = $4 AND empresa_id = $5
-    `, [frete.id_frete, req.user.id, req.user.login, lanc.id, empresaId])
 
     await client.query('COMMIT')
 
-    res.json({ lancamento_id: lanc.id, frete })
+    res.json(resultado)
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('[OCR] Erro ao aprovar:', err.message)

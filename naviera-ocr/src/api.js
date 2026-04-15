@@ -50,10 +50,11 @@ export async function apiPost(path, data) {
   return res.json()
 }
 
-export async function uploadFoto(file, viagemId) {
+export async function uploadFoto(file, viagemId, tipo) {
   const form = new FormData()
   form.append('foto', file)
   if (viagemId) form.append('viagem_id', viagemId)
+  if (tipo) form.append('tipo', tipo)
 
   const res = await fetch(`${API}/ocr/upload`, {
     method: 'POST',
