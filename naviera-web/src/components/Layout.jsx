@@ -29,6 +29,7 @@ import Boletos from '../pages/Boletos.jsx'
 // Tabela Precos
 import TabelaPrecoFrete from '../pages/TabelaPrecoFrete.jsx'
 import CadastroItem from '../pages/CadastroItem.jsx'
+import TabelaPrecoEncomenda from '../pages/TabelaPrecoEncomenda.jsx'
 import Auxiliares from '../pages/Auxiliares.jsx'
 
 // Cadastros
@@ -66,6 +67,7 @@ const PAGES = {
   'nova-encomenda': { component: Encomendas, label: 'Nova Encomenda', section: 'encomendas' },
   'listar-encomendas': { component: ListaEncomendas, label: 'Lista Encomendas', section: 'encomendas' },
   'relatorio-encomendas': { component: RelatorioEncomendas, label: 'Relatorio Encomendas', section: 'encomendas' },
+  'tabela-preco-encomenda': { component: TabelaPrecoEncomenda, label: 'Tabela de Precos', section: 'encomendas' },
   'lancar-frete': { component: Fretes, label: 'Lancar Frete', section: 'fretes' },
   'listar-fretes': { component: ListaFretes, label: 'Lista Fretes', section: 'fretes' },
   'relatorio-fretes': { component: RelatorioFretes, label: 'Relatorio Fretes', section: 'fretes' },

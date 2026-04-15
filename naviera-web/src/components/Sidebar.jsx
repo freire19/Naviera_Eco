@@ -21,7 +21,7 @@ const NAV = [
       { key: 'nova-encomenda', icon: '\uD83D\uDCE6', label: 'Nova Encomenda' },
       { key: 'listar-encomendas', icon: '\uD83D\uDCCB', label: 'Listar Encomendas' },
       { key: 'relatorio-encomendas', icon: '\uD83D\uDCCA', label: 'Relatorio' },
-      { key: 'cadastro-item', icon: '\uD83C\uDFF7', label: 'Tabela de Precos' },
+      { key: 'tabela-preco-encomenda', icon: '\uD83C\uDFF7', label: 'Tabela de Precos' },
       { key: 'cadastro-produto', icon: '\uD83D\uDC64', label: 'Clientes' }
     ]
   },
