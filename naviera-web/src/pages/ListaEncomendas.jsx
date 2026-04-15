@@ -93,30 +93,33 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
                   <tr><td colSpan="9">Carregando...</td></tr>
                 ) : filtradas.length === 0 ? (
                   <tr><td colSpan="9" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>Nenhuma encomenda encontrada</td></tr>
-                ) : filtradas.map(e => {
+                ) : filtradas.map((e, idx) => {
                   const devedor = Math.max(0, (parseFloat(e.total_a_pagar) || 0) - (parseFloat(e.desconto) || 0) - (parseFloat(e.valor_pago) || 0))
-                  const status = e.entregue
-                    ? (devedor <= 0.01 ? 'ENTREGUE | PAGO' : 'ENTREGUE | PENDENTE')
-                    : (devedor <= 0.01 ? 'PAGO' : 'PENDENTE | ABERTO')
+                  const isPago = devedor <= 0.01
+                  const isEntregue = e.entregue
+                  const statusPg = isPago ? 'PAGO' : 'FALTA'
+                  const statusEnt = isEntregue ? 'ENTREGUE' : 'PENDENTE'
+                  const statusText = `${statusPg} / ${statusEnt}`
+                  const statusColor = isPago && isEntregue ? '#059669' : isPago ? '#059669' : '#DC2626'
                   return (
                     <tr key={e.id_encomenda} className="clickable"
+                        style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}
                         onDoubleClick={() => {
                           if (onNavigate) {
-                            // Salvar encomenda selecionada no sessionStorage para a tela de edicao recuperar
                             sessionStorage.setItem('encomenda_editar', JSON.stringify(e))
                             onNavigate('nova-encomenda')
                           }
                         }}
                         title="Duplo-clique para abrir/editar">
-                      <td>{e.numero_encomenda}</td>
-                      <td>{e.remetente || '—'}</td>
-                      <td>{e.destinatario || '—'}</td>
+                      <td style={{ fontWeight: 600 }}>{e.numero_encomenda}</td>
+                      <td>{(e.remetente || '—').toUpperCase()}</td>
+                      <td>{(e.destinatario || '—').toUpperCase()}</td>
                       <td>{e.rota || '—'}</td>
                       <td className="money">{formatMoney(e.total_a_pagar)}</td>
                       <td className="money">{formatMoney(e.valor_pago)}</td>
-                      <td className="money" style={{ color: devedor > 0 ? 'var(--danger)' : undefined }}>{formatMoney(devedor)}</td>
+                      <td className="money" style={{ fontWeight: devedor > 0 ? 700 : 400, color: devedor > 0 ? '#DC2626' : undefined }}>{formatMoney(devedor)}</td>
                       <td>{e.doc_recebedor || '—'}</td>
-                      <td><span className={`badge ${status.includes('PAGO') ? 'success' : 'warning'}`} style={{ fontSize: '0.65rem' }}>{status}</span></td>
+                      <td style={{ fontWeight: 700, fontSize: '0.75rem', color: statusColor }}>{statusText}</td>
                     </tr>
                   )
                 })}

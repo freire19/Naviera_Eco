@@ -528,6 +528,10 @@ table td {
   color: var(--text-soft);
 }
 
+table tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.02);
+}
+
 table tr:hover td {
   background: var(--bg-soft);
 }
