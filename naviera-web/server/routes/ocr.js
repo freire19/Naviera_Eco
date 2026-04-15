@@ -65,7 +65,7 @@ router.post('/upload', upload.single('foto'), async (req, res) => {
       // ENCOMENDA: Gemini Vision analisa a IMAGEM diretamente (item fisico)
       try {
         const padrao = await pool.query(
-          'SELECT nome_item, preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+          'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
           [empresaId]
         )
         dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
@@ -192,26 +192,36 @@ router.post('/lancamentos/:id/ia-review', async (req, res) => {
 
     // Buscar lancamento
     const lancResult = await pool.query(
-      'SELECT id, ocr_texto_bruto FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
+      'SELECT id, ocr_texto_bruto, tipo, foto_path FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
       [req.params.id, empresaId]
     )
     if (lancResult.rows.length === 0) {
       return res.status(404).json({ error: 'Lancamento nao encontrado' })
     }
 
-    const { ocr_texto_bruto } = lancResult.rows[0]
-    if (!ocr_texto_bruto) {
-      return res.status(400).json({ error: 'Sem texto OCR para analisar' })
+    const { ocr_texto_bruto, tipo, foto_path } = lancResult.rows[0]
+    let dados
+
+    if (tipo === 'encomenda') {
+      // Encomenda: Gemini Vision analisa a imagem
+      const fullPath = path.resolve(UPLOAD_PATH, foto_path)
+      if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada' })
+
+      const padrao = await pool.query(
+        'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+        [empresaId]
+      )
+      dados = await geminiVisionAnalyze(fullPath, padrao.rows)
+    } else {
+      // Frete: Gemini text parser
+      if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
+
+      const padrao = await pool.query(
+        'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+        [empresaId]
+      )
+      dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
     }
-
-    // Buscar itens padrao da empresa
-    const padrao = await pool.query(
-      'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
-      [empresaId]
-    )
-
-    // Chamar Gemini AI
-    const dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
 
     // Atualizar dados extraidos no banco — #DB125: filtrar por empresa_id
     await pool.query(
@@ -444,20 +454,34 @@ router.put('/lancamentos/:id/reanalisar', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const lancResult = await pool.query(
-      'SELECT id, ocr_texto_bruto FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
+      'SELECT id, ocr_texto_bruto, tipo, foto_path FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
       [req.params.id, empresaId]
     )
     if (lancResult.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado' })
 
-    const { ocr_texto_bruto } = lancResult.rows[0]
-    if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
+    const { ocr_texto_bruto, tipo, foto_path } = lancResult.rows[0]
+    let dados
 
-    const padrao = await pool.query(
-      'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
-      [empresaId]
-    )
+    if (tipo === 'encomenda') {
+      // Encomenda: usar Gemini Vision com a imagem
+      const fullPath = path.resolve(UPLOAD_PATH, foto_path)
+      if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
 
-    const dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
+      const padrao = await pool.query(
+        'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+        [empresaId]
+      )
+      dados = await geminiVisionAnalyze(fullPath, padrao.rows)
+    } else {
+      // Frete: usar Gemini text parser
+      if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
+
+      const padrao = await pool.query(
+        'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+        [empresaId]
+      )
+      dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
+    }
 
     await pool.query(
       'UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2 AND empresa_id = $3',
