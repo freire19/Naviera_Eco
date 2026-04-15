@@ -47,6 +47,17 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
   const [itensPadrao, setItensPadrao] = useState([])
   const [caixas, setCaixas] = useState([])
 
+  // Dropdown itens customizado
+  const [showItemList, setShowItemList] = useState(false)
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    if (!showItemList) return
+    const handler = () => setTimeout(() => setShowItemList(false), 200)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [showItemList])
+
   // Pagamento modal
   const [modalPagar, setModalPagar] = useState(null)
   const [pgDinheiro, setPgDinheiro] = useState('')
@@ -406,28 +417,49 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
               <label style={{ ...L, fontSize: '0.65rem' }}>Qtd</label>
               <input style={{ ...I, textAlign: 'center' }} type="number" min="1" value={novoItem.quantidade} onChange={e => handleNovoItemChange('quantidade', e.target.value)} />
             </div>
-            <div>
+            <div style={{ position: 'relative' }}>
               <label style={{ ...L, fontSize: '0.65rem' }}>Descricao do Item (Enter busca)</label>
-              <input list="itens-padrao-list" style={I} value={novoItem.descricao}
-                onChange={e => {
-                  const val = e.target.value
-                  handleNovoItemChange('descricao', val)
-                  // Auto-preencher preco se selecionou item do datalist
-                  const match = itensPadrao.find(ip => ip.nome_item === val || `${ip.nome_item} — R$ ${Number(ip.preco_padrao || ip.preco_unitario_padrao || 0).toFixed(2)}` === val)
-                  if (match) {
-                    const preco = match.preco_padrao || match.preco_unitario_padrao || 0
-                    handleNovoItemChange('descricao', match.nome_item)
-                    setNovoItem(prev => ({ ...prev, descricao: match.nome_item, valor_unitario: preco, valor_total: ((parseInt(prev.quantidade) || 1) * parseFloat(preco)).toFixed(2) }))
-                  }
-                }}
+              <input style={I} value={novoItem.descricao}
+                onChange={e => handleNovoItemChange('descricao', e.target.value)}
+                onFocus={() => setShowItemList(true)}
                 placeholder="Digite ou selecione um item..." />
-              <datalist id="itens-padrao-list">
-                {itensPadrao.map(ip => (
-                  <option key={ip.id || ip.id_item_encomenda} value={ip.nome_item}>
-                    R$ {Number(ip.preco_padrao || ip.preco_unitario_padrao || 0).toFixed(2)}
-                  </option>
-                ))}
-              </datalist>
+              {showItemList && itensPadrao.length > 0 && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                  background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4,
+                  maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)'
+                }}>
+                  {itensPadrao
+                    .filter(ip => !novoItem.descricao || (ip.nome_item || '').toLowerCase().includes(novoItem.descricao.toLowerCase()))
+                    .map((ip, idx) => {
+                    const preco = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
+                    return (
+                      <div key={ip.id || ip.id_item_encomenda || idx}
+                        onClick={() => {
+                          setNovoItem(prev => ({
+                            ...prev,
+                            descricao: ip.nome_item,
+                            valor_unitario: preco,
+                            valor_total: ((parseInt(prev.quantidade) || 1) * preco).toFixed(2)
+                          }))
+                          setShowItemList(false)
+                        }}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '6px 10px', cursor: 'pointer', fontSize: '0.82rem',
+                          background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
+                          borderBottom: '1px solid var(--border)'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--primary)'}
+                        onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'}
+                      >
+                        <span style={{ fontWeight: 500 }}>{ip.nome_item}</span>
+                        <span style={{ fontFamily: 'Space Mono, monospace', color: 'var(--text-muted)' }}>R$ {preco.toFixed(2)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>V. Unit.</label>
