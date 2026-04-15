@@ -6,6 +6,7 @@ import { existsSync, mkdirSync } from 'fs'
 import jwt from 'jsonwebtoken'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { rateLimit } from '../middleware/rateLimit.js'
 import { callVisionOCR } from '../helpers/visionApi.js'
 import { parseOcrText } from '../helpers/parseOcrText.js'
 import { criarFreteComItens } from '../helpers/criarFrete.js'
@@ -17,6 +18,14 @@ const router = Router()
 // DS4-015 fix: auth obrigatoria em TODAS as rotas (incluindo foto)
 // Antes: foto bypassava auth e aceitava JWT via query param (expoe token em logs)
 router.use(authMiddleware)
+
+// Rate limiter por usuario para upload OCR (consome APIs pagas: Vision + Gemini)
+const uploadLimiter = rateLimit({
+  windowMs: 60000,
+  max: 5,
+  message: 'Limite de uploads atingido (max 5/min). Aguarde um momento.',
+  keyFn: (req) => `ocr-upload:${req.user?.id || req.ip}`
+})
 
 // Configurar multer para upload de fotos
 const UPLOAD_PATH = process.env.OCR_UPLOAD_PATH || path.resolve('uploads/ocr')
@@ -48,13 +57,13 @@ const upload = multer({
 // ============================================================================
 // POST /api/ocr/upload — Upload foto, rodar OCR, salvar lancamento
 // ============================================================================
-router.post('/upload', upload.single('foto'), async (req, res) => {
+router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Foto obrigatoria (campo "foto", max 10MB, jpeg/png/webp)' })
   }
 
   const empresaId = req.user.empresa_id
-  const { viagem_id, tipo } = req.body
+  const { viagem_id, tipo, client_uuid } = req.body
   const tipoLanc = tipo === 'encomenda' ? 'encomenda' : 'frete'
 
   try {
@@ -101,15 +110,20 @@ router.post('/upload', upload.single('foto'), async (req, res) => {
       }
     }
 
-    // Salvar no banco
+    // Salvar no banco (com idempotencia via client_uuid)
     const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
+    const uuid = client_uuid || crypto.randomUUID()
+
+    // ON CONFLICT: se o mesmo uuid ja existe, retorna o registro existente sem duplicar
     const result = await pool.query(`
-      INSERT INTO ocr_lancamentos (empresa_id, id_viagem, foto_path, foto_original_name,
+      INSERT INTO ocr_lancamentos (uuid, empresa_id, id_viagem, foto_path, foto_original_name,
         ocr_texto_bruto, ocr_json, ocr_confianca, dados_extraidos,
         status, id_usuario_criou, nome_usuario_criou, tipo)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pendente', $10, $11, $12)
+      ON CONFLICT (uuid) DO UPDATE SET uuid = ocr_lancamentos.uuid
       RETURNING *
     `, [
+      uuid,
       empresaId,
       viagem_id || null,
       fotoRelPath,

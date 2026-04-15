@@ -35,7 +35,7 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
     }
 
     if (!isOnline) {
-      await onOfflineAdd(fotoBlob, viagemId || null, usuario?.empresa_id || null)
+      await onOfflineAdd(fotoBlob, viagemId || null, usuario?.empresa_id || null, tipo)
       showToast('Foto salva na fila offline. Sera enviada quando houver internet.', 'warn')
       setFotoBlob(null)
       setFotoName('')

@@ -16,7 +16,7 @@ function openDB() {
   })
 }
 
-export async function addToQueue(blob, viagemId, empresaId) {
+export async function addToQueue(blob, viagemId, empresaId, tipo) {
   const db = await openDB()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite')
@@ -24,6 +24,8 @@ export async function addToQueue(blob, viagemId, empresaId) {
       blob,
       viagem_id: viagemId,
       empresa_id: empresaId,
+      tipo: tipo || 'frete',
+      client_uuid: crypto.randomUUID(),
       timestamp: Date.now(),
       synced: false
     })

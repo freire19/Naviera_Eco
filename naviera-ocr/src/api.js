@@ -50,11 +50,13 @@ export async function apiPost(path, data) {
   return res.json()
 }
 
-export async function uploadFoto(file, viagemId, tipo) {
+export async function uploadFoto(file, viagemId, tipo, clientUuid) {
   const form = new FormData()
   form.append('foto', file)
   if (viagemId) form.append('viagem_id', viagemId)
   if (tipo) form.append('tipo', tipo)
+  // Idempotencia: UUID gerado no cliente para evitar duplicatas em retry/refresh
+  form.append('client_uuid', clientUuid || crypto.randomUUID())
 
   const res = await fetch(`${API}/ocr/upload`, {
     method: 'POST',

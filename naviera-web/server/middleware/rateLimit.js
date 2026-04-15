@@ -4,7 +4,7 @@
  * DR247: NOTA — em PM2 cluster mode cada worker tem seu proprio Map.
  * Para rate limiting real em cluster, usar Redis. Em fork mode (atual), funciona OK.
  */
-export function rateLimit({ windowMs = 60000, max = 10, message = 'Muitas tentativas. Tente novamente em breve.' } = {}) {
+export function rateLimit({ windowMs = 60000, max = 10, message = 'Muitas tentativas. Tente novamente em breve.', keyFn } = {}) {
   const hits = new Map()
 
   // DR247: guardar ref do interval para cleanup em graceful shutdown
@@ -17,7 +17,7 @@ export function rateLimit({ windowMs = 60000, max = 10, message = 'Muitas tentat
   cleanupInterval.unref() // nao impede o processo de encerrar
 
   return (req, res, next) => {
-    const key = req.ip || req.connection.remoteAddress
+    const key = keyFn ? keyFn(req) : (req.ip || req.connection.remoteAddress)
     const now = Date.now()
     let entry = hits.get(key)
 
