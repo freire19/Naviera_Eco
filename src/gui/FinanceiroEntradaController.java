@@ -28,7 +28,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import model.OpcaoViagem;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class FinanceiroEntradaController {
 

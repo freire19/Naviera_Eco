@@ -6,7 +6,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import model.TipoPassageiro;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class TipoPassageiroDAO {
 
@@ -63,8 +63,17 @@ public class TipoPassageiroDAO {
     // Retorna só os nomes
     public List<String> listarNomes() {
         List<String> nomes = new ArrayList<>();
-        for(TipoPassageiro tp : listarTodos()) {
-            nomes.add(tp.getNome());
+        String sql = "SELECT nome FROM tipo_passageiro WHERE empresa_id = ? ORDER BY nome";
+        try(Connection conn = ConexaoBD.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, DAOUtils.empresaId());
+            try (ResultSet rs = ps.executeQuery()) {
+                while(rs.next()) {
+                    nomes.add(rs.getString("nome"));
+                }
+            }
+        } catch(SQLException e){
+            AppLogger.warn("TipoPassageiroDAO", "Erro SQL em TipoPassageiroDAO: " + e.getMessage());
         }
         return nomes;
     }

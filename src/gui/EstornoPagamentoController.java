@@ -14,7 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.mindrot.jbcrypt.BCrypt;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class EstornoPagamentoController {
 

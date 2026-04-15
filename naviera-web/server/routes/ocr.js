@@ -13,11 +13,9 @@ import { geminiParseOCR } from '../helpers/geminiParser.js'
 
 const router = Router()
 
-// Auth para todas as rotas EXCETO foto (que aceita token via query param)
-router.use((req, res, next) => {
-  if (req.path.match(/\/lancamentos\/\d+\/foto/)) return next()
-  return authMiddleware(req, res, next)
-})
+// DS4-015 fix: auth obrigatoria em TODAS as rotas (incluindo foto)
+// Antes: foto bypassava auth e aceitava JWT via query param (expoe token em logs)
+router.use(authMiddleware)
 
 // Configurar multer para upload de fotos
 const UPLOAD_PATH = process.env.OCR_UPLOAD_PATH || path.resolve('uploads/ocr')
@@ -319,20 +317,11 @@ router.put('/lancamentos/:id/rejeitar', async (req, res) => {
 
 // ============================================================================
 // GET /api/ocr/lancamentos/:id/foto — Servir foto do filesystem
-// Aceita auth via query param ?token=... (necessario para <img src>)
+// DS4-015 fix: auth via middleware padrao (antes aceitava JWT em query param — expoe token em logs)
 // ============================================================================
 router.get('/lancamentos/:id/foto', async (req, res) => {
   try {
-    // Auth: tentar query param primeiro (para <img src>), senao usa req.user do middleware
-    let empresaId = req.user?.empresa_id
-    if (!empresaId && req.query.token) {
-      try {
-        const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET)
-        empresaId = decoded.empresa_id
-      } catch {
-        return res.status(401).json({ error: 'Token invalido' })
-      }
-    }
+    const empresaId = req.user.empresa_id
     if (!empresaId) return res.status(401).json({ error: 'Nao autorizado' })
 
     const result = await pool.query(

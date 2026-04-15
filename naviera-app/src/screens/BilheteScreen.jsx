@@ -1,23 +1,42 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { T } from "../theme.js";
 import { fmt, money } from "../helpers.js";
 import { IconBack, IconShip, IconSun } from "../icons.jsx";
 import Logo from "../components/Logo.jsx";
+import { API, authFetch } from "../api.js";
 
-export default function BilheteScreen({ bilhete, t: _t, onBack }) {
+export default function BilheteScreen({ bilhete, authHeaders, t: _t, onBack }) {
   // Forca tema dark pro bilhete — visual premium
   const t = { ...T.dark };
   const [now, setNow] = useState(Date.now());
   const [brightness, setBrightness] = useState(false);
-  useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
+  const [totp, setTotp] = useState("------");
+  const [timeLeft, setTimeLeft] = useState(30);
 
-  const totp = (() => {
-    const counter = Math.floor(now / 30000);
-    let h = 0; const s = (bilhete.totp_secret || bilhete.totpSecret || bilhete.numero_bilhete || "x") + counter;
-    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-    return Math.abs(h % 1000000).toString().padStart(6, "0");
-  })();
-  const timeLeft = 30 - (Math.floor(now / 1000) % 30);
+  // DS4-007 fix: buscar TOTP do servidor (HMAC-SHA256), nunca gerar client-side
+  const fetchTotp = useCallback(async () => {
+    if (!bilhete?.id || !authHeaders?.Authorization) return;
+    try {
+      const res = await authFetch(`${API}/bilhetes/${bilhete.id}/totp`, { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json();
+        setTotp(data.code || "------");
+        setTimeLeft(data.timeLeft || 30);
+      }
+    } catch { /* silencioso — mostra ultimo codigo valido */ }
+  }, [bilhete?.id, authHeaders]);
+
+  useEffect(() => { fetchTotp(); }, [fetchTotp]);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setNow(Date.now());
+      setTimeLeft(prev => {
+        if (prev <= 1) { fetchTotp(); return 30; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [fetchTotp]);
   const pct = (timeLeft / 30) * 100;
 
   const b = bilhete;

@@ -1,7 +1,7 @@
 package gui.util;
 
 import java.math.BigDecimal;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * Utilitario centralizado para parsing e formatacao de valores monetarios.

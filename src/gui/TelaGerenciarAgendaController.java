@@ -1,6 +1,7 @@
 package gui;
 
 import dao.AgendaDAO;
+import gui.util.PermissaoService;
 import dao.AgendaDAO.TarefaAgenda;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
@@ -36,6 +37,7 @@ public class TelaGerenciarAgendaController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Gerenciar Agenda"); return; }
         configurarColunas();
         carregarDados();
     }

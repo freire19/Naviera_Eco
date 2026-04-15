@@ -9,7 +9,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * Pool de conexoes JDBC simples para PostgreSQL.

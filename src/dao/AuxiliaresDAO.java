@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * DAO para tabelas auxiliares com cache em memoria.
@@ -199,9 +199,15 @@ public class AuxiliaresDAO {
 
         // Fallback
         String sql = "SELECT " + colunaNome + " FROM " + tabela + " WHERE " + colunaId + " = ?";
+        if (isTenantScoped(tabela)) {
+            sql += " AND empresa_id = ?";
+        }
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
+            if (isTenantScoped(tabela)) {
+                stmt.setInt(2, DAOUtils.empresaId());
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) return rs.getString(colunaNome);
             }
@@ -218,10 +224,18 @@ public class AuxiliaresDAO {
         if (valor == null || valor.trim().isEmpty()) return false;
         validarTabela(tabela);
         validarColuna(tabela, colunaNome);
-        String sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?) ON CONFLICT DO NOTHING";
+        String sql;
+        if (isTenantScoped(tabela)) {
+            sql = "INSERT INTO " + tabela + " (" + colunaNome + ", empresa_id) VALUES (?, ?) ON CONFLICT DO NOTHING";
+        } else {
+            sql = "INSERT INTO " + tabela + " (" + colunaNome + ") VALUES (?) ON CONFLICT DO NOTHING";
+        }
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, valor.trim());
+            if (isTenantScoped(tabela)) {
+                ps.setInt(2, DAOUtils.empresaId());
+            }
             int rows = ps.executeUpdate();
             if (rows > 0) {
                 invalidarCache(tabela);
@@ -238,11 +252,19 @@ public class AuxiliaresDAO {
         validarTabela(tabela);
         validarColuna(tabela, colunaNome);
         List<String> lista = new ArrayList<>();
-        String sql = "SELECT " + colunaNome + " FROM " + tabela + " ORDER BY " + colunaNome;
+        String sql = "SELECT " + colunaNome + " FROM " + tabela;
+        if (isTenantScoped(tabela)) {
+            sql += " WHERE empresa_id = ?";
+        }
+        sql += " ORDER BY " + colunaNome;
         try (Connection conn = ConexaoBD.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) lista.add(rs.getString(colunaNome));
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (isTenantScoped(tabela)) {
+                ps.setInt(1, DAOUtils.empresaId());
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(rs.getString(colunaNome));
+            }
         }
         return lista;
     }
@@ -254,10 +276,16 @@ public class AuxiliaresDAO {
         validarTabela(tabela);
         validarColuna(tabela, colunaNome, colunaId);
         String sql = "UPDATE " + tabela + " SET " + colunaNome + "=? WHERE " + colunaId + "=?";
+        if (isTenantScoped(tabela)) {
+            sql += " AND empresa_id = ?";
+        }
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, novoNome);
             ps.setInt(2, id);
+            if (isTenantScoped(tabela)) {
+                ps.setInt(3, DAOUtils.empresaId());
+            }
             boolean ok = ps.executeUpdate() > 0;
             if (ok) invalidarCache(tabela);
             return ok;
@@ -273,9 +301,15 @@ public class AuxiliaresDAO {
         validarTabela(tabela);
         validarColuna(tabela, colunaId);
         String sql = "DELETE FROM " + tabela + " WHERE " + colunaId + "=?";
+        if (isTenantScoped(tabela)) {
+            sql += " AND empresa_id = ?";
+        }
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
+            if (isTenantScoped(tabela)) {
+                ps.setInt(2, DAOUtils.empresaId());
+            }
             boolean ok = ps.executeUpdate() > 0;
             if (ok) invalidarCache(tabela);
             return ok;
@@ -295,14 +329,19 @@ public class AuxiliaresDAO {
         if (origem == null || origem.trim().isEmpty()) return null;
         String sql;
         if (destino == null || destino.trim().isEmpty()) {
-            sql = "SELECT id FROM rotas WHERE origem ILIKE ? AND (destino IS NULL OR destino = '')";
+            sql = "SELECT id FROM rotas WHERE origem ILIKE ? AND (destino IS NULL OR destino = '') AND empresa_id = ?";
         } else {
-            sql = "SELECT id FROM rotas WHERE origem ILIKE ? AND destino ILIKE ?";
+            sql = "SELECT id FROM rotas WHERE origem ILIKE ? AND destino ILIKE ? AND empresa_id = ?";
         }
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, origem);
-            if (destino != null && !destino.trim().isEmpty()) stmt.setString(2, destino);
+            if (destino != null && !destino.trim().isEmpty()) {
+                stmt.setString(2, destino);
+                stmt.setInt(3, DAOUtils.empresaId());
+            } else {
+                stmt.setInt(2, DAOUtils.empresaId());
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) return rs.getInt("id");
             }

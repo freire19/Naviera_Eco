@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import model.ItemEncomendaPadrao;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ItemEncomendaPadraoDAO {
 

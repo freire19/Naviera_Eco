@@ -52,7 +52,7 @@ import model.ItemFrete;
 import gui.util.AlertHelper;
 import gui.util.CompanyDataLoader;
 import gui.util.PrintLayoutHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class TabelaPrecoFreteController implements Initializable {
 

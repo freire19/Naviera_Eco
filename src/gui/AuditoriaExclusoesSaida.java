@@ -29,7 +29,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import model.OpcaoViagem;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class AuditoriaExclusoesSaida {
 

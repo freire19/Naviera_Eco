@@ -19,7 +19,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 import model.Passagem;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class FinalizarPagamentoPassagemController implements Initializable {
 

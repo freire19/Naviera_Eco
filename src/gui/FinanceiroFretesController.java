@@ -23,7 +23,7 @@ import java.text.SimpleDateFormat;
 import gui.util.StatusPagamentoView;
 import model.FreteFinanceiro;
 import model.OpcaoViagem;
-import gui.util.AppLogger;
+import util.AppLogger;
 public class FinanceiroFretesController {
     @FXML private ComboBox<OpcaoViagem> cmbViagem;
     @FXML private TextField txtBusca;

@@ -28,6 +28,9 @@ import estornoRoutes from './routes/estornos.js'
 import ocrRoutes from './routes/ocr.js'
 
 const app = express()
+// DS4-009 fix: confiar no X-Forwarded-For do proxy local (Nginx)
+// Sem isso, req.ip = 127.0.0.1 para todos, rate limiter inoperante
+app.set('trust proxy', 'loopback')
 const PORT = process.env.SERVER_PORT || 3002
 
 const corsOrigins = process.env.CORS_ORIGINS

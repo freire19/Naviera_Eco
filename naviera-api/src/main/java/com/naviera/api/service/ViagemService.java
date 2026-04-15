@@ -11,7 +11,8 @@ public class ViagemService {
     private final JdbcTemplate jdbc;
     public ViagemService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    public List<ViagemDTO> buscarAtivas() {
+    // DS4-008 fix: empresaId != null → filtrar (operador), null → cross-tenant (app)
+    public List<ViagemDTO> buscarAtivas(Integer empresaId) {
         String sql = """
             SELECT v.id_viagem as id, emb.nome as embarcacao, r.origem, r.destino,
                    v.data_viagem, v.data_chegada,
@@ -21,17 +22,22 @@ public class ViagemService {
             JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
-            WHERE v.ativa = true
+            WHERE v.ativa = true""" + (empresaId != null ? " AND v.empresa_id = ?" : "") + """
+
             ORDER BY v.data_viagem DESC
             """;
-        return jdbc.query(sql, (rs, i) -> new ViagemDTO(
-            rs.getLong("id"), rs.getString("embarcacao"),
-            rs.getString("origem"), rs.getString("destino"),
-            rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toString() : null,
-            rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toString() : null,
-            rs.getString("horario_saida"),
-            rs.getBoolean("ativa"), rs.getBoolean("is_atual")
-        ));
+        var mapper = new org.springframework.jdbc.core.RowMapper<ViagemDTO>() {
+            public ViagemDTO mapRow(java.sql.ResultSet rs, int i) throws java.sql.SQLException {
+                return new ViagemDTO(
+                    rs.getLong("id"), rs.getString("embarcacao"),
+                    rs.getString("origem"), rs.getString("destino"),
+                    rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toString() : null,
+                    rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toString() : null,
+                    rs.getString("horario_saida"),
+                    rs.getBoolean("ativa"), rs.getBoolean("is_atual"));
+            }
+        };
+        return empresaId != null ? jdbc.query(sql, mapper, empresaId) : jdbc.query(sql, mapper);
     }
 
     /** Viagens ativas de todas as empresas — cross-tenant para o app mobile */
@@ -50,7 +56,10 @@ public class ViagemService {
         return jdbc.queryForList(sql);
     }
 
-    public List<ViagemDTO> buscarPorEmbarcacao(Long embarcacaoId) {
+    // DS4-008 fix: empresaId nullable — operador filtrado, app cross-tenant
+    public List<ViagemDTO> buscarPorEmbarcacao(Long embarcacaoId, Integer empresaId) {
+        String where = "WHERE v.id_embarcacao = ? AND v.ativa = true AND v.data_chegada >= CURRENT_DATE";
+        if (empresaId != null) where += " AND v.empresa_id = ?";
         String sql = """
             SELECT v.id_viagem as id, emb.nome as embarcacao, r.origem, r.destino,
                    v.data_viagem, v.data_chegada,
@@ -60,16 +69,18 @@ public class ViagemService {
             JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
-            WHERE v.id_embarcacao = ? AND v.ativa = true AND v.data_chegada >= CURRENT_DATE
-            ORDER BY v.data_viagem ASC LIMIT 10
-            """;
-        return jdbc.query(sql, (rs, i) -> new ViagemDTO(
-            rs.getLong("id"), rs.getString("embarcacao"),
-            rs.getString("origem"), rs.getString("destino"),
-            rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toString() : null,
-            rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toString() : null,
-            rs.getString("horario_saida"),
-            rs.getBoolean("ativa"), rs.getBoolean("is_atual")
-        ), embarcacaoId);
+            """ + where + " ORDER BY v.data_viagem ASC LIMIT 10";
+        var mapper = new org.springframework.jdbc.core.RowMapper<ViagemDTO>() {
+            public ViagemDTO mapRow(java.sql.ResultSet rs, int i) throws java.sql.SQLException {
+                return new ViagemDTO(
+                    rs.getLong("id"), rs.getString("embarcacao"),
+                    rs.getString("origem"), rs.getString("destino"),
+                    rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toString() : null,
+                    rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toString() : null,
+                    rs.getString("horario_saida"),
+                    rs.getBoolean("ativa"), rs.getBoolean("is_atual"));
+            }
+        };
+        return empresaId != null ? jdbc.query(sql, mapper, embarcacaoId, empresaId) : jdbc.query(sql, mapper, embarcacaoId);
     }
 }

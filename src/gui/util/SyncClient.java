@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * Cliente de sincronizacao bidirecional.
@@ -73,7 +73,8 @@ public class SyncClient {
 
     // Configuracoes
     // DR209: volatile para visibilidade entre threads (FX thread escreve, scheduler lê)
-    private volatile String serverUrl = "http://localhost:8081";
+    // DS4-012 fix: default HTTPS (antes HTTP)
+    private volatile String serverUrl = "https://localhost:8081";
     private volatile String login = "";
     private volatile String senha = "";
     private volatile String jwtToken = "";
@@ -133,7 +134,13 @@ public class SyncClient {
 
             // Credenciais para login JWT
             this.login = props.getProperty("operador.login", "");
-            this.senha = props.getProperty("operador.senha", "");
+            // DS4-013 fix: senha agora em Base64 (antes plaintext)
+            String senhaRaw = props.getProperty("operador.senha", "");
+            if ("true".equals(props.getProperty("operador.senha.encoded")) && !senhaRaw.isEmpty()) {
+                try { senhaRaw = new String(Base64.getDecoder().decode(senhaRaw), StandardCharsets.UTF_8); }
+                catch (Exception ignored) { /* fallback: usa valor raw */ }
+            }
+            this.senha = senhaRaw;
 
             // Token JWT pre-existente (caso ja esteja autenticado)
             String tokenRaw = props.getProperty("api.token", "");
@@ -166,7 +173,14 @@ public class SyncClient {
             Properties props = new Properties();
             props.setProperty("server.url", serverUrl);
             props.setProperty("operador.login", login != null ? login : "");
-            props.setProperty("operador.senha", senha != null ? senha : "");
+            // DS4-013 fix: Base64 na senha (antes plaintext no disco)
+            if (senha != null && !senha.isEmpty()) {
+                props.setProperty("operador.senha", Base64.getEncoder().encodeToString(
+                    senha.getBytes(StandardCharsets.UTF_8)));
+                props.setProperty("operador.senha.encoded", "true");
+            } else {
+                props.setProperty("operador.senha", "");
+            }
 
             if (jwtToken != null && !jwtToken.isEmpty()) {
                 props.setProperty("api.token", Base64.getEncoder().encodeToString(
@@ -845,10 +859,10 @@ public class SyncClient {
      * Abre uma HttpURLConnection configurada.
      */
     private HttpURLConnection abrirConexao(String endpoint, String method) throws Exception {
-        // Aviso se usando HTTP em servidor remoto
+        // DS4-012 fix: bloquear HTTP para servidores remotos (antes: so warning)
         if (serverUrl != null && serverUrl.startsWith("http://")
             && !serverUrl.contains("localhost") && !serverUrl.contains("127.0.0.1")) {
-            AppLogger.warn(TAG, "AVISO SEGURANCA: Sync usando HTTP sem TLS para servidor remoto: " + serverUrl);
+            throw new SecurityException("Sync bloqueado: HTTP sem TLS para servidor remoto (" + serverUrl + "). Use HTTPS.");
         }
 
         URL url = new URL(serverUrl + endpoint);

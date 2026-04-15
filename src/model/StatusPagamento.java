@@ -2,7 +2,7 @@ package model;
 
 import java.math.BigDecimal;
 
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * Enum centralizado para status de pagamento.

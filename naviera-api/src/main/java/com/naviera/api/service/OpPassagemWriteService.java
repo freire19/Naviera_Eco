@@ -26,7 +26,7 @@ public class OpPassagemWriteService {
             numBilhete = jdbc.queryForObject("SELECT nextval('seq_numero_bilhete')", String.class);
         } catch (Exception e) {
             // Fallback se sequence nao existir: advisory lock + MAX+1 filtrado por empresa_id
-            jdbc.execute("SELECT pg_advisory_xact_lock(" + empresaId + ")");
+            jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
             numBilhete = jdbc.queryForObject(
                 "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens WHERE empresa_id = ?",
                 String.class, empresaId);

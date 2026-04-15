@@ -27,7 +27,7 @@ import javafx.stage.Stage;
 import model.Caixa; 
 import model.Encomenda;
 import model.EncomendaItem;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class RegistrarPagamentoEncomendaController implements Initializable {
 

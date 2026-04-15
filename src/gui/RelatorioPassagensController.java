@@ -44,7 +44,7 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class RelatorioPassagensController implements Initializable {
 

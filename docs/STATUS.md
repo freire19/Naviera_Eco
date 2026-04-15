@@ -50,11 +50,11 @@ Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaF
 
 | Categoria | Total | Resolvidas | Ativas | % Resolvido | Status |
 |-----------|-------|-----------|--------|-------------|--------|
-| **Security** | **90** | **47** | **43** | **52%** | **DEEP V4.0: 7 CRIT, 13 ALTO, 13 MEDIO, 10 BAIXO** |
+| **Security** | **90** | **67** | **23** | **74%** | **20 corrigidas (7 CRIT + 13 ALTO). Restam: 13 MEDIO, 10 BAIXO** |
 | **Logic** | **75** | **75** | **0** | **100%** | LIMPO |
 | **Bugs** | **134** | **134** | **0** | **100%** | **LIMPO** — 61 novas (Deep V2.0) + 36 anteriores + 37 AUDIT, todas corrigidas |
 | **Resilience** | **116** | **116** | **0** | **100%** | **LIMPO** — 49 novas V5.0 + 2 antigas, todas corrigidas |
-| **Performance** | **39** | **37** | **2** | **95%** | **QUASE LIMPO** (restam #048 JSON parser + #DP023 JARs) |
+| **Performance** | **77** | **30** | **47** | **39%** | **DEEP V4.0: 2 CRIT, 5 ALTO, 14 MEDIO, 17 BAIXO + 9 pendentes anteriores** |
 | **Maintainability** | **91** | **62** | **29** | **68%** | **1 CRIT, 7 ALTA, 13 MEDIO, 1 BAIXA + 7 estruturais pendentes** |
 
 > **Nota:** DEEP_BUGS reconciliado em 2026-04-09 — todas as 35 issues (6 crit + 11 alta + 8 media + 3 baixa + 7 AUDIT) verificadas como corrigidas. As ~27 "ativas" anteriores estavam sobrepostas com fixes de Security/Logic/Resilience/Maintainability.

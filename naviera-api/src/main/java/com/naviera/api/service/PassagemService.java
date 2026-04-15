@@ -47,16 +47,17 @@ public class PassagemService {
     }
 
     @Transactional
-    public Map<String, Object> comprar(Integer empresaId, Long clienteId, CompraPassagemRequest req) {
+    public Map<String, Object> comprar(Long clienteId, CompraPassagemRequest req) {
         var cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
 
-        // Verificar viagem existe e é futura, filtrando por empresa_id
+        // Derivar empresaId da viagem (server-side) — nunca do request
         var viagem = jdbc.queryForList(
-            "SELECT v.id_viagem, v.id_rota, v.id_embarcacao FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE AND v.empresa_id = ?",
-            req.idViagem(), empresaId);
+            "SELECT v.id_viagem, v.id_rota, v.id_embarcacao, v.empresa_id FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE",
+            req.idViagem());
         if (viagem.isEmpty()) throw ApiException.badRequest("Viagem nao disponivel para compra");
 
+        Integer empresaId = ((Number) viagem.get(0).get("empresa_id")).intValue();
         Long idRota = (Long) viagem.get(0).get("id_rota");
 
         // Buscar tarifa, filtrando por empresa_id

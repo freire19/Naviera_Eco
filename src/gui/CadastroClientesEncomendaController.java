@@ -1,5 +1,6 @@
 package gui;
 
+import gui.util.PermissaoService;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -18,7 +19,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
 import model.ClienteEncomenda;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class CadastroClientesEncomendaController implements Initializable {
 
@@ -34,6 +35,7 @@ public class CadastroClientesEncomendaController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Cadastro de Clientes Encomenda"); return; }
         this.clienteDAO = new ClienteEncomendaDAO();
         this.obsListaClientes = FXCollections.observableArrayList();
         

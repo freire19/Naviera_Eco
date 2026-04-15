@@ -27,7 +27,7 @@ public class OpFreteWriteService {
             numFrete = jdbc.queryForObject("SELECT nextval('seq_numero_frete')", Long.class);
         } catch (Exception e) {
             // Fallback: advisory lock + MAX+1 filtrado por empresa_id
-            jdbc.execute("SELECT pg_advisory_xact_lock(" + empresaId + ")");
+            jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
             numFrete = jdbc.queryForObject(
                 "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes WHERE empresa_id = ?", Long.class, empresaId);
         }
@@ -35,7 +35,7 @@ public class OpFreteWriteService {
             idFrete = jdbc.queryForObject("SELECT nextval('fretes_id_frete_seq')", Long.class);
         } catch (Exception e) {
             // Fallback: advisory lock (mesma transacao, lock ja adquirido acima ou adquire agora) + MAX+1
-            jdbc.execute("SELECT pg_advisory_xact_lock(" + empresaId + ")");
+            jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
             idFrete = jdbc.queryForObject(
                 "SELECT COALESCE(MAX(id_frete), 0) + 1 FROM fretes WHERE empresa_id = ?", Long.class, empresaId);
         }

@@ -41,12 +41,14 @@ public class LojaController {
         return ResponseEntity.ok(service.minhasCompras(id));
     }
 
-    /** Vincular pedido a um frete existente (CNPJ) */
+    /** Vincular pedido a um frete existente (CNPJ) — DS4-019 fix: ownership check */
     @PutMapping("/pedidos/{pedidoId}/vincular-frete")
-    public ResponseEntity<?> vincularFrete(@PathVariable Long pedidoId, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> vincularFrete(@PathVariable Long pedidoId, @RequestBody Map<String, Object> body,
+                                           Authentication auth) {
+        Long clienteId = (Long) auth.getPrincipal();
         Long idFrete = ((Number) body.get("idFrete")).longValue();
         String codigo = (String) body.getOrDefault("codigoRastreio", "");
-        service.vincularFrete(pedidoId, idFrete, codigo);
+        service.vincularFrete(pedidoId, idFrete, codigo, clienteId);
         return ResponseEntity.ok(Map.of("mensagem", "Frete vinculado com sucesso"));
     }
 

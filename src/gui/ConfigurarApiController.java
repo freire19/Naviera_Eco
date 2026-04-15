@@ -18,7 +18,7 @@ import java.net.URL;
 import java.security.SecureRandom;
 import java.util.Properties;
 import java.util.ResourceBundle;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * Controller para a tela de Configuração da API

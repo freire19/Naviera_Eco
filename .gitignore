@@ -20,6 +20,7 @@ build/
 
 # Credenciais e configs sensiveis
 db.properties
+db.properties.bak*
 *.env
 .env
 .env.*

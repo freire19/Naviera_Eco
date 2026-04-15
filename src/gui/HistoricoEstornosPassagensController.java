@@ -15,7 +15,7 @@ import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class HistoricoEstornosPassagensController {
 

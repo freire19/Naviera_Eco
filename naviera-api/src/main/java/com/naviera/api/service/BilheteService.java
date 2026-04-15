@@ -33,7 +33,7 @@ public class BilheteService {
      * Compra uma passagem via app e gera bilhete digital com TOTP
      */
     @Transactional
-    public BilheteDTO comprar(Integer empresaId, Long clienteAppId, Long idViagem, Long idRota, Long idTipoPassagem) {
+    public BilheteDTO comprar(Long clienteAppId, Long idViagem, Long idRota, Long idTipoPassagem) {
         // 1. Buscar dados do cliente
         var cliente = jdbc.queryForMap(
             "SELECT id, nome, documento FROM clientes_app WHERE id = ? AND ativo = TRUE", clienteAppId);
@@ -41,9 +41,9 @@ public class BilheteService {
         String nomeCliente = (String) cliente.get("nome");
         String docCliente = (String) cliente.get("documento");
 
-        // 2. Verificar se a viagem existe e está ativa, filtrando por empresa_id
+        // 2. Verificar se a viagem existe e está ativa — derivar empresaId server-side (fix DS4-001)
         var viagem = jdbc.queryForMap("""
-            SELECT v.id_viagem, v.data_viagem, v.data_chegada,
+            SELECT v.id_viagem, v.data_viagem, v.data_chegada, v.empresa_id,
                    e.nome as embarcacao, r.origem, r.destino,
                    hs.descricao as horario_saida, v.id_horario_saida,
                    r.id as id_rota
@@ -51,8 +51,10 @@ public class BilheteService {
             JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
-            WHERE v.id_viagem = ? AND v.is_atual = TRUE AND v.empresa_id = ?
-            """, idViagem, empresaId);
+            WHERE v.id_viagem = ? AND v.is_atual = TRUE
+            """, idViagem);
+
+        Integer empresaId = ((Number) viagem.get("empresa_id")).intValue();
 
         // 3. Buscar tarifa, filtrando por empresa_id
         var tarifa = jdbc.queryForMap("""
@@ -80,7 +82,7 @@ public class BilheteService {
         }
 
         // 5. Gerar numero do bilhete com advisory lock para evitar race condition no MAX+1
-        jdbc.execute("SELECT pg_advisory_xact_lock(" + empresaId + ")");
+        jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
         String numeroBilhete = jdbc.queryForObject(
             "SELECT COALESCE(MAX(CAST(SUBSTRING(numero_bilhete FROM '[0-9]+') AS INTEGER)), 0) + 1 FROM passagens WHERE id_viagem = ? AND empresa_id = ?",
             Integer.class, idViagem, empresaId).toString();
@@ -142,8 +144,9 @@ public class BilheteService {
      * Lista bilhetes do cliente logado
      */
     public List<Map<String, Object>> listarPorCliente(Long clienteAppId) {
+        // DS4-007/DS4-018 fix: NAO retornar totp_secret ao client
         return jdbc.queryForList("""
-            SELECT b.id, b.id_passagem, b.totp_secret, b.qr_hash, b.status,
+            SELECT b.id, b.id_passagem, b.qr_hash, b.status,
                    p.numero_bilhete, p.valor_total, p.data_emissao, p.status_passagem,
                    ps.nome_passageiro,
                    r.origem, r.destino,
@@ -160,6 +163,23 @@ public class BilheteService {
             WHERE b.id_cliente_app = ? AND b.status != 'CANCELADO'
             ORDER BY v.data_viagem DESC
             """, clienteAppId);
+    }
+
+    /**
+     * DS4-007 fix: Gera TOTP server-side para um bilhete do cliente.
+     * Secret nunca sai do servidor.
+     */
+    public Map<String, Object> gerarTOTPPorBilhete(Long clienteAppId, Long bilheteId) {
+        var rows = jdbc.queryForList(
+            "SELECT totp_secret FROM bilhetes_digitais WHERE id = ? AND id_cliente_app = ? AND status != 'CANCELADO'",
+            bilheteId, clienteAppId);
+        if (rows.isEmpty()) throw ApiException.notFound("Bilhete nao encontrado");
+
+        String secret = (String) rows.get(0).get("totp_secret");
+        long now = Instant.now().getEpochSecond();
+        String code = generateTOTP(secret, now);
+        int timeLeft = TOTP_PERIOD - (int) (now % TOTP_PERIOD);
+        return Map.of("code", code, "timeLeft", timeLeft);
     }
 
     /**

@@ -1,5 +1,6 @@
 package gui;
 
+import gui.util.PermissaoService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -34,6 +35,7 @@ public class NotaFretePersonalizadaController {
 
     @FXML
     public void initialize(){
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Nota de Frete Personalizada"); return; }
         // Propriedades colunas
         colQuant.setCellValueFactory(new PropertyValueFactory<>("quantStr"));
         colItem.setCellValueFactory(new PropertyValueFactory<>("nomeItem"));

@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * DAO para financeiro_saidas e categorias_despesa.

@@ -28,7 +28,7 @@ import java.text.SimpleDateFormat;
 import gui.util.StatusPagamentoView;
 import model.PassagemFinanceiro;
 import model.OpcaoViagem;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class FinanceiroPassagensController {
     @FXML private ComboBox<OpcaoViagem> cmbViagem;

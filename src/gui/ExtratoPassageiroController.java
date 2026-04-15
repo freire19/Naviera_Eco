@@ -1,6 +1,7 @@
 package gui;
 
 import dao.PassageiroDAO;
+import gui.util.PermissaoService;
 import dao.PassagemDAO;
 import dao.ReciboQuitacaoPassageiroDAO;
 import gui.util.StatusPagamentoView;
@@ -49,7 +50,7 @@ import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
 import javax.imageio.ImageIO;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ExtratoPassageiroController implements Initializable {
 
@@ -91,6 +92,7 @@ public class ExtratoPassageiroController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (!PermissaoService.isAdmin()) { PermissaoService.exigirAdmin("Extrato Passageiro"); return; }
         passagemDAO = new PassagemDAO();
         passageiroDAO = new PassageiroDAO();
         reciboDAO = new ReciboQuitacaoPassageiroDAO();

@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ItemFreteDAO;
+import gui.util.PermissaoService;
 import model.ItemFrete; // Nova importação
 import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
@@ -9,7 +10,7 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal; // Nova importação
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class CadastroItemController {
     @FXML private TextField txtDescricaoItem; // Este será o "nome_item"
@@ -17,6 +18,11 @@ public class CadastroItemController {
     @FXML private TextField txtValorDesconto;
 
     private final ItemFreteDAO itemFreteDAO = new ItemFreteDAO();
+
+    @FXML
+    public void initialize() {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Cadastro de Item"); return; }
+    }
 
     @FXML
     private void handleSalvarItem() {

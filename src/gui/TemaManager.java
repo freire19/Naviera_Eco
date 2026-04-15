@@ -3,7 +3,7 @@ package gui;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class TemaManager {
     private static boolean isModoEscuro = false;

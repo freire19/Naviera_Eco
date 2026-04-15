@@ -12,7 +12,8 @@ router.use(authMiddleware)
 // Admin-only middleware: must be Administrador AND on admin subdomain
 function adminOnly(req, res, next) {
   const host = req.hostname || req.headers.host || ''
-  const isAdminSubdomain = host.startsWith('admin.') || (process.env.NODE_ENV !== 'production' && host === 'localhost')
+  // DS4-010 fix: so aceitar localhost em modo dev EXPLICITO (antes: qualquer NODE_ENV != production)
+  const isAdminSubdomain = host.startsWith('admin.') || (process.env.NODE_ENV === 'development' && host === 'localhost')
   if (!isAdminSubdomain) {
     return res.status(403).json({ error: 'Acesso restrito ao painel admin' })
   }

@@ -12,7 +12,7 @@ import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 // DR026: Convencao de retorno de erro neste DAO — metodos que retornam int usam -1 para
 // indicar falha; metodos que retornam Long/Object retornam null em caso de erro.

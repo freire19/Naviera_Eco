@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
+import gui.util.PermissaoService;
 import dao.CaixaDAO;
 import dao.EncomendaDAO;
 import dao.EncomendaItemDAO;
@@ -66,7 +67,7 @@ import model.Encomenda;
 import model.EncomendaItem;
 import model.Rota;
 import model.Viagem;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ListaEncomendaController implements Initializable {
 
@@ -119,6 +120,7 @@ public class ListaEncomendaController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Lista de Encomendas"); return; }
         encomendaDAO = new EncomendaDAO();
         encomendaItemDAO = new EncomendaItemDAO();
         viagemDAO = new ViagemDAO();

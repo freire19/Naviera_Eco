@@ -63,7 +63,7 @@ import model.EncomendaItem;
 import model.Rota;
 import model.Viagem;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class RelatorioEncomendaGeralController implements Initializable {
 

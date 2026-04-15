@@ -1,5 +1,6 @@
 package gui;
 
+import gui.util.PermissaoService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
@@ -10,7 +11,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * Controlador da tela CadastroCliente.fxml
@@ -43,6 +44,7 @@ public class CadastroClienteController {
 
     @FXML
     private void initialize() {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Cadastro de Cliente"); return; }
         // Botão Salvar
         btnSalvar.setOnAction(e -> {
             salvarClienteNoBanco();

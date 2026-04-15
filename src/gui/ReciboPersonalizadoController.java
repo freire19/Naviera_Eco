@@ -1,5 +1,6 @@
 package gui;
 
+import gui.util.PermissaoService;
 import javafx.fxml.FXML;
 import javafx.print.PrinterJob;
 import javafx.scene.control.*;
@@ -27,6 +28,7 @@ public class ReciboPersonalizadoController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Recibo Personalizado"); return; }
         // Exemplo: define data atual
         lblDataEmissao.setText("Data: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 

@@ -1,6 +1,7 @@
 package gui;
 
 import dao.EmbarcacaoDAO;
+import gui.util.PermissaoService;
 import dao.RotaDAO;
 import dao.ViagemDAO;
 import dao.AuxiliaresDAO;
@@ -40,7 +41,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class CadastroViagemController implements Initializable {
 
@@ -80,6 +81,7 @@ public class CadastroViagemController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Cadastro de Viagem"); return; }
         viagemDAO = new ViagemDAO();
         embarcacaoDAO = new EmbarcacaoDAO();
         rotaDAO = new RotaDAO();

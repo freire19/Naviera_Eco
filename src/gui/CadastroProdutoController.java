@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 // import java.sql.SQLException; // Não é mais necessário importar explicitamente se não for lançado
 import java.util.List;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class CadastroProdutoController {
 

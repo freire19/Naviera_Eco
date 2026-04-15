@@ -3,7 +3,7 @@ package gui.util;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * ============================================================================

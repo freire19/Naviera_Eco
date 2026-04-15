@@ -1,6 +1,7 @@
 package gui;
 
 import dao.PassageiroDAO;
+import gui.util.PermissaoService;
 import dao.PassagemDAO;
 import dao.TarifaDAO;
 import dao.ViagemDAO;
@@ -93,7 +94,7 @@ import java.awt.print.PrinterJob;
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 import gui.util.PassagemPrintHelper;
 import gui.util.ValidationHelper;
 
@@ -197,6 +198,7 @@ public class VenderPassagemController implements Initializable {
     // =======================================================================
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Vender Passagem"); return; }
         passageiroDAO = new PassageiroDAO();
         passagemDAO = new PassagemDAO();
         tarifaDAO = new TarifaDAO();

@@ -10,7 +10,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import java.net.URL;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class TelaPrincipalApp extends Application {
 

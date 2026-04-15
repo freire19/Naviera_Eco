@@ -43,7 +43,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;          // <<< ADICIONADO
 import javafx.stage.Window;
 import model.ItemEncomendaPadrao;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class TabelaPrecosEncomendaController implements Initializable {
 

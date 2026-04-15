@@ -1,5 +1,6 @@
 package com.naviera.api.service;
 
+import com.naviera.api.config.ApiException;
 import com.naviera.api.dto.LojaDTO;
 import com.naviera.api.dto.PedidoDTO;
 import com.naviera.api.model.*;
@@ -48,9 +49,17 @@ public class LojaService {
             .map(this::toPedidoDTO).toList();
     }
 
-    public PedidoLoja vincularFrete(Long pedidoId, Long idFrete, String codigoRastreio) {
+    /**
+     * DS4-019 fix: verify the pedido belongs to the caller's loja before linking.
+     */
+    public PedidoLoja vincularFrete(Long pedidoId, Long idFrete, String codigoRastreio, Long clienteId) {
+        LojaParceira loja = lojaRepo.findByIdClienteApp(clienteId)
+            .orElseThrow(() -> ApiException.forbidden("Voce nao possui uma loja cadastrada"));
         PedidoLoja p = pedidoRepo.findById(pedidoId)
-            .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+            .orElseThrow(() -> ApiException.notFound("Pedido nao encontrado"));
+        if (!loja.getId().equals(p.getIdLoja())) {
+            throw ApiException.forbidden("Este pedido nao pertence a sua loja");
+        }
         p.setIdFrete(idFrete);
         p.setCodigoRastreio(codigoRastreio);
         p.setStatus("EM_TRANSITO");

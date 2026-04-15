@@ -14,7 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class HistoricoEstornosController {
 

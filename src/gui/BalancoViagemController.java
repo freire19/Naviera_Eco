@@ -52,7 +52,7 @@ import javafx.scene.transform.Scale;
 import model.DadosBalancoViagem;
 import model.ItemResumoBalanco;
 import model.LinhaDespesaDetalhada;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class BalancoViagemController {
 
@@ -111,27 +111,84 @@ public class BalancoViagemController {
         bg.start();
     }
     
-    // DR117: background thread para nao bloquear FX thread
+    // DR117 + DP034: TODAS as queries SQL rodam em background thread — FX thread so renderiza UI
     private void carregarRelatorio(int id) {
         Thread bg = new Thread(() -> {
             try {
+                // 1. Balanco principal (DAO)
                 model.DadosBalancoViagem dados;
                 try (Connection con = ConexaoBD.getConnection()) {
                     BalancoViagemDAO dao = new BalancoViagemDAO(con);
                     dados = dao.buscarBalancoDaViagem(id);
                 }
+
+                // 2. Detalhamento Tab2 — queries que antes rodavam no FX thread (DP034)
+                List<String> passagensPrint = new ArrayList<>();
+                List<String> cargasPrint = new ArrayList<>();
+                Map<String, List<LinhaDespesaDetalhada>> despesasMap = new TreeMap<>();
+                BigDecimal totalPendente = BigDecimal.ZERO;
+
+                // 2a. Receitas passagens
+                String sqlP = "SELECT r.origem, r.destino, COUNT(*), SUM(p.valor_total) " +
+                              "FROM passagens p " +
+                              "LEFT JOIN rotas r ON p.id_rota = r.id " +
+                              "WHERE p.id_viagem=? AND p.empresa_id = ? GROUP BY r.origem, r.destino ORDER BY r.origem";
+                try (Connection con = ConexaoBD.getConnection(); PreparedStatement s = con.prepareStatement(sqlP)) {
+                    s.setInt(1, id); s.setInt(2, dao.DAOUtils.empresaId());
+                    try (ResultSet rs = s.executeQuery()) {
+                        while(rs.next()) {
+                            String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
+                            String dest = rs.getString(2) == null ? "DESTINO" : rs.getString(2).toUpperCase();
+                            passagensPrint.add(String.format("%02d Passagens %s/%s = %s", rs.getInt(3), orig, dest, formatar(rs.getBigDecimal(4))));
+                        }
+                    }
+                } catch(Exception e) { AppLogger.error("BalancoViagemController", e.getMessage(), e); }
+
+                // 2b. Receitas cargas (encomendas + fretes)
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? AND empresa_id = ? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? AND empresa_id = ? GROUP BY rota_temp")) {
+                    s.setInt(1,id); s.setInt(2, dao.DAOUtils.empresaId()); s.setInt(3,id); s.setInt(4, dao.DAOUtils.empresaId());
+                    try (ResultSet rs = s.executeQuery()) {
+                        while(rs.next()) {
+                            String tipo = rs.getString(1);
+                            String rota = rs.getString(2) == null ? "N/D" : rs.getString(2).toUpperCase();
+                            cargasPrint.add(String.format("%02d %ss %s = %s", rs.getInt(3), tipo, rota, formatar(rs.getBigDecimal(4))));
+                        }
+                    }
+                } catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro cargas bg: " + e.getMessage()); }
+
+                // 2c. Despesas agrupadas
+                carregarDespesasAgrupadas(despesasMap);
+
+                // 2d. Pendentes
+                try (Connection con = ConexaoBD.getConnection();
+                     PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND empresa_id = ? AND valor_devedor > 0.01");
+                     PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND empresa_id = ? AND status_pagamento != 'PAGO'");
+                     PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND empresa_id = ? AND status_frete != 'PAGO'")) {
+                    st0.setInt(1,id); st0.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) { BigDecimal v0=r0.getBigDecimal(1); if(v0!=null) totalPendente=totalPendente.add(v0); } }
+                    st1.setInt(1,id); st1.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) { BigDecimal v1=r1.getBigDecimal(1); if(v1!=null) totalPendente=totalPendente.add(v1); } }
+                    st2.setInt(1,id); st2.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) { BigDecimal v2=r2.getBigDecimal(1); if(v2!=null) totalPendente=totalPendente.add(v2); } }
+                } catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro pendentes bg: " + e.getMessage()); }
+
+                // 3. Volta para FX thread APENAS para renderizar UI
+                final model.DadosBalancoViagem dadosFinal = dados;
+                final BigDecimal pendenteFinal = totalPendente;
+                final List<String> passagensFinal = passagensPrint;
+                final List<String> cargasFinal = cargasPrint;
+                final Map<String, List<LinhaDespesaDetalhada>> despesasFinal = despesasMap;
+
                 Platform.runLater(() -> {
-                    this.dadosAtuais = dados;
-                    if (dados.isDadosIncompletos()) {
+                    this.dadosAtuais = dadosFinal;
+                    if (dadosFinal.isDadosIncompletos()) {
                         Alert alert = new Alert(Alert.AlertType.WARNING);
                         alert.setTitle("Dados Incompletos");
                         alert.setHeaderText("O balanço está incompleto — valores podem não refletir a realidade");
-                        alert.setContentText("Seções com falha: " + dados.getErroDetalhes()
+                        alert.setContentText("Seções com falha: " + dadosFinal.getErroDetalhes()
                             + "\n\nOs dados parciais serão exibidos, mas NÃO devem ser usados para decisões financeiras.");
                         alert.showAndWait();
                     }
                     preencherAbaSimplificada();
-                    carregarDetalhamentoTab2Fx(id);
+                    renderizarDetalhamentoTab2(id, passagensFinal, cargasFinal, despesasFinal, pendenteFinal);
                     carregarGraficos();
                 });
             } catch (Exception e) {
@@ -169,68 +226,32 @@ public class BalancoViagemController {
     }
 
     // --- ABA 2 (VISUAL NA TELA) ---
-    // DR117: abre suas proprias conexoes (para uso apos bg thread)
-    private void carregarDetalhamentoTab2Fx(int idViagem) {
+    // DP034: metodo agora so renderiza UI — dados ja carregados em background thread por carregarRelatorio()
+    private void renderizarDetalhamentoTab2(int idViagem, List<String> passagensPrint, List<String> cargasPrint,
+                                             Map<String, List<LinhaDespesaDetalhada>> despesasMap, BigDecimal totalPendente) {
         vboxReceitasDetalhadasTela.getChildren().clear();
         vboxDespesasDetalhadasTela.getChildren().clear();
         dadosPassagensPrint.clear();
         dadosCargasPrint.clear();
 
-        // 1. Receitas - PASSAGENS
-        String sqlP = "SELECT r.origem, r.destino, COUNT(*), SUM(p.valor_total) " +
-                      "FROM passagens p " +
-                      "LEFT JOIN rotas r ON p.id_rota = r.id " +
-                      "WHERE p.id_viagem=? AND p.empresa_id = ? GROUP BY r.origem, r.destino ORDER BY r.origem";
-        // DP020: ResultSet em try-with-resources
-        try (Connection con = ConexaoBD.getConnection(); PreparedStatement s = con.prepareStatement(sqlP)) {
-            s.setInt(1, idViagem);
-            s.setInt(2, dao.DAOUtils.empresaId());
-            try (ResultSet rs = s.executeQuery()) {
-                while(rs.next()) {
-                    String orig = rs.getString(1) == null ? "ORIGEM" : rs.getString(1).toUpperCase();
-                    String dest = rs.getString(2) == null ? "DESTINO" : rs.getString(2).toUpperCase();
-                    String txt = String.format("%02d Passagens %s/%s = %s", rs.getInt(3), orig, dest, formatar(rs.getBigDecimal(4)));
-                    dadosPassagensPrint.add(txt);
-                    adicionarLinhaReceitaTela(txt);
-                }
-            }
-        } catch(Exception e) { AppLogger.error("BalancoViagemController", e.getMessage(), e); }
+        // 1. Receitas - PASSAGENS (dados ja carregados)
+        dadosPassagensPrint.addAll(passagensPrint);
+        for (String txt : passagensPrint) adicionarLinhaReceitaTela(txt);
 
-        // 2. Receitas - CARGAS
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement s = con.prepareStatement("SELECT 'ENCOMENDA', rota, COUNT(*), SUM(total_a_pagar) FROM encomendas WHERE id_viagem=? AND empresa_id = ? GROUP BY rota UNION ALL SELECT 'FRETE', rota_temp, COUNT(*), SUM(valor_total_itens) FROM fretes WHERE id_viagem=? AND empresa_id = ? GROUP BY rota_temp")) {
-            s.setInt(1,idViagem); s.setInt(2, dao.DAOUtils.empresaId()); s.setInt(3,idViagem); s.setInt(4, dao.DAOUtils.empresaId());
-            try (ResultSet rs = s.executeQuery()) {
-                while(rs.next()) {
-                    String tipo = rs.getString(1);
-                    String rota = rs.getString(2) == null ? "N/D" : rs.getString(2).toUpperCase();
-                    String txt = String.format("%02d %ss %s = %s", rs.getInt(3), tipo, rota, formatar(rs.getBigDecimal(4)));
-                    dadosCargasPrint.add(txt);
-                    adicionarLinhaReceitaTela(txt);
-                }
-            }
-        } catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController.carregarDetalhamentoTab2Fx (cargas): " + e.getMessage()); }
+        // 2. Receitas - CARGAS (dados ja carregados)
+        dadosCargasPrint.addAll(cargasPrint);
+        for (String txt : cargasPrint) adicionarLinhaReceitaTela(txt);
 
-        // 3. Despesas Agrupadas
-        Map<String, List<LinhaDespesaDetalhada>> despesasMap = new TreeMap<>();
-        carregarDespesasAgrupadas(despesasMap);
+        // 3. Despesas Agrupadas (dados ja carregados)
         renderizarDespesasTela(despesasMap);
 
-        // 4. Cards e Pendentes
+        // 4. Cards e Pendentes (dados ja carregados)
         lblCardEntradas.setText(formatar(dadosAtuais.getTotalEntradas()));
         lblCardSaidas.setText(formatar(dadosAtuais.getTotalSaidas()));
         lblCardSaldo.setText(formatar(dadosAtuais.getLucroLiquido()));
         lblCardSaldo.setStyle(dadosAtuais.getLucroLiquido().compareTo(BigDecimal.ZERO) >= 0?"-fx-text-fill:#059669;":"-fx-text-fill:#DC2626;");
 
-        totalPendenteGlobal = BigDecimal.ZERO;
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement st0 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM passagens WHERE id_viagem=? AND empresa_id = ? AND valor_devedor > 0.01");
-             PreparedStatement st1 = con.prepareStatement("SELECT COALESCE(SUM(total_a_pagar - COALESCE(valor_pago, 0)), 0) FROM encomendas WHERE id_viagem=? AND empresa_id = ? AND status_pagamento != 'PAGO'");
-             PreparedStatement st2 = con.prepareStatement("SELECT COALESCE(SUM(valor_devedor), 0) FROM fretes WHERE id_viagem=? AND empresa_id = ? AND status_frete != 'PAGO'")) {
-            st0.setInt(1,idViagem); st0.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r0=st0.executeQuery()) { if(r0.next()) { BigDecimal v0=r0.getBigDecimal(1); if(v0!=null) totalPendenteGlobal=totalPendenteGlobal.add(v0); } }
-            st1.setInt(1,idViagem); st1.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r1=st1.executeQuery()) { if(r1.next()) { BigDecimal v1=r1.getBigDecimal(1); if(v1!=null) totalPendenteGlobal=totalPendenteGlobal.add(v1); } }
-            st2.setInt(1,idViagem); st2.setInt(2, dao.DAOUtils.empresaId()); try (ResultSet r2=st2.executeQuery()) { if(r2.next()) { BigDecimal v2=r2.getBigDecimal(1); if(v2!=null) totalPendenteGlobal=totalPendenteGlobal.add(v2); } }
-        } catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController (pendentes Fx): " + e.getMessage()); }
+        totalPendenteGlobal = totalPendente;
         lblCardPendente.setText(formatar(totalPendenteGlobal));
         BigDecimal recebido = dadosAtuais.getTotalEntradas().subtract(totalPendenteGlobal);
         lblCardRecebido.setText("Caixa: "+formatar(recebido.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : recebido));

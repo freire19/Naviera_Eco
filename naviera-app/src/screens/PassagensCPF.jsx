@@ -43,7 +43,7 @@ export default function PassagensCPF({ t, authHeaders }) {
   if (ev) return <ErrorRetry erro={ev} onRetry={rv} t={t} />;
 
   // Tela do bilhete digital
-  if (selBilhete) return <BilheteScreen bilhete={selBilhete} t={t} onBack={() => setSelBilhete(null)} />;
+  if (selBilhete) return <BilheteScreen bilhete={selBilhete} authHeaders={authHeaders} t={t} onBack={() => setSelBilhete(null)} />;
 
   // Tela de sucesso
   if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", padding: "40px 0" }}>

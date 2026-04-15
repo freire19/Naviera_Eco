@@ -1,13 +1,363 @@
 package dao;
 
 import model.Frete;
+import model.StatusPagamento;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class FreteDAO {
+
+    // ====== Metodos de escrita (DM057: extraidos do CadastroFreteController) ======
+
+    /**
+     * Gera proximo numero de frete via sequence.
+     * Fallback para MAX+1 se sequence nao existir.
+     */
+    public long gerarNumeroFrete() throws SQLException {
+        String sql = "SELECT nextval('seq_numero_frete')";
+        try (Connection conn = ConexaoBD.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) return rs.getLong(1);
+        } catch (SQLException e) {
+            AppLogger.warn("FreteDAO", "Sequence seq_numero_frete nao encontrada. Usando fallback MAX+1.");
+            String fallback = "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes WHERE empresa_id = ?";
+            try (Connection conn = ConexaoBD.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(fallback)) {
+                stmt.setInt(1, DAOUtils.empresaId());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) return rs.getLong(1);
+                }
+            }
+        }
+        return 1;
+    }
+
+    /**
+     * Busca um frete pelo numero_frete (retorna ResultSet-like data como Frete completo).
+     */
+    public Frete buscarPorNumero(long numeroFrete) throws SQLException {
+        String sql = "SELECT * FROM fretes WHERE numero_frete = ? AND empresa_id = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+            pst.setLong(1, numeroFrete);
+            pst.setInt(2, DAOUtils.empresaId());
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetCompleto(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Busca valores financeiros existentes de um frete (para preservar no UPDATE).
+     */
+    public FreteFinanceiro buscarFinanceiro(Connection conn, long idFrete) throws SQLException {
+        String sql = "SELECT valor_pago, troco, tipo_pagamento, nome_caixa FROM fretes WHERE id_frete = ? AND empresa_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idFrete);
+            ps.setInt(2, DAOUtils.empresaId());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    FreteFinanceiro f = new FreteFinanceiro();
+                    f.valorPago = rs.getBigDecimal("valor_pago");
+                    if (f.valorPago == null) f.valorPago = BigDecimal.ZERO;
+                    f.troco = rs.getBigDecimal("troco");
+                    if (f.troco == null) f.troco = BigDecimal.ZERO;
+                    f.tipoPagamento = rs.getString("tipo_pagamento");
+                    f.nomeCaixa = rs.getString("nome_caixa");
+                    return f;
+                }
+            }
+        }
+        return new FreteFinanceiro();
+    }
+
+    /**
+     * Insere um novo frete no banco (dentro de transacao existente).
+     */
+    public void inserir(Connection conn, FreteData data) throws SQLException {
+        String sql = "INSERT INTO fretes (id_frete, numero_frete, data_emissao, data_saida_viagem, local_transporte, " +
+                "remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, cidade_cobranca, " +
+                "observacoes, num_notafiscal, valor_notafiscal, peso_notafiscal, valor_total_itens, desconto, " +
+                "valor_frete_calculado, valor_pago, troco, valor_devedor, tipo_pagamento, nome_caixa, " +
+                "status_frete, id_viagem, empresa_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        try (PreparedStatement pst = conn.prepareStatement(sql)) {
+            int i = 1;
+            pst.setLong(i++, data.idFrete);
+            pst.setLong(i++, data.numeroFrete);
+            pst.setDate(i++, Date.valueOf(LocalDate.now()));
+            pst.setDate(i++, data.dataSaida != null ? Date.valueOf(data.dataSaida) : null);
+            pst.setString(i++, data.localTransporte);
+            pst.setString(i++, data.remetente);
+            pst.setString(i++, data.destinatario);
+            pst.setString(i++, data.rota);
+            pst.setString(i++, data.conferente);
+            pst.setString(i++, data.cidadeCobranca);
+            pst.setString(i++, data.observacoes);
+            pst.setString(i++, data.numNotaFiscal);
+            pst.setBigDecimal(i++, data.valorNotaFiscal);
+            pst.setBigDecimal(i++, data.pesoNotaFiscal);
+            pst.setBigDecimal(i++, data.totalItens);
+            pst.setBigDecimal(i++, BigDecimal.ZERO); // desconto
+            pst.setBigDecimal(i++, data.valorFreteCalculado);
+            pst.setBigDecimal(i++, BigDecimal.ZERO); // valor_pago
+            pst.setBigDecimal(i++, BigDecimal.ZERO); // troco
+            pst.setBigDecimal(i++, data.valorFreteCalculado); // valor_devedor = total
+            pst.setString(i++, null); // tipo_pagamento
+            pst.setString(i++, null); // nome_caixa
+            pst.setString(i++, "PENDENTE"); // status_frete
+            if (data.idViagem != null) {
+                pst.setLong(i++, data.idViagem);
+            } else {
+                pst.setNull(i++, Types.BIGINT);
+            }
+            pst.setInt(i++, DAOUtils.empresaId());
+            pst.executeUpdate();
+        }
+    }
+
+    /**
+     * Atualiza um frete existente preservando dados financeiros (dentro de transacao existente).
+     */
+    public void atualizar(Connection conn, FreteData data) throws SQLException {
+        // DL034: preservar valor_pago/troco/devedor/pagamento existentes
+        FreteFinanceiro fin = buscarFinanceiro(conn, data.idFrete);
+        BigDecimal devedorRecalculado = data.valorFreteCalculado.subtract(fin.valorPago).max(BigDecimal.ZERO);
+        String statusRecalculado = StatusPagamento.calcularPorSaldo(devedorRecalculado, fin.valorPago).name();
+
+        String sql = "UPDATE fretes SET data_emissao = ?, data_saida_viagem = ?, local_transporte = ?, " +
+                "remetente_nome_temp = ?, destinatario_nome_temp = ?, rota_temp = ?, conferente_temp = ?, " +
+                "cidade_cobranca = ?, observacoes = ?, num_notafiscal = ?, valor_notafiscal = ?, peso_notafiscal = ?, " +
+                "valor_total_itens = ?, desconto = ?, valor_frete_calculado = ?, valor_pago = ?, troco = ?, " +
+                "valor_devedor = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ?, id_viagem = ? " +
+                "WHERE id_frete = ? AND empresa_id = ?";
+        try (PreparedStatement pst = conn.prepareStatement(sql)) {
+            int i = 1;
+            pst.setDate(i++, Date.valueOf(LocalDate.now()));
+            pst.setDate(i++, data.dataSaida != null ? Date.valueOf(data.dataSaida) : null);
+            pst.setString(i++, data.localTransporte);
+            pst.setString(i++, data.remetente);
+            pst.setString(i++, data.destinatario);
+            pst.setString(i++, data.rota);
+            pst.setString(i++, data.conferente);
+            pst.setString(i++, data.cidadeCobranca);
+            pst.setString(i++, data.observacoes);
+            pst.setString(i++, data.numNotaFiscal);
+            pst.setBigDecimal(i++, data.valorNotaFiscal);
+            pst.setBigDecimal(i++, data.pesoNotaFiscal);
+            pst.setBigDecimal(i++, data.totalItens);
+            pst.setBigDecimal(i++, BigDecimal.ZERO); // desconto
+            pst.setBigDecimal(i++, data.valorFreteCalculado);
+            pst.setBigDecimal(i++, fin.valorPago);
+            pst.setBigDecimal(i++, fin.troco);
+            pst.setBigDecimal(i++, devedorRecalculado);
+            pst.setString(i++, fin.tipoPagamento);
+            pst.setString(i++, fin.nomeCaixa);
+            pst.setString(i++, statusRecalculado);
+            if (data.idViagem != null) {
+                pst.setLong(i++, data.idViagem);
+            } else {
+                pst.setNull(i++, Types.BIGINT);
+            }
+            pst.setLong(i++, data.idFrete);
+            pst.setInt(i++, DAOUtils.empresaId());
+            pst.executeUpdate();
+        }
+    }
+
+    /**
+     * Deleta e reinsere itens de um frete (dentro de transacao existente).
+     */
+    public void salvarItens(Connection conn, long idFrete, List<FreteItemData> itens) throws SQLException {
+        try (PreparedStatement pstDel = conn.prepareStatement("DELETE FROM frete_itens WHERE id_frete = ?")) {
+            pstDel.setLong(1, idFrete);
+            pstDel.executeUpdate();
+        }
+        String sqlItem = "INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES (?,?,?,?,?)";
+        try (PreparedStatement pst = conn.prepareStatement(sqlItem)) {
+            for (FreteItemData it : itens) {
+                pst.setLong(1, idFrete);
+                pst.setString(2, it.nomeItem);
+                pst.setInt(3, it.quantidade);
+                pst.setBigDecimal(4, it.precoUnitario);
+                pst.setBigDecimal(5, it.subtotal);
+                pst.addBatch();
+            }
+            pst.executeBatch();
+        }
+    }
+
+    /**
+     * Busca itens de um frete.
+     */
+    public List<FreteItemData> buscarItens(long idFrete) throws SQLException {
+        List<FreteItemData> itens = new ArrayList<>();
+        String sql = "SELECT nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item FROM frete_itens WHERE id_frete = ?";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+            pst.setLong(1, idFrete);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    FreteItemData item = new FreteItemData();
+                    item.nomeItem = rs.getString("nome_item_ou_id_produto");
+                    item.quantidade = rs.getInt("quantidade");
+                    item.precoUnitario = rs.getBigDecimal("preco_unitario");
+                    item.subtotal = rs.getBigDecimal("subtotal_item");
+                    itens.add(item);
+                }
+            }
+        }
+        return itens;
+    }
+
+    /**
+     * Busca lista de contatos (nomes) para combo boxes.
+     */
+    public List<String> listarContatos() {
+        List<String> contatos = new ArrayList<>();
+        String sql = "SELECT nome_razao_social FROM contatos ORDER BY nome_razao_social";
+        try (Connection c = ConexaoBD.getConnection();
+             Statement s = c.createStatement();
+             ResultSet r = s.executeQuery(sql)) {
+            while (r.next()) {
+                String nome = r.getString(1);
+                if (nome != null) contatos.add(nome);
+            }
+        } catch (SQLException e) {
+            AppLogger.warn("FreteDAO", "Erro ao listar contatos: " + e.getMessage());
+        }
+        return contatos;
+    }
+
+    /**
+     * Insere um novo contato e retorna o nome em uppercase.
+     */
+    public String inserirContato(String nome) throws SQLException {
+        String nomeUpper = nome.toUpperCase();
+        String sql = "INSERT INTO contatos (nome_razao_social) VALUES (?)";
+        try (Connection conn = ConexaoBD.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+            pst.setString(1, nomeUpper);
+            pst.executeUpdate();
+        }
+        return nomeUpper;
+    }
+
+    /**
+     * Lista nomes de conferentes da empresa.
+     */
+    public List<String> listarNomesConferentes() {
+        List<String> nomes = new ArrayList<>();
+        String sql = "SELECT nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
+        try (Connection c = ConexaoBD.getConnection();
+             PreparedStatement s = c.prepareStatement(sql)) {
+            s.setInt(1, DAOUtils.empresaId());
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    String nome = r.getString(1);
+                    if (nome != null) nomes.add(nome);
+                }
+            }
+        } catch (SQLException e) {
+            AppLogger.warn("FreteDAO", "Erro ao listar conferentes: " + e.getMessage());
+        }
+        return nomes;
+    }
+
+    /**
+     * Lista rotas formatadas ("Origem - Destino") da empresa.
+     */
+    public List<String> listarRotasFormatadas() {
+        List<String> rotas = new ArrayList<>();
+        String sql = "SELECT origem, destino FROM rotas WHERE empresa_id = ? ORDER BY origem, destino";
+        try (Connection c = ConexaoBD.getConnection();
+             PreparedStatement s = c.prepareStatement(sql)) {
+            s.setInt(1, DAOUtils.empresaId());
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    String o = r.getString("origem");
+                    String d = r.getString("destino");
+                    String rd = "";
+                    if (o != null && !o.trim().isEmpty()) rd += o.trim();
+                    if (d != null && !d.trim().isEmpty()) {
+                        if (!rd.isEmpty()) rd += " - ";
+                        rd += d.trim();
+                    }
+                    if (!rd.isEmpty()) rotas.add(rd);
+                }
+            }
+        } catch (SQLException e) {
+            AppLogger.warn("FreteDAO", "Erro ao listar rotas: " + e.getMessage());
+        }
+        return rotas;
+    }
+
+    // ====== DTOs internos para transferencia de dados ======
+
+    /** Dados financeiros preservados durante UPDATE */
+    public static class FreteFinanceiro {
+        public BigDecimal valorPago = BigDecimal.ZERO;
+        public BigDecimal troco = BigDecimal.ZERO;
+        public String tipoPagamento;
+        public String nomeCaixa;
+    }
+
+    /** Dados de um frete para INSERT/UPDATE */
+    public static class FreteData {
+        public long idFrete;
+        public long numeroFrete;
+        public LocalDate dataSaida;
+        public String localTransporte;
+        public String remetente;
+        public String destinatario;
+        public String rota;
+        public String conferente;
+        public String cidadeCobranca;
+        public String observacoes;
+        public String numNotaFiscal;
+        public BigDecimal valorNotaFiscal = BigDecimal.ZERO;
+        public BigDecimal pesoNotaFiscal = BigDecimal.ZERO;
+        public BigDecimal totalItens = BigDecimal.ZERO;
+        public BigDecimal valorFreteCalculado = BigDecimal.ZERO;
+        public Long idViagem;
+    }
+
+    /** Dados de um item de frete */
+    public static class FreteItemData {
+        public String nomeItem;
+        public int quantidade;
+        public BigDecimal precoUnitario = BigDecimal.ZERO;
+        public BigDecimal subtotal = BigDecimal.ZERO;
+    }
+
+    private Frete mapResultSetCompleto(ResultSet rs) throws SQLException {
+        Frete f = new Frete();
+        f.setIdFrete(rs.getLong("id_frete"));
+        f.setNumeroFrete(String.valueOf(rs.getLong("numero_frete")));
+        f.setIdViagem(rs.getLong("id_viagem"));
+        f.setNomeRemetente(rs.getString("remetente_nome_temp"));
+        f.setNomeDestinatario(rs.getString("destinatario_nome_temp"));
+        f.setNomeRota(rs.getString("rota_temp"));
+        f.setNomeConferente(rs.getString("conferente_temp"));
+        f.setStatus(rs.getString("status_frete"));
+        Date de = rs.getDate("data_emissao");
+        if (de != null) f.setDataEmissao(de.toLocalDate());
+        Date dv = rs.getDate("data_saida_viagem");
+        if (dv != null) f.setDataViagem(dv.toLocalDate());
+        f.setValorNominal(rs.getBigDecimal("valor_total_itens"));
+        f.setValorPago(rs.getBigDecimal("valor_pago"));
+        f.setValorDevedor(rs.getBigDecimal("valor_devedor"));
+        return f;
+    }
+
+    // ====== Metodos de leitura existentes ======
 
     /**
      * Busca fretes no banco de dados com base em múltiplos filtros.

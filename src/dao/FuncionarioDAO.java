@@ -7,7 +7,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * DAO para funcionarios e operacoes financeiras de folha.

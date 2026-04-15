@@ -29,6 +29,9 @@ router.post('/login', loginLimiter, async (req, res) => {
                AND (excluido = FALSE OR excluido IS NULL)
                AND empresa_id = $2`
       params = [login, tenantId]
+    } else if (process.env.NODE_ENV === 'production') {
+      // Producao: obrigar subdominio de empresa
+      return res.status(400).json({ error: 'Subdominio da empresa obrigatorio' })
     } else {
       // Dev (localhost): aceitar qualquer empresa
       sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id,

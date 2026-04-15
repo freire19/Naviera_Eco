@@ -3,7 +3,7 @@ package dao;
 import model.Empresa;
 import java.sql.*;
 import java.util.concurrent.ConcurrentHashMap;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 // D026: dados da empresa (CNPJ, tel) sao publicos e usados em recibos/impressao.
 // Auth de escrita esta no CadastroEmpresaController (exigirAdmin). Leitura livre e intencional.

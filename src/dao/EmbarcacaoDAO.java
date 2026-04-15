@@ -5,7 +5,7 @@ import model.Embarcacao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class EmbarcacaoDAO {
 

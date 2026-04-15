@@ -10,7 +10,7 @@ import javafx.stage.Stage;
 import java.io.*;
 import java.util.Optional;
 import java.util.Properties;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * ============================================================================

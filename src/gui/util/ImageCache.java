@@ -2,7 +2,7 @@ package gui.util;
 
 import javafx.scene.image.Image;
 import java.util.concurrent.ConcurrentHashMap;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * DP029: Cache de imagens para evitar leitura repetida do disco.

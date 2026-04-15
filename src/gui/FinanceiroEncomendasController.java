@@ -24,7 +24,7 @@ import java.util.Optional;
 import gui.util.StatusPagamentoView;
 import model.EncomendaFinanceiro;
 import model.OpcaoViagem;
-import gui.util.AppLogger;
+import util.AppLogger;
 public class FinanceiroEncomendasController {
     @FXML private ComboBox<OpcaoViagem> cmbViagem;
     @FXML private TextField txtBusca;

@@ -1,5 +1,6 @@
 package gui;
 
+import gui.util.PermissaoService;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -50,7 +51,7 @@ import java.text.DecimalFormatSymbols;
 import gui.util.AlertHelper;
 import gui.util.CompanyDataLoader;
 import gui.util.PrintLayoutHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ListaFretesController {
 
@@ -78,6 +79,7 @@ public class ListaFretesController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Lista de Fretes"); return; }
         configurarColunasTabela();
         configurarEstiloLinhas();
         tabelaFretes.setItems(listaFretesVisivel);

@@ -20,8 +20,11 @@ public class FreteService {
         this.jdbc = jdbc; this.clienteRepo = clienteRepo;
     }
 
-    // #DB144: empresaId parameter prevents cross-tenant LIKE scan
-    public List<FreteDTO> buscarPorRemetente(Long clienteId, Integer empresaId) {
+    /**
+     * Busca fretes do cliente cross-tenant (por nome em todas as empresas).
+     * DS4-002 fix: empresaId nunca vem do request — busca é por identidade do cliente.
+     */
+    public List<FreteDTO> buscarPorRemetenteCrossTenant(Long clienteId) {
         ClienteApp cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
 
@@ -34,10 +37,12 @@ public class FreteService {
             FROM fretes f
             LEFT JOIN viagens v ON f.id_viagem = v.id_viagem
             LEFT JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
-            WHERE UPPER(f.remetente_nome_temp) LIKE UPPER(?) AND f.empresa_id = ?
+            WHERE UPPER(f.remetente_nome_temp) LIKE UPPER(?)
+               OR UPPER(f.destinatario_nome_temp) LIKE UPPER(?)
             ORDER BY f.id_frete DESC
             """;
 
+        String termo = "%" + cliente.getNome() + "%";
         return jdbc.query(sql, (rs, i) -> new FreteDTO(
             rs.getLong("id_frete"),
             rs.getString("numero_frete"),
@@ -52,6 +57,6 @@ public class FreteService {
             0,
             null,
             rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toString() : null
-        ), "%" + cliente.getNome() + "%", empresaId);
+        ), termo, termo);
     }
 }

@@ -17,7 +17,7 @@ import java.io.File;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class CadastroEmpresaController implements Initializable {
 

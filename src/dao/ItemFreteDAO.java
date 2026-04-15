@@ -9,7 +9,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.math.BigDecimal;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ItemFreteDAO {
 

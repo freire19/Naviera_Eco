@@ -18,7 +18,7 @@ import model.Caixa; // Importar a classe model.Caixa
 import java.net.URL;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 // import dao.CaixaDAO; // Descomente se for usar o DAO
 
 public class CadastroCaixaController implements Initializable {

@@ -13,7 +13,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * DM004: Helpers reutilizaveis para construcao de layouts de impressao.

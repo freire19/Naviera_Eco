@@ -12,11 +12,12 @@
 | Status | Quantidade |
 |--------|-----------|
 | Novos problemas encontrados (V4.0) | 43 |
+| Issues DS4 corrigidas nesta sessao | 20 (7 CRIT + 13 ALTO) |
 | Issues DS-series resolvidas (V3.0 → V4.0) | 9 |
 | Issues DS-series parcialmente resolvidas | 3 |
-| Issues AUDIT V1.2 resolvidas | 2 |
-| Issues AUDIT V1.2 pendentes | 15 |
-| **Total de issues ativas** | **43** |
+| Issues AUDIT V1.2 resolvidas | 8 (#003, #012, #013, #014, #015, #020, #028, #029) |
+| Issues AUDIT V1.2 pendentes | 9 |
+| **Total de issues ativas** | **23** (0 CRIT, 0 ALTO, 13 MEDIO, 10 BAIXO) |
 
 > **7 issues CRITICAS, 13 ALTAS, 13 MEDIAS, 10 BAIXAS.** A maioria das issues criticas sao IDOR (Insecure Direct Object Reference) na API Spring Boot onde `empresaId` vem do request body/query param em vez do JWT.
 
@@ -52,14 +53,14 @@
 |------------|--------|--------|
 | #003 | GET /api/auth/me sem empresa_id | **RESOLVIDO** — filtra por empresa_id do JWT |
 | #012 | Senha 123456 em db.properties | **RESOLVIDO** — warning implementado, arquivo em .gitignore |
-| #013 | sync_config.properties senha plaintext | **PENDENTE** — ver DS4-013 |
-| #014 | db.properties.bak2 commitado | **PENDENTE** — ver DS4-020 |
-| #015 | Login sem tenant = cross-empresa | **PENDENTE** — ver DS4-005 |
+| #013 | sync_config.properties senha plaintext | **RESOLVIDO** — DS4-013 Base64 implementado 2026-04-15 |
+| #014 | db.properties.bak2 commitado | **RESOLVIDO** — DS4-020 git rm + .gitignore 2026-04-15 |
+| #015 | Login sem tenant = cross-empresa | **RESOLVIDO** — DS4-005 corrigido 2026-04-15 |
 | #016 | Admin aceita localhost | **PENDENTE** — ver DS4-010 |
-| #017 | WebSocket sem autenticacao | **PENDENTE** — ver DS4-003 |
+| #017 | WebSocket sem autenticacao | **RESOLVIDO** — DS4-003 ChannelInterceptor implementado 2026-04-15 |
 | #018 | Nginx sem CSP | **PENDENTE** — ver DS4-027 |
 | #019 | X-Forwarded-For spoofable RateLimitFilter | **RESOLVIDO** — so confia em XFF de localhost |
-| #020 | BFF rate limiter sem trust proxy | **PENDENTE** — ver DS4-009 |
+| #020 | BFF rate limiter sem trust proxy | **RESOLVIDO** — DS4-009 trust proxy adicionado 2026-04-15 |
 | #021 | JWT 24h expiracao | **PENDENTE** — ver DS4-035 |
 | #022 | Tenant cache 5min TTL | **PENDENTE** — ver DS4-040 |
 | #023 | Registro sem validacao CPF/CNPJ | **PENDENTE** — ver DS4-021 |
@@ -67,8 +68,8 @@
 | #025 | Nginx API sem security headers | **PENDENTE** — ver DS4-028 |
 | #026 | Nginx app sem security headers | **PENDENTE** — ver DS4-028 |
 | #027 | GlobalExceptionHandler printStackTrace | **PENDENTE** — ver DS4-022 |
-| #028 | BFF sem trust proxy | **PENDENTE** — ver DS4-009 |
-| #029 | Login empresa_id fallback para 1 | **PENDENTE** — ver DS4-004 |
+| #028 | BFF sem trust proxy | **RESOLVIDO** — DS4-009 trust proxy adicionado 2026-04-15 |
+| #029 | Login empresa_id fallback para 1 | **RESOLVIDO** — DS4-004 ja corrigido no codigo |
 
 ---
 
@@ -77,7 +78,7 @@
 ### CRITICO
 
 #### Issue #DS4-001 — IDOR: PassagemController e BilheteController aceitam empresaId do request body
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/PassagemController.java`, `BilheteController.java`
 - **Linha(s):** PassagemController:24, BilheteController:28-41
@@ -103,7 +104,7 @@ Integer empresaId = v.getEmpresaId();
 ---
 
 #### Issue #DS4-002 — IDOR: EncomendaController e FreteController aceitam empresa_id como query param
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/EncomendaController.java`, `FreteController.java`
 - **Linha(s):** EncomendaController:17, FreteController:17
@@ -116,7 +117,7 @@ Integer empresaId = v.getEmpresaId();
 ---
 
 #### Issue #DS4-003 — WebSocket /ws sem autenticacao permite espionagem cross-tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/WebSocketConfig.java`, `SecurityConfig.java`
 - **Linha(s):** WebSocketConfig:20-23, SecurityConfig:27
@@ -129,7 +130,7 @@ Integer empresaId = v.getEmpresaId();
 ---
 
 #### Issue #DS4-004 — Login BFF: empresa_id fallback para 1 permite acesso nao autorizado
-- [ ] **Concluido**
+- [x] **Concluido** _(ja corrigido no codigo — linhas 54-56 rejeitam usuario sem empresa_id)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/auth.js`
 - **Linha(s):** 58
@@ -151,7 +152,7 @@ if (!user.empresa_id) {
 ---
 
 #### Issue #DS4-005 — Login sem tenant permite acesso cross-empresa
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/auth.js`
 - **Linha(s):** 32-39
@@ -169,7 +170,7 @@ if (!req.tenant && process.env.NODE_ENV === 'production') {
 ---
 
 #### Issue #DS4-006 — Trust-all TLS no SetupWizardController — MITM
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/gui/SetupWizardController.java`
 - **Linha(s):** 169-185, 222
@@ -182,7 +183,7 @@ if (!req.tenant && process.env.NODE_ENV === 'production') {
 ---
 
 #### Issue #DS4-007 — TOTP do bilhete e previsivel — implementacao client-side com hash nao-criptografico
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-app/src/screens/BilheteScreen.jsx`
 - **Linha(s):** 14-19
@@ -203,7 +204,7 @@ return Math.abs(h % 1000000).toString().padStart(6, "0");
 ### ALTO
 
 #### Issue #DS4-008 — ViagemService.buscarAtivas() e buscarPorEmbarcacao() sem filtro tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/ViagemService.java`
 - **Linha(s):** 14-35, 53
@@ -216,7 +217,7 @@ return Math.abs(h % 1000000).toString().padStart(6, "0");
 ---
 
 #### Issue #DS4-009 — BFF Express sem trust proxy: rate limiter inoperante em producao
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/index.js`
 - **Problema:** Sem `app.set('trust proxy', 1)`, `req.ip` retorna `127.0.0.1` para TODOS os usuarios atras do Nginx. Rate limiter (200 req/min, 10 login/min) compartilhado entre todos.
@@ -228,7 +229,7 @@ return Math.abs(h % 1000000).toString().padStart(6, "0");
 ---
 
 #### Issue #DS4-010 — Admin localhost bypass com NODE_ENV incorreto
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/admin.js`
 - **Linha(s):** 15
@@ -241,7 +242,7 @@ return Math.abs(h % 1000000).toString().padStart(6, "0");
 ---
 
 #### Issue #DS4-011 — Pagamento encomendas/fretes sem guarda de overpayment
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/encomendas.js`, `fretes.js`
 - **Linha(s):** encomendas:153-158, fretes:99
@@ -254,7 +255,7 @@ return Math.abs(h % 1000000).toString().padStart(6, "0");
 ---
 
 #### Issue #DS4-012 — TLS desabilitado por default no SyncClient — sync em cleartext
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 75, 829-831
@@ -267,7 +268,7 @@ return Math.abs(h % 1000000).toString().padStart(6, "0");
 ---
 
 #### Issue #DS4-013 — Senha plaintext em sync_config.properties
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 160-161
@@ -280,7 +281,7 @@ return Math.abs(h % 1000000).toString().padStart(6, "0");
 ---
 
 #### Issue #DS4-014 — pg_advisory_xact_lock com SQL concatenado
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/BilheteService.java`, `OpPassagemWriteService.java`, `OpEncomendaWriteService.java`, `OpFreteWriteService.java`
 - **Linha(s):** BilheteService:83, OpPassagem:29, OpEncomenda:30, OpFrete:31,39
@@ -300,7 +301,7 @@ jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
 ---
 
 #### Issue #DS4-015 — OCR foto endpoint bypassa auth e aceita JWT em query string
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 16-19, 324-336
@@ -313,7 +314,7 @@ jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
 ---
 
 #### Issue #DS4-016 — AuxiliaresDAO: metodos de escrita/listagem sem filtro tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/AuxiliaresDAO.java`
 - **Linha(s):** 221, 241, 256, 276, 294-311
@@ -326,7 +327,7 @@ jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
 ---
 
 #### Issue #DS4-017 — 15 controllers Desktop sem PermissaoService
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** Multiplos controllers em `src/gui/`
 - **Problema:** 15 controllers sem verificacao de permissao: CadastroFreteController, VenderPassagemController, CadastroViagemController, InserirEncomendaController, ListaEncomendaController, ListaFretesController, ListarPassageirosViagemController, ExtratoClienteEncomendaController, ExtratoPassageiroController, CadastroClienteController, CadastroClientesEncomendaController, CadastroItemController, NotaFretePersonalizadaController, ReciboPersonalizadoController, TelaGerenciarAgendaController.
@@ -338,7 +339,7 @@ jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
 ---
 
 #### Issue #DS4-018 — TOTP secret retornado ao client + exposto em URL query param
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/BilheteService.java`, `controller/BilheteController.java`
 - **Linha(s):** BilheteService:146, BilheteController:79-88
@@ -351,7 +352,7 @@ jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
 ---
 
 #### Issue #DS4-019 — LojaController.vincularFrete() sem verificacao de ownership
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/LojaController.java`
 - **Linha(s):** 45-51
@@ -364,7 +365,7 @@ jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
 ---
 
 #### Issue #DS4-020 — db.properties.bak2 commitado no repositorio
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `db.properties.bak2`
 - **Problema:** Arquivo com template de conexao PostgreSQL trackeado pelo git. Conteudo atual e placeholder, mas historico pode conter senhas reais.

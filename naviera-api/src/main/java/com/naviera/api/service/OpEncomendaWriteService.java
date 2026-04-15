@@ -27,7 +27,7 @@ public class OpEncomendaWriteService {
             numEncomenda = jdbc.queryForObject("SELECT nextval('seq_numero_encomenda')", String.class);
         } catch (Exception e) {
             // Fallback: advisory lock + MAX+1 filtrado por empresa_id
-            jdbc.execute("SELECT pg_advisory_xact_lock(" + empresaId + ")");
+            jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
             numEncomenda = jdbc.queryForObject(
                 "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) + 1 FROM encomendas WHERE empresa_id = ?",
                 String.class, empresaId);

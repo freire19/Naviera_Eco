@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import model.Encomenda;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 // DR026: Convencao de retorno de erro neste DAO — metodos que retornam Encomenda retornam
 // null em caso de falha; metodos de busca retornam lista vazia ou null. Veja DR026 em STATUS.md.

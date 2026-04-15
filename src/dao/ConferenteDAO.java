@@ -5,7 +5,7 @@ package dao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * DAO para a tabela conferentes.
@@ -16,24 +16,10 @@ public class ConferenteDAO {
 
     /**
      * Lista todos os conferentes ordenados por nome.
-     * Retorna pares [id, nome] como array de Object.
+     * Retorna ConferenteRow (id + nome). Substitui versao antiga que retornava long[] com elemento morto.
      */
-    public List<long[]> listarTodos() {
-        List<long[]> lista = new ArrayList<>();
-        String sql = "SELECT id_conferente, nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement st = con.prepareStatement(sql)) {
-            st.setInt(1, DAOUtils.empresaId());
-            try (ResultSet rs = st.executeQuery()) {
-                while (rs.next()) {
-                    lista.add(new long[]{rs.getLong("id_conferente"), 0});
-                    // Recria como lista de objetos abaixo — usado via listarNomes()
-                }
-            }
-        } catch (SQLException e) {
-            AppLogger.warn("ConferenteDAO", "Erro SQL em ConferenteDAO.listarTodos: " + e.getMessage());
-        }
-        return lista;
+    public List<ConferenteRow> listarTodos() {
+        return listarComId();
     }
 
     /**

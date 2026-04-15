@@ -1,6 +1,7 @@
 package gui;
 
 import dao.PassagemDAO;
+import gui.util.PermissaoService;
 import dao.ViagemDAO;
 import model.Passagem;
 import model.Viagem;
@@ -44,7 +45,7 @@ import java.awt.print.PrinterJob;
 import java.io.File;
 import javax.imageio.ImageIO;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ListarPassageirosViagemController implements Initializable {
 
@@ -73,6 +74,7 @@ public class ListarPassageirosViagemController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Listar Passageiros da Viagem"); return; }
         viagemDAO = new ViagemDAO();
         passagemDAO = new PassagemDAO();
 

@@ -47,7 +47,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import model.OpcaoViagem;
-import gui.util.AppLogger;
+import util.AppLogger;
 public class FinanceiroSaidaController {
     @FXML private TextField txtDescricao;
     @FXML private TextField txtValor;

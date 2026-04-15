@@ -7,7 +7,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import model.ReciboQuitacaoPassageiro;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ReciboQuitacaoPassageiroDAO {
 

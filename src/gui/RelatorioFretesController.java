@@ -54,7 +54,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class RelatorioFretesController implements Initializable {
 

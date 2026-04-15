@@ -1,7 +1,7 @@
 package gui;
 
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -160,29 +160,10 @@ public class SetupWizardController implements Initializable {
     }
 
     /**
-     * Retorna SSLSocketFactory que confia em qualquer certificado.
-     * Necessario porque o JRE empacotado pelo jpackage pode nao ter
-     * os certificados Let's Encrypt no cacerts.
+     * DS4-006 fix: usa TLS default do Java (JDK 17+ confia em Let's Encrypt).
+     * Trust-all removido — era vulneravel a MITM.
+     * Se TLS padrao falhar, a conexao falha limpa (sem bypass silencioso).
      */
-    // DR225: volatile para evitar race condition em acesso concorrente
-    private static volatile javax.net.ssl.SSLSocketFactory trustAllFactory;
-    private static synchronized javax.net.ssl.SSLSocketFactory getTrustAllSocketFactory() {
-        if (trustAllFactory != null) return trustAllFactory;
-        try {
-            javax.net.ssl.TrustManager[] tm = { new javax.net.ssl.X509TrustManager() {
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
-                public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
-                public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
-            }};
-            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
-            sc.init(null, tm, new java.security.SecureRandom());
-            trustAllFactory = sc.getSocketFactory();
-        } catch (Exception e) {
-            // Fallback: usar default (pode falhar com Let's Encrypt)
-            trustAllFactory = (javax.net.ssl.SSLSocketFactory) javax.net.ssl.SSLSocketFactory.getDefault();
-        }
-        return trustAllFactory;
-    }
 
     // ========================================================================
     // Tela 1: Ativacao
@@ -215,12 +196,8 @@ public class SetupWizardController implements Initializable {
                         log("Tentando: " + urlStr);
                         conn = (HttpURLConnection) new URL(urlStr).openConnection();
 
-                        // Trust-all SSL para HTTPS
-                        if (conn instanceof javax.net.ssl.HttpsURLConnection) {
-                            javax.net.ssl.HttpsURLConnection https = (javax.net.ssl.HttpsURLConnection) conn;
-                            https.setSSLSocketFactory(getTrustAllSocketFactory());
-                            https.setHostnameVerifier((h, s) -> true);
-                        }
+                        // DS4-006 fix: usar TLS padrao do Java (JDK 17+ confia em Let's Encrypt)
+                        // Nao desabilitar verificacao de certificado — MITM possivel
 
                         conn.setRequestMethod("GET");
                         conn.setConnectTimeout(10000);

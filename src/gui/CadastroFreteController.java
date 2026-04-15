@@ -2,6 +2,7 @@ package gui;
 
 import dao.ItemFreteDAO;
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import dao.DAOUtils;
 import dao.ViagemDAO;
 import model.Viagem;
@@ -70,8 +71,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 import gui.util.AlertHelper;
 import gui.util.MoneyUtil;
-import gui.util.AppLogger;
+import util.AppLogger;
 import gui.util.ValidationHelper;
+import service.FreteService;
+import service.FreteService.ResultadoFrete;
+import dao.FreteDAO.FreteData;
+import dao.FreteDAO.FreteItemData;
 
 /**
  * Controller da tela CadastroFrete.fxml.
@@ -151,9 +156,12 @@ public class CadastroFreteController implements Initializable {
     private boolean processandoContatoCliente = false;
     private String ultimoItemProcessadoCbItem = null;
 
-    private long freteAtualId = -1; 
+    private long freteAtualId = -1;
     private ViagemDAO viagemDAO;
     private Viagem viagemAtiva;
+    // DM057: camada de servico para logica de negocio
+    private final FreteService freteService = new FreteService();
+    private final dao.FreteDAO freteDAO = new dao.FreteDAO();
 
     private ContextMenu menuSugestoesRemetente;
     private ContextMenu menuSugestoesCliente;
@@ -162,6 +170,7 @@ public class CadastroFreteController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Cadastro de Frete"); return; }
         this.viagemDAO = new ViagemDAO();
         this.menuSugestoesRemetente = new ContextMenu();
         this.menuSugestoesCliente = new ContextMenu();
@@ -715,44 +724,46 @@ public class CadastroFreteController implements Initializable {
     // MÃ‰TODO AGORA Ã‰ PUBLICO PARA SER ACESSADO PELO LISTA FRETES
     // E CONFIGURA A TELA JÃ EM MODO DE EDIÃ‡ÃƒO (COM BOTÃ•ES HABILITADOS)
     // =================================================================================
+    // DM057: queries de busca movidas para FreteDAO
     public void carregarFreteParaEdicao(String numFrete) {
-        System.out.println("carregarFreteParaEdicao: carregando frete " + numFrete + " do banco...");
         long numeroFreteLong;
         try {
             numeroFreteLong = Long.parseLong(numFrete);
         } catch (NumberFormatException e) {
-            AlertHelper.show(AlertType.ERROR, "Erro de Dados", "O nÃºmero do frete '" + numFrete + "' Ã© invÃ¡lido.");
+            AlertHelper.show(AlertType.ERROR, "Erro de Dados", "O numero do frete '" + numFrete + "' e invalido.");
             return;
         }
 
-        try (Connection conn = ConexaoBD.getConnection()) {
-            String sqlFrete = "SELECT * FROM fretes WHERE numero_frete = ? AND empresa_id = ?";
-            try (PreparedStatement pst = conn.prepareStatement(sqlFrete)) {
-                pst.setLong(1, numeroFreteLong);
-                pst.setInt(2, dao.DAOUtils.empresaId());
-                try (ResultSet rs = pst.executeQuery()) {
-                    if (rs.next()) {
-                        preencherCamposDoFrete(rs, numFrete);
-                    } else {
-                        AlertHelper.show(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com numero: " + numFrete);
-                        return;
+        try {
+            // Buscar frete via DAO (em vez de SQL inline)
+            model.Frete freteDb = freteDAO.buscarPorNumero(numeroFreteLong);
+            if (freteDb == null) {
+                AlertHelper.show(AlertType.WARNING, "Aviso", "Nenhum frete encontrado com numero: " + numFrete);
+                return;
+            }
+
+            // Buscar via SELECT * para preencherCamposDoFrete (precisa de todos os campos raw)
+            try (Connection conn = ConexaoBD.getConnection()) {
+                String sqlFrete = "SELECT * FROM fretes WHERE numero_frete = ? AND empresa_id = ?";
+                try (PreparedStatement pst = conn.prepareStatement(sqlFrete)) {
+                    pst.setLong(1, numeroFreteLong);
+                    pst.setInt(2, dao.DAOUtils.empresaId());
+                    try (ResultSet rs = pst.executeQuery()) {
+                        if (rs.next()) {
+                            preencherCamposDoFrete(rs, numFrete);
+                        }
                     }
                 }
             }
 
-            String sqlItens = "SELECT nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item FROM frete_itens WHERE id_frete = ?";
-            try (PreparedStatement pst2 = conn.prepareStatement(sqlItens)) {
-                pst2.setLong(1, freteAtualId);
-                try (ResultSet rs2 = pst2.executeQuery()) {
-                    listaTabelaItensFrete.clear();
-                    while (rs2.next()) {
-                        String descricaoItem = rs2.getString("nome_item_ou_id_produto");
-                        int qtd = rs2.getInt("quantidade");
-                        double precoUnit = rs2.getDouble("preco_unitario");
-                        FreteItemCadastro item = new FreteItemCadastro(qtd, descricaoItem, precoUnit);
-                        listaTabelaItensFrete.add(item);
-                    }
-                }
+            // Buscar itens via DAO
+            List<dao.FreteDAO.FreteItemData> itensDb = freteDAO.buscarItens(freteDb.getIdFrete());
+            listaTabelaItensFrete.clear();
+            for (dao.FreteDAO.FreteItemData it : itensDb) {
+                FreteItemCadastro item = new FreteItemCadastro(
+                        it.quantidade, it.nomeItem,
+                        it.precoUnitario != null ? it.precoUnitario.doubleValue() : 0.0);
+                listaTabelaItensFrete.add(item);
             }
             if (tabelaItens != null) tabelaItens.refresh();
             atualizarTotaisAgregados();
@@ -1193,30 +1204,24 @@ public class CadastroFreteController implements Initializable {
 
                 Optional<ButtonType> resultado = confirmacao.showAndWait();
                 if (resultado.isPresent() && resultado.get() == btnSim) {
-                    String novoNomeContato = nomeContato.toUpperCase();
-                    String sqlInsert = "INSERT INTO contatos (nome_razao_social) VALUES (?)";
-                    try (Connection conn = ConexaoBD.getConnection();
-                         PreparedStatement pst = conn.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS)) {
-                        pst.setString(1, novoNomeContato);
-                        int affectedRows = pst.executeUpdate();
-                        if (affectedRows > 0) {
-                            if (!listaContatos.contains(novoNomeContato)) {
-                                listaContatos.add(novoNomeContato);
-                                FXCollections.sort(listaContatos);
-                            }
-                            final String finalNome = novoNomeContato;
-                            javafx.application.Platform.runLater(() -> {
-                                // Verificar se o editor ainda tem texto (pode ter sido limpo por limparCamposFrete)
-                                String editorText = comboBox.getEditor() != null ? comboBox.getEditor().getText() : null;
-                                if (editorText == null || editorText.trim().isEmpty()) return;
-                                programmaticamenteAtualizando = true;
-                                try {
-                                    comboBox.setValue(finalNome);
-                                } finally {
-                                    programmaticamenteAtualizando = false;
-                                }
-                            });
+                    // DM057: SQL movido para FreteDAO.inserirContato()
+                    try {
+                        String novoNomeContato = freteDAO.inserirContato(nomeContato);
+                        if (!listaContatos.contains(novoNomeContato)) {
+                            listaContatos.add(novoNomeContato);
+                            FXCollections.sort(listaContatos);
                         }
+                        final String finalNome = novoNomeContato;
+                        javafx.application.Platform.runLater(() -> {
+                            String editorText = comboBox.getEditor() != null ? comboBox.getEditor().getText() : null;
+                            if (editorText == null || editorText.trim().isEmpty()) return;
+                            programmaticamenteAtualizando = true;
+                            try {
+                                comboBox.setValue(finalNome);
+                            } finally {
+                                programmaticamenteAtualizando = false;
+                            }
+                        });
                     } catch (SQLException e) {
                         AppLogger.error("CadastroFreteController", e.getMessage(), e);
                     }
@@ -1306,63 +1311,23 @@ public class CadastroFreteController implements Initializable {
         }
     }
 
+    // DM057: queries movidas para FreteDAO
     private void carregarContatosParaComboBoxes(String tipo, ObservableList<String> lista) {
         if (lista == null) return;
         lista.clear();
-        String sql = "SELECT nome_razao_social FROM contatos ORDER BY nome_razao_social";
-        try (Connection c = ConexaoBD.getConnection();
-             Statement s = c.createStatement();
-             ResultSet r = s.executeQuery(sql)) {
-            while (r.next()) {
-                String nome = r.getString(1);
-                if (nome != null) lista.add(nome);
-            }
-        } catch (SQLException e) {
-            AppLogger.error("CadastroFreteController", e.getMessage(), e);
-        }
+        lista.addAll(freteDAO.listarContatos());
     }
 
     private void carregarRotas() {
         if (listaRotasOriginal == null) listaRotasOriginal = FXCollections.observableArrayList();
         listaRotasOriginal.clear();
-        String sql = "SELECT origem, destino FROM rotas WHERE empresa_id = ? ORDER BY origem, destino";
-        try (Connection c = ConexaoBD.getConnection();
-             PreparedStatement s = c.prepareStatement(sql)) {
-            s.setInt(1, dao.DAOUtils.empresaId());
-            try (ResultSet r = s.executeQuery()) {
-                while (r.next()) {
-                    String o = r.getString("origem");
-                    String d = r.getString("destino");
-                    String rd = "";
-                    if (o != null && !o.trim().isEmpty()) rd += o.trim();
-                    if (d != null && !d.trim().isEmpty()) {
-                        if (!rd.isEmpty()) rd += " - ";
-                        rd += d.trim();
-                    }
-                    if (!rd.isEmpty()) listaRotasOriginal.add(rd);
-                }
-            }
-        } catch (SQLException e) {
-            AppLogger.error("CadastroFreteController", e.getMessage(), e);
-        }
+        listaRotasOriginal.addAll(freteDAO.listarRotasFormatadas());
     }
 
     private void carregarConferentesDoBanco() {
         if (listaConferentesOriginal == null) listaConferentesOriginal = FXCollections.observableArrayList();
         listaConferentesOriginal.clear();
-        String sql = "SELECT nome_conferente FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente";
-        try (Connection c = ConexaoBD.getConnection();
-             PreparedStatement s = c.prepareStatement(sql)) {
-            s.setInt(1, dao.DAOUtils.empresaId());
-            try (ResultSet r = s.executeQuery()) {
-                while (r.next()) {
-                    String nome = r.getString(1);
-                    if (nome != null) listaConferentesOriginal.add(nome);
-                }
-            }
-        } catch (SQLException e) {
-            AppLogger.error("CadastroFreteController", e.getMessage(), e);
-        }
+        listaConferentesOriginal.addAll(freteDAO.listarNomesConferentes());
     }
 
     private void carregarItensCadastradosParaComboBox() {
@@ -1432,26 +1397,9 @@ public class CadastroFreteController implements Initializable {
         }
     }
 
+    // DM057: movido para FreteDAO.gerarNumeroFrete()
     private long gerarNumeroFreteNoBanco() throws SQLException {
-        // DL035: usa sequence para evitar race condition (mesmo padrao de passagens/encomendas)
-        String sql = "SELECT nextval('seq_numero_frete')";
-        try (Connection conn = ConexaoBD.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) return rs.getLong(1);
-        } catch (SQLException e) {
-            // Fallback se sequence nao existir ainda (rodar script 010)
-            AppLogger.warn("CadastroFreteController", "Sequence seq_numero_frete nao encontrada. Usando fallback MAX+1. Execute o script 010_criar_sequence_frete.sql.");
-            String fallback = "SELECT COALESCE(MAX(numero_frete), 0) + 1 FROM fretes WHERE empresa_id = ?";
-            try (Connection conn = ConexaoBD.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(fallback)) {
-                stmt.setInt(1, dao.DAOUtils.empresaId());
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) return rs.getLong(1);
-                }
-            }
-        }
-        return 1;
+        return freteDAO.gerarNumeroFrete();
     }
 
     @FXML private void handleNovoFrete(ActionEvent event) {
@@ -1482,178 +1430,68 @@ public class CadastroFreteController implements Initializable {
         if (btnExcluir != null) btnExcluir.setDisable(true);
     }
 
+    // DM057: refatorado — logica de negocio extraida para FreteService + FreteDAO
     private void salvarOuAlterarFrete() {
         if (!ValidationHelper.requiredCombo(cbRemetente, "Remetente")) return;
         if (!ValidationHelper.requiredCombo(cbCliente, "Cliente (Destinatário)")) return;
         if (!ValidationHelper.requiredCombo(cbRota, "Rota")) return;
         if (!ValidationHelper.requiredList(listaTabelaItensFrete, txtquantidade, "Itens do Frete")) return;
 
-        boolean isNewFrete = (freteAtualId == -1);
-        if (isNewFrete && this.viagemAtiva == null) {
-            AlertHelper.show(AlertType.ERROR, "Erro CrÃ­tico", "NÃ£o Ã© possÃ­vel salvar um novo frete sem uma Viagem Ativa definida no sistema. Por favor, ative uma viagem na tela principal.");
-            return;
+        boolean isNovo = (freteAtualId == -1);
+
+        // 1. Coletar dados do formulario (UI → DTO)
+        FreteData data = new FreteData();
+        data.idFrete = freteAtualId;
+        data.numeroFrete = freteAtualId;
+        if (txtSaida != null && !txtSaida.getText().trim().isEmpty()) {
+            data.dataSaida = LocalDate.parse(txtSaida.getText().trim(), dateFormatter);
+        }
+        data.localTransporte = txtLocalTransporte != null ? txtLocalTransporte.getText() : null;
+        data.remetente = cbRemetente.getValue();
+        data.destinatario = cbCliente.getValue();
+        data.rota = cbRota.getValue();
+        data.conferente = cbConferente.getValue();
+        data.cidadeCobranca = txtCidadeCobranca.getText();
+        data.observacoes = txtObs != null ? txtObs.getText() : null;
+
+        boolean temNF = rbSim != null && rbSim.isSelected();
+        data.numNotaFiscal = temNF && txtNumNota != null ? txtNumNota.getText() : null;
+        data.valorNotaFiscal = temNF && txtValorNota != null ? MoneyUtil.parseBigDecimal(txtValorNota.getText()) : BigDecimal.ZERO;
+        data.pesoNotaFiscal = temNF && txtPesoNota != null ? MoneyUtil.parseBigDecimal(txtPesoNota.getText()) : BigDecimal.ZERO;
+
+        if (txtValorTotalNota != null && !txtValorTotalNota.getText().isEmpty()) {
+            data.valorFreteCalculado = MoneyUtil.parseBigDecimal(txtValorTotalNota.getText());
         }
 
-        Connection conn = null;
-        try {
-            conn = ConexaoBD.getConnection();
-            conn.setAutoCommit(false);
+        // 2. Coletar itens (UI → DTO)
+        List<FreteItemData> itens = new ArrayList<>();
+        for (FreteItemCadastro it : listaTabelaItensFrete) {
+            FreteItemData itemData = new FreteItemData();
+            itemData.nomeItem = it.getItem();
+            itemData.quantidade = it.getQuantidade();
+            itemData.precoUnitario = BigDecimal.valueOf(it.getPreco());
+            itemData.subtotal = it.getTotalBD();
+            itens.add(itemData);
+        }
 
-            long numeroFreteParaOperacao = freteAtualId;
+        // 3. Delegar para o service (logica de negocio + transacao)
+        Long idViagem = this.viagemAtiva != null ? this.viagemAtiva.getId() : null;
+        ResultadoFrete resultado = freteService.salvarOuAlterar(data, itens, isNovo, idViagem);
 
-            if (isNewFrete) {
-                numeroFreteParaOperacao = gerarNumeroFreteNoBanco();
-            }
-
-            String sqlFrete;
-            if (isNewFrete) {
-                sqlFrete = "INSERT INTO fretes (id_frete, numero_frete, data_emissao, data_saida_viagem, local_transporte, remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, cidade_cobranca, observacoes, num_notafiscal, valor_notafiscal, peso_notafiscal, valor_total_itens, desconto, valor_frete_calculado, valor_pago, troco, valor_devedor, tipo_pagamento, nome_caixa, status_frete, id_viagem, empresa_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-            } else {
-                sqlFrete = "UPDATE fretes SET data_emissao = ?, data_saida_viagem = ?, local_transporte = ?, remetente_nome_temp = ?, destinatario_nome_temp = ?, rota_temp = ?, conferente_temp = ?, cidade_cobranca = ?, observacoes = ?, num_notafiscal = ?, valor_notafiscal = ?, peso_notafiscal = ?, valor_total_itens = ?, desconto = ?, valor_frete_calculado = ?, valor_pago = ?, troco = ?, valor_devedor = ?, tipo_pagamento = ?, nome_caixa = ?, status_frete = ?, id_viagem = ? WHERE id_frete = ? AND empresa_id = ?";
-            }
-
-            try (PreparedStatement pstFrete = conn.prepareStatement(sqlFrete)) {
-                int paramIdx = 1;
-
-                if (isNewFrete) {
-                    pstFrete.setLong(paramIdx++, numeroFreteParaOperacao);
-                    pstFrete.setLong(paramIdx++, numeroFreteParaOperacao);
-                }
-
-                pstFrete.setDate(paramIdx++, java.sql.Date.valueOf(LocalDate.now()));
-                if (txtSaida != null && !txtSaida.getText().trim().isEmpty()) {
-                    LocalDate d = LocalDate.parse(txtSaida.getText().trim(), dateFormatter);
-                    pstFrete.setDate(paramIdx++, java.sql.Date.valueOf(d));
-                } else {
-                    pstFrete.setNull(paramIdx++, Types.DATE);
-                }
-                pstFrete.setString(paramIdx++, txtLocalTransporte != null ? txtLocalTransporte.getText() : null);
-                pstFrete.setString(paramIdx++, cbRemetente.getValue());
-                pstFrete.setString(paramIdx++, cbCliente.getValue());
-                pstFrete.setString(paramIdx++, cbRota.getValue());
-                pstFrete.setString(paramIdx++, cbConferente.getValue());
-                pstFrete.setString(paramIdx++, txtCidadeCobranca.getText()); 
-                pstFrete.setString(paramIdx++, txtObs != null ? txtObs.getText() : null);
-
-                boolean temNF = rbSim != null && rbSim.isSelected();
-                pstFrete.setString(paramIdx++, temNF && txtNumNota != null ? txtNumNota.getText() : null);
-                pstFrete.setBigDecimal(paramIdx++, temNF && txtValorNota != null ? MoneyUtil.parseBigDecimal(txtValorNota.getText()) : BigDecimal.ZERO);
-                pstFrete.setBigDecimal(paramIdx++, temNF && txtPesoNota != null ? MoneyUtil.parseBigDecimal(txtPesoNota.getText()) : BigDecimal.ZERO);
-
-                BigDecimal totalItens = listaTabelaItensFrete.stream()
-                        .map(i -> i.getTotalBD())
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                pstFrete.setBigDecimal(paramIdx++, totalItens);
-                pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO);
-
-                BigDecimal valorFreteCalculado = (txtValorTotalNota != null && !txtValorTotalNota.getText().isEmpty())
-                        ? MoneyUtil.parseBigDecimal(txtValorTotalNota.getText())
-                        : totalItens;
-                pstFrete.setBigDecimal(paramIdx++, valorFreteCalculado);
-
-                // DL034: no UPDATE, preservar valor_pago/troco/devedor/pagamento existentes
-                if (isNewFrete) {
-                    pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO); // valor_pago
-                    pstFrete.setBigDecimal(paramIdx++, BigDecimal.ZERO); // troco
-                    pstFrete.setBigDecimal(paramIdx++, valorFreteCalculado); // valor_devedor
-                    pstFrete.setString(paramIdx++, null); // tipo_pagamento
-                    pstFrete.setString(paramIdx++, null); // nome_caixa
-                    pstFrete.setString(paramIdx++, "PENDENTE"); // status_frete
-                } else {
-                    // Buscar valores financeiros existentes antes de sobrescrever
-                    BigDecimal pagoExistente = BigDecimal.ZERO;
-                    BigDecimal trocoExistente = BigDecimal.ZERO;
-                    String tipoPgtoExistente = null;
-                    String caixaExistente = null;
-                    String sqlBusca = "SELECT valor_pago, troco, tipo_pagamento, nome_caixa FROM fretes WHERE id_frete = ? AND empresa_id = ?";
-                    try (PreparedStatement psBusca = conn.prepareStatement(sqlBusca)) {
-                        psBusca.setLong(1, freteAtualId);
-                        psBusca.setInt(2, dao.DAOUtils.empresaId());
-                        try (ResultSet rsBusca = psBusca.executeQuery()) {
-                            if (rsBusca.next()) {
-                                pagoExistente = rsBusca.getBigDecimal("valor_pago");
-                                if (pagoExistente == null) pagoExistente = BigDecimal.ZERO;
-                                trocoExistente = rsBusca.getBigDecimal("troco");
-                                if (trocoExistente == null) trocoExistente = BigDecimal.ZERO;
-                                tipoPgtoExistente = rsBusca.getString("tipo_pagamento");
-                                caixaExistente = rsBusca.getString("nome_caixa");
-                            }
-                        }
-                    }
-                    BigDecimal devedorRecalculado = valorFreteCalculado.subtract(pagoExistente).max(BigDecimal.ZERO);
-                    pstFrete.setBigDecimal(paramIdx++, pagoExistente); // valor_pago preservado
-                    pstFrete.setBigDecimal(paramIdx++, trocoExistente); // troco preservado
-                    pstFrete.setBigDecimal(paramIdx++, devedorRecalculado); // valor_devedor recalculado
-                    pstFrete.setString(paramIdx++, tipoPgtoExistente); // tipo_pagamento preservado
-                    pstFrete.setString(paramIdx++, caixaExistente); // nome_caixa preservado
-                    // Recalcular status baseado no pagamento existente
-                    String statusRecalculado = model.StatusPagamento.calcularPorSaldo(devedorRecalculado, pagoExistente).name();
-                    pstFrete.setString(paramIdx++, statusRecalculado);
-                }
-
-                if (this.viagemAtiva != null) {
-                    pstFrete.setLong(paramIdx++, this.viagemAtiva.getId());
-                } else {
-                    pstFrete.setNull(paramIdx++, Types.BIGINT);
-                }
-
-                if (!isNewFrete) {
-                    pstFrete.setLong(paramIdx++, numeroFreteParaOperacao);
-                    pstFrete.setInt(paramIdx++, DAOUtils.empresaId());
-                } else {
-                    pstFrete.setInt(paramIdx++, DAOUtils.empresaId());
-                }
-
-                pstFrete.executeUpdate();
-            }
-
-            if (!isNewFrete) {
-                String sqlDeleteItems = "DELETE FROM frete_itens WHERE id_frete = ?";
-                try (PreparedStatement pstDelete = conn.prepareStatement(sqlDeleteItems)) {
-                    pstDelete.setLong(1, freteAtualId);
-                    pstDelete.executeUpdate();
-                }
-            }
-
-            String sqlItem = "INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES (?,?,?,?,?)";
-            try (PreparedStatement pstItem = conn.prepareStatement(sqlItem)) {
-                for (FreteItemCadastro it : listaTabelaItensFrete) {
-                    pstItem.setLong(1, numeroFreteParaOperacao);
-                    pstItem.setString(2, it.getItem());
-                    pstItem.setInt(3, it.getQuantidade());
-                    pstItem.setBigDecimal(4, BigDecimal.valueOf(it.getPreco()));
-                    pstItem.setBigDecimal(5, BigDecimal.valueOf(it.getTotal()));
-                    pstItem.addBatch();
-                }
-                pstItem.executeBatch();
-            }
-
-            conn.commit();
-
-            String mensagemSucesso;
-            if (isNewFrete) {
-                mensagemSucesso = "Frete numero " + numeroFreteParaOperacao + " salvo com sucesso!";
-                freteAtualId = numeroFreteParaOperacao;
-                if(txtNumFrete != null) {
+        // 4. Atualizar UI com resultado
+        if (resultado.sucesso) {
+            AlertHelper.show(AlertType.INFORMATION, "Sucesso", resultado.mensagem);
+            if (isNovo) {
+                freteAtualId = resultado.numeroFrete;
+                if (txtNumFrete != null) {
                     programmaticamenteAtualizando = true;
-                    try {
-                        txtNumFrete.setText(String.valueOf(numeroFreteParaOperacao));
-                    } finally {
-                        programmaticamenteAtualizando = false;
-                    }
+                    try { txtNumFrete.setText(String.valueOf(resultado.numeroFrete)); }
+                    finally { programmaticamenteAtualizando = false; }
                 }
-            } else {
-                mensagemSucesso = "Frete numero " + numeroFreteParaOperacao + " alterado com sucesso!";
-            }
-            AlertHelper.show(AlertType.INFORMATION, "Sucesso", mensagemSucesso);
-
-            if (isNewFrete) {
                 configurarParaNovoFrete();
                 habilitarCamposParaEdicao(true);
                 freteAtualId = -1;
-                Platform.runLater(() -> {
-                    if (cbRemetente != null) cbRemetente.requestFocus();
-                });
+                Platform.runLater(() -> { if (cbRemetente != null) cbRemetente.requestFocus(); });
             } else {
                 habilitarCamposParaVisualizacao(true);
                 if (btnNovo != null) btnNovo.setDisable(false);
@@ -1661,21 +1499,8 @@ public class CadastroFreteController implements Initializable {
                 if (btnAlterar != null) btnAlterar.setDisable(false);
                 if (btnExcluir != null) btnExcluir.setDisable(false);
             }
-
-        } catch (SQLException e) {
-            try { if (conn != null) conn.rollback(); } catch (SQLException ex) { AppLogger.error("CadastroFreteController", ex.getMessage(), ex); }
-            AppLogger.error("CadastroFreteController", e.getMessage(), e);
-            AlertHelper.show(AlertType.ERROR, "Erro na OperaÃ§Ã£o do Frete", "Ocorreu um erro no banco de dados:\n" + e.getMessage());
-        } catch (Exception e) {
-            AppLogger.error("CadastroFreteController", e.getMessage(), e);
-            AlertHelper.show(AlertType.ERROR, "Erro Inesperado", "Ocorreu um erro geral na operaÃ§Ã£o:\n" + e.getMessage());
-        } finally {
-            try {
-                if (conn != null) {
-                    conn.setAutoCommit(true);
-                    conn.close();
-                }
-            } catch (SQLException ex) { AppLogger.error("CadastroFreteController", ex.getMessage(), ex); }
+        } else {
+            AlertHelper.show(AlertType.ERROR, "Erro na Operacao do Frete", resultado.mensagem);
         }
     }
 

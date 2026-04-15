@@ -14,7 +14,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import dao.AuxiliaresDAO;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class PassageiroDAO {
 

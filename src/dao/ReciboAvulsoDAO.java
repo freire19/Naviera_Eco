@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import model.ReciboAvulso;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ReciboAvulsoDAO {
 

@@ -3,7 +3,7 @@ package gui.util;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 /**
  * Utilitario centralizado para exibicao de alertas JavaFX.

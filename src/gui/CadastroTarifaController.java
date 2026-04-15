@@ -32,7 +32,7 @@ import java.sql.SQLException;
 import java.util.Objects;
 import javafx.application.Platform;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class CadastroTarifaController implements Initializable {
 

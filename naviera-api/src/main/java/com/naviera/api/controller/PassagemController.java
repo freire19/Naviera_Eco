@@ -22,7 +22,7 @@ public class PassagemController {
     @PostMapping("/comprar")
     public ResponseEntity<?> comprar(Authentication auth, @RequestBody @Valid CompraPassagemRequest req) {
         Long id = (Long) auth.getPrincipal();
-        return ResponseEntity.ok(service.comprar(req.empresaId(), id, req));
+        return ResponseEntity.ok(service.comprar(id, req));
     }
 
     /** Operador escaneia QR — retorna dados do passageiro para conferencia visual */

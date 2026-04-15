@@ -22,6 +22,7 @@ import net.sourceforge.tess4j.Tesseract;
 import org.vosk.Model;
 import org.vosk.Recognizer;
 
+import gui.util.PermissaoService;
 import dao.ClienteEncomendaDAO;
 import dao.EmpresaDAO;
 import dao.EncomendaDAO;
@@ -91,7 +92,7 @@ import javafx.stage.Window;
 import javafx.util.Pair;
 import javafx.util.StringConverter;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 import gui.util.EncomendaPrintHelper;
 import gui.util.ValidationHelper;
 
@@ -181,6 +182,7 @@ public class InserirEncomendaController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Inserir Encomenda"); return; }
         this.viagemDAO = new ViagemDAO();
         this.rotaDAO = new RotaDAO();
         this.clienteEncomendaDAO = new ClienteEncomendaDAO();

@@ -95,9 +95,11 @@ router.post('/:id/pagar', async (req, res) => {
     if (!valor_pago || valor_pago <= 0) {
       return res.status(400).json({ error: 'valor_pago obrigatorio e deve ser positivo' })
     }
+    // DS4-011 fix: guarda contra overpayment — so aceita se valor_devedor >= pagamento
     const result = await pool.query(`
       UPDATE fretes SET valor_pago = valor_pago + $1, valor_devedor = valor_devedor - $1
       WHERE id_frete = $2 AND empresa_id = $3
+        AND valor_devedor >= $1
       RETURNING *
     `, [valor_pago, req.params.id, empresaId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'Frete nao encontrado' })

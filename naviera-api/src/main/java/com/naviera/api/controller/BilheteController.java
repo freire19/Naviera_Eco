@@ -30,15 +30,12 @@ public class BilheteController {
         Long idViagem = toLong(body.get("idViagem"));
         Long idRota = body.containsKey("idRota") ? toLong(body.get("idRota")) : null;
         Long idTipoPassagem = toLong(body.getOrDefault("idTipoPassagem", 1));
-        // empresaId deve ser informado pelo app (ex: ao listar viagens públicas por empresa)
-        Integer empresaId = body.get("empresaId") != null ? ((Number) body.get("empresaId")).intValue() : null;
 
         if (idViagem == null)
             return ResponseEntity.badRequest().body(Map.of("erro", "idViagem é obrigatório."));
-        if (empresaId == null)
-            return ResponseEntity.badRequest().body(Map.of("erro", "empresaId é obrigatório."));
 
-        var bilhete = service.comprar(empresaId, clienteId, idViagem, idRota, idTipoPassagem);
+        // empresaId derivado da viagem server-side (nunca do request) — fix DS4-001
+        var bilhete = service.comprar(clienteId, idViagem, idRota, idTipoPassagem);
         return ResponseEntity.ok(bilhete);
     }
 
@@ -76,15 +73,14 @@ public class BilheteController {
     }
 
     /**
-     * GET /api/bilhetes/totp?secret=xxx
-     * Gera TOTP atual para um secret (usado pelo app para mostrar o código rotativo)
+     * GET /api/bilhetes/{id}/totp
+     * DS4-007/DS4-018 fix: Gera TOTP server-side para bilhete do cliente autenticado.
+     * Secret nunca sai do servidor — codigo gerado e retornado pronto.
      */
-    @GetMapping("/totp")
-    public ResponseEntity<?> gerarTOTP(@RequestParam String secret) {
-        long now = java.time.Instant.now().getEpochSecond();
-        String code = BilheteService.generateTOTP(secret, now);
-        int timeLeft = 30 - (int) (now % 30);
-        return ResponseEntity.ok(Map.of("code", code, "timeLeft", timeLeft));
+    @GetMapping("/{id}/totp")
+    public ResponseEntity<?> gerarTOTP(@PathVariable Long id, Authentication auth) {
+        Long clienteId = (Long) auth.getPrincipal();
+        return ResponseEntity.ok(service.gerarTOTPPorBilhete(clienteId, id));
     }
 
     private Long toLong(Object v) {

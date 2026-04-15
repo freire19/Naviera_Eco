@@ -7,7 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import model.DadosBalancoViagem;
 import model.ItemResumoBalanco;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class BalancoViagemDAO {
 

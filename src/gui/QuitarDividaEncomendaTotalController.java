@@ -11,7 +11,7 @@ import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class QuitarDividaEncomendaTotalController {
 

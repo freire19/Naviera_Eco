@@ -20,7 +20,7 @@ import java.util.ResourceBundle;
 
 import dao.AuxiliaresDAO;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 // A classe AuxiliarItem agora é importada implicitamente pois está no mesmo pacote "gui"
 // e definida em seu próprio arquivo AuxiliarItem.java
 

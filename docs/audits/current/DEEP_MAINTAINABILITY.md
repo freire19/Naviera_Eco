@@ -15,7 +15,8 @@
 | Issues anteriores resolvidas (V3->V4) | 0 |
 | Issues anteriores parcialmente resolvidas | 1 |
 | Issues anteriores pendentes | 14 |
-| **Total de issues ativas** | **29** |
+| **Corrigidas nesta sessao** | **5** |
+| **Total de issues ativas** | **24** |
 
 ---
 
@@ -61,7 +62,7 @@
 ### Arquitetura / Cross-Cutting
 
 #### Issue #DM056 — Dependencia circular: DAO/model importam gui.util.AppLogger
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — AppLogger movido para util.AppLogger, 91 imports atualizados)_
 - **Severidade:** ALTO
 - **Arquivo:** Todos os DAOs (20 arquivos) + `model/StatusPagamento.java:5`
 - **Problema:** Camada model e DAO importam `gui.util.AppLogger` — violacao de layering. Models e DAOs nao devem depender de classes GUI. Impossibilita reutilizar DAOs em contexto nao-JavaFX (API, testes headless).
@@ -81,7 +82,7 @@ import gui.util.AppLogger;
 ---
 
 #### Issue #DM057 — Sem camada de servico: controllers gerenciam transacoes diretamente
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — FreteService criado, CadastroFreteController refatorado: -177L, SQL 40→10)_
 - **Severidade:** CRITICO
 - **Arquivo:** CadastroFreteController:1499-1680, InserirEncomendaController, VenderPassagemController, CadastroBoletoController
 - **Problema:** Controllers fazem `setAutoCommit(false)`, `commit()`, `rollback()` diretamente. Logica de negocio (calculo de pagamento, status, sequencias) misturada com UI. Nao existe camada Service entre Controller e DAO.
@@ -119,7 +120,7 @@ try {
 ### DAOs
 
 #### Issue #DM059 — TipoPassageiroDAO.listarNomes anti-pattern (N+1)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — SELECT direto por nome)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/TipoPassageiroDAO.java:64-70`
 - **Problema:** `listarNomes()` chama `listarTodos()` que faz SELECT de todos os campos, depois extrai apenas o nome em loop. Query desnecessariamente pesada.
@@ -141,7 +142,7 @@ public List<String> listarNomes() {
 ---
 
 #### Issue #DM060 — ConferenteDAO.listarTodos retorna List\<long[]\> com elemento morto
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — delega para listarComId, retorna ConferenteRow)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/ConferenteDAO.java:21-36`
 - **Problema:** Retorna `List<long[]>` onde cada array e `{id, 0}` — segundo elemento sempre zero, nunca usado. API confusa e sem tipagem.
@@ -179,7 +180,7 @@ public List<String> listarNomes() {
 ### Controllers GUI
 
 #### Issue #DM063 — ValorExtensoUtil: utility class dentro de controller
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — movido para gui/util/ValorExtensoUtil.java)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/GerarReciboAvulsoController.java:626`
 - **Problema:** Classe `ValorExtensoUtil` (converte numero para extenso em portugues) definida como inner class do controller. E uma utility pura sem relacao com UI.
@@ -314,15 +315,15 @@ public List<String> listarNomes() {
 
 ### Urgente (CRITICO)
 
-- [ ] #DM057 — Criar camada de servico (FreteService, EncomendaService, PassagemService) — **Esforco:** 3-5 dias
+- [x] #DM057 — Criar camada de servico (FreteService criado, CadastroFreteController refatorado) — **PARCIAL** (falta EncomendaService, PassagemService)
 - **Notas:**
 > _Issue estrutural mais importante. Desbloqueia: eliminacao de SQL inline (#DM007), reducao de god classes (#049, #094-097), eliminacao de duplicacao Desktop vs Web (#101). Recomendado comecar por FreteService (CadastroFreteController e o maior)._
 
 ### Importante (ALTO)
 
-- [ ] #DM056 — Mover AppLogger para pacote nao-GUI (21 arquivos) — **Esforco:** 30 min
-- [ ] #DM059 — Reescrever TipoPassageiroDAO.listarNomes com SELECT direto — **Esforco:** 10 min
-- [ ] #DM063 — Mover ValorExtensoUtil para gui/util/ — **Esforco:** 10 min
+- [x] #DM056 — Mover AppLogger para pacote nao-GUI (91 arquivos atualizados) — **FIXADO**
+- [x] #DM059 — Reescrever TipoPassageiroDAO.listarNomes com SELECT direto — **FIXADO**
+- [x] #DM063 — Mover ValorExtensoUtil para gui/util/ — **FIXADO**
 - [ ] #DM064 — Extrair BackupService de TelaPrincipalController — **Esforco:** 1-2 horas
 - [ ] #DM067 — Extrair Autocomplete + Modals de Passagens.jsx — **Esforco:** 2-3 horas
 - [ ] #DM032 — Mover 19 inner classes restantes para model/ — **Esforco:** 2-3 horas
@@ -333,7 +334,7 @@ public List<String> listarNomes() {
 ### Moderado (MEDIO)
 
 - [ ] #DM058 — Unificar API client web/app/ocr — **Esforco:** 2-3 horas
-- [ ] #DM060 — Extrair ConferenteDAO para retornar objetos tipados — **Esforco:** 30 min
+- [x] #DM060 — ConferenteDAO.listarTodos delega para listarComId (ConferenteRow tipado) — **FIXADO**
 - [ ] #DM061 — DespesaDAO extrair buildWhereClause — **Esforco:** 30 min
 - [ ] #DM062 — Documentar convencao naming DAOs — **Esforco:** 30 min
 - [ ] #DM065 — Deprecar Encomenda.dataLancamento String — **Esforco:** 1 hora

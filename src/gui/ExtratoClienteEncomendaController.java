@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.PermissaoService;
 import gui.util.StatusPagamentoView;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -24,7 +25,7 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.Optional;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class ExtratoClienteEncomendaController {
 
@@ -54,6 +55,7 @@ public class ExtratoClienteEncomendaController {
 
     @FXML
     public void initialize() {
+        if (!PermissaoService.isAdmin()) { PermissaoService.exigirAdmin("Extrato Cliente Encomenda"); return; }
         configurarTabela();
         configurarAutocomplete();
 

@@ -28,7 +28,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 
 public class CadastroItensController implements Initializable {
 

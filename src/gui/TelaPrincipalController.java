@@ -63,7 +63,7 @@ import javafx.scene.control.TabPane;
 import java.util.Collections;
 import java.util.Map;
 import gui.util.AlertHelper;
-import gui.util.AppLogger;
+import util.AppLogger;
 import gui.util.VersaoChecker;
 
 public class TelaPrincipalController implements Initializable {
@@ -490,8 +490,14 @@ public class TelaPrincipalController implements Initializable {
         }
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
-            agendaDAO.adicionarAnotacao(data, result.get().trim());
-            construirCalendario();
+            // DP035: INSERT em background thread
+            final String nota = result.get().trim();
+            Thread bg = new Thread(() -> {
+                agendaDAO.adicionarAnotacao(data, nota);
+                Platform.runLater(() -> construirCalendario());
+            });
+            bg.setDaemon(true);
+            bg.start();
         }
     }
 
@@ -572,66 +578,82 @@ public class TelaPrincipalController implements Initializable {
         }
     }
 
+    // DP035: carrega dados do combo em background thread para nao bloquear FX thread
     private void carregarDadosComboParam(ComboBox<String> combo, String sql) {
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, dao.DAOUtils.empresaId());
-            try (ResultSet rs = stmt.executeQuery()) {
+        Thread bg = new Thread(() -> {
+            try (Connection conn = ConexaoBD.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, dao.DAOUtils.empresaId());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    ObservableList<String> itens = FXCollections.observableArrayList();
+                    while (rs.next()) {
+                        itens.add(rs.getString(1));
+                    }
+                    Platform.runLater(() -> {
+                        combo.setItems(itens);
+                        if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
+                    });
+                }
+            } catch (SQLException e) {
+                AppLogger.error("TelaPrincipalController", e.getMessage(), e);
+            }
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
+
+    // DP035: carrega dados do combo simples em background thread
+    private void carregarDadosComboSimples(ComboBox<String> combo, String sql) {
+        Thread bg = new Thread(() -> {
+            try (Connection conn = ConexaoBD.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql);
+                 ResultSet rs = stmt.executeQuery()) {
                 ObservableList<String> itens = FXCollections.observableArrayList();
                 while (rs.next()) {
                     itens.add(rs.getString(1));
                 }
-                combo.setItems(itens);
-                if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
+                Platform.runLater(() -> {
+                    combo.setItems(itens);
+                    if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
+                });
+            } catch (SQLException e) {
+                AppLogger.error("TelaPrincipalController", e.getMessage(), e);
+                Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro ao carregar lista",
+                    "Não foi possível carregar os dados. Verifique o banco.\nErro: " + e.getMessage()));
             }
-        } catch (SQLException e) {
-            AppLogger.error("TelaPrincipalController", e.getMessage(), e);
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
-    private void carregarDadosComboSimples(ComboBox<String> combo, String sql) {
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            ObservableList<String> itens = FXCollections.observableArrayList();
-            while (rs.next()) {
-                itens.add(rs.getString(1));
-            }
-            combo.setItems(itens);
-            if(!itens.isEmpty()) combo.getSelectionModel().selectFirst();
-        } catch (SQLException e) {
-            AppLogger.error("TelaPrincipalController", e.getMessage(), e);
-            AlertHelper.show(AlertType.ERROR, "Erro ao carregar lista", 
-                "Não foi possível carregar os dados. Verifique o banco.\nErro: " + e.getMessage());
-        }
-    }
-
+    // DP035: gera lembretes em background thread para nao bloquear FX thread
     private void gerarLembretesNoBanco(String nomeBarco, String nomeRota, LocalDate inicio, LocalDate fim, int intervalo) {
-        String sqlInsert = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES (?, ?, false, ?)";
+        Thread bg = new Thread(() -> {
+            String sqlInsert = "INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES (?, ?, false, ?)";
+            try (Connection conn = ConexaoBD.getConnection();
+                 PreparedStatement stmtInsert = conn.prepareStatement(sqlInsert)) {
 
-        try (Connection conn = ConexaoBD.getConnection();
-             PreparedStatement stmtInsert = conn.prepareStatement(sqlInsert)) {
-            
-            LocalDate dataAtual = inicio;
-            int contador = 0;
-            
-            String textoLembrete = "SAÍDA: " + nomeRota;
-            
-            while (!dataAtual.isAfter(fim)) {
-                stmtInsert.setDate(1, Date.valueOf(dataAtual));
-                stmtInsert.setString(2, textoLembrete);
-                stmtInsert.setInt(3, dao.DAOUtils.empresaId());
-                stmtInsert.executeUpdate();
-                
-                dataAtual = dataAtual.plusDays(intervalo);
-                contador++;
+                LocalDate dataAtual = inicio;
+                int contador = 0;
+                String textoLembrete = "SAÍDA: " + nomeRota;
+
+                while (!dataAtual.isAfter(fim)) {
+                    stmtInsert.setDate(1, Date.valueOf(dataAtual));
+                    stmtInsert.setString(2, textoLembrete);
+                    stmtInsert.setInt(3, dao.DAOUtils.empresaId());
+                    stmtInsert.executeUpdate();
+                    dataAtual = dataAtual.plusDays(intervalo);
+                    contador++;
+                }
+                final int total = contador;
+                Platform.runLater(() -> AlertHelper.show(AlertType.INFORMATION, "Sucesso", total + " lembretes de saída agendados!"));
+            } catch (SQLException e) {
+                AppLogger.error("TelaPrincipalController", e.getMessage(), e);
+                Platform.runLater(() -> AlertHelper.show(AlertType.ERROR, "Erro SQL", e.getMessage()));
             }
-            AlertHelper.show(AlertType.INFORMATION, "Sucesso", contador + " lembretes de saída agendados!");
-            
-        } catch (SQLException e) {
-            AppLogger.error("TelaPrincipalController", e.getMessage(), e);
-            AlertHelper.show(AlertType.ERROR, "Erro SQL", e.getMessage());
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     // --- Outros Métodos ---
@@ -729,25 +751,37 @@ public class TelaPrincipalController implements Initializable {
     // =========================================================================
     //  MÉTODO DO BOTÃO ATUALIZADO
     // =========================================================================
+    // DP035: DB operations em background thread
     @FXML private void handleCarregarDadosDaViagem(ActionEvent event) {
         String selecionada = cmbViagemAtiva.getValue();
-        if (selecionada == null || selecionada.isEmpty()) { 
-            AlertHelper.show(AlertType.WARNING, "Atenção", "Selecione uma viagem."); 
-            return; 
+        if (selecionada == null || selecionada.isEmpty()) {
+            AlertHelper.show(AlertType.WARNING, "Atenção", "Selecione uma viagem.");
+            return;
         }
-        try {
-            Long idViagem = viagemDAO.obterIdViagemPelaString(selecionada);
-            
-            if (idViagem != null && salvarViagemAtivaNoBanco(idViagem)) {
-                AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Viagem definida como ativa no sistema!");
-                atualizarDashboard(); 
-                construirCalendario();
-            } else { 
-                AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível definir a viagem como ativa."); 
+        btnCarregarDadosDaViagem.setDisable(true);
+        Thread bg = new Thread(() -> {
+            try {
+                Long idViagem = viagemDAO.obterIdViagemPelaString(selecionada);
+                boolean sucesso = idViagem != null && salvarViagemAtivaNoBanco(idViagem);
+                Platform.runLater(() -> {
+                    btnCarregarDadosDaViagem.setDisable(false);
+                    if (sucesso) {
+                        AlertHelper.show(AlertType.INFORMATION, "Sucesso", "Viagem definida como ativa no sistema!");
+                        atualizarDashboard();
+                        construirCalendario();
+                    } else {
+                        AlertHelper.show(AlertType.ERROR, "Erro", "Não foi possível definir a viagem como ativa.");
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    btnCarregarDadosDaViagem.setDisable(false);
+                    AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage());
+                });
             }
-        } catch (SQLException e) { 
-            AlertHelper.show(AlertType.ERROR, "Erro", e.getMessage()); 
-        }
+        });
+        bg.setDaemon(true);
+        bg.start();
     }
 
     // --- MÉTODOS DE ABERTURA DE TELA ---
