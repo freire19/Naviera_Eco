@@ -354,7 +354,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
 
     if (lanc.tipo === 'encomenda') {
       // ENCOMENDA: criar registro em encomendas + encomenda_itens
-      const totalAPagar = dados.total_a_pagar || (dados.itens || []).reduce((s, i) => s + ((i.valor_total || 0) || (i.quantidade || 1) * (i.valor_unitario || 0)), 0)
+      const totalAPagar = dados.total_a_pagar || dados.valor_total || (dados.itens || []).reduce((s, i) => s + ((i.subtotal || i.valor_total || 0) || (i.quantidade || 1) * (i.preco_unitario || i.valor_unitario || 0)), 0)
       const totalVolumes = dados.total_volumes || (dados.itens || []).reduce((s, i) => s + (i.quantidade || 1), 0)
 
       await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
@@ -381,7 +381,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
         await client.query(`
           INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total)
           VALUES ($1, $2, $3, $4, $5)
-        `, [encId, item.quantidade || 1, item.descricao || item.nome_item || '', item.valor_unitario || 0, item.valor_total || (item.quantidade || 1) * (item.valor_unitario || 0)])
+        `, [encId, item.quantidade || 1, item.nome_item || item.descricao || '', item.preco_unitario || item.valor_unitario || 0, item.subtotal || item.valor_total || (item.quantidade || 1) * (item.preco_unitario || item.valor_unitario || 0)])
       }
 
       await client.query(`
