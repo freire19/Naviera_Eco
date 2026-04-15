@@ -37,7 +37,8 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
   const [iaLoading, setIaLoading] = useState(false)
   const [fotoLoading, setFotoLoading] = useState(false)
   const [fotosAdicionais, setFotosAdicionais] = useState(0)
-  const fotoInputRef = useRef(null)
+  const fotoCameraRef = useRef(null)
+  const fotoGaleriaRef = useRef(null)
 
   const isEncomenda = lancamento.tipo === 'encomenda' || lancamento.tipo === 'lote'
   const valorTotal = itens.reduce((sum, i) => sum + ((i.quantidade || 0) * (i.preco_unitario || 0)), 0)
@@ -56,7 +57,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
   const handleFotoAdicional = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    fotoInputRef.current.value = ''
+    e.target.value = ''
 
     setFotoLoading(true)
     showToast('Identificando item na foto...', 'info')
@@ -183,35 +184,47 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
 
       {/* Adicionar Foto — so para encomenda */}
       {isEncomenda && (
-        <button
-          className="btn btn-block"
-          onClick={() => fotoInputRef.current?.click()}
-          disabled={fotoLoading || loading}
-          style={{
-            background: fotoLoading ? t.soft : t.card,
-            color: fotoLoading ? t.txMuted : t.pri,
-            padding: 14, fontSize: '0.95rem',
-            border: `1px solid ${t.border}`
-          }}
-        >
-          {fotoLoading ? (
+        fotoLoading ? (
+          <div className="btn btn-block" style={{
+            background: t.soft, color: t.txMuted, padding: 14, fontSize: '0.95rem',
+            border: `1px solid ${t.border}`, textAlign: 'center'
+          }}>
             <span className="pulse">Identificando item...</span>
-          ) : (
-            <>
-              <IconCamera size={18} color={t.pri} />
-              {' '}Adicionar Foto{fotosAdicionais > 0 ? ` (+${fotosAdicionais})` : ''}
-            </>
-          )}
-        </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn"
+              onClick={() => fotoCameraRef.current?.click()}
+              disabled={loading}
+              style={{
+                flex: 1, background: t.card, color: t.pri, padding: 12, fontSize: '0.9rem',
+                border: `1px solid ${t.border}`, gap: 6
+              }}
+            >
+              <IconCamera size={18} color={t.pri} /> Foto
+            </button>
+            <button
+              className="btn"
+              onClick={() => fotoGaleriaRef.current?.click()}
+              disabled={loading}
+              style={{
+                flex: 1, background: t.card, color: t.pri, padding: 12, fontSize: '0.9rem',
+                border: `1px solid ${t.border}`, gap: 6
+              }}
+            >
+              <IconPlus size={18} color={t.pri} /> Galeria
+            </button>
+            {fotosAdicionais > 0 && (
+              <span style={{
+                alignSelf: 'center', fontSize: '0.8rem', color: t.txMuted, whiteSpace: 'nowrap'
+              }}>+{fotosAdicionais}</span>
+            )}
+          </div>
+        )
       )}
-      <input
-        ref={fotoInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFotoAdicional}
-        style={{ display: 'none' }}
-      />
+      <input ref={fotoCameraRef} type="file" accept="image/*" capture="environment" onChange={handleFotoAdicional} style={{ display: 'none' }} />
+      <input ref={fotoGaleriaRef} type="file" accept="image/*" onChange={handleFotoAdicional} style={{ display: 'none' }} />
 
       {/* Total */}
       <Card t={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
