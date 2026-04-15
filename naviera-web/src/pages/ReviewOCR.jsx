@@ -185,6 +185,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                   <th>#</th>
                   <th>Status</th>
                   <th>Remetente</th>
+                  <th>Doc</th>
                   <th>Destinatario</th>
                   <th>Itens</th>
                   <th>Valor</th>
@@ -213,6 +214,15 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                         )}
                       </td>
                       <td>{dados.remetente || '\u2014'}</td>
+                      <td>
+                        {dados.doc_remetente ? (
+                          <span className="badge success" title={`CPF: ${dados.doc_remetente.cpf || '—'} | RG: ${dados.doc_remetente.rg || '—'}`}>
+                            ✓
+                          </span>
+                        ) : (
+                          <span style={{ color: '#999' }}>—</span>
+                        )}
+                      </td>
                       <td>{dados.destinatario || '\u2014'}</td>
                       <td>{qtdItens}</td>
                       <td>{formatMoney(dados.valor_total)}</td>
@@ -309,6 +319,27 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                                 <p><strong>Destinatario:</strong> {dados.destinatario}</p>
                               )}
                             </div>
+
+                            {/* Documento do remetente */}
+                            {dados.doc_remetente && (
+                              <div style={{
+                                marginTop: 8, padding: '8px 12px', borderRadius: 6,
+                                background: '#d4edda', border: '1px solid #c3e6cb'
+                              }}>
+                                <strong style={{ fontSize: '0.85rem' }}>Documento arquivado:</strong>
+                                <div style={{ display: 'flex', gap: 16, marginTop: 4, fontSize: '0.9rem' }}>
+                                  {dados.doc_remetente.cpf && (
+                                    <span><strong>CPF:</strong> {dados.doc_remetente.cpf}</span>
+                                  )}
+                                  {dados.doc_remetente.rg && (
+                                    <span><strong>RG:</strong> {dados.doc_remetente.rg}</span>
+                                  )}
+                                  {dados.doc_remetente.tipo_doc && (
+                                    <span className="badge info">{dados.doc_remetente.tipo_doc}</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
 
                             {/* Rota e obs */}
                             {dados.rota && <p style={{ marginTop: 8 }}><strong>Rota:</strong> {dados.rota}</p>}
