@@ -68,6 +68,9 @@ import gui.util.VersaoChecker;
 
 public class TelaPrincipalController implements Initializable {
 
+    // DP046: static final NumberFormat avoids per-call instantiation
+    private static final NumberFormat NF_MOEDA = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+
     @FXML private BorderPane rootPane;
     @FXML private ComboBox<String> cmbViagemAtiva;
     @FXML private Button btnCarregarDadosDaViagem;
@@ -326,8 +329,8 @@ public class TelaPrincipalController implements Initializable {
 
         int diasNoMes = mesAtualCalendario.lengthOfMonth();
 
-        // NumberFormat fora do loop (fix DP022)
-        NumberFormat nfCalendario = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+        // DP046: use static final NF_MOEDA
+        NumberFormat nfCalendario = NF_MOEDA;
 
         int row = 1;
         int col = diaDaSemanaInicio;
@@ -464,7 +467,7 @@ public class TelaPrincipalController implements Initializable {
         
         // Exibe Boletos
         boolean temBoleto = false;
-        NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+        NumberFormat nf = NF_MOEDA;
         for (AgendaDAO.ResumoBoleto b : boletos) {
             if (b.vencimento.equals(data)) {
                 if (!temBoleto) resumo.append("--- CONTAS A PAGAR ---\n");

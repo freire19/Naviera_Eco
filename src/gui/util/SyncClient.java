@@ -13,6 +13,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import util.AppLogger;
 
 /**
@@ -25,6 +28,7 @@ public class SyncClient {
 
     private static final String TAG = "SyncClient";
     private static final String CONFIG_FILE = "sync_config.properties";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // Tabelas permitidas para sync — ORDEM IMPORTA: tabelas referenciadas primeiro
     // (embarcacoes/rotas antes de viagens, passageiros antes de passagens)
@@ -917,36 +921,19 @@ public class SyncClient {
     }
 
     // ========================================================================
-    // JSON helpers (sem dependencia externa)
+    // JSON helpers (Jackson ObjectMapper)
     // ========================================================================
 
     /**
-     * Cria JSON simples a partir de um Map (flat, sem objetos aninhados).
+     * Cria JSON a partir de um Map usando Jackson.
      */
     private String criarJsonSimples(Map<String, Object> data) {
-        StringBuilder json = new StringBuilder("{");
-        boolean primeiro = true;
-
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            if (!primeiro) json.append(",");
-            primeiro = false;
-
-            json.append("\"").append(escapeJson(entry.getKey())).append("\":");
-
-            Object valor = entry.getValue();
-            if (valor == null) {
-                json.append("null");
-            } else if (valor instanceof String) {
-                json.append("\"").append(escapeJson((String) valor)).append("\"");
-            } else if (valor instanceof Number || valor instanceof Boolean) {
-                json.append(valor);
-            } else {
-                json.append("\"").append(escapeJson(valor.toString())).append("\"");
-            }
+        try {
+            return MAPPER.writeValueAsString(data);
+        } catch (Exception e) {
+            AppLogger.error(TAG, "Erro ao serializar JSON: " + e.getMessage(), e);
+            return "{}";
         }
-
-        json.append("}");
-        return json.toString();
     }
 
     private String escapeJson(String texto) {
@@ -959,107 +946,22 @@ public class SyncClient {
     }
 
     /**
-     * Parse completo de um JSON flat — retorna TODOS os key-value pairs.
+     * Parse completo de um JSON — retorna TODOS os key-value pairs via Jackson.
      */
     private Map<String, Object> parseFullJson(String json) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        if (json == null || json.trim().isEmpty()) return result;
-
-        json = json.trim();
-        if (json.startsWith("{")) json = json.substring(1);
-        if (json.endsWith("}")) json = json.substring(0, json.length() - 1);
-
-        int i = 0;
-        while (i < json.length()) {
-            int keyStart = json.indexOf('"', i);
-            if (keyStart < 0) break;
-            int keyEnd = json.indexOf('"', keyStart + 1);
-            if (keyEnd < 0) break;
-            String key = json.substring(keyStart + 1, keyEnd);
-
-            int colon = json.indexOf(':', keyEnd + 1);
-            if (colon < 0) break;
-
-            int valueStart = colon + 1;
-            while (valueStart < json.length() && json.charAt(valueStart) == ' ') valueStart++;
-            if (valueStart >= json.length()) break;
-
-            char c = json.charAt(valueStart);
-            Object value;
-
-            if (c == '"') {
-                int vEnd = valueStart + 1;
-                boolean escape = false;
-                StringBuilder sb = new StringBuilder();
-                while (vEnd < json.length()) {
-                    char ch = json.charAt(vEnd);
-                    if (escape) {
-                        if (ch == 'n') sb.append('\n');
-                        else if (ch == 'r') sb.append('\r');
-                        else if (ch == 't') sb.append('\t');
-                        else sb.append(ch);
-                        escape = false;
-                    } else if (ch == '\\') {
-                        escape = true;
-                    } else if (ch == '"') {
-                        break;
-                    } else {
-                        sb.append(ch);
-                    }
-                    vEnd++;
-                }
-                value = sb.toString();
-                i = vEnd + 1;
-            } else if (c == 'n' && json.startsWith("null", valueStart)) {
-                value = null;
-                i = valueStart + 4;
-            } else if (c == 't' && json.startsWith("true", valueStart)) {
-                value = true;
-                i = valueStart + 4;
-            } else if (c == 'f' && json.startsWith("false", valueStart)) {
-                value = false;
-                i = valueStart + 5;
-            } else if (c == '{' || c == '[') {
-                int nivel = 0;
-                int vEnd = valueStart;
-                char open = c, close = (c == '{') ? '}' : ']';
-                while (vEnd < json.length()) {
-                    if (json.charAt(vEnd) == open) nivel++;
-                    else if (json.charAt(vEnd) == close) {
-                        nivel--;
-                        if (nivel == 0) { vEnd++; break; }
-                    }
-                    vEnd++;
-                }
-                value = json.substring(valueStart, vEnd);
-                i = vEnd;
-            } else {
-                int vEnd = valueStart;
-                while (vEnd < json.length() && json.charAt(vEnd) != ',' && json.charAt(vEnd) != '}') vEnd++;
-                String numStr = json.substring(valueStart, vEnd).trim();
-                try {
-                    if (numStr.contains(".")) {
-                        value = Double.parseDouble(numStr);
-                    } else {
-                        long l = Long.parseLong(numStr);
-                        value = (l >= Integer.MIN_VALUE && l <= Integer.MAX_VALUE) ? (int) l : l;
-                    }
-                } catch (NumberFormatException e) {
-                    value = numStr;
-                }
-                i = vEnd;
-            }
-
-            result.put(key, value);
-            while (i < json.length() && (json.charAt(i) == ',' || json.charAt(i) == ' ')) i++;
+        if (json == null || json.trim().isEmpty()) return new LinkedHashMap<>();
+        try {
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {});
+        } catch (Exception e) {
+            AppLogger.warn(TAG, "Erro ao parsear JSON completo: " + e.getMessage());
+            return new LinkedHashMap<>();
         }
-
-        return result;
     }
 
     /**
-     * Parse simples de resposta JSON do servidor (SyncResponse).
+     * Parse de resposta JSON do servidor (SyncResponse) via Jackson.
      */
+    @SuppressWarnings("unchecked")
     private Map<String, Object> parseJsonResponse(String json) {
         Map<String, Object> result = new HashMap<>();
 
@@ -1070,25 +972,29 @@ public class SyncClient {
         }
 
         try {
-            String j = json.trim();
+            Map<String, Object> parsed = MAPPER.readValue(json,
+                new TypeReference<LinkedHashMap<String, Object>>() {});
 
-            // Extrair campos primitivos
-            result.put("sucesso", j.contains("\"sucesso\":true") || j.contains("\"sucesso\": true"));
-            result.put("mensagem", extrairStringJson(j, "mensagem"));
-            result.put("registrosRecebidos", extrairNumeroJson(j, "registrosRecebidos"));
-            result.put("registrosEnviados", extrairNumeroJson(j, "registrosEnviados"));
+            result.put("sucesso", Boolean.TRUE.equals(parsed.get("sucesso")));
+            result.put("mensagem", parsed.get("mensagem"));
+            result.put("registrosRecebidos", parsed.getOrDefault("registrosRecebidos", 0));
+            result.put("registrosEnviados", parsed.getOrDefault("registrosEnviados", 0));
 
-            // Extrair registrosParaDownload como lista
-            int downloadStart = j.indexOf("\"registrosParaDownload\":");
-            if (downloadStart >= 0) {
-                int arrayStart = j.indexOf("[", downloadStart);
-                if (arrayStart >= 0) {
-                    int arrayEnd = encontrarFechamento(j, arrayStart, '[', ']');
-                    if (arrayEnd > arrayStart) {
-                        String arrayJson = j.substring(arrayStart, arrayEnd);
-                        result.put("registrosParaDownload", parseJsonArray(arrayJson));
+            Object download = parsed.get("registrosParaDownload");
+            if (download instanceof List) {
+                List<Map<String, Object>> registros = new ArrayList<>();
+                for (Object item : (List<?>) download) {
+                    if (item instanceof Map) {
+                        Map<String, Object> registro = (Map<String, Object>) item;
+                        // Converter dadosJson de Map para String se necessario
+                        Object dadosJson = registro.get("dadosJson");
+                        if (dadosJson != null && !(dadosJson instanceof String)) {
+                            registro.put("dadosJson", MAPPER.writeValueAsString(dadosJson));
+                        }
+                        registros.add(registro);
                     }
                 }
+                result.put("registrosParaDownload", registros);
             }
         } catch (Exception e) {
             result.put("sucesso", false);
@@ -1100,153 +1006,17 @@ public class SyncClient {
     }
 
     /**
-     * Extrai um valor string de um JSON pela chave.
+     * Extrai um valor string de um JSON pela chave via Jackson.
      */
     private String extrairStringJson(String json, String chave) {
-        String busca = "\"" + chave + "\":";
-        int idx = json.indexOf(busca);
-        if (idx < 0) {
-            busca = "\"" + chave + "\": ";
-            idx = json.indexOf(busca);
-        }
-        if (idx < 0) return null;
-
-        int valueStart = json.indexOf("\"", idx + busca.length());
-        if (valueStart < 0) return null;
-        valueStart++;
-
-        int valueEnd = valueStart;
-        boolean escape = false;
-        while (valueEnd < json.length()) {
-            char c = json.charAt(valueEnd);
-            if (escape) { escape = false; }
-            else if (c == '\\') { escape = true; }
-            else if (c == '"') break;
-            valueEnd++;
-        }
-        return valueEnd > valueStart ? json.substring(valueStart, valueEnd) : null;
-    }
-
-    /**
-     * Extrai um valor numerico de um JSON pela chave.
-     */
-    private int extrairNumeroJson(String json, String chave) {
-        String busca = "\"" + chave + "\":";
-        int idx = json.indexOf(busca);
-        if (idx < 0) return 0;
-
-        int numStart = idx + busca.length();
-        while (numStart < json.length() && json.charAt(numStart) == ' ') numStart++;
-
-        StringBuilder numStr = new StringBuilder();
-        for (int i = numStart; i < json.length(); i++) {
-            char c = json.charAt(i);
-            if (Character.isDigit(c) || c == '-') {
-                numStr.append(c);
-            } else if (numStr.length() > 0) {
-                break;
-            }
-        }
-        if (numStr.length() > 0) {
-            try { return Integer.parseInt(numStr.toString()); }
-            catch (NumberFormatException ignored) {}
-        }
-        return 0;
-    }
-
-    /**
-     * Encontra a posicao de fechamento de um delimitador (colchete ou chave).
-     */
-    private int encontrarFechamento(String json, int start, char open, char close) {
-        int nivel = 0;
-        for (int i = start; i < json.length(); i++) {
-            char c = json.charAt(i);
-            if (c == open) nivel++;
-            else if (c == close) {
-                nivel--;
-                if (nivel == 0) return i + 1;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Parse de array JSON com objetos.
-     */
-    private List<Map<String, Object>> parseJsonArray(String arrayJson) {
-        List<Map<String, Object>> lista = new ArrayList<>();
-        if (arrayJson == null || arrayJson.trim().isEmpty() || "[]".equals(arrayJson.trim())) {
-            return lista;
-        }
-
         try {
-            arrayJson = arrayJson.trim();
-            if (arrayJson.startsWith("[")) arrayJson = arrayJson.substring(1);
-            if (arrayJson.endsWith("]")) arrayJson = arrayJson.substring(0, arrayJson.length() - 1);
-
-            int nivel = 0;
-            int objStart = -1;
-
-            for (int i = 0; i < arrayJson.length(); i++) {
-                char c = arrayJson.charAt(i);
-                if (c == '{') {
-                    if (nivel == 0) objStart = i;
-                    nivel++;
-                } else if (c == '}') {
-                    nivel--;
-                    if (nivel == 0 && objStart >= 0) {
-                        String objJson = arrayJson.substring(objStart, i + 1);
-                        lista.add(parseJsonObject(objJson));
-                        objStart = -1;
-                    }
-                }
-            }
+            Map<String, Object> parsed = MAPPER.readValue(json,
+                new TypeReference<Map<String, Object>>() {});
+            Object val = parsed.get(chave);
+            return val != null ? val.toString() : null;
         } catch (Exception e) {
-            AppLogger.warn(TAG, "Erro ao parsear array JSON: " + e.getMessage());
+            return null;
         }
-
-        return lista;
-    }
-
-    /**
-     * Parse de objeto JSON (SyncRegistroDownload).
-     */
-    private Map<String, Object> parseJsonObject(String objJson) {
-        Map<String, Object> obj = new HashMap<>();
-        try {
-            obj.put("uuid", extrairStringJson(objJson, "uuid"));
-            obj.put("acao", extrairStringJson(objJson, "acao"));
-            obj.put("ultimaAtualizacao", extrairStringJson(objJson, "ultimaAtualizacao"));
-
-            // dadosJson pode conter JSON aninhado — extrair com cuidado
-            String busca = "\"dadosJson\":";
-            int idx = objJson.indexOf(busca);
-            if (idx < 0) {
-                busca = "\"dadosJson\": ";
-                idx = objJson.indexOf(busca);
-            }
-            if (idx >= 0) {
-                int valueStart = idx + busca.length();
-                while (valueStart < objJson.length() && objJson.charAt(valueStart) == ' ') valueStart++;
-
-                if (valueStart < objJson.length()) {
-                    char c = objJson.charAt(valueStart);
-                    if (c == '"') {
-                        // String value (JSON escapado dentro de string)
-                        obj.put("dadosJson", extrairStringJson(objJson, "dadosJson"));
-                    } else if (c == '{') {
-                        // JSON object inline
-                        int end = encontrarFechamento(objJson, valueStart, '{', '}');
-                        if (end > valueStart) {
-                            obj.put("dadosJson", objJson.substring(valueStart, end));
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            AppLogger.warn(TAG, "Erro ao parsear objeto JSON: " + e.getMessage());
-        }
-        return obj;
     }
 
     // ========================================================================

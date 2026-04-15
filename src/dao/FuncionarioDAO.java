@@ -20,8 +20,8 @@ public class FuncionarioDAO {
     public List<Funcionario> listarTodos(boolean incluirInativos) {
         List<Funcionario> lista = new ArrayList<>();
         String sql = incluirInativos
-            ? "SELECT * FROM funcionarios WHERE empresa_id = ? ORDER BY nome"
-            : "SELECT * FROM funcionarios WHERE empresa_id = ? AND ativo = true ORDER BY nome";
+            ? "SELECT id, nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, data_inicio_calculo, recebe_decimo_terceiro, is_clt, valor_inss, descontar_inss, ativo FROM funcionarios WHERE empresa_id = ? ORDER BY nome"
+            : "SELECT id, nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, data_inicio_calculo, recebe_decimo_terceiro, is_clt, valor_inss, descontar_inss, ativo FROM funcionarios WHERE empresa_id = ? AND ativo = true ORDER BY nome";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
@@ -223,59 +223,50 @@ public class FuncionarioDAO {
     public List<PagamentoHistorico> carregarHistorico(int idFuncionario, int mes, int ano) {
         List<PagamentoHistorico> historico = new ArrayList<>();
 
-        String sqlFin = "SELECT data_pagamento, descricao, valor_pago, forma_pagamento FROM financeiro_saidas " +
-                        "WHERE funcionario_id = ? AND empresa_id = ? " +
-                        "AND ( (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false ) " +
-                        "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ?";
+        // DP041: single UNION ALL query instead of 2 round-trips
+        String sql = "SELECT data_pagamento AS data, descricao, valor_pago AS valor, forma_pagamento, 'FIN' AS origem " +
+                     "FROM financeiro_saidas " +
+                     "WHERE funcionario_id = ? AND empresa_id = ? " +
+                     "AND ( (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false ) " +
+                     "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ? " +
+                     "UNION ALL " +
+                     "SELECT data_evento AS data, descricao, valor, NULL AS forma_pagamento, 'RH' AS origem " +
+                     "FROM eventos_rh " +
+                     "WHERE funcionario_id = ? AND empresa_id = ? " +
+                     "AND EXTRACT(MONTH FROM data_evento) = ? AND EXTRACT(YEAR FROM data_evento) = ?";
         try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sqlFin)) {
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            int empresaId = DAOUtils.empresaId();
             stmt.setInt(1, idFuncionario);
-            stmt.setInt(2, DAOUtils.empresaId());
+            stmt.setInt(2, empresaId);
             stmt.setInt(3, mes);
             stmt.setInt(4, ano);
+            stmt.setInt(5, idFuncionario);
+            stmt.setInt(6, empresaId);
+            stmt.setInt(7, mes);
+            stmt.setInt(8, ano);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String forma = rs.getString("forma_pagamento");
-                    String tipo = (forma != null && (forma.equals("DESCONTO") || forma.equals("RETIDO"))) ? "DESCONTO" : "DINHEIRO";
-                    // DR202: null check em data_pagamento (pode ser NULL para despesas pendentes)
-                    java.sql.Date dpDate = rs.getDate("data_pagamento");
-                    if (dpDate == null) continue; // pular registros sem data
+                    java.sql.Date dtDate = rs.getDate("data");
+                    if (dtDate == null) continue;
+                    String origem = rs.getString("origem");
+                    String tipo;
+                    if ("RH".equals(origem)) {
+                        tipo = "DESCONTO";
+                    } else {
+                        String forma = rs.getString("forma_pagamento");
+                        tipo = (forma != null && (forma.equals("DESCONTO") || forma.equals("RETIDO"))) ? "DESCONTO" : "DINHEIRO";
+                    }
                     historico.add(new PagamentoHistorico(
-                        dpDate.toLocalDate(),
+                        dtDate.toLocalDate(),
                         rs.getString("descricao"),
-                        rs.getDouble("valor_pago"),
+                        rs.getDouble("valor"),
                         tipo
                     ));
                 }
             }
         } catch (SQLException e) {
-            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.carregarHistorico (saidas): " + e.getMessage());
-        }
-
-        String sqlRH = "SELECT data_evento, descricao, valor, tipo FROM eventos_rh " +
-                        "WHERE funcionario_id = ? AND empresa_id = ? " +
-                        "AND EXTRACT(MONTH FROM data_evento) = ? AND EXTRACT(YEAR FROM data_evento) = ?";
-        try (Connection con = ConexaoBD.getConnection();
-             PreparedStatement stmt = con.prepareStatement(sqlRH)) {
-            stmt.setInt(1, idFuncionario);
-            stmt.setInt(2, DAOUtils.empresaId());
-            stmt.setInt(3, mes);
-            stmt.setInt(4, ano);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    // DR202: null check em data_evento (pode ser NULL em eventos importados)
-                    java.sql.Date deDate = rs.getDate("data_evento");
-                    if (deDate == null) continue; // pular registros sem data
-                    historico.add(new PagamentoHistorico(
-                        deDate.toLocalDate(),
-                        rs.getString("descricao"),
-                        rs.getDouble("valor"),
-                        "DESCONTO"
-                    ));
-                }
-            }
-        } catch (SQLException e) {
-            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.carregarHistorico (eventos): " + e.getMessage());
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.carregarHistorico: " + e.getMessage());
         }
 
         return historico;

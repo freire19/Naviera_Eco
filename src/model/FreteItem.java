@@ -71,4 +71,15 @@ public class FreteItem {
     public void setValorFreteItem(BigDecimal valorFreteItem) {
         this.valorFreteItem = valorFreteItem != null ? valorFreteItem : BigDecimal.ZERO;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        FreteItem that = (FreteItem) o;
+        return quantidade == that.quantidade
+            && java.util.Objects.equals(descricao, that.descricao);
+    }
+    @Override
+    public int hashCode() { return java.util.Objects.hash(descricao, quantidade); }
 }

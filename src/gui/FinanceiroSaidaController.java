@@ -514,8 +514,10 @@ public class FinanceiroSaidaController {
             for (int i = 0; i < labelsNumeracao.size(); i++) {
                 labelsNumeracao.get(i).setText("Página " + (i + 2) + "/" + totalPaginas);
             }
+            tabela.getScene().getRoot().setDisable(true); // DP037: prevent interaction during print
             for (VBox p : paginas) { job.printPage(pageLayout, p); }
             job.endJob();
+            tabela.getScene().getRoot().setDisable(false); // DP037: re-enable after print
         }
     }
     private VBox criarRodape(Map<String, java.math.BigDecimal> totais, java.math.BigDecimal geral) {
@@ -545,7 +547,7 @@ public class FinanceiroSaidaController {
             try {
                 File file = new File(dados.pathLogo);
                 if (file.exists()) {
-                    ImageView imgLogo = new ImageView(new Image(file.toURI().toString()));
+                    ImageView imgLogo = new ImageView(gui.util.ImageCache.get(dados.pathLogo)); // DP049: usa cache
                     imgLogo.setFitHeight(60);
                     imgLogo.setPreserveRatio(true);
                     cabecalho.getChildren().add(imgLogo);

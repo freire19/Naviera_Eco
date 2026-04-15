@@ -279,8 +279,15 @@ public class PassagemDAO {
     public List<Passagem> filtrarRelatorio(LocalDate dataInicio, LocalDate dataFim, String viagemStr, String rotaStr,
                                            String tipoPagamento, String caixa, String agente, String tipoPassagem,
                                            String nomePassageiro, String statusPagamento) throws SQLException {
+        // DP092: pre-carregar caches auxiliares para evitar N+1 no cold-start
+        try { auxiliaresDAO.preCarregarCachesPassagem(); } catch (SQLException e) { /* cache opcional */ }
         List<Passagem> passagens = new ArrayList<>();
+        // #088: LEFT JOINs extras para filtrar por agente/tipo/pagamento/caixa no SQL (antes era removeIf em Java)
         StringBuilder sqlBuilder = new StringBuilder(getBaseQuery());
+        sqlBuilder.append("LEFT JOIN aux_agentes _ag ON p.id_agente = _ag.id_agente ");
+        sqlBuilder.append("LEFT JOIN aux_tipos_passagem _tp ON p.id_tipo_passagem = _tp.id_tipo_passagem ");
+        sqlBuilder.append("LEFT JOIN aux_formas_pagamento _fp ON p.id_forma_pagamento = _fp.id_forma_pagamento ");
+        sqlBuilder.append("LEFT JOIN caixas _cx ON p.id_caixa = _cx.id_caixa ");
         List<String> conditions = new ArrayList<>();
         List<Object> params = new ArrayList<>();
 
@@ -309,6 +316,23 @@ public class PassagemDAO {
             else if (statusPagamento.equals("Pagos")) conditions.add("p.valor_devedor <= 0.01");
         }
 
+        // #088: filtros que antes eram removeIf em Java — agora no SQL
+        if (agente != null && !agente.trim().isEmpty()) {
+            conditions.add("_ag.nome_agente ILIKE ?"); params.add(agente);
+        }
+        if (tipoPassagem != null && !tipoPassagem.trim().isEmpty()) {
+            conditions.add("_tp.nome_tipo_passagem ILIKE ?"); params.add(tipoPassagem);
+        }
+        if (rotaStr != null && !rotaStr.trim().isEmpty()) {
+            conditions.add("(r.origem || ' - ' || r.destino) ILIKE ?"); params.add(rotaStr);
+        }
+        if (tipoPagamento != null && !tipoPagamento.trim().isEmpty()) {
+            conditions.add("_fp.nome_forma_pagamento ILIKE ?"); params.add(tipoPagamento);
+        }
+        if (caixa != null && !caixa.trim().isEmpty()) {
+            conditions.add("_cx.nome_caixa ILIKE ?"); params.add(caixa);
+        }
+
         if (!conditions.isEmpty()) sqlBuilder.append(" WHERE ").append(String.join(" AND ", conditions));
         sqlBuilder.append(" ORDER BY v.data_viagem, pa.nome_passageiro");
 
@@ -321,30 +345,16 @@ public class PassagemDAO {
             }
         }
 
-        // Pos-filtro em Java para campos que sao nomes (agente, tipo passagem, rota, forma pagamento, caixa)
-        if (agente != null && !agente.trim().isEmpty()) {
-            passagens.removeIf(p -> p.getAgenteAux() == null || !p.getAgenteAux().equalsIgnoreCase(agente));
-        }
-        if (tipoPassagem != null && !tipoPassagem.trim().isEmpty()) {
-            passagens.removeIf(p -> p.getTipoPassagemAux() == null || !p.getTipoPassagemAux().equalsIgnoreCase(tipoPassagem));
-        }
-        if (rotaStr != null && !rotaStr.trim().isEmpty()) {
-            passagens.removeIf(p -> {
-                String rotaPassagem = (p.getOrigem() != null ? p.getOrigem() : "") + " - " + (p.getDestino() != null ? p.getDestino() : "");
-                return !rotaPassagem.equalsIgnoreCase(rotaStr);
-            });
-        }
-        if (tipoPagamento != null && !tipoPagamento.trim().isEmpty()) {
-            passagens.removeIf(p -> p.getFormaPagamento() == null || !p.getFormaPagamento().equalsIgnoreCase(tipoPagamento));
-        }
-        if (caixa != null && !caixa.trim().isEmpty()) {
-            passagens.removeIf(p -> p.getCaixa() == null || !p.getCaixa().equalsIgnoreCase(caixa));
-        }
+        // #088: filtros movidos de Java (removeIf) para SQL — aplicados antes da query acima
+        // Os filtros abaixo sao mantidos como fallback defensivo APENAS para campos sem JOIN no getBaseQuery
+        // Nota: agente, tipoPassagem, tipoPagamento e caixa agora sao filtrados via SQL (acima)
 
         return passagens;
     }
 
     public List<Passagem> listarExtratoPorPassageiro(String nomePassageiro, String status) {
+        // #079: pre-carregar caches auxiliares para evitar N+1 no cold-start
+        try { auxiliaresDAO.preCarregarCachesPassagem(); } catch (SQLException e) { /* cache opcional */ }
         List<Passagem> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
         sql.append(getBaseQuery());

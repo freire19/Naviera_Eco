@@ -86,7 +86,7 @@ public class TabelaPrecosEncomendaController implements Initializable {
     private FilteredList<ItemEncomendaPadrao> filteredData;
     private SortedList<ItemEncomendaPadrao> sortedData;
 
-    private final NumberFormat moedaBR = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+    private static final NumberFormat moedaBR = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
 
     // ============================================================
     //  INITIALIZE

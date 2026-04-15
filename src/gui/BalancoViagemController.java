@@ -6,7 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -55,6 +55,9 @@ import model.LinhaDespesaDetalhada;
 import util.AppLogger;
 
 public class BalancoViagemController {
+
+    // DP048: static final DateTimeFormatter replaces per-call SimpleDateFormat
+    private static final DateTimeFormatter FMT_DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     @FXML private AnchorPane mainContainer;
     @FXML private ComboBox<String> cmbViagens;
@@ -317,6 +320,7 @@ public class BalancoViagemController {
     private void imprimirPaginas(boolean detalhado) {
         PrinterJob job = PrinterJob.createPrinterJob();
         if(job!=null && job.showPrintDialog(mainContainer.getScene().getWindow())) {
+            mainContainer.setDisable(true); // DP037: prevent interaction during print
             List<VBox> paginas = gerarPaginas(detalhado);
             Printer printer = job.getPrinter();
             PageLayout layout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
@@ -326,6 +330,7 @@ public class BalancoViagemController {
                 if(!job.printPage(layout, p)) break;
             }
             job.endJob();
+            mainContainer.setDisable(false); // DP037: re-enable after print
         }
     }
 
@@ -528,11 +533,10 @@ public class BalancoViagemController {
                 String valorSelecionado[] = {null};
                 try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
                     stmt.setInt(1, dao.DAOUtils.empresaId());
-                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
                     try (ResultSet rs = stmt.executeQuery()) {
                         while (rs.next()) {
-                            String saida = rs.getDate(3) != null ? sdf.format(rs.getDate(3)) : "--/--/----";
-                            String chegada = rs.getDate(4) != null ? sdf.format(rs.getDate(4)) : "--/--/----";
+                            String saida = rs.getDate(3) != null ? rs.getDate(3).toLocalDate().format(FMT_DATA) : "--/--/----";
+                            String chegada = rs.getDate(4) != null ? rs.getDate(4).toLocalDate().format(FMT_DATA) : "--/--/----";
                             String item = String.format("Saída: %s - Chegada: %s (ID: %d)", saida, chegada, rs.getInt(1));
                             l.add(item);
                             if (rs.getInt(1) == idAtual) valorSelecionado[0] = item;

@@ -18,7 +18,7 @@ public class ClienteEncomendaDAO {
 
     public List<ClienteEncomenda> listarTodos() {
         List<ClienteEncomenda> clientes = new ArrayList<>();
-        String sql = "SELECT * FROM cad_clientes_encomenda WHERE empresa_id = ? ORDER BY nome_cliente ASC";
+        String sql = "SELECT id_cliente, nome_cliente FROM cad_clientes_encomenda WHERE empresa_id = ? ORDER BY nome_cliente ASC";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -62,7 +62,7 @@ public class ClienteEncomendaDAO {
     }
     
     public ClienteEncomenda buscarPorNomeExato(String nome) {
-        String sql = "SELECT * FROM cad_clientes_encomenda WHERE empresa_id = ? AND nome_cliente = ?";
+        String sql = "SELECT id_cliente, nome_cliente FROM cad_clientes_encomenda WHERE empresa_id = ? AND nome_cliente = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             

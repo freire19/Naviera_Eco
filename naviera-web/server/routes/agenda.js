@@ -14,8 +14,13 @@ router.get('/', async (req, res) => {
     const params = [empresaId]
 
     if (mes && ano) {
-      sql += ' AND EXTRACT(MONTH FROM data_evento) = $2 AND EXTRACT(YEAR FROM data_evento) = $3'
-      params.push(parseInt(mes), parseInt(ano))
+      // DP057: range query instead of EXTRACT() to allow index usage
+      const m = parseInt(mes)
+      const y = parseInt(ano)
+      const firstDay = `${y}-${String(m).padStart(2, '0')}-01`
+      const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+      sql += ' AND data_evento >= $2 AND data_evento < $3'
+      params.push(firstDay, nextMonth)
     }
     sql += ' ORDER BY data_evento, id'
 

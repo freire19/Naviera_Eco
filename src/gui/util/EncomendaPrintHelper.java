@@ -30,8 +30,22 @@ public class EncomendaPrintHelper {
 
     /**
      * Imprime cupom termico para uma encomenda.
+     * DP036: aceita empresa e itens pre-carregados para evitar DB no FX thread.
      */
     public static void imprimirCupomTermico(Encomenda encomenda) {
+        // DP036: pre-carregar dados do banco em background antes de montar UI
+        Thread bg = new Thread(() -> {
+            EmpresaDAO empresaDAO = new EmpresaDAO();
+            Empresa empresa = empresaDAO.buscarPorId(EmpresaDAO.ID_EMPRESA_PRINCIPAL);
+            EncomendaItemDAO encomendaItemDAO = new EncomendaItemDAO();
+            List<EncomendaItem> itens = encomendaItemDAO.listarPorIdEncomenda(encomenda.getId());
+            javafx.application.Platform.runLater(() -> imprimirCupomTermicoInterno(encomenda, empresa, itens));
+        });
+        bg.setDaemon(true);
+        bg.start();
+    }
+
+    private static void imprimirCupomTermicoInterno(Encomenda encomenda, Empresa empresa, List<EncomendaItem> itens) {
         Printer printer = Printer.getDefaultPrinter();
         if (printer == null) {
             AlertHelper.show(AlertType.ERROR, "Erro", "Nenhuma impressora encontrada.");
@@ -45,9 +59,6 @@ public class EncomendaPrintHelper {
                 javafx.print.PageOrientation.PORTRAIT,
                 Printer.MarginType.HARDWARE_MINIMUM);
         job.getJobSettings().setPageLayout(pageLayout);
-
-        EmpresaDAO empresaDAO = new EmpresaDAO();
-        Empresa empresa = empresaDAO.buscarPorId(EmpresaDAO.ID_EMPRESA_PRINCIPAL);
 
         double larguraBase = 270;
         VBox root = new VBox(0);
@@ -125,8 +136,7 @@ public class EncomendaPrintHelper {
         Label hTotal = new Label("TOTAL"); hTotal.setStyle(styleHeaderLast); hTotal.setPrefWidth(wTotal); hTotal.setAlignment(Pos.CENTER_RIGHT);
         grid.add(hQtd, 0, 0); grid.add(hDesc, 1, 0); grid.add(hUnit, 2, 0); grid.add(hTotal, 3, 0);
 
-        EncomendaItemDAO encomendaItemDAO = new EncomendaItemDAO();
-        List<EncomendaItem> itens = encomendaItemDAO.listarPorIdEncomenda(encomenda.getId());
+        // DP036: itens ja pre-carregados em background
         int l = 1;
         for (EncomendaItem i : itens) {
             Label q = new Label(String.valueOf(i.getQuantidade()));

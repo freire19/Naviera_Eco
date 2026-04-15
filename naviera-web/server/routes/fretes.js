@@ -12,13 +12,17 @@ router.get('/', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT * FROM fretes WHERE empresa_id = $1'
+    let sql = 'SELECT id_frete, id_viagem, numero_frete, remetente, destinatario, observacoes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, rota, data_lancamento, id_caixa FROM fretes WHERE empresa_id = $1'
     const params = [empresaId]
     if (viagem_id) {
       sql += ' AND id_viagem = $2'
       params.push(viagem_id)
     }
     sql += ' ORDER BY id_frete DESC'
+    // DP052: LIMIT para evitar datasets ilimitados
+    const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
+    const offset = parseInt(req.query.offset) || 0
+    sql += ` LIMIT ${limit} OFFSET ${offset}`
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {

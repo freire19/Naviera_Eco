@@ -247,7 +247,7 @@ public class GerarReciboAvulsoController implements Initializable {
             @Override protected void updateItem(BigDecimal item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) setText(null);
-                else setText(NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(item));
+                else setText(gui.util.MoneyUtil.formatar(item)); // DP044: evita instanciar NumberFormat por celula
             }
         });
         
@@ -608,7 +608,7 @@ public class GerarReciboAvulsoController implements Initializable {
             if (empresaLogoPath != null && !empresaLogoPath.isEmpty()) {
                 File f = new File(empresaLogoPath);
                 if (f.exists()) {
-                    ImageView iv = new ImageView(new Image(f.toURI().toString()));
+                    ImageView iv = new ImageView(gui.util.ImageCache.get(empresaLogoPath)); // DP049: usa cache
                     iv.setFitHeight(h); iv.setPreserveRatio(true);
                     return iv;
                 }

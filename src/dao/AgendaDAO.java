@@ -173,7 +173,8 @@ public class AgendaDAO {
     // Busca TODAS as tarefas para a tela de gerenciamento
     public List<TarefaAgenda> buscarTodasTarefas() {
         List<TarefaAgenda> tarefas = new ArrayList<>();
-        String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes WHERE empresa_id = ? ORDER BY data_evento DESC, id_anotacao DESC";
+        // DP039: LIMIT para evitar datasets ilimitados com acumulo ao longo dos anos
+        String sql = "SELECT id_anotacao, data_evento, descricao, concluida FROM agenda_anotacoes WHERE empresa_id = ? ORDER BY data_evento DESC, id_anotacao DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());

@@ -668,10 +668,12 @@ public class RelatorioUtil {
 
         PageLayout pageLayout = printer.createPageLayout(Paper.A4, PageOrientation.PORTRAIT, Printer.MarginType.DEFAULT);
 
+        parent.setDisable(true); // DP037: prevent interaction during print
         for (VBox p : paginas) {
             job.printPage(pageLayout, p);
         }
         job.endJob();
+        parent.setDisable(false); // DP037: re-enable after print
         return true;
     }
 

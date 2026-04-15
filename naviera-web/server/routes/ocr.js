@@ -736,9 +736,11 @@ router.get('/lancamentos/:id/doc-foto', async (req, res) => {
 
     const fullPath = path.resolve(UPLOAD_PATH, docPath)
     if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
-    if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
 
-    res.sendFile(fullPath)
+    // DP058: res.sendFile handles not-found via callback (removed sync existsSync)
+    res.sendFile(fullPath, (err) => {
+      if (err && !res.headersSent) res.status(404).json({ error: 'Foto nao encontrada no disco' })
+    })
   } catch (err) {
     res.status(500).json({ error: 'Erro ao servir foto do documento' })
   }
@@ -846,9 +848,11 @@ router.get('/lancamentos/:id/foto', async (req, res) => {
     // DS4-043 fix: path.resolve em ambos para normalizar completamente (antes: path.join parcial)
     const fullPath = path.resolve(UPLOAD_PATH, result.rows[0].foto_path)
     if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
-    if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
 
-    res.sendFile(fullPath)
+    // DP058: res.sendFile handles not-found via callback (removed sync existsSync)
+    res.sendFile(fullPath, (err) => {
+      if (err && !res.headersSent) res.status(404).json({ error: 'Foto nao encontrada no disco' })
+    })
   } catch (err) {
     res.status(500).json({ error: 'Erro ao servir foto' })
   }

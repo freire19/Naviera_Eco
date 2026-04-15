@@ -88,7 +88,7 @@ public class EncomendaDAO {
 
     public List<Encomenda> listarPorViagem(Long idViagem) {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas WHERE empresa_id = ? AND id_viagem = ? ORDER BY id_encomenda";
+        String sql = "SELECT id_encomenda, id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, entregue, forma_pagamento, local_pagamento, doc_recebedor, nome_recebedor, rota, id_caixa, data_lancamento FROM encomendas WHERE empresa_id = ? AND id_viagem = ? ORDER BY id_encomenda";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
@@ -105,7 +105,7 @@ public class EncomendaDAO {
 
     public List<Encomenda> listarTodos() {
         List<Encomenda> lista = new ArrayList<>();
-        String sql = "SELECT * FROM encomendas WHERE empresa_id = ? ORDER BY id_encomenda DESC LIMIT 500";
+        String sql = "SELECT id_encomenda, id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, entregue, forma_pagamento, local_pagamento, doc_recebedor, nome_recebedor, rota, id_caixa, data_lancamento FROM encomendas WHERE empresa_id = ? ORDER BY id_encomenda DESC LIMIT 500";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
@@ -120,7 +120,7 @@ public class EncomendaDAO {
     }
 
     public Encomenda buscarPorId(Long id) {
-        String sql = "SELECT * FROM encomendas WHERE id_encomenda = ? AND empresa_id = ?";
+        String sql = "SELECT id_encomenda, id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, entregue, forma_pagamento, local_pagamento, doc_recebedor, nome_recebedor, rota, id_caixa, data_lancamento FROM encomendas WHERE id_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);

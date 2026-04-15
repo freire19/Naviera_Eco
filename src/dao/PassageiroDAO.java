@@ -28,8 +28,9 @@ public class PassageiroDAO {
      */
     public List<Passageiro> listarTodos() {
         List<Passageiro> passageiros = new ArrayList<>();
-        // O mapResultSetToPassageiro agora não precisa mais da conexão como parâmetro
-        String sql = "SELECT * FROM passageiros WHERE empresa_id = ? ORDER BY nome_passageiro";
+        // DP038: pre-carregar caches auxiliares para evitar N+1 no cold-start
+        try { auxDAO.preCarregarCachesPassageiro(); } catch (Exception e) { /* cache opcional */ }
+        String sql = "SELECT id_passageiro, nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade FROM passageiros WHERE empresa_id = ? ORDER BY nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, empresaId());
@@ -129,7 +130,7 @@ public class PassageiroDAO {
     }
     
     public Passageiro buscarPorNome(String nome) {
-        String sql = "SELECT * FROM passageiros WHERE empresa_id = ? AND nome_passageiro ILIKE ?";
+        String sql = "SELECT id_passageiro, nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade FROM passageiros WHERE empresa_id = ? AND nome_passageiro ILIKE ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, empresaId());
@@ -146,7 +147,7 @@ public class PassageiroDAO {
     }
 
     public Passageiro buscarPorDoc(String doc) {
-        String sql = "SELECT * FROM passageiros WHERE empresa_id = ? AND numero_documento = ?";
+        String sql = "SELECT id_passageiro, nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade FROM passageiros WHERE empresa_id = ? AND numero_documento = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
@@ -163,7 +164,7 @@ public class PassageiroDAO {
     }
     
     public Passageiro buscarPorId(long id) {
-        String sql = "SELECT * FROM passageiros WHERE id_passageiro = ? AND empresa_id = ?";
+        String sql = "SELECT id_passageiro, nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade FROM passageiros WHERE id_passageiro = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);

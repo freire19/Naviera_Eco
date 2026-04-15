@@ -31,13 +31,17 @@ router.get('/saidas', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT * FROM financeiro_saidas WHERE (is_excluido = FALSE OR is_excluido IS NULL) AND empresa_id = $1'
+    let sql = 'SELECT id, id_viagem, descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, is_excluido, motivo_exclusao, funcionario_id, numero_parcela, total_parcelas, observacoes FROM financeiro_saidas WHERE (is_excluido = FALSE OR is_excluido IS NULL) AND empresa_id = $1'
     const params = [empresaId]
     if (viagem_id) {
       sql += ' AND id_viagem = $2'
       params.push(viagem_id)
     }
     sql += ' ORDER BY data_vencimento DESC'
+    // DP052: LIMIT para evitar datasets ilimitados
+    const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
+    const offset = parseInt(req.query.offset) || 0
+    sql += ` LIMIT ${limit} OFFSET ${offset}`
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -97,7 +101,7 @@ router.get('/passagens', async (req, res) => {
     const params = [viagem_id, empresaId]
     if (data_inicio) { params.push(data_inicio); sql += ` AND p.data_emissao >= $${params.length}` }
     if (data_fim) { params.push(data_fim); sql += ` AND p.data_emissao <= $${params.length}` }
-    sql += ' ORDER BY p.data_emissao DESC, p.numero_bilhete DESC'
+    sql += ' ORDER BY p.data_emissao DESC, p.numero_bilhete DESC LIMIT 1000'
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -120,7 +124,7 @@ router.get('/encomendas', async (req, res) => {
     const params = [viagem_id, empresaId]
     if (data_inicio) { params.push(data_inicio); sql += ` AND data_emissao >= $${params.length}` }
     if (data_fim) { params.push(data_fim); sql += ` AND data_emissao <= $${params.length}` }
-    sql += ' ORDER BY data_emissao DESC'
+    sql += ' ORDER BY data_emissao DESC LIMIT 1000'
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -143,7 +147,7 @@ router.get('/fretes', async (req, res) => {
     const params = [viagem_id, empresaId]
     if (data_inicio) { params.push(data_inicio); sql += ` AND data_emissao >= $${params.length}` }
     if (data_fim) { params.push(data_fim); sql += ` AND data_emissao <= $${params.length}` }
-    sql += ' ORDER BY data_emissao DESC'
+    sql += ' ORDER BY data_emissao DESC LIMIT 1000'
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -217,7 +221,7 @@ router.get('/boletos', async (req, res) => {
       sql += ` AND status = $${idx++}`
       params.push(status)
     }
-    sql += ' ORDER BY data_vencimento ASC'
+    sql += ' ORDER BY data_vencimento ASC LIMIT 500'
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -292,6 +296,12 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
 
     await client.query('BEGIN')
 
+    // DP055: batch inserts em vez de loop sequencial (era 2*N queries, agora 2)
+    const saidasValues = []
+    const saidasParams = []
+    const agendaValues = []
+    const agendaParams = []
+
     for (let i = 0; i < parcelas; i++) {
       const dataVenc = new Date(dataBase)
       dataVenc.setDate(dataVenc.getDate() + (i * intervalo))
@@ -299,23 +309,27 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
       const descricao = `${descricao_base} (${i + 1}/${parcelas})`
       const valorEsta = (i === parcelas - 1) ? valorUltimaParcela : valorParcela
 
-      const result = await client.query(`
-        INSERT INTO financeiro_saidas (id_viagem, descricao, valor_total, data_vencimento, id_categoria, forma_pagamento,
-          valor_pago, status, numero_parcela, total_parcelas, observacoes, is_excluido, empresa_id)
-        VALUES ($1, $2, $3, $4, $5, 'BOLETO', 0, 'PENDENTE', $6, $7, NULL, FALSE, $8)
-        RETURNING *
-      `, [
-        id_viagem || null, descricao, valorEsta, dataStr, id_categoria || null,
-        i + 1, parseInt(parcelas), empresaId
-      ])
-      boletos.push(result.rows[0])
+      const sOff = i * 8
+      saidasValues.push(`($${sOff+1}, $${sOff+2}, $${sOff+3}, $${sOff+4}, $${sOff+5}, 'BOLETO', 0, 'PENDENTE', $${sOff+6}, $${sOff+7}, NULL, FALSE, $${sOff+8})`)
+      saidasParams.push(id_viagem || null, descricao, valorEsta, dataStr, id_categoria || null, i + 1, parseInt(parcelas), empresaId)
 
-      // Create agenda entry for each parcela
-      await client.query(
-        'INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES ($1, $2, FALSE, $3)',
-        [dataStr, `Boleto: ${descricao} - R$ ${valorEsta.toFixed(2)}`, empresaId]
-      )
+      const aOff = i * 3
+      agendaValues.push(`($${aOff+1}, $${aOff+2}, FALSE, $${aOff+3})`)
+      agendaParams.push(dataStr, `Boleto: ${descricao} - R$ ${valorEsta.toFixed(2)}`, empresaId)
     }
+
+    const saidasResult = await client.query(
+      `INSERT INTO financeiro_saidas (id_viagem, descricao, valor_total, data_vencimento, id_categoria, forma_pagamento,
+        valor_pago, status, numero_parcela, total_parcelas, observacoes, is_excluido, empresa_id)
+      VALUES ${saidasValues.join(', ')} RETURNING *`,
+      saidasParams
+    )
+    boletos.push(...saidasResult.rows)
+
+    await client.query(
+      `INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES ${agendaValues.join(', ')}`,
+      agendaParams
+    )
 
     await client.query('COMMIT')
     res.status(201).json(boletos)

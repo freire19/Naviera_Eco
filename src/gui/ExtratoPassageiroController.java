@@ -76,7 +76,7 @@ public class ExtratoPassageiroController implements Initializable {
     private PassagemDAO passagemDAO;
     private PassageiroDAO passageiroDAO;
     private ReciboQuitacaoPassageiroDAO reciboDAO;
-    private final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+    private static final NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
 
     private List<String> todosNomesPassageiros = new ArrayList<>();
     private ObservableList<ItemExtratoPassageiro> listaImprimir;
@@ -170,7 +170,7 @@ public class ExtratoPassageiroController implements Initializable {
     }
 
     private void carregarNomesPassageiros() {
-        new Thread(() -> {
+        Thread t = new Thread(() -> {
             try {
                 List<Passageiro> lista = passageiroDAO.listarTodos();
                 todosNomesPassageiros.clear();
@@ -181,7 +181,9 @@ public class ExtratoPassageiroController implements Initializable {
                     configuringAutocomplete(cmbPassageiro, todosNomesPassageiros);
                 });
             } catch(Exception e) { AppLogger.error("ExtratoPassageiroController", e.getMessage(), e); }
-        }).start();
+        });
+        t.setDaemon(true);
+        t.start();
     }
 
     private void configurarTabela() {
@@ -247,7 +249,7 @@ public class ExtratoPassageiroController implements Initializable {
         String statusSelecionado = cmbStatus.getValue();
         final String statusFiltro = (statusSelecionado == null) ? "TODOS" : statusSelecionado;
 
-        new Thread(() -> {
+        Thread t2 = new Thread(() -> {
             try {
                 List<Passagem> listaBD = passagemDAO.listarExtratoPorPassageiro(nome, "TODOS");
                 ObservableList<ItemExtratoPassageiro> itens = FXCollections.observableArrayList();
@@ -301,7 +303,9 @@ public class ExtratoPassageiroController implements Initializable {
                 AppLogger.warn("ExtratoPassageiroController", "Erro em ExtratoPassageiroController (bg buscar): " + e.getMessage());
                 javafx.application.Platform.runLater(() -> gui.util.AlertHelper.errorSafe("ExtratoPassageiroController", e));
             }
-        }).start();
+        });
+        t2.setDaemon(true);
+        t2.start();
     }
 
     private String dataDisplay(Passagem p, DateTimeFormatter dtf) {
@@ -450,14 +454,14 @@ public class ExtratoPassageiroController implements Initializable {
     // IMPRESSÃO TÉRMICA (AJUSTADA: DATAS, N° BILHETE, TÍTULO 2 VIA E CORREÇÃO DO R$ DUPLICADO)
     // ===========================================================================================
     private void imprimirReciboQuitacaoTermica(String nome, double valorPago, List<ItemExtratoPassageiro> itensPagos, String infoPagamento, LocalDateTime dataEmissao) {
-        new Thread(() -> {
+        Thread t3 = new Thread(() -> {
             PrinterJob job = PrinterJob.getPrinterJob();
             job.setJobName("Recibo - " + nome);
 
             double alturaNecessaria = 160 + (itensPagos.size() * 15) + 180;
             PageFormat pf = job.defaultPage();
             Paper paper = pf.getPaper();
-            double width80mm = 226; 
+            double width80mm = 226;
             paper.setSize(width80mm, alturaNecessaria);
             paper.setImageableArea(2, 2, width80mm - 4, alturaNecessaria - 4);
             pf.setPaper(paper);
@@ -572,7 +576,9 @@ public class ExtratoPassageiroController implements Initializable {
                     });
                 }
             }
-        }).start();
+        });
+        t3.setDaemon(true);
+        t3.start();
     }
 
     // ===========================================================================================
@@ -585,10 +591,10 @@ public class ExtratoPassageiroController implements Initializable {
             return;
         }
 
-        new Thread(() -> {
+        Thread t4 = new Thread(() -> {
             PrinterJob job = PrinterJob.getPrinterJob();
             job.setJobName("Extrato - " + cmbPassageiro.getEditor().getText());
-            
+
             // CORREÇÃO PRINCIPAL DO A4 BAGUNÇADO:
             // Força um novo PageFormat com tamanho A4, ignorando o padrão anterior da térmica
             PageFormat pf = job.defaultPage();
@@ -766,7 +772,9 @@ public class ExtratoPassageiroController implements Initializable {
                     });
                 }
             }
-        }).start();
+        });
+        t4.setDaemon(true);
+        t4.start();
     }
 
     private void drawRightAlignedString(Graphics2D g, String text, int x, int y) {

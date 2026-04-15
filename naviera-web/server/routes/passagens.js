@@ -61,6 +61,10 @@ router.get('/', async (req, res) => {
       params.push(viagem_id)
     }
     sql += ' ORDER BY p.numero_bilhete DESC'
+    // DP052: LIMIT para evitar datasets ilimitados
+    const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
+    const offset = parseInt(req.query.offset) || 0
+    sql += ` LIMIT ${limit} OFFSET ${offset}`
 
     const result = await pool.query(sql, params)
     res.json(result.rows)

@@ -865,13 +865,15 @@ public class RelatorioFretesController implements Initializable {
         paginas.add(paginaAtual);
         
         // Imprimir todas as pÃ¡ginas
+        rootPane.setDisable(true); // DP037: prevent interaction during print
         for (VBox p : paginas) {
             job.printPage(pageLayout, p);
         }
         job.endJob();
+        rootPane.setDisable(false); // DP037: re-enable after print
     }
-    
-    
+
+
     private VBox criarBlocoFrete(FreteCompleto frete, double larguraTotal) {
         VBox box = new VBox(0);
         box.setPrefWidth(larguraTotal);
@@ -1454,10 +1456,12 @@ public class RelatorioFretesController implements Initializable {
         paginas.add(paginaAtual);
         
         // Imprimir todas as pÃ¡ginas
+        rootPane.setDisable(true); // DP037: prevent interaction during print
         for (VBox p : paginas) {
             job.printPage(pageLayout, p);
         }
         job.endJob();
+        rootPane.setDisable(false); // DP037: re-enable after print
     }
 
     private String obterNomeEmpresa() {

@@ -21,5 +21,7 @@ public class Boleto {
     public String getParcelaStr() { return parcelaStr; }
     public Double getValor() { return valor; }
     public String getStatus() { return status; }
-    public String getValorFormatado() { return NumberFormat.getCurrencyInstance(new Locale("pt", "BR")).format(valor); }
+    // DP045: static final evita instanciar NumberFormat a cada chamada
+    private static final NumberFormat NF_MOEDA = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+    public String getValorFormatado() { return NF_MOEDA.format(valor); }
 }

@@ -241,7 +241,7 @@ router.get('/historico', async (req, res) => {
          FROM log_estornos_passagens l
          LEFT JOIN passagens p ON l.id_passagem = p.id_passagem
          WHERE l.empresa_id = $1 ${where}
-         ORDER BY l.data_hora DESC`, params
+         ORDER BY l.data_hora DESC LIMIT 200`, params
       ))
     }
     if (!tipo || tipo === 'encomenda') {
@@ -251,7 +251,7 @@ router.get('/historico', async (req, res) => {
          FROM log_estornos_encomendas l
          LEFT JOIN encomendas e ON l.id_encomenda = e.id_encomenda
          WHERE l.empresa_id = $1 ${where}
-         ORDER BY l.data_hora DESC`, params
+         ORDER BY l.data_hora DESC LIMIT 200`, params
       ))
     }
     if (!tipo || tipo === 'frete') {
@@ -261,14 +261,15 @@ router.get('/historico', async (req, res) => {
          FROM log_estornos_fretes l
          LEFT JOIN fretes f ON l.id_frete = f.id_frete
          WHERE l.empresa_id = $1 ${where}
-         ORDER BY l.data_hora DESC`, params
+         ORDER BY l.data_hora DESC LIMIT 200`, params
       ))
     }
 
     const results = await Promise.all(queries)
     const rows = results.flatMap(r => r.rows)
     rows.sort((a, b) => new Date(b.data_hora) - new Date(a.data_hora))
-    res.json(rows)
+    // DP052: LIMIT para evitar datasets ilimitados
+    res.json(rows.slice(0, 500))
   } catch (err) {
     console.error('[Estornos] Erro historico:', err.message)
     res.status(500).json({ error: 'Erro ao buscar historico de estornos' })

@@ -33,13 +33,18 @@ router.use(adminOnly)
 // GET /api/admin/empresas — list all empresas with stats
 router.get('/empresas', async (req, res) => {
   try {
+    // DP053: LEFT JOIN + GROUP BY em vez de subqueries correlacionadas (evita N+1)
     const result = await pool.query(`
       SELECT e.*,
-        (SELECT COUNT(*) FROM usuarios u WHERE u.empresa_id = e.id AND (u.excluido = FALSE OR u.excluido IS NULL)) AS total_usuarios,
-        (SELECT COUNT(*) FROM passagens p WHERE p.empresa_id = e.id) AS total_passagens,
-        (SELECT COUNT(*) FROM encomendas en WHERE en.empresa_id = e.id) AS total_encomendas,
-        (SELECT COUNT(*) FROM fretes f WHERE f.empresa_id = e.id) AS total_fretes
+        COALESCE(u.cnt, 0) AS total_usuarios,
+        COALESCE(p.cnt, 0) AS total_passagens,
+        COALESCE(en.cnt, 0) AS total_encomendas,
+        COALESCE(f.cnt, 0) AS total_fretes
       FROM empresas e
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM usuarios WHERE excluido = FALSE OR excluido IS NULL GROUP BY empresa_id) u ON u.empresa_id = e.id
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM passagens GROUP BY empresa_id) p ON p.empresa_id = e.id
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM encomendas GROUP BY empresa_id) en ON en.empresa_id = e.id
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM fretes GROUP BY empresa_id) f ON f.empresa_id = e.id
       ORDER BY e.nome
     `)
     res.json(result.rows)
@@ -182,37 +187,35 @@ router.get('/empresas/:id/stats', async (req, res) => {
 // GET /api/admin/metricas — platform-wide metrics
 router.get('/metricas', async (req, res) => {
   try {
-    const [totais, porEmpresa] = await Promise.all([
-      pool.query(`
-        SELECT
-          (SELECT COUNT(*) FROM empresas) AS total_empresas,
-          (SELECT COUNT(*) FROM usuarios WHERE excluido = FALSE OR excluido IS NULL) AS total_usuarios,
-          (SELECT COUNT(*) FROM passagens) AS total_passagens,
-          (SELECT COUNT(*) FROM encomendas) AS total_encomendas,
-          (SELECT COUNT(*) FROM fretes) AS total_fretes
-      `),
-      pool.query(`
-        SELECT
-          e.id, e.nome, e.slug, e.ativo,
-          (SELECT COUNT(*) FROM usuarios u WHERE u.empresa_id = e.id AND (u.excluido = FALSE OR u.excluido IS NULL)) AS total_usuarios,
-          (SELECT COUNT(*) FROM passagens p WHERE p.empresa_id = e.id) AS total_passagens,
-          (SELECT COUNT(*) FROM encomendas en WHERE en.empresa_id = e.id) AS total_encomendas,
-          (SELECT COUNT(*) FROM fretes f WHERE f.empresa_id = e.id) AS total_fretes
-        FROM empresas e
-        ORDER BY e.nome
-      `)
-    ])
+    // DP053: 1 query com LEFT JOIN (era 2 queries com 4 subqueries correlacionadas cada)
+    const porEmpresa = await pool.query(`
+      SELECT
+        e.id, e.nome, e.slug, e.ativo,
+        COALESCE(u.cnt, 0) AS total_usuarios,
+        COALESCE(p.cnt, 0) AS total_passagens,
+        COALESCE(en.cnt, 0) AS total_encomendas,
+        COALESCE(f.cnt, 0) AS total_fretes
+      FROM empresas e
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM usuarios WHERE excluido = FALSE OR excluido IS NULL GROUP BY empresa_id) u ON u.empresa_id = e.id
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM passagens GROUP BY empresa_id) p ON p.empresa_id = e.id
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM encomendas GROUP BY empresa_id) en ON en.empresa_id = e.id
+      LEFT JOIN (SELECT empresa_id, COUNT(*) AS cnt FROM fretes GROUP BY empresa_id) f ON f.empresa_id = e.id
+      ORDER BY e.nome
+    `)
 
-    const t = totais.rows[0]
+    // Totais derivados da soma por empresa (evita 5 full-table scans extras)
+    const rows = porEmpresa.rows
+    const totais = {
+      empresas: rows.length,
+      usuarios: rows.reduce((s, r) => s + parseInt(r.total_usuarios), 0),
+      passagens: rows.reduce((s, r) => s + parseInt(r.total_passagens), 0),
+      encomendas: rows.reduce((s, r) => s + parseInt(r.total_encomendas), 0),
+      fretes: rows.reduce((s, r) => s + parseInt(r.total_fretes), 0)
+    }
+
     res.json({
-      totais: {
-        empresas: parseInt(t.total_empresas),
-        usuarios: parseInt(t.total_usuarios),
-        passagens: parseInt(t.total_passagens),
-        encomendas: parseInt(t.total_encomendas),
-        fretes: parseInt(t.total_fretes)
-      },
-      por_empresa: porEmpresa.rows.map(r => ({
+      totais,
+      por_empresa: rows.map(r => ({
         id: r.id,
         nome: r.nome,
         slug: r.slug,

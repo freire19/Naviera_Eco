@@ -152,7 +152,7 @@ public class PassagemPrintHelper {
             try {
                 File f = new File(emp.pathLogo);
                 if (f.exists()) {
-                    ImageView logo = new ImageView(new Image(f.toURI().toString()));
+                    ImageView logo = new ImageView(ImageCache.get(emp.pathLogo)); // DP049: usa cache
                     logo.setFitWidth(70);
                     logo.setPreserveRatio(true);
                     headerBox.getChildren().add(logo);

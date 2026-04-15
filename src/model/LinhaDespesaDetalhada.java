@@ -19,4 +19,16 @@ public class LinhaDespesaDetalhada {
     public String getDescricao() { return descricao; }
     public String getCategoria() { return categoria; }
     public BigDecimal getValor() { return valor; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LinhaDespesaDetalhada that = (LinhaDespesaDetalhada) o;
+        return java.util.Objects.equals(data, that.data)
+            && java.util.Objects.equals(descricao, that.descricao)
+            && java.util.Objects.equals(categoria, that.categoria);
+    }
+    @Override
+    public int hashCode() { return java.util.Objects.hash(data, descricao, categoria); }
 }

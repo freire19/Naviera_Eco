@@ -76,20 +76,25 @@ export async function criarFreteComItens(client, empresaId, payload) {
 
   const freteId = result.rows[0].id_frete
 
-  // Inserir itens
-  if (itens && Array.isArray(itens)) {
-    for (const item of itens) {
-      await client.query(`
-        INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [
+  // DP054: batch insert em vez de loop individual
+  if (itens && Array.isArray(itens) && itens.length > 0) {
+    const values = []
+    const params = []
+    itens.forEach((item, i) => {
+      const off = i * 5
+      values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5})`)
+      params.push(
         freteId,
         item.nome_item || item.nome_item_ou_id_produto || null,
         item.quantidade || 1,
         item.preco_unitario || item.valor_unitario || 0,
         item.subtotal_item || item.subtotal || item.valor_total || 0
-      ])
-    }
+      )
+    })
+    await client.query(
+      `INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES ${values.join(', ')}`,
+      params
+    )
   }
 
   return result.rows[0]

@@ -278,8 +278,10 @@ public class RelatorioEncomendaGeralController implements Initializable {
             paginaAtual.getChildren().add(blocoTotais);
             adicionarRodape(paginaAtual, larguraUtil); paginas.add(paginaAtual);
 
+            rootPane.setDisable(true); // DP037: prevent interaction during print
             for (VBox p : paginas) { job.printPage(pageLayout, p); }
             job.endJob();
+            rootPane.setDisable(false); // DP037: re-enable after print
         }
     }
 
@@ -321,8 +323,10 @@ public class RelatorioEncomendaGeralController implements Initializable {
                 paginaAtual.getChildren().add(linha); alturaAtual += altLinha;
             }
             adicionarRodape(paginaAtual, larguraUtil); paginas.add(paginaAtual);
+            rootPane.setDisable(true); // DP037: prevent interaction during print
             for (VBox p : paginas) { job.printPage(pageLayout, p); }
             job.endJob();
+            rootPane.setDisable(false); // DP037: re-enable after print
         }
     }
 
@@ -407,8 +411,10 @@ public class RelatorioEncomendaGeralController implements Initializable {
             paginaAtual.getChildren().add(blocoTotais);
 
             adicionarRodape(paginaAtual, larguraUtil); paginas.add(paginaAtual);
+            rootPane.setDisable(true); // DP037: prevent interaction during print
             for (VBox p : paginas) { job.printPage(pageLayout, p); }
             job.endJob();
+            rootPane.setDisable(false); // DP037: re-enable after print
         }
     }
 
@@ -550,8 +556,10 @@ public class RelatorioEncomendaGeralController implements Initializable {
                 i++;
             }
             adicionarRodape(pagina, w); paginas.add(pagina);
+            rootPane.setDisable(true); // DP037: prevent interaction during print
             for (VBox pg : paginas) job.printPage(pageLayout, pg);
             job.endJob();
+            rootPane.setDisable(false); // DP037: re-enable after print
         }
     }
 

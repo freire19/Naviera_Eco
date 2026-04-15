@@ -24,6 +24,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
       WHERE v.empresa_id = $1
       ORDER BY v.data_viagem DESC
+      LIMIT 200
     `, [empresaId])
     res.json(result.rows)
   } catch (err) {

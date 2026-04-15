@@ -35,7 +35,7 @@ public class ReciboQuitacaoPassageiroDAO {
 
     public List<ReciboQuitacaoPassageiro> listarPorPassageiro(String nome) {
         List<ReciboQuitacaoPassageiro> lista = new ArrayList<>();
-        String sql = "SELECT * FROM historico_recibo_quitacao_passageiro WHERE empresa_id = ? AND nome_passageiro = ? ORDER BY data_pagamento DESC";
+        String sql = "SELECT id, nome_passageiro, data_pagamento, valor_total, forma_pagamento, itens_pagos FROM historico_recibo_quitacao_passageiro WHERE empresa_id = ? AND nome_passageiro = ? ORDER BY data_pagamento DESC";
         
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

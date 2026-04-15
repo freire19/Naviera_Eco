@@ -11,13 +11,17 @@ router.get('/', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT * FROM encomendas WHERE empresa_id = $1'
+    let sql = 'SELECT id_encomenda, id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, entregue, forma_pagamento, local_pagamento, doc_recebedor, nome_recebedor, rota, id_caixa, data_lancamento FROM encomendas WHERE empresa_id = $1'
     const params = [empresaId]
     if (viagem_id) {
       sql += ' AND id_viagem = $2'
       params.push(viagem_id)
     }
     sql += ' ORDER BY id_encomenda DESC'
+    // DP052: LIMIT para evitar datasets ilimitados
+    const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
+    const offset = parseInt(req.query.offset) || 0
+    sql += ` LIMIT ${limit} OFFSET ${offset}`
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -112,13 +116,19 @@ router.post('/', validate({ id_viagem: 'required|integer', destinatario: 'requir
     ])
 
     const encomendaId = result.rows[0].id_encomenda
-    if (itens && Array.isArray(itens)) {
-      for (const item of itens) {
-        await client.query(`
-          INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento)
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [encomendaId, item.quantidade || 1, item.descricao, item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null])
-      }
+    // DP054: batch insert em vez de loop individual
+    if (itens && Array.isArray(itens) && itens.length > 0) {
+      const values = []
+      const params = []
+      itens.forEach((item, i) => {
+        const off = i * 6
+        values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5}, $${off+6})`)
+        params.push(encomendaId, item.quantidade || 1, item.descricao, item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null)
+      })
+      await client.query(
+        `INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES ${values.join(', ')}`,
+        params
+      )
     }
 
     await client.query('COMMIT')

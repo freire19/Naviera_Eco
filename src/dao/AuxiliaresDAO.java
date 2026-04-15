@@ -98,14 +98,22 @@ public class AuxiliaresDAO {
                 }
             }
         }
-        cacheNomeParaId.put(tabela, nomeId);
-        cacheIdParaNome.put(tabela, idNome);
+        // DP040: segmentar cache por tenant para tabelas tenant-scoped
+        String key = cacheKey(tabela);
+        cacheNomeParaId.put(key, nomeId);
+        cacheIdParaNome.put(key, idNome);
+    }
+
+    /** DP040: gera chave de cache segmentada por tenant para tabelas tenant-scoped */
+    private static String cacheKey(String tabela) {
+        return isTenantScoped(tabela) ? tabela + ":" + DAOUtils.empresaId() : tabela;
     }
 
     /** Invalida o cache de uma tabela (apos insert/update/delete). */
     private static void invalidarCache(String tabela) {
-        cacheNomeParaId.remove(tabela);
-        cacheIdParaNome.remove(tabela);
+        String key = cacheKey(tabela);
+        cacheNomeParaId.remove(key);
+        cacheIdParaNome.remove(key);
     }
 
     /** Invalida todo o cache (para uso externo se necessario). */
@@ -127,7 +135,7 @@ public class AuxiliaresDAO {
             {"caixas", "nome_caixa", "id_caixa"}
         };
         for (String[] t : tabelas) {
-            if (!cacheIdParaNome.containsKey(t[0])) {
+            if (!cacheIdParaNome.containsKey(cacheKey(t[0]))) {
                 carregarCache(t[0], t[1], t[2]);
             }
         }
@@ -145,11 +153,12 @@ public class AuxiliaresDAO {
         validarTabela(tabela);
         validarColuna(tabela, colunaNome, colunaId);
 
-        // Tenta cache primeiro
-        Map<String, Integer> cache = cacheNomeParaId.get(tabela);
+        // Tenta cache primeiro (DP040: chave segmentada por tenant)
+        String key = cacheKey(tabela);
+        Map<String, Integer> cache = cacheNomeParaId.get(key);
         if (cache == null) {
             carregarCache(tabela, colunaNome, colunaId);
-            cache = cacheNomeParaId.get(tabela);
+            cache = cacheNomeParaId.get(key);
         }
         if (cache != null) {
             Integer id = cache.get(valorNome.toLowerCase().trim());
@@ -187,10 +196,12 @@ public class AuxiliaresDAO {
         validarTabela(tabela);
         validarColuna(tabela, colunaNome, colunaId);
 
-        Map<Integer, String> cache = cacheIdParaNome.get(tabela);
+        // DP040: chave segmentada por tenant
+        String key = cacheKey(tabela);
+        Map<Integer, String> cache = cacheIdParaNome.get(key);
         if (cache == null) {
             carregarCache(tabela, colunaNome, colunaId);
-            cache = cacheIdParaNome.get(tabela);
+            cache = cacheIdParaNome.get(key);
         }
         if (cache != null) {
             String nome = cache.get(id);

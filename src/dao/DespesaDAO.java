@@ -39,7 +39,7 @@ public class DespesaDAO {
         params.add(DAOUtils.empresaId());
 
         addFiltrosComuns(sql, params, "s.", idViagem, dataFiltro, categoriaFiltro, formaFiltro, apenasNaoBoletos);
-        sql.append(" ORDER BY s.data_vencimento DESC");
+        sql.append(" ORDER BY s.data_vencimento DESC LIMIT 500");
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {
@@ -383,7 +383,7 @@ public class DespesaDAO {
         params.add(DAOUtils.empresaId());
 
         addFiltrosComuns(sql, params, "", idViagem, dataFiltro, null, null, false);
-        sql.append(" ORDER BY data_vencimento ASC");
+        sql.append(" ORDER BY data_vencimento ASC LIMIT 500");
 
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql.toString())) {

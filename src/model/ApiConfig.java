@@ -29,6 +29,17 @@ public class ApiConfig {
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ApiConfig that = (ApiConfig) o;
+        return id == that.id;
+    }
+
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
+
     // D020: toString NAO expoe apiKey
     @Override
     public String toString() {

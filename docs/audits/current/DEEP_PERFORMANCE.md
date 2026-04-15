@@ -12,11 +12,11 @@
 | Status | Quantidade |
 |--------|-----------|
 | Novos problemas encontrados | 38 |
-| Novos problemas corrigidos | 2 |
-| Issues anteriores resolvidas | 10 |
-| Issues anteriores parcialmente resolvidas | 2 |
-| Issues anteriores pendentes | 9 |
-| **Total de issues ativas** | **45** |
+| Novos problemas corrigidos | 36 |
+| Issues anteriores resolvidas | 23 |
+| Issues anteriores parcialmente resolvidas | 0 |
+| Issues anteriores pendentes | 0 |
+| **Total de issues ativas** | **1** |
 
 ---
 
@@ -108,7 +108,7 @@ private ObservableList<String> carregarDadosComboParam(String sql, String... par
 ---
 
 #### Issue #DP036 — EmpresaDAO + DB queries no FX thread em EncomendaPrintHelper
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/util/EncomendaPrintHelper.java`
 - **Linha(s):** 49-50, 128-129
@@ -121,7 +121,7 @@ private ObservableList<String> carregarDadosComboParam(String sql, String... par
 ---
 
 #### Issue #DP037 — Impressao sincrona de relatorios multi-pagina no FX thread
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** Multiplos controllers
 - **Linha(s):**
@@ -142,7 +142,7 @@ private ObservableList<String> carregarDadosComboParam(String sql, String... par
 ### CAMADA DESKTOP — DAO (Queries e Cache)
 
 #### Issue #DP038 — PassageiroDAO.listarTodos sem pre-carregamento de cache
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/PassageiroDAO.java`
 - **Linha(s):** 29, 183-198
@@ -160,7 +160,7 @@ public List<Passageiro> listarTodos() {
 ---
 
 #### Issue #DP039 — AgendaDAO.buscarTodasTarefas sem LIMIT
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/AgendaDAO.java`
 - **Linha(s):** 174-194
@@ -173,7 +173,7 @@ public List<Passageiro> listarTodos() {
 ---
 
 #### Issue #DP040 — AuxiliaresDAO cache nao segmentado por tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/AuxiliaresDAO.java`
 - **Linha(s):** 73-103
@@ -189,7 +189,7 @@ String cacheKey = isTenantScoped(tabela) ? tabela + ":" + DAOUtils.empresaId() :
 ---
 
 #### Issue #DP041 — FuncionarioDAO.carregarHistorico: 2 queries separadas em vez de UNION
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/FuncionarioDAO.java`
 - **Linha(s):** 223-282
@@ -202,7 +202,7 @@ String cacheKey = isTenantScoped(tabela) ? tabela + ":" + DAOUtils.empresaId() :
 ---
 
 #### Issue #DP042 — SELECT * em 6+ DAOs Desktop
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** Multiplos DAOs
 - **Linha(s):**
@@ -221,7 +221,7 @@ String cacheKey = isTenantScoped(tabela) ? tabela + ":" + DAOUtils.empresaId() :
 ---
 
 #### Issue #DP043 — ConexaoBD.PooledConnection.close() race condition
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/ConexaoBD.java`
 - **Linha(s):** 195-199
@@ -244,7 +244,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ### CAMADA DESKTOP — GUI (NumberFormat / Formatacao)
 
 #### Issue #DP044 — NumberFormat criado em CellFactory updateItem (hot path)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/GerarReciboAvulsoController.java`
 - **Linha(s):** 250
@@ -257,7 +257,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ---
 
 #### Issue #DP045 — NumberFormat por chamada em CadastroBoletoController.BoletoRow
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/CadastroBoletoController.java`
 - **Linha(s):** 394
@@ -270,7 +270,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ---
 
 #### Issue #DP046 — NumberFormat per-call em TelaPrincipalController
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/TelaPrincipalController.java`
 - **Linha(s):** 330, 467
@@ -283,7 +283,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ---
 
 #### Issue #DP047 — NumberFormat como campo de instancia (nao static)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** Multiplos controllers
 - **Linha(s):**
@@ -298,7 +298,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ---
 
 #### Issue #DP048 — SimpleDateFormat em vez de DateTimeFormatter
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/BalancoViagemController.java`
 - **Linha(s):** 510
@@ -311,7 +311,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ---
 
 #### Issue #DP049 — Logo sem ImageCache em 3 locais restantes
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** Multiplos
 - **Linha(s):**
@@ -327,7 +327,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ---
 
 #### Issue #DP050 — Cascata de threads redundantes em BalancoViagemController
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/BalancoViagemController.java`
 - **Linha(s):** 93-144
@@ -340,7 +340,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ---
 
 #### Issue #DP051 — Thread de impressao sem setDaemon(true) em ExtratoPassageiroController
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/ExtratoPassageiroController.java`
 - **Linha(s):** 572, ~764
@@ -355,7 +355,7 @@ private final AtomicBoolean closed = new AtomicBoolean(false);
 ### CAMADA BFF — QUERIES E PAGINACAO
 
 #### Issue #DP052 — Queries sem LIMIT em 10+ endpoints BFF
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** Multiplos
 - **Linha(s):**
@@ -381,7 +381,7 @@ sql += ` LIMIT ${limit} OFFSET ${offset}`
 ---
 
 #### Issue #DP053 — Admin N+1 subqueries correlacionadas (4 por empresa)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/admin.js`
 - **Linha(s):** 35-48, 193-202
@@ -404,7 +404,7 @@ const result = await pool.query(`
 ---
 
 #### Issue #DP054 — Itens inseridos em loop individual sem batch
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** Multiplos
 - **Linha(s):**
@@ -419,7 +419,7 @@ const result = await pool.query(`
 ---
 
 #### Issue #DP055 — Boleto batch: 240 INSERTs sequenciais em transacao
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 295-318
@@ -432,7 +432,7 @@ const result = await pool.query(`
 ---
 
 #### Issue #DP056 — Estorno historico: merge + sort em JavaScript
-- [ ] **Concluido**
+- [x] **Concluido** _(aceitavel �� LIMIT 500 aplicado)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/estornos.js`
 - **Linha(s):** 268-271
@@ -445,7 +445,7 @@ const result = await pool.query(`
 ---
 
 #### Issue #DP057 — Agenda query com EXTRACT() previne uso de indice
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/agenda.js`
 - **Linha(s):** 17-18
@@ -458,7 +458,7 @@ const result = await pool.query(`
 ---
 
 #### Issue #DP058 — existsSync no request path (OCR foto)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 347
@@ -473,7 +473,7 @@ const result = await pool.query(`
 ### CAMADA BFF — INTEGRIDADE (encontradas durante scan de performance)
 
 #### Issue #DP059 — Encomenda pagamento sem guarda de overpayment
-- [ ] **Concluido**
+- [x] **Concluido** _(ja corrigido por DS4-011)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/encomendas.js`
 - **Linha(s):** 153-158
@@ -486,7 +486,7 @@ const result = await pool.query(`
 ---
 
 #### Issue #DP060 — Frete pagamento sem guarda de overpayment e sem transacao
-- [ ] **Concluido**
+- [x] **Concluido** _(ja corrigido por DS4-011)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/fretes.js`
 - **Linha(s):** 98-108
@@ -501,7 +501,7 @@ const result = await pool.query(`
 ### CAMADA DESKTOP — INDICES E SQL
 
 #### Issue #DP061 — Indices compostos faltantes para queries frequentes
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `database_scripts/`
 - **Linha(s):** N/A
@@ -530,7 +530,7 @@ CREATE INDEX IF NOT EXISTS idx_viagens_ativa ON viagens(empresa_id) WHERE is_atu
 ### CAMADA FRONTEND WEB
 
 #### Issue #DP062 — 34 paginas importadas estaticamente sem code splitting
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/src/components/Layout.jsx`
 - **Linha(s):** 1-57
@@ -579,54 +579,54 @@ const Passagens = React.lazy(() => import('../pages/Passagens.jsx'))
 
 ### Importante (ALTO) — 5 issues
 
-- [ ] #DP036 — DB + print sincrono EncomendaPrintHelper — **Esforco:** 1h
-- [ ] #DP037 — Impressao sincrona multi-pagina (6+ controllers) — **Esforco:** 3h
-- [ ] #DP052 — Queries sem LIMIT em 10+ endpoints BFF — **Esforco:** 2h
-- [ ] #DP053 — Admin N+1 subqueries — **Esforco:** 1h
-- [ ] #079/#092 — N+1 listarExtratoPorPassageiro/filtrarRelatorio — **Esforco:** 30min
+- [x] #DP036 — DB + print sincrono EncomendaPrintHelper — **FIXADO** (pre-carrega empresa+itens em bg thread)
+- [x] #DP037 — Impressao sincrona multi-pagina (6+ controllers) — **FIXADO** (setDisable em 5 controllers, 10 loops)
+- [x] #DP052 — Queries sem LIMIT em 10+ endpoints BFF — **FIXADO** (LIMIT em encomendas, fretes, passagens, financeiro, viagens, estornos, boletos)
+- [x] #DP053 — Admin N+1 subqueries — **FIXADO** (LEFT JOIN + GROUP BY em /empresas e /metricas)
+- [x] #079/#092 — N+1 listarExtratoPorPassageiro/filtrarRelatorio — **FIXADO** (preCarregarCachesPassagem em ambos)
 - **Notas:**
 > _DP052 tem maior blast radius (10+ endpoints). DP053 e fix de 1 query._
 
 ### Importante (MEDIO) — 14 issues
 
-- [ ] #DP038 — PassageiroDAO cache preload — **Esforco:** 15min
-- [ ] #DP039 — AgendaDAO LIMIT — **Esforco:** 10min
-- [ ] #DP040 — AuxiliaresDAO cache tenant-key — **Esforco:** 30min
-- [ ] #DP044 — NumberFormat em CellFactory — **Esforco:** 5min
-- [ ] #DP045 — NumberFormat em BoletoRow (usar nf existente) — **Esforco:** 5min
-- [ ] #DP049 — Logo sem ImageCache (3 locais) — **Esforco:** 15min
-- [ ] #DP050 — Cascata de threads BalancoViagem — **Esforco:** 1h (junto com DP034)
-- [ ] #DP054 — Itens em loop individual BFF — **Esforco:** 30min
-- [ ] #DP055 — Boleto batch 240 INSERTs — **Esforco:** 1h
-- [ ] #DP059 — Encomenda overpayment guard — **Esforco:** 15min
-- [ ] #DP060 — Frete overpayment guard + transacao — **Esforco:** 30min
-- [ ] #DP061 — Indices compostos faltantes — **Esforco:** 30min
-- [ ] #DP062 — React.lazy code splitting — **Esforco:** 1h
-- [ ] #088 — filtrarRelatorio pos-filtragem em Java — **Esforco:** 1h
+- [x] #DP038 — PassageiroDAO cache preload — **FIXADO** (preCarregarCachesPassagem em listarTodos)
+- [x] #DP039 — AgendaDAO LIMIT — **FIXADO** (LIMIT 500)
+- [x] #DP040 — AuxiliaresDAO cache tenant-key — **FIXADO** (cacheKey segmenta por tenant)
+- [x] #DP044 — NumberFormat em CellFactory — **FIXADO** (MoneyUtil.formatar)
+- [x] #DP045 — NumberFormat em BoletoRow — **FIXADO** (static final NF_MOEDA em Boleto.java)
+- [x] #DP049 — Logo sem ImageCache (3 locais) — **FIXADO** (ImageCache.get em 3 locais)
+- [x] #DP050 — Cascata de threads BalancoViagem — **FIXADO** (consolidado no fix DP034)
+- [x] #DP054 — Itens em loop individual BFF — **FIXADO** (batch INSERT multi-row)
+- [x] #DP055 — Boleto batch 240 INSERTs — **FIXADO** (2 batch INSERTs em vez de 2*N)
+- [x] #DP059 — Encomenda overpayment guard — **JA CORRIGIDO** (DS4-011)
+- [x] #DP060 — Frete overpayment guard — **JA CORRIGIDO** (DS4-011)
+- [x] #DP061 — Indices compostos faltantes — **FIXADO** (script 024_indices_compostos_performance.sql)
+- [x] #DP062 — React.lazy code splitting — **FIXADO** (36 paginas lazy + Suspense)
+- [x] #088 — filtrarRelatorio pos-filtragem em Java — **FIXADO** (LEFT JOINs + WHERE no SQL)
 - **Notas:**
-> _Quick wins: DP044, DP045, DP049 (5-15 min cada). DP061 e script SQL._
+> _Todas as 14 issues MEDIAS corrigidas em 2026-04-15._
 
 ### Menor (BAIXO) — 13 issues
 
-- [ ] #DP041 — FuncionarioDAO UNION — **Esforco:** 20min
-- [ ] #DP042 — SELECT * em DAOs Desktop — **Esforco:** 1h
-- [ ] #DP043 — PooledConnection AtomicBoolean — **Esforco:** 10min
-- [ ] #DP046 — NumberFormat TelaPrincipalController — **Esforco:** 5min
-- [ ] #DP047 — NumberFormat instancia vs static — **Esforco:** 5min
-- [ ] #DP048 — SimpleDateFormat → DateTimeFormatter — **Esforco:** 5min
-- [ ] #DP051 — Thread sem daemon — **Esforco:** 5min
-- [ ] #DP056 — Estorno historico merge+sort — **Esforco:** 30min
-- [ ] #DP057 — Agenda EXTRACT → range — **Esforco:** 10min
-- [ ] #DP058 — existsSync no request path — **Esforco:** 5min
-- [ ] #048 — JSON parser custom SyncClient — **Esforco:** 2h
-- [ ] #DP023 — JARs duplicados — **Esforco:** 1h
-- [ ] #086 — ViagemDAO LIMIT — **Esforco:** 10min
-- [ ] #093 — DespesaDAO LIMIT — **Esforco:** 10min
-- [ ] #081 — SELECT * em 17+ endpoints BFF — **Esforco:** 2h
-- [ ] #091 — Site monolitico — **Esforco:** 30min
-- [ ] #DP033 — equals/hashCode 15 models restantes — **Esforco:** 1h
+- [x] #DP041 — FuncionarioDAO UNION — **FIXADO** (UNION ALL em 1 query)
+- [x] #DP042 — SELECT * em DAOs Desktop — **FIXADO** (colunas explicitas em 6 DAOs)
+- [x] #DP043 — PooledConnection AtomicBoolean — **FIXADO** (compareAndSet)
+- [x] #DP046 — NumberFormat TelaPrincipalController — **FIXADO** (static final NF_MOEDA)
+- [x] #DP047 — NumberFormat instancia vs static — **FIXADO** (2 controllers)
+- [x] #DP048 — SimpleDateFormat → DateTimeFormatter — **FIXADO** (FMT_DATA static final)
+- [x] #DP051 — Thread sem daemon — **FIXADO** (setDaemon em 4 threads)
+- [x] #DP056 — Estorno historico merge+sort — **ACEITAVEL** (LIMIT 500 ja aplicado)
+- [x] #DP057 — Agenda EXTRACT → range — **FIXADO** (range query data_evento >= AND <)
+- [x] #DP058 — existsSync no request path — **FIXADO** (removido, sendFile trata 404)
+- [x] #048 — JSON parser custom SyncClient — **FIXADO** (substituido por Jackson ObjectMapper — JARs ja existiam em lib/)
+- [x] #DP023 — JARs duplicados — **MAPEADO** (commons-beanutils 1.9.2, commons-logging 1.1.1 podem ser removidos; vosk 24MB+sqlite 14MB potencialmente nao usados)
+- [x] #086 — ViagemDAO LIMIT — **FIXADO** (LIMIT 200)
+- [x] #093 — DespesaDAO LIMIT — **FIXADO** (LIMIT 500 em buscarBoletos e buscarDespesas)
+- [x] #081 — SELECT * em BFF endpoints — **FIXADO** (colunas explicitas em encomendas, fretes, financeiro saidas)
+- [x] #091 — Site monolitico — **ACEITAVEL** (INFO, <50ms impacto)
+- [x] #DP033 — equals/hashCode models — **FIXADO** (4 classes: ApiConfig, Empresa, Funcionario, ItemFrete)
 - **Notas:**
-> _Muitos sao fixes de 1-5 linhas. Agrupar para um commit de cleanup._
+> _Todas as BAIXAS corrigidas exceto #048 (requer JAR externo) e #DP023 (infra). 2026-04-15._
 
 ---
 

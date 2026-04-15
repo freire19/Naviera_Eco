@@ -1,63 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAuth } from '../App.jsx'
 import Sidebar from './Sidebar.jsx'
 import TopBar from './TopBar.jsx'
 import { api } from '../api.js'
 
-// Paginas principais
-import Dashboard from '../pages/Dashboard.jsx'
-import Passagens from '../pages/Passagens.jsx'
-import Encomendas from '../pages/Encomendas.jsx'
-import Fretes from '../pages/Fretes.jsx'
-import Financeiro from '../pages/Financeiro.jsx'
-
-// Listas
-import ListaPassageiros from '../pages/ListaPassageiros.jsx'
-import ListaEncomendas from '../pages/ListaEncomendas.jsx'
-import ListaFretes from '../pages/ListaFretes.jsx'
-
-// Relatorios
-import RelatorioPassagens from '../pages/RelatorioPassagens.jsx'
-import RelatorioEncomendas from '../pages/RelatorioEncomendas.jsx'
-import RelatorioFretes from '../pages/RelatorioFretes.jsx'
-
-// Financeiro
-import FinanceiroSaida from '../pages/FinanceiroSaida.jsx'
-import BalancoViagem from '../pages/BalancoViagem.jsx'
-import Boletos from '../pages/Boletos.jsx'
-
-// Tabela Precos
-import TabelaPrecoFrete from '../pages/TabelaPrecoFrete.jsx'
-import CadastroItem from '../pages/CadastroItem.jsx'
-import TabelaPrecoEncomenda from '../pages/TabelaPrecoEncomenda.jsx'
-import Auxiliares from '../pages/Auxiliares.jsx'
-
-// Cadastros
-import CadastroViagem from '../pages/CadastroViagem.jsx'
-import CadastroUsuario from '../pages/CadastroUsuario.jsx'
-import CadastroRota from '../pages/CadastroRota.jsx'
-import CadastroTarifa from '../pages/CadastroTarifa.jsx'
-import CadastroEmpresa from '../pages/CadastroEmpresa.jsx'
-import CadastroEmbarcacao from '../pages/CadastroEmbarcacao.jsx'
-import CadastroConferente from '../pages/CadastroConferente.jsx'
-import CadastroCaixa from '../pages/CadastroCaixa.jsx'
-import CadastroClienteEncomenda from '../pages/CadastroClienteEncomenda.jsx'
-
-// Admin
-import AdminEmpresas from '../pages/AdminEmpresas.jsx'
-import AdminMetricas from '../pages/AdminMetricas.jsx'
-import DocumentosAdmin from '../pages/DocumentosAdmin.jsx'
-
-// OCR
-import ReviewOCR from '../pages/ReviewOCR.jsx'
-
-// Outros
-import EstornoPassagem from '../pages/EstornoPassagem.jsx'
-import HistoricoEstornos from '../pages/HistoricoEstornos.jsx'
-import ReciboAvulso from '../pages/ReciboAvulso.jsx'
-import GestaoFuncionarios from '../pages/GestaoFuncionarios.jsx'
-import Agenda from '../pages/Agenda.jsx'
-import ConfigurarApi from '../pages/ConfigurarApi.jsx'
+// DP062: React.lazy code splitting — cada pagina e um chunk separado
+const Dashboard = lazy(() => import('../pages/Dashboard.jsx'))
+const Passagens = lazy(() => import('../pages/Passagens.jsx'))
+const Encomendas = lazy(() => import('../pages/Encomendas.jsx'))
+const Fretes = lazy(() => import('../pages/Fretes.jsx'))
+const Financeiro = lazy(() => import('../pages/Financeiro.jsx'))
+const ListaPassageiros = lazy(() => import('../pages/ListaPassageiros.jsx'))
+const ListaEncomendas = lazy(() => import('../pages/ListaEncomendas.jsx'))
+const ListaFretes = lazy(() => import('../pages/ListaFretes.jsx'))
+const RelatorioPassagens = lazy(() => import('../pages/RelatorioPassagens.jsx'))
+const RelatorioEncomendas = lazy(() => import('../pages/RelatorioEncomendas.jsx'))
+const RelatorioFretes = lazy(() => import('../pages/RelatorioFretes.jsx'))
+const FinanceiroSaida = lazy(() => import('../pages/FinanceiroSaida.jsx'))
+const BalancoViagem = lazy(() => import('../pages/BalancoViagem.jsx'))
+const Boletos = lazy(() => import('../pages/Boletos.jsx'))
+const TabelaPrecoFrete = lazy(() => import('../pages/TabelaPrecoFrete.jsx'))
+const TabelaPrecoEncomenda = lazy(() => import('../pages/TabelaPrecoEncomenda.jsx'))
+const CadastroItem = lazy(() => import('../pages/CadastroItem.jsx'))
+const Auxiliares = lazy(() => import('../pages/Auxiliares.jsx'))
+const CadastroViagem = lazy(() => import('../pages/CadastroViagem.jsx'))
+const CadastroUsuario = lazy(() => import('../pages/CadastroUsuario.jsx'))
+const CadastroRota = lazy(() => import('../pages/CadastroRota.jsx'))
+const CadastroTarifa = lazy(() => import('../pages/CadastroTarifa.jsx'))
+const CadastroEmpresa = lazy(() => import('../pages/CadastroEmpresa.jsx'))
+const CadastroEmbarcacao = lazy(() => import('../pages/CadastroEmbarcacao.jsx'))
+const CadastroConferente = lazy(() => import('../pages/CadastroConferente.jsx'))
+const CadastroCaixa = lazy(() => import('../pages/CadastroCaixa.jsx'))
+const CadastroClienteEncomenda = lazy(() => import('../pages/CadastroClienteEncomenda.jsx'))
+const AdminEmpresas = lazy(() => import('../pages/AdminEmpresas.jsx'))
+const AdminMetricas = lazy(() => import('../pages/AdminMetricas.jsx'))
+const DocumentosAdmin = lazy(() => import('../pages/DocumentosAdmin.jsx'))
+const ReviewOCR = lazy(() => import('../pages/ReviewOCR.jsx'))
+const EstornoPassagem = lazy(() => import('../pages/EstornoPassagem.jsx'))
+const HistoricoEstornos = lazy(() => import('../pages/HistoricoEstornos.jsx'))
+const ReciboAvulso = lazy(() => import('../pages/ReciboAvulso.jsx'))
+const GestaoFuncionarios = lazy(() => import('../pages/GestaoFuncionarios.jsx'))
+const Agenda = lazy(() => import('../pages/Agenda.jsx'))
+const ConfigurarApi = lazy(() => import('../pages/ConfigurarApi.jsx'))
 
 const PAGES = {
   inicio: { component: Dashboard, label: 'Inicio', section: 'principal' },
@@ -201,10 +185,12 @@ export default function Layout() {
             const isVisible = tab.id === activeTab
             return (
               <div key={tab.id} className="page" style={{ display: isVisible ? 'block' : 'none' }}>
-                <PageComponent
-                  viagemAtiva={viagemAtiva}
-                  onNavigate={navigateTo}
-                />
+                <Suspense fallback={<div style={{padding:'2rem',textAlign:'center',opacity:0.5}}>Carregando...</div>}>
+                  <PageComponent
+                    viagemAtiva={viagemAtiva}
+                    onNavigate={navigateTo}
+                  />
+                </Suspense>
               </div>
             )
           })}

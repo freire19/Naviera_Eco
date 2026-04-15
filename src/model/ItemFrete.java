@@ -61,6 +61,17 @@ public class ItemFrete {
     public void setUnidadeMedida(String unidadeMedida) { this.unidadeMedida = unidadeMedida; }
     
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ItemFrete that = (ItemFrete) o;
+        return idItemFrete == that.idItemFrete;
+    }
+
+    @Override
+    public int hashCode() { return Integer.hashCode(idItemFrete); }
+
+    @Override
     public String toString() {
         // DR128: retorna string vazia se nomeItem for null (evita NPE em ComboBox/ListView)
         return nomeItem != null ? nomeItem : "";

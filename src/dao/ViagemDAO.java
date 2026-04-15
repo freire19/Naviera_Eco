@@ -291,7 +291,8 @@ public class ViagemDAO {
                      "LEFT JOIN rotas r ON v.id_rota = r.id " +
                      "LEFT JOIN aux_horarios_saida ahs ON v.id_horario_saida = ahs.id_horario_saida " +
                      "WHERE v.empresa_id = ? " +
-                     "ORDER BY v.data_viagem DESC, ahs.descricao_horario_saida DESC";
+                     "ORDER BY v.data_viagem DESC, ahs.descricao_horario_saida DESC " +
+                     "LIMIT 200";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

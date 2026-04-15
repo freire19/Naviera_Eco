@@ -9,6 +9,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import util.AppLogger;
 
 /**
@@ -184,8 +185,8 @@ public class ConexaoBD {
     private static class PooledConnection implements Connection {
 
         private final Connection real;
-        // DR222: volatile para visibilidade entre threads
-        private volatile boolean closed = false;
+        // DP043: AtomicBoolean.compareAndSet eliminates check-then-act race
+        private final AtomicBoolean closed = new AtomicBoolean(false);
 
         PooledConnection(Connection real) {
             this.real = real;
@@ -193,13 +194,12 @@ public class ConexaoBD {
 
         @Override
         public void close() throws SQLException {
-            if (!closed) {
-                closed = true;
+            if (closed.compareAndSet(false, true)) {
                 ConexaoBD.devolver(real);
             }
         }
 
-        @Override public boolean isClosed() throws SQLException { return closed || real.isClosed(); }
+        @Override public boolean isClosed() throws SQLException { return closed.get() || real.isClosed(); }
         @Override public Statement createStatement() throws SQLException { return real.createStatement(); }
         @Override public PreparedStatement prepareStatement(String sql) throws SQLException { return real.prepareStatement(sql); }
         @Override public CallableStatement prepareCall(String sql) throws SQLException { return real.prepareCall(sql); }
