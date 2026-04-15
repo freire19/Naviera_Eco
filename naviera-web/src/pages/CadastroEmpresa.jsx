@@ -1,28 +1,13 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api.js'
 
-const CAMPOS = [
-  { key: 'companhia', label: 'Nome da Empresa' },
-  { key: 'cnpj', label: 'CNPJ' },
-  { key: 'ie', label: 'IE' },
-  { key: 'proprietario', label: 'Proprietario' },
-  { key: 'gerente', label: 'Gerente' },
-  { key: 'comandante', label: 'Comandante' },
-  { key: 'nome_embarcacao', label: 'Embarcacao' },
-  { key: 'origem_padrao', label: 'Origem Padrao' },
-  { key: 'linha_rio_padrao', label: 'Linha/Rio' },
-  { key: 'telefone', label: 'Telefone' },
-  { key: 'endereco', label: 'Endereco' },
-  { key: 'cep', label: 'CEP' },
-  { key: 'frase_relatorio', label: 'Frase Relatorio', type: 'textarea' },
-  { key: 'recomendacoes_bilhete', label: 'Recomendacoes Bilhete', type: 'textarea' },
-]
-
 export default function CadastroEmpresa() {
-  const [empresa, setEmpresa] = useState(null)
+  const [form, setForm] = useState({
+    companhia: '', nome_embarcacao: '', comandante: '', proprietario: '',
+    origem_padrao: '', gerente: '', linha_rio_padrao: '', cnpj: '', ie: '',
+    endereco: '', cep: '', telefone: '', frase_relatorio: '', recomendacoes_bilhete: ''
+  })
   const [loading, setLoading] = useState(false)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [form, setForm] = useState({})
   const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -35,8 +20,12 @@ export default function CadastroEmpresa() {
     setLoading(true)
     api.get('/cadastros/empresa')
       .then(data => {
-        const emp = Array.isArray(data) ? data[0] || null : data || null
-        setEmpresa(emp)
+        const emp = Array.isArray(data) ? data[0] || {} : data || {}
+        setForm(prev => {
+          const f = { ...prev }
+          Object.keys(f).forEach(k => { f[k] = emp[k] || '' })
+          return f
+        })
       })
       .catch(() => showToast('Erro ao carregar dados da empresa', 'error'))
       .finally(() => setLoading(false))
@@ -44,28 +33,23 @@ export default function CadastroEmpresa() {
 
   useEffect(() => { carregar() }, [])
 
-  function abrirEditar() {
-    setForm(empresa ? { ...empresa } : {})
-    setModalAberto(true)
-  }
-
-  function fecharModal() {
-    setModalAberto(false)
-    setForm({})
-  }
-
   function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
-  async function handleSalvar(e) {
-    e.preventDefault()
+  function handleLimpar() {
+    setForm({
+      companhia: '', nome_embarcacao: '', comandante: '', proprietario: '',
+      origem_padrao: '', gerente: '', linha_rio_padrao: '', cnpj: '', ie: '',
+      endereco: '', cep: '', telefone: '', frase_relatorio: '', recomendacoes_bilhete: ''
+    })
+  }
+
+  async function handleSalvar() {
     setSalvando(true)
     try {
       await api.put('/cadastros/empresa', form)
       showToast('Dados da empresa atualizados')
-      fecharModal()
       carregar()
     } catch (err) {
       showToast(err.message || 'Erro ao salvar', 'error')
@@ -74,74 +58,66 @@ export default function CadastroEmpresa() {
     }
   }
 
-  const camposVisiveis = ['companhia', 'cnpj', 'proprietario', 'telefone', 'endereco', 'gerente', 'comandante', 'nome_embarcacao']
+  if (loading) return <div className="card"><p>Carregando...</p></div>
 
   return (
     <div className="card">
-      <div className="card-header">
-        <h2>Dados da Empresa</h2>
-        <div className="toolbar">
-          <button className="btn-primary" onClick={abrirEditar}>Editar</button>
+      <h2 style={{ textAlign: 'center', marginBottom: 20 }}>Configuracoes da Empresa & Bilhete</h2>
+
+      <div className="cadastro-form-4col">
+        <label>Companhia:</label>
+        <input type="text" name="companhia" value={form.companhia} onChange={handleChange} />
+
+        <label>Embarcacao:</label>
+        <input type="text" name="nome_embarcacao" value={form.nome_embarcacao} onChange={handleChange} />
+
+        <label>Comandante:</label>
+        <input type="text" name="comandante" value={form.comandante} onChange={handleChange} />
+
+        <label>Proprietario:</label>
+        <input type="text" name="proprietario" value={form.proprietario} onChange={handleChange} />
+
+        <label>Origem:</label>
+        <input type="text" name="origem_padrao" value={form.origem_padrao} onChange={handleChange} />
+
+        <label>Gerente:</label>
+        <input type="text" name="gerente" value={form.gerente} onChange={handleChange} />
+
+        <label>Linha/Rio:</label>
+        <input type="text" name="linha_rio_padrao" value={form.linha_rio_padrao} onChange={handleChange} />
+
+        <label>CNPJ:</label>
+        <input type="text" name="cnpj" value={form.cnpj} onChange={handleChange} />
+
+        <label>IE:</label>
+        <input type="text" name="ie" value={form.ie} onChange={handleChange} />
+
+        <label>Endereco:</label>
+        <input type="text" name="endereco" value={form.endereco} onChange={handleChange} />
+
+        <label>CEP:</label>
+        <input type="text" name="cep" value={form.cep} onChange={handleChange} />
+
+        <label>Telefone:</label>
+        <input type="text" name="telefone" value={form.telefone} onChange={handleChange} />
+
+        <div className="full-row">
+          <label>Frase Rodape:</label>
+          <input type="text" name="frase_relatorio" value={form.frase_relatorio} onChange={handleChange} />
+        </div>
+
+        <div className="full-row" style={{ alignItems: 'start' }}>
+          <label style={{ paddingTop: 8 }}>Regras/Avisos do Bilhete:</label>
+          <textarea name="recomendacoes_bilhete" value={form.recomendacoes_bilhete} onChange={handleChange} rows={4} />
         </div>
       </div>
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Empresa</th>
-              <th>CNPJ</th>
-              <th>Proprietario</th>
-              <th>Telefone</th>
-              <th>Endereco</th>
-              <th>Gerente</th>
-              <th>Comandante</th>
-              <th>Embarcacao</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="8">Carregando...</td></tr>
-            ) : !empresa || !empresa.companhia ? (
-              <tr><td colSpan="8">Nenhum dado cadastrado. Clique em "Editar" para configurar.</td></tr>
-            ) : (
-              <tr>
-                {camposVisiveis.map(k => (
-                  <td key={k}>{empresa[k] || '-'}</td>
-                ))}
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="cadastro-buttons" style={{ justifyContent: 'center', gap: 16 }}>
+        <button onClick={handleLimpar}>Limpar</button>
+        <button onClick={handleSalvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : 'SALVAR DADOS'}
+        </button>
       </div>
-
-      {modalAberto && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
-            <h3>Editar Dados da Empresa</h3>
-            <form onSubmit={handleSalvar}>
-              <div className="form-grid">
-                {CAMPOS.map(c => (
-                  <div className={`form-group ${c.type === 'textarea' ? 'full-width' : ''}`} key={c.key}>
-                    <label>{c.label}</label>
-                    {c.type === 'textarea' ? (
-                      <textarea name={c.key} value={form[c.key] || ''} onChange={handleChange} rows={2} />
-                    ) : (
-                      <input type="text" name={c.key} value={form[c.key] || ''} onChange={handleChange} />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={fecharModal}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>

@@ -1,14 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
 
-const FORM_INICIAL = { nome: '' }
-
-export default function CadastroConferente({ viagemAtiva, onNavigate }) {
+export default function CadastroConferente() {
   const [conferentes, setConferentes] = useState([])
   const [loading, setLoading] = useState(false)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [editando, setEditando] = useState(null)
-  const [form, setForm] = useState(FORM_INICIAL)
+  const [selecionado, setSelecionado] = useState(null)
+  const [nome, setNome] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -27,42 +24,28 @@ export default function CadastroConferente({ viagemAtiva, onNavigate }) {
 
   useEffect(() => { carregar() }, [carregar])
 
-  function abrirCriar() {
-    setEditando(null)
-    setForm(FORM_INICIAL)
-    setModalAberto(true)
+  function handleSelectRow(item) {
+    setSelecionado(item)
+    setNome(item.nome_conferente || item.nome || '')
   }
 
-  function abrirEditar(item) {
-    setEditando(item)
-    setForm({ nome: item.nome || '' })
-    setModalAberto(true)
+  function handleNovo() {
+    setSelecionado(null)
+    setNome('')
   }
 
-  function fecharModal() {
-    setModalAberto(false)
-    setEditando(null)
-    setForm(FORM_INICIAL)
-  }
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSalvar(e) {
-    e.preventDefault()
-    if (!form.nome.trim()) { showToast('Informe o nome', 'error'); return }
+  async function handleSalvar() {
+    if (!nome.trim()) { showToast('Informe o nome', 'error'); return }
     setSalvando(true)
     try {
-      if (editando) {
-        await api.put(`/cadastros/conferentes/${editando.id_conferente}`, form)
+      if (selecionado) {
+        await api.put(`/cadastros/conferentes/${selecionado.id_conferente}`, { nome: nome.trim() })
         showToast('Conferente atualizado com sucesso')
       } else {
-        await api.post('/cadastros/conferentes', form)
+        await api.post('/cadastros/conferentes', { nome: nome.trim() })
         showToast('Conferente criado com sucesso')
       }
-      fecharModal()
+      handleNovo()
       carregar()
     } catch (err) {
       showToast(err.message || 'Erro ao salvar conferente', 'error')
@@ -71,21 +54,29 @@ export default function CadastroConferente({ viagemAtiva, onNavigate }) {
     }
   }
 
+  async function handleExcluir() {
+    if (!selecionado) { showToast('Selecione um conferente na tabela', 'error'); return }
+    if (!window.confirm(`Excluir conferente "${selecionado.nome_conferente || selecionado.nome}"?`)) return
+    try {
+      await api.delete(`/cadastros/conferentes/${selecionado.id_conferente}`)
+      showToast('Conferente excluido com sucesso')
+      handleNovo()
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir conferente', 'error')
+    }
+  }
+
   return (
     <div className="card">
-      <div className="card-header">
-        <h2>Cadastro de Conferentes</h2>
-        <div className="toolbar">
-          <button className="btn-primary" onClick={abrirCriar}>+ Novo Conferente</button>
-        </div>
-      </div>
+      <h2 style={{ marginBottom: 16 }}>Cadastro de Conferente</h2>
 
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Acoes</th>
+              <th style={{ width: 75 }}>ID</th>
+              <th>Nome do Conferente</th>
             </tr>
           </thead>
           <tbody>
@@ -94,38 +85,33 @@ export default function CadastroConferente({ viagemAtiva, onNavigate }) {
             ) : conferentes.length === 0 ? (
               <tr><td colSpan="2">Nenhum conferente cadastrado</td></tr>
             ) : conferentes.map(c => (
-              <tr key={c.id_conferente}>
-                <td>{c.nome || '-'}</td>
-                <td>
-                  <button className="btn-sm primary" onClick={() => abrirEditar(c)}>Editar</button>
-                </td>
+              <tr key={c.id_conferente}
+                  className={`clickable ${selecionado?.id_conferente === c.id_conferente ? 'selected' : ''}`}
+                  onClick={() => handleSelectRow(c)}>
+                <td>{c.id_conferente}</td>
+                <td>{c.nome_conferente || c.nome || '-'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {modalAberto && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editando ? 'Editar Conferente' : 'Novo Conferente'}</h3>
-            <form onSubmit={handleSalvar}>
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Nome</label>
-                  <input type="text" name="nome" value={form.nome} onChange={handleChange} />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={fecharModal}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <div className="cadastro-inline-form">
+        <label>ID:</label>
+        <input type="text" value={selecionado?.id_conferente || 'Automatico'} readOnly />
+
+        <label>Nome:</label>
+        <input type="text" value={nome} onChange={e => setNome(e.target.value)}
+               placeholder="Nome completo do conferente" />
+      </div>
+
+      <div className="cadastro-buttons">
+        <button onClick={handleNovo}>Novo</button>
+        <button onClick={handleSalvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : 'Salvar'}
+        </button>
+        <button onClick={handleExcluir}>Excluir</button>
+      </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>

@@ -7,26 +7,24 @@ const FORM_INICIAL = {
   data_viagem: '',
   data_chegada: '',
   id_horario_saida: '',
-  descricao: ''
+  descricao: '',
+  ativa: false
 }
 
 function formatDate(val) {
   if (!val) return '-'
-  // Se ja vem formatado DD/MM/YYYY do backend
   if (val.includes('/')) return val
   const d = new Date(val + 'T00:00:00')
   return d.toLocaleDateString('pt-BR')
 }
 
-export default function CadastroViagem({ viagemAtiva, onNavigate }) {
+export default function CadastroViagem() {
   const [viagens, setViagens] = useState([])
   const [loading, setLoading] = useState(false)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [editando, setEditando] = useState(null)
+  const [selecionado, setSelecionado] = useState(null)
   const [form, setForm] = useState(FORM_INICIAL)
   const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState(null)
-
   const [embarcacoes, setEmbarcacoes] = useState([])
   const [rotas, setRotas] = useState([])
   const [horariosSaida, setHorariosSaida] = useState([])
@@ -52,52 +50,45 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
     api.get('/cadastros/horarios-saida').then(setHorariosSaida).catch(() => {})
   }, [])
 
-  function abrirCriar() {
-    setEditando(null)
-    setForm(FORM_INICIAL)
-    setModalAberto(true)
-  }
-
-  function abrirEditar(item) {
-    setEditando(item)
+  function handleSelectRow(item) {
+    setSelecionado(item)
     setForm({
       id_embarcacao: item.id_embarcacao || '',
       id_rota: item.id_rota || '',
       data_viagem: item.data_viagem_raw || item.data_viagem || '',
       data_chegada: item.data_chegada_raw || item.data_chegada || '',
       id_horario_saida: item.id_horario_saida || '',
-      descricao: item.descricao || ''
+      descricao: item.descricao || '',
+      ativa: !!item.ativa
     })
-    setModalAberto(true)
   }
 
-  function fecharModal() {
-    setModalAberto(false)
-    setEditando(null)
+  function handleNovo() {
+    setSelecionado(null)
     setForm(FORM_INICIAL)
   }
 
   function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  async function handleSalvar(e) {
-    e.preventDefault()
+  async function handleSalvar() {
     if (!form.id_embarcacao || !form.id_rota || !form.data_viagem || !form.data_chegada) {
       showToast('Preencha todos os campos obrigatorios', 'error')
       return
     }
     setSalvando(true)
     try {
-      if (editando) {
-        await api.put(`/viagens/${editando.id_viagem}`, form)
+      const payload = { ...form }
+      if (selecionado) {
+        await api.put(`/viagens/${selecionado.id_viagem}`, payload)
         showToast('Viagem atualizada com sucesso')
       } else {
-        await api.post('/viagens', form)
+        await api.post('/viagens', payload)
         showToast('Viagem criada com sucesso')
       }
-      fecharModal()
+      handleNovo()
       carregar()
     } catch (err) {
       showToast(err.message || 'Erro ao salvar viagem', 'error')
@@ -106,58 +97,99 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
     }
   }
 
-  async function handleExcluir(item) {
-    if (!window.confirm(`Excluir viagem "${item.descricao || item.id_viagem}"? Todos os lancamentos serao removidos.`)) return
+  async function handleExcluir() {
+    if (!selecionado) { showToast('Selecione uma viagem na tabela', 'error'); return }
+    if (!window.confirm('Excluir viagem? Todos os lancamentos serao removidos.')) return
     try {
-      await api.delete(`/viagens/${item.id_viagem}`)
+      await api.delete(`/viagens/${selecionado.id_viagem}`)
       showToast('Viagem excluida com sucesso')
+      handleNovo()
       carregar()
     } catch (err) {
       showToast(err.message || 'Erro ao excluir viagem', 'error')
     }
   }
 
-  async function handleToggleAtiva(item) {
-    try {
-      await api.put(`/viagens/${item.id_viagem}/ativar`, { ativa: !item.ativa })
-      showToast(item.ativa ? 'Viagem desativada' : 'Viagem ativada para lancamentos')
-      carregar()
-    } catch (err) {
-      showToast(err.message || 'Erro ao alterar status', 'error')
-    }
-  }
-
   return (
     <div className="card">
-      <div className="card-header">
-        <h2>Cadastro de Viagem</h2>
-        <div className="toolbar">
-          <button className="btn-primary" onClick={abrirCriar}>+ Nova Viagem</button>
+      <h2 style={{ marginBottom: 16 }}>Cadastro de Viagem</h2>
+
+      <div className="cadastro-form-4col">
+        <label>ID Viagem:</label>
+        <input type="text" value={selecionado?.id_viagem || 'Automatico'} readOnly />
+
+        <label>Embarcacao:</label>
+        <select name="id_embarcacao" value={form.id_embarcacao} onChange={handleChange}>
+          <option value="">Selecione a Embarcacao</option>
+          {embarcacoes.map(e => (
+            <option key={e.id_embarcacao} value={e.id_embarcacao}>{e.nome}</option>
+          ))}
+        </select>
+
+        <label>Data Viagem:</label>
+        <input type="date" name="data_viagem" value={form.data_viagem} onChange={handleChange} />
+
+        <label>Data Chegada:</label>
+        <input type="date" name="data_chegada" value={form.data_chegada} onChange={handleChange} />
+
+        <label>Rota:</label>
+        <select name="id_rota" value={form.id_rota} onChange={handleChange}>
+          <option value="">Selecione a Rota</option>
+          {rotas.map(r => (
+            <option key={r.id_rota} value={r.id_rota}>{r.origem} - {r.destino}</option>
+          ))}
+        </select>
+
+        <label>Descricao:</label>
+        <input type="text" name="descricao" value={form.descricao} onChange={handleChange} placeholder="Ex: Viagem semanal, observacoes" />
+
+        <label>Horario Saida:</label>
+        <select name="id_horario_saida" value={form.id_horario_saida} onChange={handleChange}>
+          <option value="">Selecione o Horario</option>
+          {horariosSaida.map(h => (
+            <option key={h.id_horario_saida} value={h.id_horario_saida}>{h.descricao_horario_saida}</option>
+          ))}
+        </select>
+
+        <div />
+
+        <div className="checkbox-row">
+          <input type="checkbox" id="ativa" name="ativa" checked={form.ativa} onChange={handleChange} />
+          <label htmlFor="ativa" style={{ textAlign: 'left' }}>Viagem Ativa para Lancamentos</label>
         </div>
       </div>
 
-      <div className="table-container">
+      <div className="cadastro-buttons">
+        <button onClick={handleNovo}>Nova Viagem</button>
+        <button onClick={handleSalvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : 'Salvar'}
+        </button>
+        <button onClick={handleExcluir}>Excluir</button>
+      </div>
+
+      <div className="table-container" style={{ marginTop: 8 }}>
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th style={{ width: 60 }}>ID</th>
               <th>Dt. Viagem</th>
               <th>Horario</th>
               <th>Dt. Chegada</th>
               <th>Descricao</th>
               <th>Embarcacao</th>
               <th>Rota</th>
-              <th>Ativa</th>
-              <th>Acoes</th>
+              <th style={{ width: 70 }}>Ativa</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="9">Carregando...</td></tr>
+              <tr><td colSpan="8">Carregando...</td></tr>
             ) : viagens.length === 0 ? (
-              <tr><td colSpan="9">Nenhuma viagem cadastrada</td></tr>
+              <tr><td colSpan="8">Nenhuma viagem cadastrada</td></tr>
             ) : viagens.map(v => (
-              <tr key={v.id_viagem}>
+              <tr key={v.id_viagem}
+                  className={`clickable ${selecionado?.id_viagem === v.id_viagem ? 'selected' : ''}`}
+                  onClick={() => handleSelectRow(v)}>
                 <td>{v.id_viagem}</td>
                 <td>{formatDate(v.data_viagem)}</td>
                 <td>{v.horario || '-'}</td>
@@ -165,80 +197,12 @@ export default function CadastroViagem({ viagemAtiva, onNavigate }) {
                 <td>{v.descricao || '-'}</td>
                 <td>{v.nome_embarcacao || '-'}</td>
                 <td>{v.nome_rota || '-'}</td>
-                <td>
-                  <span className={`badge ${v.ativa ? 'success' : ''}`}>
-                    {v.ativa ? 'Sim' : 'Nao'}
-                  </span>
-                </td>
-                <td>
-                  <button className="btn-sm primary" onClick={() => handleToggleAtiva(v)} style={{ marginRight: 4 }}>
-                    {v.ativa ? 'Desativar' : 'Ativar'}
-                  </button>
-                  <button className="btn-sm primary" onClick={() => abrirEditar(v)} style={{ marginRight: 4 }}>Editar</button>
-                  <button className="btn-sm danger" onClick={() => handleExcluir(v)}>Excluir</button>
-                </td>
+                <td>{v.ativa ? 'Sim' : 'Nao'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {modalAberto && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editando ? 'Editar Viagem' : 'Nova Viagem'}</h3>
-            <form onSubmit={handleSalvar}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Embarcacao *</label>
-                  <select name="id_embarcacao" value={form.id_embarcacao} onChange={handleChange} required>
-                    <option value="">Selecione a Embarcacao</option>
-                    {embarcacoes.map(e => (
-                      <option key={e.id_embarcacao} value={e.id_embarcacao}>{e.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Rota *</label>
-                  <select name="id_rota" value={form.id_rota} onChange={handleChange} required>
-                    <option value="">Selecione a Rota</option>
-                    {rotas.map(r => (
-                      <option key={r.id_rota} value={r.id_rota}>{r.origem} - {r.destino}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Data Viagem *</label>
-                  <input type="date" name="data_viagem" value={form.data_viagem} onChange={handleChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Data Chegada *</label>
-                  <input type="date" name="data_chegada" value={form.data_chegada} onChange={handleChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Horario Saida</label>
-                  <select name="id_horario_saida" value={form.id_horario_saida} onChange={handleChange}>
-                    <option value="">Selecione o Horario</option>
-                    {horariosSaida.map(h => (
-                      <option key={h.id_horario_saida} value={h.id_horario_saida}>{h.descricao_horario_saida}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group full-width">
-                  <label>Descricao</label>
-                  <input type="text" name="descricao" value={form.descricao} onChange={handleChange} placeholder="Ex: Viagem semanal, observacoes" />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={fecharModal}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>

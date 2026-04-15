@@ -28,6 +28,8 @@ import Boletos from '../pages/Boletos.jsx'
 
 // Tabela Precos
 import TabelaPrecoFrete from '../pages/TabelaPrecoFrete.jsx'
+import CadastroItem from '../pages/CadastroItem.jsx'
+import Auxiliares from '../pages/Auxiliares.jsx'
 
 // Cadastros
 import CadastroViagem from '../pages/CadastroViagem.jsx'
@@ -81,6 +83,8 @@ const PAGES = {
   'cadastro-conferente': { component: CadastroConferente, label: 'Conferentes', section: 'cadastros' },
   'cadastro-caixa': { component: CadastroCaixa, label: 'Caixas', section: 'cadastros' },
   'cadastro-produto': { component: CadastroClienteEncomenda, label: 'Clientes Encomenda', section: 'cadastros' },
+  'cadastro-item': { component: CadastroItem, label: 'Itens (Frete/Encomenda)', section: 'cadastros' },
+  'auxiliares': { component: Auxiliares, label: 'Tabelas Auxiliares', section: 'cadastros' },
   'gestao-funcionarios': { component: GestaoFuncionarios, label: 'Gestao Funcionarios', section: 'cadastros' },
   'estorno-passagem': { component: EstornoPassagem, label: 'Estorno Passagem', section: 'pagamentos' },
   'historico-estornos': { component: HistoricoEstornos, label: 'Historico Estornos', section: 'pagamentos' },

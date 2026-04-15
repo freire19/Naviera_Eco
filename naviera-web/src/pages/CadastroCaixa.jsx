@@ -1,14 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
 
-const FORM_INICIAL = { nome: '' }
-
-export default function CadastroCaixa({ viagemAtiva, onNavigate }) {
+export default function CadastroCaixa() {
   const [caixas, setCaixas] = useState([])
   const [loading, setLoading] = useState(false)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [editando, setEditando] = useState(null)
-  const [form, setForm] = useState(FORM_INICIAL)
+  const [selecionado, setSelecionado] = useState(null)
+  const [nome, setNome] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -27,42 +24,28 @@ export default function CadastroCaixa({ viagemAtiva, onNavigate }) {
 
   useEffect(() => { carregar() }, [carregar])
 
-  function abrirCriar() {
-    setEditando(null)
-    setForm(FORM_INICIAL)
-    setModalAberto(true)
+  function handleSelectRow(item) {
+    setSelecionado(item)
+    setNome(item.nome_caixa || item.nome || '')
   }
 
-  function abrirEditar(item) {
-    setEditando(item)
-    setForm({ nome: item.nome || '' })
-    setModalAberto(true)
+  function handleNovo() {
+    setSelecionado(null)
+    setNome('')
   }
 
-  function fecharModal() {
-    setModalAberto(false)
-    setEditando(null)
-    setForm(FORM_INICIAL)
-  }
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSalvar(e) {
-    e.preventDefault()
-    if (!form.nome.trim()) { showToast('Informe o nome', 'error'); return }
+  async function handleSalvar() {
+    if (!nome.trim()) { showToast('Informe o nome', 'error'); return }
     setSalvando(true)
     try {
-      if (editando) {
-        await api.put(`/cadastros/caixas/${editando.id_caixa}`, form)
+      if (selecionado) {
+        await api.put(`/cadastros/caixas/${selecionado.id_caixa}`, { nome: nome.trim() })
         showToast('Caixa atualizado com sucesso')
       } else {
-        await api.post('/cadastros/caixas', form)
+        await api.post('/cadastros/caixas', { nome: nome.trim() })
         showToast('Caixa criado com sucesso')
       }
-      fecharModal()
+      handleNovo()
       carregar()
     } catch (err) {
       showToast(err.message || 'Erro ao salvar caixa', 'error')
@@ -71,21 +54,29 @@ export default function CadastroCaixa({ viagemAtiva, onNavigate }) {
     }
   }
 
+  async function handleExcluir() {
+    if (!selecionado) { showToast('Selecione um caixa na tabela', 'error'); return }
+    if (!window.confirm(`Excluir caixa "${selecionado.nome_caixa || selecionado.nome}"?`)) return
+    try {
+      await api.delete(`/cadastros/caixas/${selecionado.id_caixa}`)
+      showToast('Caixa excluido com sucesso')
+      handleNovo()
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir caixa', 'error')
+    }
+  }
+
   return (
     <div className="card">
-      <div className="card-header">
-        <h2>Cadastro de Caixas</h2>
-        <div className="toolbar">
-          <button className="btn-primary" onClick={abrirCriar}>+ Novo Caixa</button>
-        </div>
-      </div>
+      <h2 style={{ marginBottom: 16 }}>Cadastro de Tipos de Caixa</h2>
 
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Acoes</th>
+              <th style={{ width: 75 }}>ID</th>
+              <th>Nome do Caixa</th>
             </tr>
           </thead>
           <tbody>
@@ -94,38 +85,33 @@ export default function CadastroCaixa({ viagemAtiva, onNavigate }) {
             ) : caixas.length === 0 ? (
               <tr><td colSpan="2">Nenhum caixa cadastrado</td></tr>
             ) : caixas.map(c => (
-              <tr key={c.id_caixa}>
-                <td>{c.nome || '-'}</td>
-                <td>
-                  <button className="btn-sm primary" onClick={() => abrirEditar(c)}>Editar</button>
-                </td>
+              <tr key={c.id_caixa}
+                  className={`clickable ${selecionado?.id_caixa === c.id_caixa ? 'selected' : ''}`}
+                  onClick={() => handleSelectRow(c)}>
+                <td>{c.id_caixa}</td>
+                <td>{c.nome_caixa || c.nome || '-'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {modalAberto && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editando ? 'Editar Caixa' : 'Novo Caixa'}</h3>
-            <form onSubmit={handleSalvar}>
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Nome</label>
-                  <input type="text" name="nome" value={form.nome} onChange={handleChange} />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={fecharModal}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <div className="cadastro-inline-form">
+        <label>ID:</label>
+        <input type="text" value={selecionado?.id_caixa || 'Automatico'} readOnly />
+
+        <label>Nome:</label>
+        <input type="text" value={nome} onChange={e => setNome(e.target.value)}
+               placeholder="Nome do Tipo de Caixa (Ex: Caixa Principal)" />
+      </div>
+
+      <div className="cadastro-buttons">
+        <button onClick={handleNovo}>Novo</button>
+        <button onClick={handleSalvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : 'Salvar'}
+        </button>
+        <button onClick={handleExcluir}>Excluir</button>
+      </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>
