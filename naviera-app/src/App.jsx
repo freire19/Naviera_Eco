@@ -85,9 +85,12 @@ export default function Naviera() {
   };
 
   /* ═══ WEBSOCKET ═══ */
+  // #DB156: usuario.id is the client's own ID, not empresa_id.
+  // App mobile clients (CPF/CNPJ) don't receive tenant operational notifications,
+  // so empresaId is null — WebSocket stays connected but won't subscribe to wrong topic.
   const { notifications, clearNotifications, unreadCount } = useWebSocket({
     token,
-    empresaId: usuario?.id || null,
+    empresaId: null,
     apiUrl: API,
   });
 
@@ -108,7 +111,7 @@ export default function Naviera() {
     setTab("home"); setTabHistory([]);
   };
 
-  const doLogout = () => { localStorage.removeItem("naviera_token"); localStorage.removeItem("naviera_usuario"); setProfile(null); setToken(null); setUsuario(null); setTab("home"); setTabHistory([]); setMinhaFoto(null); };
+  const doLogout = () => { localStorage.removeItem("naviera_token"); localStorage.removeItem("naviera_usuario"); setProfile(null); setToken(null); setUsuario(null); setTab("home"); setTabHistory([]); setMinhaFoto(null); pushTokenEnviado.current = false; };
 
   /* ═══ LOGIN SCREEN ═══ */
   if (!profile) return <LoginScreen t={t} mode={mode} setMode={setMode} onLogin={handleLogin} />;

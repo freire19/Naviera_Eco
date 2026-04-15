@@ -195,9 +195,9 @@ public class GestaoFuncionariosController {
         txtTelefone.setText(f.getTelefone() != null ? f.getTelefone() : "");
         txtEndereco.setText(f.getEndereco() != null ? f.getEndereco() : "");
         txtCargo.setText(f.getCargo());
-        txtSalario.setText(String.format("%.2f", f.getSalario()));
-        
-        if(txtValorInss != null) txtValorInss.setText(String.format("%.2f", f.getValorInss()));
+        txtSalario.setText(String.format("%.2f", f.getSalario().doubleValue()));
+
+        if(txtValorInss != null) txtValorInss.setText(String.format("%.2f", f.getValorInss().doubleValue()));
         if(chkDescontarInss != null) chkDescontarInss.setSelected(f.isDescontarInss());
         if(chkClt != null) chkClt.setSelected(f.isClt());
         
@@ -239,10 +239,10 @@ public class GestaoFuncionariosController {
         }
         try {
             Funcionario f = (funcionarioSelecionado != null) ? funcionarioSelecionado : new Funcionario();
-            double salario = Double.parseDouble(txtSalario.getText().replace(".", "").replace(",", "."));
-            double vInss = 0.0;
+            java.math.BigDecimal salario = new java.math.BigDecimal(txtSalario.getText().replace(".", "").replace(",", "."));
+            java.math.BigDecimal vInss = java.math.BigDecimal.ZERO;
             if (txtValorInss != null && !txtValorInss.getText().isEmpty()) {
-                vInss = Double.parseDouble(txtValorInss.getText().replace(".", "").replace(",", "."));
+                vInss = new java.math.BigDecimal(txtValorInss.getText().replace(".", "").replace(",", "."));
             }
 
             f.setNome(txtNome.getText().toUpperCase());
@@ -301,7 +301,7 @@ public class GestaoFuncionariosController {
             LocalDate base = f.getDataAdmissao().isAfter(inicioAno) ? f.getDataAdmissao() : inicioAno;
             long mesesNoAno = ChronoUnit.MONTHS.between(base, LocalDate.now()) + 1;
             mesesNoAno = Math.min(mesesNoAno, 12); // maximo 12 meses
-            double provisao = (f.getSalario() / 12.0) * mesesNoAno;
+            double provisao = (f.getSalario().doubleValue() / 12.0) * mesesNoAno;
             lblProvisaoDecimo.setText("Provisão 13º: " + nf.format(provisao));
         }
 
@@ -322,7 +322,7 @@ public class GestaoFuncionariosController {
             lblMesReferenciaSistema.setText(mesRef);
         }
         
-        double salarioDiario = f.getSalario() / 30.0;
+        double salarioDiario = f.getSalario().doubleValue() / 30.0;
         if(lblValorDiaria != null) lblValorDiaria.setText("Valor Diária: " + nf.format(salarioDiario));
         
         double totalDinheiroPago = buscarTotalPagamentosReais(f, dataInicio);
@@ -337,8 +337,8 @@ public class GestaoFuncionariosController {
         boolean inssJaLancado = verificarSeExisteEventoRH(f, dataInicio, "INSS");
         if (!inssJaLancado) inssJaLancado = verificarSeExisteDescontoLegado(f, dataInicio, "ENCARGOS");
         
-        if (!inssJaLancado && f.isDescontarInss() && f.getValorInss() > 0) {
-            descontoAutomatico = f.getValorInss();
+        if (!inssJaLancado && f.isDescontarInss() && f.getValorInss().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            descontoAutomatico = f.getValorInss().doubleValue();
         }
 
         double salarioAcumulado = diasTrabalhados * salarioDiario;
@@ -411,7 +411,7 @@ public class GestaoFuncionariosController {
                     AlertHelper.info("Ja existe falta registrada para " + funcionarioSelecionado.getNome() + " em " + dataFalta.format(dtf) + ".");
                     return;
                 }
-                double valorDesconto = funcionarioSelecionado.getSalario() / 30.0;
+                double valorDesconto = funcionarioSelecionado.getSalario().doubleValue() / 30.0;
                 String descricao = "FALTA - " + funcionarioSelecionado.getNome().toUpperCase() + " - " + dataFalta.format(dtf);
                 lancarEventoContabil(funcionarioSelecionado, "FALTA", descricao, valorDesconto, dataFalta, funcionarioSelecionado.getDataInicioCalculo());
                 AlertHelper.info("Falta registrada no prontuário! Valor: " + nf.format(valorDesconto));
@@ -436,14 +436,14 @@ public class GestaoFuncionariosController {
         boolean inssJaLancado = verificarSeExisteEventoRH(funcionarioSelecionado, dataInicio, "INSS");
         if (!inssJaLancado) inssJaLancado = verificarSeExisteDescontoLegado(funcionarioSelecionado, dataInicio, "ENCARGOS");
         
-        if (!inssJaLancado && funcionarioSelecionado.isDescontarInss() && funcionarioSelecionado.getValorInss() > 0) {
-            descontoInss = funcionarioSelecionado.getValorInss();
+        if (!inssJaLancado && funcionarioSelecionado.isDescontarInss() && funcionarioSelecionado.getValorInss().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            descontoInss = funcionarioSelecionado.getValorInss().doubleValue();
         }
 
         double diasTrabalhados = calcularDiasComerciais(dataInicio, dataHoje);
         if (diasTrabalhados > 30) diasTrabalhados = 30;
-        
-        double salarioDiario = funcionarioSelecionado.getSalario() / 30.0;
+
+        double salarioDiario = funcionarioSelecionado.getSalario().doubleValue() / 30.0;
         double acumulado = diasTrabalhados * salarioDiario;
         double saldoParaPagar = acumulado - totalPago - totalDescontosRH - descontoInss;
         saldoParaPagar = Math.round(saldoParaPagar * 100.0) / 100.0;
@@ -563,12 +563,12 @@ public class GestaoFuncionariosController {
 
         boolean temInssGravado = historico.stream().anyMatch(h -> h.getDescricao().contains("INSS") || h.getDescricao().contains("ENCARGOS"));
 
-        if (!temInssGravado && f.isDescontarInss() && f.getValorInss() > 0) {
+        if (!temInssGravado && f.isDescontarInss() && f.getValorInss().compareTo(java.math.BigDecimal.ZERO) > 0) {
             LocalDate dataInss = LocalDate.of(ano, mes, 1).plusMonths(1).minusDays(1);
             if (dataInss.isAfter(LocalDate.now())) dataInss = LocalDate.now();
 
             if (f.getDataAdmissao().isBefore(dataInss) || f.getDataAdmissao().isEqual(dataInss)) {
-                historico.add(new PagamentoHistorico(dataInss, "DESC. ENCARGOS (INSS/FOLHA) - PREVISÃO", f.getValorInss(), "DESCONTO"));
+                historico.add(new PagamentoHistorico(dataInss, "DESC. ENCARGOS (INSS/FOLHA) - PREVISÃO", f.getValorInss().doubleValue(), "DESCONTO"));
             }
         }
 
@@ -662,9 +662,9 @@ public class GestaoFuncionariosController {
         );
         corpoTabela.getChildren().add(titulos);
         
-        corpoTabela.getChildren().add(criarLinhaHolerite("", "SALÁRIO BASE MENSAL", "30d", nf.format(funcionarioSelecionado.getSalario()), ""));
-        
-        double totalVencimentos = funcionarioSelecionado.getSalario();
+        corpoTabela.getChildren().add(criarLinhaHolerite("", "SALÁRIO BASE MENSAL", "30d", nf.format(funcionarioSelecionado.getSalario().doubleValue()), ""));
+
+        double totalVencimentos = funcionarioSelecionado.getSalario().doubleValue();
         double totalDescontos = 0;
         
         for(PagamentoHistorico p : tabelaHistorico.getItems()) {

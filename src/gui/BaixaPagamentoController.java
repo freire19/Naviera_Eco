@@ -110,8 +110,10 @@ public class BaixaPagamentoController {
 
     private void carregarFormasPagamento() {
         ObservableList<String> formas = FXCollections.observableArrayList();
+        // #DB115: PreparedStatement em TWR para evitar leak
         try (Connection con = ConexaoBD.getConnection();
-             ResultSet rs = con.prepareStatement("SELECT nome_forma_pagamento FROM aux_formas_pagamento").executeQuery()) {
+             java.sql.PreparedStatement ps = con.prepareStatement("SELECT nome_forma_pagamento FROM aux_formas_pagamento");
+             ResultSet rs = ps.executeQuery()) {
             while(rs.next()) formas.add(rs.getString(1));
         } catch (SQLException e) {
             formas.addAll("DINHEIRO", "PIX", "CARTAO");

@@ -38,7 +38,8 @@ public class ClienteEncomendaDAO {
     }
 
     public ClienteEncomenda salvar(ClienteEncomenda cliente) {
-        String sql = "INSERT INTO cad_clientes_encomenda (nome_cliente, empresa_id) VALUES (?, ?) ON CONFLICT (nome_cliente) DO NOTHING RETURNING id_cliente";
+        // #DB103: ON CONFLICT deve incluir empresa_id (constraint composta idx_cad_clientes_nome_empresa)
+        String sql = "INSERT INTO cad_clientes_encomenda (nome_cliente, empresa_id) VALUES (?, ?) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING RETURNING id_cliente";
 
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

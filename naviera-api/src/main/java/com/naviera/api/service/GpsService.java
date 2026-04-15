@@ -1,5 +1,6 @@
 package com.naviera.api.service;
 
+import com.naviera.api.config.ApiException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,8 +16,14 @@ public class GpsService {
     }
 
     @Transactional
-    public Map<String, Object> registrarPosicao(Long idEmbarcacao, Long idViagem,
+    public Map<String, Object> registrarPosicao(Integer empresaId, Long idEmbarcacao, Long idViagem,
             double latitude, double longitude, Double velocidade, Double curso) {
+        // Validar que a embarcacao pertence a esta empresa
+        int count = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM embarcacoes WHERE id_embarcacao = ? AND empresa_id = ?",
+            Integer.class, idEmbarcacao, empresaId);
+        if (count == 0) throw ApiException.badRequest("Embarcacao nao pertence a esta empresa");
+
         jdbc.update("""
             INSERT INTO embarcacao_gps (id_embarcacao, id_viagem, latitude, longitude, velocidade_nos, curso_graus)
             VALUES (?, ?, ?, ?, ?, ?)""",

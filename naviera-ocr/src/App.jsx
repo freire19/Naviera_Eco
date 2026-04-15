@@ -126,6 +126,7 @@ export default function App() {
           isOnline={isOnline}
           onOfflineAdd={addOffline}
           showToast={showToast}
+          usuario={usuario}
         />
       )
   }

@@ -10,8 +10,8 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemi
  * @returns {{ remetente, destinatario, rota, itens[], valor_total, observacoes }}
  */
 export async function geminiParseOCR(ocrText, itensPadrao = []) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_CLOUD_VISION_API_KEY
-  if (!apiKey) throw new Error('API key nao configurada')
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY nao configurada no .env')
 
   const tabelaPrecos = itensPadrao.length > 0
     ? `\nTabela de precos de frete da empresa (usar estes precos quando houver match):\n${itensPadrao.map(i => `- ${i.nome_item}: R$${i.preco_unitario_padrao}`).join('\n')}\n`

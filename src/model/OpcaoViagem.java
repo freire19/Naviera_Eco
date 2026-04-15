@@ -17,7 +17,7 @@ public class OpcaoViagem {
     public String getLabel() { return label; }
 
     @Override
-    public String toString() { return label; }
+    public String toString() { return label != null ? label : ""; }
 
     @Override
     public boolean equals(Object obj) {

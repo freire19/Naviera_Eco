@@ -26,10 +26,10 @@ public class AuthOperadorService {
             throw ApiException.badRequest("Login e senha obrigatorios");
         }
 
-        // Se empresa_id fornecido, filtra por tenant (previne login cross-tenant)
-        var usuario = (req.empresa_id() != null
-            ? repo.findByLoginAndEmpresa(req.login(), req.empresa_id())
-            : repo.findByLogin(req.login()))
+        // #DB145: empresa_id obrigatorio — sem ele o login poderia cruzar tenants
+        if (req.empresa_id() == null) throw ApiException.badRequest("empresa_id obrigatorio para login");
+
+        var usuario = repo.findByLoginAndEmpresa(req.login(), req.empresa_id())
             .orElseThrow(() -> ApiException.unauthorized("Credenciais invalidas"));
 
         if (!encoder.matches(req.senha(), usuario.getSenha())) {

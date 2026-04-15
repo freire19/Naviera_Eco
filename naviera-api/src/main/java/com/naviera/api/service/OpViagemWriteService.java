@@ -18,9 +18,19 @@ public class OpViagemWriteService {
 
     @Transactional
     public Map<String, Object> criar(Integer empresaId, Map<String, Object> dados) {
-        Long idViagem = ((Number) dados.get("id_viagem")).longValue();
-        Long idEmbarcacao = ((Number) dados.get("id_embarcacao")).longValue();
-        Long idRota = ((Number) dados.get("id_rota")).longValue();
+        // #DB147: null checks on required numeric fields prevent NPE
+        Number idViagemNum = (Number) dados.get("id_viagem");
+        if (idViagemNum == null) throw ApiException.badRequest("id_viagem obrigatorio");
+        Long idViagem = idViagemNum.longValue();
+
+        Number idEmbarcacaoNum = (Number) dados.get("id_embarcacao");
+        if (idEmbarcacaoNum == null) throw ApiException.badRequest("id_embarcacao obrigatorio");
+        Long idEmbarcacao = idEmbarcacaoNum.longValue();
+
+        Number idRotaNum = (Number) dados.get("id_rota");
+        if (idRotaNum == null) throw ApiException.badRequest("id_rota obrigatorio");
+        Long idRota = idRotaNum.longValue();
+
         String dataViagem = (String) dados.get("data_viagem");
         String dataChegada = (String) dados.get("data_chegada");
         String descricao = (String) dados.get("descricao");

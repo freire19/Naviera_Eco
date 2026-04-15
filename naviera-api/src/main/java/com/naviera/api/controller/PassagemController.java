@@ -1,5 +1,6 @@
 package com.naviera.api.controller;
 
+import com.naviera.api.config.TenantUtils;
 import com.naviera.api.dto.CompraPassagemRequest;
 import com.naviera.api.service.PassagemService;
 import jakarta.validation.Valid;
@@ -21,25 +22,28 @@ public class PassagemController {
     @PostMapping("/comprar")
     public ResponseEntity<?> comprar(Authentication auth, @RequestBody @Valid CompraPassagemRequest req) {
         Long id = (Long) auth.getPrincipal();
-        return ResponseEntity.ok(service.comprar(id, req));
+        return ResponseEntity.ok(service.comprar(req.empresaId(), id, req));
     }
 
     /** Operador escaneia QR — retorna dados do passageiro para conferencia visual */
     @GetMapping("/embarque/{numeroBilhete}")
-    public ResponseEntity<?> consultarEmbarque(@PathVariable String numeroBilhete) {
-        return ResponseEntity.ok(service.consultarParaEmbarque(numeroBilhete));
+    public ResponseEntity<?> consultarEmbarque(@PathVariable String numeroBilhete, Authentication auth) {
+        Integer empresaId = TenantUtils.getEmpresaId(auth);
+        return ResponseEntity.ok(service.consultarParaEmbarque(empresaId, numeroBilhete));
     }
 
     /** Operador confirma embarque apos conferir doc com foto */
     @PostMapping("/embarque/{numeroBilhete}/confirmar")
     public ResponseEntity<?> confirmarEmbarque(@PathVariable String numeroBilhete, Authentication auth) {
+        Integer empresaId = TenantUtils.getEmpresaId(auth);
         String operador = auth.getCredentials() != null ? auth.getCredentials().toString() : "operador";
-        return ResponseEntity.ok(service.confirmarEmbarque(numeroBilhete, operador));
+        return ResponseEntity.ok(service.confirmarEmbarque(empresaId, numeroBilhete, operador));
     }
 
     /** Operador confirma pagamento de passagem do app */
     @PostMapping("/{numeroBilhete}/confirmar-pagamento")
-    public ResponseEntity<?> confirmarPagamento(@PathVariable String numeroBilhete) {
-        return ResponseEntity.ok(service.confirmarPagamento(numeroBilhete));
+    public ResponseEntity<?> confirmarPagamento(@PathVariable String numeroBilhete, Authentication auth) {
+        Integer empresaId = TenantUtils.getEmpresaId(auth);
+        return ResponseEntity.ok(service.confirmarPagamento(empresaId, numeroBilhete));
     }
 }

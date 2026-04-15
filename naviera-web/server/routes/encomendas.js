@@ -58,6 +58,9 @@ router.post('/', validate({ id_viagem: 'required|integer', remetente: 'required|
 
     await client.query('BEGIN')
 
+    // #DB128: Advisory lock to prevent race condition on numero_encomenda MAX+1
+    await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
+
     const seqResult = await client.query(
       'SELECT COALESCE(MAX(numero_encomenda), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1',
       [empresaId]

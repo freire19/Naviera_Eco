@@ -288,7 +288,7 @@ public class FuncionarioDAO {
         f.setId(rs.getInt("id"));
         f.setNome(rs.getString("nome"));
         f.setCargo(rs.getString("cargo"));
-        f.setSalario(rs.getDouble("salario"));
+        f.setSalario(rs.getBigDecimal("salario"));
         if (rs.getDate("data_admissao") != null) f.setDataAdmissao(rs.getDate("data_admissao").toLocalDate());
         f.setCpf(rs.getString("cpf"));
         f.setRg(rs.getString("rg"));
@@ -304,8 +304,8 @@ public class FuncionarioDAO {
         catch (SQLException e) { f.setRecebe13(false); AppLogger.warn("FuncionarioDAO", "Coluna recebe_decimo_terceiro: " + e.getMessage()); }
         try { f.setClt(rs.getBoolean("is_clt")); }
         catch (SQLException e) { f.setClt(false); AppLogger.warn("FuncionarioDAO", "Coluna is_clt: " + e.getMessage()); }
-        try { f.setValorInss(rs.getDouble("valor_inss")); }
-        catch (SQLException e) { f.setValorInss(0.0); AppLogger.warn("FuncionarioDAO", "Coluna valor_inss: " + e.getMessage()); }
+        try { f.setValorInss(rs.getBigDecimal("valor_inss")); }
+        catch (SQLException e) { f.setValorInss(java.math.BigDecimal.ZERO); AppLogger.warn("FuncionarioDAO", "Coluna valor_inss: " + e.getMessage()); }
         try { f.setDescontarInss(rs.getBoolean("descontar_inss")); }
         catch (SQLException e) { f.setDescontarInss(false); AppLogger.warn("FuncionarioDAO", "Coluna descontar_inss: " + e.getMessage()); }
         try { f.setAtivo(rs.getBoolean("ativo")); }
@@ -322,13 +322,13 @@ public class FuncionarioDAO {
         stmt.setString(5, f.getTelefone());
         stmt.setString(6, f.getEndereco());
         stmt.setString(7, f.getCargo());
-        stmt.setDouble(8, f.getSalario());
+        stmt.setBigDecimal(8, f.getSalario());
         stmt.setDate(9, f.getDataAdmissao() != null ? Date.valueOf(f.getDataAdmissao()) : null);
         stmt.setDate(10, f.getDataNascimento() != null ? Date.valueOf(f.getDataNascimento()) : null);
         stmt.setDate(11, f.getDataInicioCalculo() != null ? Date.valueOf(f.getDataInicioCalculo()) : null);
         stmt.setBoolean(12, f.isRecebe13());
         stmt.setBoolean(13, f.isClt());
-        stmt.setDouble(14, f.getValorInss());
+        stmt.setBigDecimal(14, f.getValorInss());
         stmt.setBoolean(15, f.isDescontarInss());
         if (isUpdate) {
             stmt.setInt(16, f.getId());

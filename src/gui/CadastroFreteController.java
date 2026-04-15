@@ -1329,17 +1329,18 @@ public class CadastroFreteController implements Initializable {
         try (Connection c = ConexaoBD.getConnection();
              PreparedStatement s = c.prepareStatement(sql)) {
             s.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet r = s.executeQuery();
-            while (r.next()) {
-                String o = r.getString("origem");
-                String d = r.getString("destino");
-                String rd = "";
-                if (o != null && !o.trim().isEmpty()) rd += o.trim();
-                if (d != null && !d.trim().isEmpty()) {
-                    if (!rd.isEmpty()) rd += " - ";
-                    rd += d.trim();
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    String o = r.getString("origem");
+                    String d = r.getString("destino");
+                    String rd = "";
+                    if (o != null && !o.trim().isEmpty()) rd += o.trim();
+                    if (d != null && !d.trim().isEmpty()) {
+                        if (!rd.isEmpty()) rd += " - ";
+                        rd += d.trim();
+                    }
+                    if (!rd.isEmpty()) listaRotasOriginal.add(rd);
                 }
-                if (!rd.isEmpty()) listaRotasOriginal.add(rd);
             }
         } catch (SQLException e) {
             AppLogger.error("CadastroFreteController", e.getMessage(), e);
@@ -1353,10 +1354,11 @@ public class CadastroFreteController implements Initializable {
         try (Connection c = ConexaoBD.getConnection();
              PreparedStatement s = c.prepareStatement(sql)) {
             s.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet r = s.executeQuery();
-            while (r.next()) {
-                String nome = r.getString(1);
-                if (nome != null) listaConferentesOriginal.add(nome);
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    String nome = r.getString(1);
+                    if (nome != null) listaConferentesOriginal.add(nome);
+                }
             }
         } catch (SQLException e) {
             AppLogger.error("CadastroFreteController", e.getMessage(), e);
@@ -1444,8 +1446,9 @@ public class CadastroFreteController implements Initializable {
             try (Connection conn = ConexaoBD.getConnection();
                  PreparedStatement stmt = conn.prepareStatement(fallback)) {
                 stmt.setInt(1, dao.DAOUtils.empresaId());
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) return rs.getLong(1);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) return rs.getLong(1);
+                }
             }
         }
         return 1;

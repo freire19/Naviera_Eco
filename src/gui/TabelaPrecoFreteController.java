@@ -149,19 +149,19 @@ public class TabelaPrecoFreteController implements Initializable {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt("id_item_frete");
+                    String nome = rs.getString("nome_item");
+                    String desc = rs.getString("descricao");
+                    if(desc == null) desc = "";
 
-            while (rs.next()) {
-                int id = rs.getInt("id_item_frete"); 
-                String nome = rs.getString("nome_item");
-                String desc = rs.getString("descricao");
-                if(desc == null) desc = "";
-                
-                BigDecimal pNormal = rs.getBigDecimal("preco_unitario_padrao");
-                BigDecimal pDesc = rs.getBigDecimal("preco_unitario_desconto");
+                    BigDecimal pNormal = rs.getBigDecimal("preco_unitario_padrao");
+                    BigDecimal pDesc = rs.getBigDecimal("preco_unitario_desconto");
 
-                ItemFrete item = new ItemFrete(id, nome, desc, "UN", pNormal, pDesc, true);
-                listaItens.add(item);
+                    ItemFrete item = new ItemFrete(id, nome, desc, "UN", pNormal, pDesc, true);
+                    listaItens.add(item);
+                }
             }
         } catch (Exception e) {
             AppLogger.error("TabelaPrecoFreteController", e.getMessage(), e);

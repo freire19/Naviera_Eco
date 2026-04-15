@@ -68,8 +68,11 @@ public class PerfilController {
         return repo.findById(id).map(c -> {
             try {
                 Path dir = Paths.get(uploadsDir, "fotos"); Files.createDirectories(dir);
-                String ext = file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")
+                String rawExt = file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")
                     ? file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")) : ".jpg";
+                // DB150: whitelist de extensoes — rejeita extensoes nao permitidas
+                Set<String> allowedExts = Set.of(".jpg", ".jpeg", ".png", ".webp", ".gif");
+                String ext = allowedExts.contains(rawExt.toLowerCase()) ? rawExt.toLowerCase() : ".jpg";
                 String filename = "perfil_" + id + ext;
                 Path dest = dir.resolve(filename);
                 Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);

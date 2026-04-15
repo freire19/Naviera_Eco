@@ -38,6 +38,11 @@ public class PublicController {
     /**
      * Ativacao pelo Desktop: valida codigo e retorna dados da empresa.
      * Usado pelo SetupWizard simplificado (unico campo: codigo).
+     *
+     * SECURITY NOTE (#DB148): RateLimitFilter aplica limite geral de 200 req/min por IP,
+     * mas este endpoint deveria ter um limite mais restrito (ex: 5 req/min por IP) para
+     * resistir a brute-force mesmo com codigos de 8 hex. TODO: adicionar bucket dedicado
+     * "ativar:" no RateLimitFilter (similar ao "login:" existente, max=5).
      */
     @GetMapping("/ativar/{codigo}")
     public ResponseEntity<?> ativarPorCodigo(@PathVariable String codigo) {

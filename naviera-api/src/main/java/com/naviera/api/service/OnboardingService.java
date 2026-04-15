@@ -26,18 +26,18 @@ public class OnboardingService {
     }
 
     /**
-     * Gera codigo de ativacao no formato NAV-XXXX (4 hex).
-     * Curto o suficiente para o operador anotar no papel.
+     * Gera codigo de ativacao no formato NAV-XXXXXXXX (8 hex = ~4 bilhoes de possibilidades).
+     * Resistente a brute-force — probabilidade de colisao negligenciavel.
      */
     private String gerarCodigoAtivacao() {
         for (int tentativa = 0; tentativa < 10; tentativa++) {
-            String codigo = "NAV-" + String.format("%04X", RANDOM.nextInt(0xFFFF));
+            String codigo = "NAV-" + String.format("%08X", RANDOM.nextInt());
             List<Map<String, Object>> existente = jdbc.queryForList(
                 "SELECT 1 FROM empresas WHERE codigo_ativacao = ?", codigo);
             if (existente.isEmpty()) return codigo;
         }
-        // Fallback com mais entropia se 4 hex colidir muito
-        return "NAV-" + String.format("%06X", RANDOM.nextInt(0xFFFFFF));
+        // Fallback improvavel: usar 10 hex se 8 hex colidir em todas as tentativas
+        return "NAV-" + String.format("%010X", (long)(RANDOM.nextDouble() * 0xFFFFFFFFFFL));
     }
 
     /**
@@ -119,6 +119,7 @@ public class OnboardingService {
             return ps;
         }, keyHolder);
 
+        if (keyHolder.getKey() == null) throw new RuntimeException("Falha ao obter ID da empresa criada");
         Long empresaId = keyHolder.getKey().longValue();
 
         // 2. Criar primeiro usuario (Administrador da empresa)
@@ -170,16 +171,14 @@ public class OnboardingService {
 
         Long empresaId = ((Number) empresa.get("id")).longValue();
 
-        // Buscar dados do operador para mostrar na tela final
+        // Buscar nome do operador para mostrar na tela final (sem email — reduz PII exposta)
         List<Map<String, Object>> usuarios = jdbc.queryForList(
-            "SELECT nome, email FROM usuarios WHERE empresa_id = ? AND funcao = 'Administrador' AND (excluido IS NOT TRUE) LIMIT 1",
+            "SELECT nome FROM usuarios WHERE empresa_id = ? AND funcao = 'Administrador' AND (excluido IS NOT TRUE) LIMIT 1",
             empresaId);
 
         String operadorNome = "";
-        String operadorEmail = "";
         if (!usuarios.isEmpty()) {
             operadorNome = (String) usuarios.get(0).get("nome");
-            operadorEmail = (String) usuarios.get(0).get("email");
         }
 
         // Marcar ativacao (nao impede re-ativacao — pode reinstalar)
@@ -189,8 +188,7 @@ public class OnboardingService {
             "empresa_id", empresaId,
             "nome", empresa.get("nome"),
             "slug", empresa.get("slug"),
-            "operador_nome", operadorNome,
-            "operador_email", operadorEmail
+            "operador_nome", operadorNome
         );
     }
 

@@ -227,11 +227,12 @@ public class RelatorioFretesController implements Initializable {
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                String cliente = rs.getString("destinatario_nome_temp");
-                if (cliente != null && !cliente.trim().isEmpty()) {
-                    clientes.add(cliente);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String cliente = rs.getString("destinatario_nome_temp");
+                    if (cliente != null && !cliente.trim().isEmpty()) {
+                        clientes.add(cliente);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -252,11 +253,12 @@ public class RelatorioFretesController implements Initializable {
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                String devedor = rs.getString("destinatario_nome_temp");
-                if (devedor != null && !devedor.trim().isEmpty()) {
-                    devedores.add(devedor);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String devedor = rs.getString("destinatario_nome_temp");
+                    if (devedor != null && !devedor.trim().isEmpty()) {
+                        devedores.add(devedor);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -299,26 +301,27 @@ public class RelatorioFretesController implements Initializable {
             if (filtrarCliente) {
                 stmt.setString(3, cliente);
             }
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                String codFrete = rs.getString("numero_frete");
-                LocalDate dataViagem = rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toLocalDate() : null;
-                String dataStr = dataViagem != null ? dataViagem.format(dateFormatter) : "";
-                String remetente = rs.getString("remetente_nome_temp");
-                String item = rs.getString("nome_item_ou_id_produto");
-                double quantidade = rs.getDouble("quantidade");
-                double preco = rs.getDouble("preco_unitario");
-                double total = rs.getDouble("total_item");
-                
-                listaFreteItens.add(new FreteItemRelatorio(codFrete, dataStr, remetente, item, quantidade, preco, total));
-                totalItens += total;
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String codFrete = rs.getString("numero_frete");
+                    LocalDate dataViagem = rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toLocalDate() : null;
+                    String dataStr = dataViagem != null ? dataViagem.format(dateFormatter) : "";
+                    String remetente = rs.getString("remetente_nome_temp");
+                    String item = rs.getString("nome_item_ou_id_produto");
+                    double quantidade = rs.getDouble("quantidade");
+                    double preco = rs.getDouble("preco_unitario");
+                    double total = rs.getDouble("total_item");
+
+                    listaFreteItens.add(new FreteItemRelatorio(codFrete, dataStr, remetente, item, quantidade, preco, total));
+                    totalItens += total;
+                }
             }
         } catch (Exception e) {
             AppLogger.error("RelatorioFretesController", e.getMessage(), e);
         }
-        
+
         lblTotalItens.setText(String.format("R$ %.2f", totalItens));
-        
+
         // Carregar situação financeira
         StringBuilder sqlFin = new StringBuilder(
             "SELECT f.numero_frete, f.valor_total_itens, f.valor_pago, f.valor_devedor " +
@@ -339,16 +342,17 @@ public class RelatorioFretesController implements Initializable {
             if (filtrarCliente) {
                 stmt.setString(3, cliente);
             }
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                String numFrete = rs.getString("numero_frete");
-                double total = rs.getDouble("valor_total_itens");
-                double pago = rs.getDouble("valor_pago");
-                // DL053: recalcular devedor em tempo real em vez de usar campo persistido
-                double devedor = Math.max(0, total - pago);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String numFrete = rs.getString("numero_frete");
+                    double total = rs.getDouble("valor_total_itens");
+                    double pago = rs.getDouble("valor_pago");
+                    // DL053: recalcular devedor em tempo real em vez de usar campo persistido
+                    double devedor = Math.max(0, total - pago);
 
-                listaDevedores.add(new FreteDevedor(total, pago, devedor, numFrete));
-                totalEmAberto += devedor;
+                    listaDevedores.add(new FreteDevedor(total, pago, devedor, numFrete));
+                    totalEmAberto += devedor;
+                }
             }
         } catch (Exception e) {
             AppLogger.error("RelatorioFretesController", e.getMessage(), e);
@@ -543,17 +547,17 @@ public class RelatorioFretesController implements Initializable {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
             stmt.setString(3, cliente);
-            ResultSet rs = stmt.executeQuery();
-            
+            try (ResultSet rs = stmt.executeQuery()) {
+
             while (rs.next()) {
                 double qtd = rs.getDouble("quantidade");
                 String desc = rs.getString("nome_item_ou_id_produto");
                 double unit = rs.getDouble("preco_unitario");
                 double total = rs.getDouble("total_item");
-                
+
                 totalVolumes += (int) qtd;
                 totalGeral += total;
-                
+
                 Label q = new Label(String.valueOf((int) qtd));
                 q.setStyle(styleCellFirst); q.setPrefWidth(wQtd); q.setAlignment(Pos.CENTER);
                 
@@ -574,6 +578,7 @@ public class RelatorioFretesController implements Initializable {
                 }
                 linha++;
             }
+            } // end try (ResultSet rs)
         } catch (Exception e) {
             throw new RuntimeException("Erro ao buscar itens do frete no banco de dados: " + e.getMessage(), e);
         }
@@ -643,12 +648,13 @@ public class RelatorioFretesController implements Initializable {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
             stmt.setString(3, cliente);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getString("numero_frete");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getString("numero_frete");
+            }
         } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return "---";
     }
-    
+
     private String buscarRemetenteFrete(Viagem viagem, String cliente) {
         String sql = "SELECT remetente_nome_temp FROM fretes WHERE id_viagem = ? AND empresa_id = ? AND destinatario_nome_temp = ? LIMIT 1";
         try (Connection con = ConexaoBD.getConnection();
@@ -656,24 +662,26 @@ public class RelatorioFretesController implements Initializable {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
             stmt.setString(3, cliente);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getString("remetente_nome_temp");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getString("remetente_nome_temp");
+            }
         } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return "";
     }
-    
+
     private String buscarRotaFrete(Viagem viagem) {
         String sql = "SELECT r.origem, r.destino FROM viagens v JOIN rotas r ON v.id_rota = r.id WHERE v.id_viagem = ? AND v.empresa_id = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getString("origem") + " - " + rs.getString("destino");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getString("origem") + " - " + rs.getString("destino");
+            }
         } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return "--";
     }
-    
+
     private double[] buscarValoresFinanceiros(Viagem viagem, String cliente) {
         double total = 0, pago = 0, devedor = 0;
         String sql = "SELECT SUM(valor_total_itens) as total, SUM(valor_pago) as pago, SUM(valor_devedor) as devedor " +
@@ -683,11 +691,12 @@ public class RelatorioFretesController implements Initializable {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
             stmt.setString(3, cliente);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                total = rs.getDouble("total");
-                pago = rs.getDouble("pago");
-                devedor = rs.getDouble("devedor");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    total = rs.getDouble("total");
+                    pago = rs.getDouble("pago");
+                    devedor = rs.getDouble("devedor");
+                }
             }
         } catch (Exception e) { AppLogger.error("RelatorioFretesController", e.getMessage(), e); }
         return new double[]{total, pago, devedor};
@@ -762,35 +771,35 @@ public class RelatorioFretesController implements Initializable {
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String numFrete = rs.getString("numero_frete");
 
-            while (rs.next()) {
-                String numFrete = rs.getString("numero_frete");
+                    FreteCompleto frete = fretesMap.get(numFrete);
+                    if (frete == null) {
+                        frete = new FreteCompleto();
+                        frete.numeroFrete = numFrete;
+                        frete.remetente = rs.getString("remetente_nome_temp");
+                        frete.destinatario = rs.getString("destinatario_nome_temp");
+                        frete.valorTotal = rs.getDouble("valor_total_itens");
+                        frete.valorPago = rs.getDouble("valor_pago");
+                        frete.valorDevedor = rs.getDouble("valor_devedor");
+                        frete.itens = new ArrayList<>();
+                        fretesMap.put(numFrete, frete);
+                    }
 
-                FreteCompleto frete = fretesMap.get(numFrete);
-                if (frete == null) {
-                    frete = new FreteCompleto();
-                    frete.numeroFrete = numFrete;
-                    frete.remetente = rs.getString("remetente_nome_temp");
-                    frete.destinatario = rs.getString("destinatario_nome_temp");
-                    frete.valorTotal = rs.getDouble("valor_total_itens");
-                    frete.valorPago = rs.getDouble("valor_pago");
-                    frete.valorDevedor = rs.getDouble("valor_devedor");
-                    frete.itens = new ArrayList<>();
-                    fretesMap.put(numFrete, frete);
+                    ItemFrete item = new ItemFrete();
+                    item.descricao = rs.getString("nome_item_ou_id_produto");
+                    item.quantidade = rs.getDouble("quantidade");
+                    item.valorUnitario = rs.getDouble("preco_unitario");
+                    item.valorTotal = rs.getDouble("total_item");
+                    frete.itens.add(item);
                 }
-
-                ItemFrete item = new ItemFrete();
-                item.descricao = rs.getString("nome_item_ou_id_produto");
-                item.quantidade = rs.getDouble("quantidade");
-                item.valorUnitario = rs.getDouble("preco_unitario");
-                item.valorTotal = rs.getDouble("total_item");
-                frete.itens.add(item);
             }
         } catch (Exception e) {
             throw new RuntimeException("Erro ao buscar fretes no banco de dados: " + e.getMessage(), e);
         }
-        
+
         // Aplicar filtros
         List<FreteCompleto> listaFiltrada = new ArrayList<>();
         for (FreteCompleto f : fretesMap.values()) {
@@ -1211,19 +1220,19 @@ public class RelatorioFretesController implements Initializable {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
             stmt.setString(3, cliente);
-            ResultSet rs = stmt.executeQuery();
-            
-            while (rs.next()) {
-                String remetente = rs.getString("remetente_nome_temp");
-                if (remetente == null) remetente = "SEM REMETENTE";
-                
-                Map<String, Object> item = new HashMap<>();
-                item.put("descricao", rs.getString("nome_item_ou_id_produto"));
-                item.put("quantidade", rs.getDouble("quantidade"));
-                item.put("valorUnit", rs.getDouble("preco_unitario"));
-                item.put("total", rs.getDouble("total_item"));
-                
-                itensPorRemetente.computeIfAbsent(remetente, k -> new ArrayList<>()).add(item);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String remetente = rs.getString("remetente_nome_temp");
+                    if (remetente == null) remetente = "SEM REMETENTE";
+
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("descricao", rs.getString("nome_item_ou_id_produto"));
+                    item.put("quantidade", rs.getDouble("quantidade"));
+                    item.put("valorUnit", rs.getDouble("preco_unitario"));
+                    item.put("total", rs.getDouble("total_item"));
+
+                    itensPorRemetente.computeIfAbsent(remetente, k -> new ArrayList<>()).add(item);
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Erro ao buscar itens por remetente no banco de dados: " + e.getMessage(), e);
@@ -1370,35 +1379,35 @@ public class RelatorioFretesController implements Initializable {
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String numFrete = rs.getString("numero_frete");
 
-            while (rs.next()) {
-                String numFrete = rs.getString("numero_frete");
+                    FreteCompleto frete = fretesMap.get(numFrete);
+                    if (frete == null) {
+                        frete = new FreteCompleto();
+                        frete.numeroFrete = numFrete;
+                        frete.remetente = rs.getString("remetente_nome_temp");
+                        frete.destinatario = rs.getString("destinatario_nome_temp");
+                        frete.valorTotal = rs.getDouble("valor_total_itens");
+                        frete.valorPago = rs.getDouble("valor_pago");
+                        frete.valorDevedor = rs.getDouble("valor_devedor");
+                        frete.itens = new ArrayList<>();
+                        fretesMap.put(numFrete, frete);
+                    }
 
-                FreteCompleto frete = fretesMap.get(numFrete);
-                if (frete == null) {
-                    frete = new FreteCompleto();
-                    frete.numeroFrete = numFrete;
-                    frete.remetente = rs.getString("remetente_nome_temp");
-                    frete.destinatario = rs.getString("destinatario_nome_temp");
-                    frete.valorTotal = rs.getDouble("valor_total_itens");
-                    frete.valorPago = rs.getDouble("valor_pago");
-                    frete.valorDevedor = rs.getDouble("valor_devedor");
-                    frete.itens = new ArrayList<>();
-                    fretesMap.put(numFrete, frete);
+                    ItemFrete item = new ItemFrete();
+                    item.descricao = rs.getString("nome_item_ou_id_produto");
+                    item.quantidade = rs.getDouble("quantidade");
+                    item.valorUnitario = rs.getDouble("preco_unitario");
+                    item.valorTotal = rs.getDouble("total_item");
+                    frete.itens.add(item);
                 }
-
-                ItemFrete item = new ItemFrete();
-                item.descricao = rs.getString("nome_item_ou_id_produto");
-                item.quantidade = rs.getDouble("quantidade");
-                item.valorUnitario = rs.getDouble("preco_unitario");
-                item.valorTotal = rs.getDouble("total_item");
-                frete.itens.add(item);
             }
         } catch (Exception e) {
             throw new RuntimeException("Erro ao buscar fretes para conferência no banco de dados: " + e.getMessage(), e);
         }
-        
+
         if (fretesMap.isEmpty()) { AlertHelper.warn("Nenhum frete encontrado para esta viagem."); return; }
         
         // Calcular totais
@@ -1611,32 +1620,32 @@ public class RelatorioFretesController implements Initializable {
             stmt.setLong(1, viagem.getId());
             stmt.setInt(2, dao.DAOUtils.empresaId());
             stmt.setString(3, cliente);
-            ResultSet rs = stmt.executeQuery();
-            
-            while (rs.next()) {
-                String numFrete = rs.getString("numero_frete");
-                double total = rs.getDouble("valor_total_itens");
-                double pago = rs.getDouble("valor_pago");
-                double devedor = rs.getDouble("valor_devedor");
-                
-                totalGeral += total;
-                totalPago += pago;
-                totalSaldo += devedor;
-                
-                Label lFrete = new Label(numFrete != null ? numFrete : ""); 
-                lFrete.setStyle(styleCellFirst); lFrete.setPrefWidth(wFrete); lFrete.setAlignment(Pos.CENTER);
-                
-                Label lTotal = new Label(String.format("%,.2f", total)); 
-                lTotal.setStyle(styleCellNormal); lTotal.setPrefWidth(wTotal); lTotal.setAlignment(Pos.CENTER_RIGHT);
-                
-                Label lPago = new Label(String.format("%,.2f", pago)); 
-                lPago.setStyle(styleCellNormal); lPago.setPrefWidth(wPago); lPago.setAlignment(Pos.CENTER_RIGHT);
-                
-                Label lSaldo = new Label(String.format("%,.2f", devedor)); 
-                lSaldo.setStyle(styleCellNormal); lSaldo.setPrefWidth(wSaldo); lSaldo.setAlignment(Pos.CENTER_RIGHT);
-                
-                grid.add(lFrete, 0, linha); grid.add(lTotal, 1, linha); grid.add(lPago, 2, linha); grid.add(lSaldo, 3, linha);
-                linha++;
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String numFrete = rs.getString("numero_frete");
+                    double total = rs.getDouble("valor_total_itens");
+                    double pago = rs.getDouble("valor_pago");
+                    double devedor = rs.getDouble("valor_devedor");
+
+                    totalGeral += total;
+                    totalPago += pago;
+                    totalSaldo += devedor;
+
+                    Label lFrete = new Label(numFrete != null ? numFrete : "");
+                    lFrete.setStyle(styleCellFirst); lFrete.setPrefWidth(wFrete); lFrete.setAlignment(Pos.CENTER);
+
+                    Label lTotal = new Label(String.format("%,.2f", total));
+                    lTotal.setStyle(styleCellNormal); lTotal.setPrefWidth(wTotal); lTotal.setAlignment(Pos.CENTER_RIGHT);
+
+                    Label lPago = new Label(String.format("%,.2f", pago));
+                    lPago.setStyle(styleCellNormal); lPago.setPrefWidth(wPago); lPago.setAlignment(Pos.CENTER_RIGHT);
+
+                    Label lSaldo = new Label(String.format("%,.2f", devedor));
+                    lSaldo.setStyle(styleCellNormal); lSaldo.setPrefWidth(wSaldo); lSaldo.setAlignment(Pos.CENTER_RIGHT);
+
+                    grid.add(lFrete, 0, linha); grid.add(lTotal, 1, linha); grid.add(lPago, 2, linha); grid.add(lSaldo, 3, linha);
+                    linha++;
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Erro ao buscar extrato do cliente no banco de dados: " + e.getMessage(), e);

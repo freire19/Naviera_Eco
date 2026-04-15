@@ -168,13 +168,14 @@ public class AuditoriaExclusoesSaida {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                int id = rs.getInt("id_viagem");
-                String desc = rs.getString("descricao");
-                java.sql.Date dt = rs.getDate("data_viagem");
-                if (dt != null) desc += " (" + sdf.format(dt) + ")";
-                lista.add(new OpcaoViagem(id, desc));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt("id_viagem");
+                    String desc = rs.getString("descricao");
+                    java.sql.Date dt = rs.getDate("data_viagem");
+                    if (dt != null) desc += " (" + sdf.format(dt) + ")";
+                    lista.add(new OpcaoViagem(id, desc));
+                }
             }
         } catch (Exception e) { AppLogger.error("AuditoriaExclusoesSaida", e.getMessage(), e); }
         return lista;
@@ -216,23 +217,24 @@ public class AuditoriaExclusoesSaida {
                      PreparedStatement stmt = con.prepareStatement(sql)) {
                     stmt.setInt(1, idViagem);
                     stmt.setInt(2, dao.DAOUtils.empresaId());
-                    ResultSet rs = stmt.executeQuery();
-                    while (rs.next()) {
-                        String responsaveis = rs.getString("usuario");
-                        String solicitante = "N/D";
-                        String autorizador = responsaveis;
-                        if (responsaveis != null && responsaveis.contains("/")) {
-                            String[] partes = responsaveis.split("/");
-                            if (partes.length >= 2) { solicitante = partes[0].trim(); autorizador = partes[1].trim(); }
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            String responsaveis = rs.getString("usuario");
+                            String solicitante = "N/D";
+                            String autorizador = responsaveis;
+                            if (responsaveis != null && responsaveis.contains("/")) {
+                                String[] partes = responsaveis.split("/");
+                                if (partes.length >= 2) { solicitante = partes[0].trim(); autorizador = partes[1].trim(); }
+                            }
+                            String detalheBruto = rs.getString("detalhe_valor");
+                            String detalheLimpo = detalheBruto;
+                            if (detalheBruto != null && detalheBruto.contains("| REF. VIAGEM")) {
+                                detalheLimpo = detalheBruto.split("\\| REF. VIAGEM")[0].trim();
+                            }
+                            java.sql.Timestamp ts = rs.getTimestamp("data_hora");
+                            String dataFormatada = (ts != null) ? sdf.format(ts) : "—";
+                            lista.add(new RegistroAuditoria(rs.getInt("id"), dataFormatada, solicitante, autorizador, rs.getString("motivo"), detalheLimpo));
                         }
-                        String detalheBruto = rs.getString("detalhe_valor");
-                        String detalheLimpo = detalheBruto;
-                        if (detalheBruto != null && detalheBruto.contains("| REF. VIAGEM")) {
-                            detalheLimpo = detalheBruto.split("\\| REF. VIAGEM")[0].trim();
-                        }
-                        java.sql.Timestamp ts = rs.getTimestamp("data_hora");
-                        String dataFormatada = (ts != null) ? sdf.format(ts) : "—";
-                        lista.add(new RegistroAuditoria(rs.getInt("id"), dataFormatada, solicitante, autorizador, rs.getString("motivo"), detalheLimpo));
                     }
                 }
                 Platform.runLater(() -> tabela.setItems(lista));

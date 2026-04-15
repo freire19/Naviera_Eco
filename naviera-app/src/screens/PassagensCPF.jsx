@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { API, useApi } from "../api.js";
+import { API, useApi, authFetch } from "../api.js";
 import { fmt, money } from "../helpers.js";
 import { IconBack, IconCheck, IconCalendar } from "../icons.jsx";
 import Badge from "../components/Badge.jsx";
@@ -33,7 +33,7 @@ export default function PassagensCPF({ t, authHeaders }) {
     if (!tipoSel) { setErro("Selecione o tipo de passagem."); return; }
     setErro(""); setComprando(true);
     try {
-      const res = await fetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: "PIX" }) });
+      const res = await authFetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: "PIX" }) });
       const data = await res.json();
       if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
       setResultado(data); rm();
@@ -79,7 +79,7 @@ export default function PassagensCPF({ t, authHeaders }) {
     </Cd>
     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Escolha o tipo</div>
     {tarifasDaViagem.length > 0 ? tarifasDaViagem.map((x, i) => {
-      const total = (Number(x.valor_transporte) || 0) + (Number(x.valor_alimentacao) || 0) - (Number(x.valor_desconto) || 0);
+      const total = Math.max(0, (Number(x.valor_transporte) || 0) + (Number(x.valor_alimentacao) || 0) - (Number(x.valor_desconto) || 0));
       const selected = tipoSel === x.tipo_passageiro_id;
       return <Cd key={i} t={t} style={{ padding: 14, cursor: "pointer", border: `2px solid ${selected ? t.pri : t.border}`, background: selected ? t.accent : t.card }} onClick={() => setTipoSel(x.tipo_passageiro_id)}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

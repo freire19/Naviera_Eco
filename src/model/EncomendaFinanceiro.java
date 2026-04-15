@@ -30,6 +30,6 @@ public class EncomendaFinanceiro {
     public String getRestanteFormatado() { return String.format("R$ %,.2f", getRestante()); }
 
     public String getStatus() {
-        return StatusPagamento.calcularPorSaldo(getRestante().doubleValue(), getPago().doubleValue()).name();
+        return StatusPagamento.calcularPorSaldo(getRestante(), getPago()).name();
     }
 }

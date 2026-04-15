@@ -132,8 +132,9 @@ public class FreteDAO {
             conn.setAutoCommit(false);
 
             try (PreparedStatement pstItems = conn.prepareStatement(
-                    "DELETE FROM frete_itens WHERE id_frete = ?")) {
+                    "DELETE FROM frete_itens WHERE id_frete = ? AND id_frete IN (SELECT id_frete FROM fretes WHERE empresa_id = ?)")) {
                 pstItems.setLong(1, idFrete);
+                pstItems.setInt(2, DAOUtils.empresaId());
                 pstItems.executeUpdate();
             }
 

@@ -68,7 +68,13 @@ export async function uploadFoto(file, viagemId) {
   return res.json()
 }
 
-export function fotoUrl(lancamentoId) {
+// #DB151: fetch foto via Authorization header instead of exposing JWT in URL
+export async function fetchFoto(lancamentoId) {
   const token = localStorage.getItem('naviera_ocr_token')
-  return `${API}/ocr/lancamentos/${lancamentoId}/foto?token=${token}`
+  const res = await fetch(`${API}/ocr/lancamentos/${lancamentoId}/foto`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  if (!res.ok) return null
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
 }

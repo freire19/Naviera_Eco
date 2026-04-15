@@ -1,10 +1,10 @@
 # STATUS DO PROJETO — Naviera Eco
-> Ultima atualizacao: 2026-04-14
-> Atualizado por: Claude Code (audit-report V1.2)
+> Ultima atualizacao: 2026-04-15
+> Atualizado por: Claude Code (deep-audit security V4.0)
 
 ---
 
-## Estado Geral: EM CORRECAO (0 CRITICAS, 0 ALTAS DAO/BFF — restam novos do Deep)
+## Estado Geral: BUGS LIMPO (0 CRIT, 0 ALTO, 0 MEDIO, 0 BAIXO — 61/61 corrigidas)
 
 ### Resumo
 Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaFX), API (Spring Boot), Web (React + Express BFF), App (React → mobile), Site (React). Auditoria V1.2 encontrou **12 issues CRITICAS** — todas nos DAOs Desktop (migracao multi-tenant incompleta): parametros SQL trocados, placeholders faltando, filtros empresa_id ausentes, executeUpdate nunca chamado, SQL sintaticamente invalido. **Corrigir antes de qualquer deploy multi-tenant.**
@@ -50,12 +50,12 @@ Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaF
 
 | Categoria | Total | Resolvidas | Ativas | % Resolvido | Status |
 |-----------|-------|-----------|--------|-------------|--------|
-| **Security** | **47** | **47** | **0** | **100%** | LIMPO |
+| **Security** | **90** | **47** | **43** | **52%** | **DEEP V4.0: 7 CRIT, 13 ALTO, 13 MEDIO, 10 BAIXO** |
 | **Logic** | **75** | **75** | **0** | **100%** | LIMPO |
-| **Bugs** | **36** | **36** | **0** | **100%** | **LIMPO** — 35 deep + 6 AUDIT anteriores, todas verificadas |
+| **Bugs** | **134** | **134** | **0** | **100%** | **LIMPO** — 61 novas (Deep V2.0) + 36 anteriores + 37 AUDIT, todas corrigidas |
 | **Resilience** | **116** | **116** | **0** | **100%** | **LIMPO** — 49 novas V5.0 + 2 antigas, todas corrigidas |
 | **Performance** | **39** | **37** | **2** | **95%** | **QUASE LIMPO** (restam #048 JSON parser + #DP023 JARs) |
-| **Maintainability** | **76** | **71** | **~5** | **93%** | **0 CRIT, 0 ALTA, 0 MEDIA, 0 BAIXA corrigivel — restam 5 estruturais** |
+| **Maintainability** | **91** | **62** | **29** | **68%** | **1 CRIT, 7 ALTA, 13 MEDIO, 1 BAIXA + 7 estruturais pendentes** |
 
 > **Nota:** DEEP_BUGS reconciliado em 2026-04-09 — todas as 35 issues (6 crit + 11 alta + 8 media + 3 baixa + 7 AUDIT) verificadas como corrigidas. As ~27 "ativas" anteriores estavam sobrepostas com fixes de Security/Logic/Resilience/Maintainability.
 
@@ -94,12 +94,12 @@ DL055-DL064, DL023, #025: total_a_pagar, forma_pagamento, coluna aPagar, 2a via 
 | **Scan Geral** | **V1.2** | **2026-04-14** | **112 (12 CRIT, 22 ALTO)** | **REPROVADO — 12 CRITICAS** | **[AUDIT_V1.2](audits/current/AUDIT_V1.2.md)** |
 | Scan Geral | V1.1 | 2026-04-08 | 54 original | Arquivado | [AUDIT_V1.1](audits/archive/AUDIT_V1.1.md) |
 | Scan Geral | V1.0 | 2026-04-07 | ~194 original | Arquivado | [AUDIT_V1.0](audits/archive/AUDIT_V1.0.md) |
-| Deep Security | V3.0 | 2026-04-08 | 0 | 100% LIMPO | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
+| **Deep Security** | **V4.0** | **2026-04-15** | **43 (7 CRIT, 13 ALTO)** | **52% — escopo expandido para todas as camadas** | **[DEEP_SECURITY](audits/current/DEEP_SECURITY.md)** |
 | **Deep Logic** | **V5.0** | **2026-04-14** | **0** | **100% LIMPO — 25/25 V1.2 + 54/54 novos** | **[DEEP_LOGIC](audits/current/DEEP_LOGIC.md)** |
-| Deep Bugs | V1.1 | 2026-04-09 | 0 | 100% LIMPO | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
+| **Deep Bugs** | **V2.0** | **2026-04-15** | **0 ativas** | **100% LIMPO — 61/61 corrigidas** | **[DEEP_BUGS](audits/current/DEEP_BUGS.md)** |
 | **Deep Resilience** | **V5.0** | **2026-04-14** | **0** | **100% LIMPO — 49/49 novas + 2 antigas corrigidas** | **[DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)** |
 | Deep Performance | V3.0 | 2026-04-09 | 2 (infra) | 95% LIMPO | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
-| Deep Maintainability | V3.0 | 2026-04-09 | ~5 (estruturais) | 90% reduzido | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
+| Deep Maintainability | V4.0 | 2026-04-15 | 29 ativas (1 crit, 7 alta, 13 medio, 1 baixa + 7 estruturais) | Cobertura ampliada: 6 camadas (155 arquivos) | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
 | MVP Plan | V4.0 | 2026-04-10 | 3 bloqueadores | 77% pronto | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
 
 > **NOTA:** O Audit V1.2 re-escaneou o projeto completo apos features adicionais (site, instalador, web parity). Encontrou 12 CRITICAS todas nos DAOs Desktop — consequencia da migracao multi-tenant (script 013) que introduziu empresa_id mas nao corrigiu todos os binds/placeholders nos DAOs. Os deep audits anteriores (V3-V4) nao cobriram esses DAOs especificos.
@@ -144,7 +144,7 @@ Error Boundaries React, paginacao endpoints BFF, formatMoney centralizar, N+1 qu
 ## LINKS RAPIDOS
 
 - **Audit geral:** [AUDIT_V1.2](audits/current/AUDIT_V1.2.md)
-- **Deep Security:** [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) — 100% LIMPO
+- **Deep Security:** [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) — **43 issues (7 CRIT, 13 ALTO)**
 - **Deep Logic:** [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) — 100% LIMPO
 - **Deep Bugs:** [DEEP_BUGS](audits/current/DEEP_BUGS.md)
 - **Deep Resilience:** [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)
@@ -173,6 +173,7 @@ Error Boundaries React, paginacao endpoints BFF, formatMoney centralizar, N+1 qu
 | 2026-04-08 | Fix DEEP_BUGS medias — 8 MEDIAS corrigidas: ON CONFLICT, dead code deletado, toString null-safe, awaitTermination, preCarregarCaches |
 | 2026-04-08 | **DEEP_BUGS V1.0 — Categoria 100% limpa** (35/35: 6 crit + 11 alta + 8 media + 3 baixa + 7 AUDIT pendentes) |
 | 2026-04-09 | DEEP_PERFORMANCE V3.0 — auditoria + fix completo: 37/39 resolvidas (95%) |
+| 2026-04-15 | DEEP_MAINTAINABILITY V4.0 — re-auditoria completa (155 arquivos, 6 camadas): 15 novas issues, 14 pendentes, 29 ativas totais. Issue CRITICA: falta de camada Service (#DM057) |
 | 2026-04-09 | DEEP_MAINTAINABILITY V3.0 — auditoria + fix completo: 40 corrigidas (3 crit + 13 altas + 20 medias + 4 parciais), ~11 restantes (BAIXAS) |
 | 2026-04-10 | **MVP Fase 1** — HTTPS preparado, BFF multi-tenant (30 queries), JWT secret fix, db.properties protegido |
 | 2026-04-10 | **MVP Fase 2** — 25 write endpoints BFF, 4 paginas com CRUD + modais, @Valid em 7 DTOs |
@@ -182,6 +183,7 @@ Error Boundaries React, paginacao endpoints BFF, formatMoney centralizar, N+1 qu
 | 2026-04-10 | **MVP PLAN V4.0 — 77% pronto (95/124), 3 bloqueadores (CORS, SyncService injection, HTTPS). Analise aprofundada em infra/seguranca (+8 itens avaliados)** |
 | 2026-04-14 | **AUDIT V1.2 — Re-scan completo: 112 issues (12 CRIT). DAOs Desktop com migracao multi-tenant incompleta. Contra-verificado: 4 FP descartados, 29 severidades ajustadas, 14 novas issues.** |
 | 2026-04-14 | **DEEP_LOGIC V5.0 — 87 arquivos linha por linha. 23 issues V1.2 pendentes, 24 genuinamente novos. API login sem tenant, AuxiliaresDAO caixas/rotas vazam dados, 5 controllers com double para dinheiro.** |
+| 2026-04-15 | **DEEP_SECURITY V4.0 — 200+ arquivos (todas as camadas). 43 issues (7 CRIT, 13 ALTO). Principais: IDOR em API (empresaId do request body), WebSocket sem auth, TOTP inseguro, login cross-tenant.** |
 
 ---
 *Atualizado automaticamente por Claude Code (status-update) — Revisao humana recomendada*

@@ -3,12 +3,13 @@ import { IconCamera, IconImage, IconX } from '../icons.jsx'
 
 // Comprime imagem para max 2048px de lado maior
 function compressImage(file, maxSize = 2048) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
     img.onload = () => {
       URL.revokeObjectURL(url)
       let { width, height } = img
+
       if (width <= maxSize && height <= maxSize) {
         resolve(file)
         return
@@ -22,6 +23,10 @@ function compressImage(file, maxSize = 2048) {
       const ctx = canvas.getContext('2d')
       ctx.drawImage(img, 0, 0, width, height)
       canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.85)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Imagem invalida'))
     }
     img.src = url
   })

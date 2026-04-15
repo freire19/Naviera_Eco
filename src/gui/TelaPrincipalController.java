@@ -1489,7 +1489,10 @@ public class TelaPrincipalController implements Initializable {
     private void aplicarEstiloAlerta(Alert alert) {
         if (isModoEscuro) {
             DialogPane dialogPane = alert.getDialogPane();
-            dialogPane.getStylesheets().add(getClass().getResource(cssEscuro).toExternalForm());
+            java.net.URL url = getClass().getResource(cssEscuro);
+            if (url != null) {
+                dialogPane.getStylesheets().add(url.toExternalForm());
+            }
         }
     }
 

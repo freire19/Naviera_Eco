@@ -185,10 +185,10 @@ router.post('/lancamentos/:id/ia-review', async (req, res) => {
     // Chamar Gemini AI
     const dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
 
-    // Atualizar dados extraidos no banco
+    // Atualizar dados extraidos no banco — #DB125: filtrar por empresa_id
     await pool.query(
-      'UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2',
-      [JSON.stringify(dados), req.params.id]
+      'UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2 AND empresa_id = $3',
+      [JSON.stringify(dados), req.params.id, empresaId]
     )
 
     res.json({ dados_extraidos: dados })
@@ -342,6 +342,8 @@ router.get('/lancamentos/:id/foto', async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
 
     const fullPath = path.join(UPLOAD_PATH, result.rows[0].foto_path)
+    // #DB126: path traversal guard
+    if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
     if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
 
     res.sendFile(fullPath)

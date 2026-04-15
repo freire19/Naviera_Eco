@@ -10,7 +10,8 @@ public class EmbarcacaoService {
     private final JdbcTemplate jdbc;
     public EmbarcacaoService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    public List<EmbarcacaoDTO> listarComStatus() {
+    // #DB143: empresaId parameter added to prevent cross-tenant data leak
+    public List<EmbarcacaoDTO> listarComStatus(Integer empresaId) {
         String sql = """
             SELECT emb.id_embarcacao as id, emb.nome, emb.capacidade_passageiros,
                    CASE WHEN v_atual.id_viagem IS NOT NULL THEN 'EM_VIAGEM'
@@ -39,6 +40,7 @@ public class EmbarcacaoService {
                 ORDER BY vi.data_viagem ASC LIMIT 1
             ) v_prox ON true
             LEFT JOIN rotas r_prox ON v_prox.id_rota = r_prox.id
+            WHERE emb.empresa_id = ?
             ORDER BY emb.nome
             """;
         return jdbc.query(sql, (rs, i) -> new EmbarcacaoDTO(
@@ -49,6 +51,6 @@ public class EmbarcacaoService {
             rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toString() : null,
             rs.getString("foto_url"), rs.getString("link_externo"), rs.getString("descricao"),
             rs.getString("rota_principal"), rs.getString("horario_saida_padrao"), rs.getString("telefone")
-        ));
+        ), empresaId);
     }
 }

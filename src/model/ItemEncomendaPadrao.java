@@ -29,7 +29,7 @@ public class ItemEncomendaPadrao {
     public String getUnidadeMedida() { return unidadeMedida; }
     public void setUnidadeMedida(String unidadeMedida) { this.unidadeMedida = unidadeMedida; }
 
-    public BigDecimal getPrecoUnit() { return precoUnit; }
+    public BigDecimal getPrecoUnit() { return precoUnit != null ? precoUnit : BigDecimal.ZERO; }
     public void setPrecoUnit(BigDecimal precoUnit) { this.precoUnit = precoUnit; }
 
     public boolean isPermiteValorDeclarado() { return permiteValorDeclarado; }

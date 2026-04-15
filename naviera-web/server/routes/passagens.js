@@ -93,6 +93,9 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total: 'require
 
     await client.query('BEGIN')
 
+    // #DB127: Advisory lock to prevent race condition on numero_bilhete MAX+1
+    await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
+
     // Se nao tem id_passageiro, busca ou cria pelo nome
     let passageiroId = id_passageiro
     if (!passageiroId && nome_passageiro) {
@@ -180,24 +183,44 @@ router.put('/:id', async (req, res) => {
 
 // POST /api/passagens/:id/pagar
 router.post('/:id/pagar', async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
     const { valor_pago } = req.body
     if (!valor_pago || valor_pago <= 0) {
       return res.status(400).json({ error: 'valor_pago obrigatorio e deve ser positivo' })
     }
-    const result = await pool.query(`
+
+    await client.query('BEGIN')
+
+    // #DB129: WHERE valor_devedor >= $1 prevents overpayment (negative devedor)
+    const result = await client.query(`
       UPDATE passagens SET valor_pago = valor_pago + $1,
         valor_devedor = valor_devedor - $1,
         status_passagem = CASE WHEN (valor_devedor - $1) <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END
-      WHERE id_passagem = $2 AND empresa_id = $3
+      WHERE id_passagem = $2 AND empresa_id = $3 AND valor_devedor >= $1
       RETURNING *
     `, [valor_pago, req.params.id, empresaId])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Passagem nao encontrada' })
+
+    if (result.rows.length === 0) {
+      // Distinguish between not-found and overpayment
+      const check = await client.query(
+        'SELECT id_passagem, valor_devedor FROM passagens WHERE id_passagem = $1 AND empresa_id = $2',
+        [req.params.id, empresaId]
+      )
+      await client.query('ROLLBACK')
+      if (check.rows.length === 0) return res.status(404).json({ error: 'Passagem nao encontrada' })
+      return res.status(400).json({ error: `Valor de pagamento (${valor_pago}) excede o valor devedor (${check.rows[0].valor_devedor})` })
+    }
+
+    await client.query('COMMIT')
     res.json(result.rows[0])
   } catch (err) {
+    await client.query('ROLLBACK')
     console.error('[Passagens] Erro ao pagar:', err.message)
     res.status(500).json({ error: 'Erro ao registrar pagamento' })
+  } finally {
+    client.release()
   }
 })
 

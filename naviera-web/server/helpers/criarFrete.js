@@ -22,6 +22,8 @@ export async function criarFreteComItens(client, empresaId, payload) {
     const idRes = await client.query("SELECT nextval('fretes_id_frete_seq') AS next_id")
     nextIdFrete = idRes.rows[0].next_id
   } catch (e) {
+    // #DB135: advisory lock prevents race condition on MAX+1 fallback
+    await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
     const idResult = await client.query(
       'SELECT COALESCE(MAX(id_frete), 0) + 1 AS next_id FROM fretes WHERE empresa_id = $1',
       [empresaId]
@@ -32,6 +34,8 @@ export async function criarFreteComItens(client, empresaId, payload) {
     const seqRes = await client.query("SELECT nextval('seq_numero_frete') AS next_num")
     numFrete = seqRes.rows[0].next_num
   } catch (e) {
+    // #DB135: advisory lock prevents race condition on MAX+1 fallback
+    await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
     const seqResult = await client.query(
       'SELECT COALESCE(MAX(numero_frete), 0) + 1 AS next_num FROM fretes WHERE empresa_id = $1',
       [empresaId]
@@ -44,7 +48,7 @@ export async function criarFreteComItens(client, empresaId, payload) {
   const vDesconto = parseFloat(desconto) || 0
   const vCalculado = vItens - vDesconto
   const vPago = parseFloat(valor_pago) || 0
-  const vDevedor = vCalculado - vPago
+  const vDevedor = Math.max(0, vCalculado - vPago)
 
   // Inserir frete
   const result = await client.query(`

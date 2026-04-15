@@ -66,13 +66,15 @@ router.get('/balanco', async (req, res) => {
     }
     // Aritmetica em centavos para evitar erros IEEE 754
     const totalReceitas = Math.round((receitas.passagens + receitas.encomendas + receitas.fretes) * 100) / 100
-    const totalDespesas = Number(saidas.rows[0].total) || 0
+    // #DB131: apply same rounding to totalDespesas and saldo
+    const totalDespesas = Math.round((Number(saidas.rows[0].total) || 0) * 100) / 100
+    const saldo = Math.round((totalReceitas - totalDespesas) * 100) / 100
 
     res.json({
       receitas,
       totalReceitas,
       totalDespesas,
-      saldo: totalReceitas - totalDespesas
+      saldo
     })
   } catch (err) {
     res.status(500).json({ error: 'Erro ao calcular balanco' })
@@ -285,6 +287,7 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
     const valorUltimaParcela = Math.round((valor_total - valorParcela * (parcelas - 1)) * 100) / 100
     const intervalo = parseInt(intervalo_dias) || 30
     const dataBase = data_primeira_vencimento ? new Date(data_primeira_vencimento) : new Date()
+    if (isNaN(dataBase.getTime())) return res.status(400).json({ error: 'Data de vencimento invalida' })
     const boletos = []
 
     await client.query('BEGIN')

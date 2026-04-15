@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { apiPut, apiPost, fotoUrl } from '../api.js'
+import { useState, useEffect } from 'react'
+import { apiPut, apiPost, fetchFoto } from '../api.js'
 import { money } from '../helpers.js'
 import { ConfidenceBadge } from '../components/Badge.jsx'
 import Card from '../components/Card.jsx'
@@ -13,6 +13,19 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
   const [itens, setItens] = useState(dados.itens || [])
   const [loading, setLoading] = useState(false)
   const [iaLoading, setIaLoading] = useState(false)
+  const [fotoBlobUrl, setFotoBlobUrl] = useState(null)
+
+  // #DB151: load foto via Authorization header to avoid JWT in URL
+  useEffect(() => {
+    let revoked = false
+    fetchFoto(lancamento.id).then(url => {
+      if (!revoked) setFotoBlobUrl(url)
+    })
+    return () => {
+      revoked = true
+      if (fotoBlobUrl) URL.revokeObjectURL(fotoBlobUrl)
+    }
+  }, [lancamento.id])
 
   const valorTotal = itens.reduce((sum, i) => sum + ((i.quantidade || 0) * (i.preco_unitario || 0)), 0)
 
@@ -38,6 +51,9 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
       const result = await apiPost(`/ocr/lancamentos/${lancamento.id}/ia-review`, {})
       if (result?.dados_extraidos) {
         const d = result.dados_extraidos
+        if (itens.length > 0 && d.itens && d.itens.length > 0) {
+          if (!window.confirm(`A IA retornou ${d.itens.length} itens. Deseja substituir seus ${itens.length} itens editados?`)) return
+        }
         setRemetente(d.remetente || remetente)
         setDestinatario(d.destinatario || destinatario)
         setRota(d.rota || rota)
@@ -91,7 +107,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
       {/* Thumbnail da foto */}
       <Card t={t} style={{ padding: 8 }}>
         <img
-          src={fotoUrl(lancamento.id)}
+          src={fotoBlobUrl || ''}
           alt="Foto original"
           className="img-preview"
           style={{ maxHeight: 180 }}

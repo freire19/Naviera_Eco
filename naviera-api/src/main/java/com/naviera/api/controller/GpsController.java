@@ -1,5 +1,6 @@
 package com.naviera.api.controller;
 
+import com.naviera.api.config.TenantUtils;
 import com.naviera.api.service.GpsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,6 +18,7 @@ public class GpsController {
     /** Tripulação envia posição GPS (requer ROLE_OPERADOR) */
     @PostMapping("/gps/posicao")
     public ResponseEntity<?> registrar(@RequestBody Map<String, Object> dados, Authentication auth) {
+        Integer empresaId = TenantUtils.getEmpresaId(auth);
         Long idEmbarcacao = ((Number) dados.get("id_embarcacao")).longValue();
         Long idViagem = dados.get("id_viagem") != null ? ((Number) dados.get("id_viagem")).longValue() : null;
         double lat = ((Number) dados.get("latitude")).doubleValue();
@@ -24,7 +26,7 @@ public class GpsController {
         Double velocidade = dados.get("velocidade") != null ? ((Number) dados.get("velocidade")).doubleValue() : null;
         Double curso = dados.get("curso") != null ? ((Number) dados.get("curso")).doubleValue() : null;
 
-        return ResponseEntity.ok(service.registrarPosicao(idEmbarcacao, idViagem, lat, lon, velocidade, curso));
+        return ResponseEntity.ok(service.registrarPosicao(empresaId, idEmbarcacao, idViagem, lat, lon, velocidade, curso));
     }
 
     /** Última posição de uma embarcação (público) */

@@ -3,7 +3,7 @@ import { apiGet, uploadFoto } from '../api.js'
 import CameraCapture from '../components/CameraCapture.jsx'
 import Card from '../components/Card.jsx'
 
-export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, showToast }) {
+export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, showToast, usuario }) {
   const [viagens, setViagens] = useState([])
   const [viagemId, setViagemId] = useState('')
   const [fotoBlob, setFotoBlob] = useState(null)
@@ -37,7 +37,7 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
 
     // Se offline, salvar na fila
     if (!isOnline) {
-      await onOfflineAdd(fotoBlob, viagemId || null)
+      await onOfflineAdd(fotoBlob, viagemId || null, usuario?.empresa_id || null)
       showToast('Foto salva na fila offline. Sera enviada quando houver internet.', 'warn')
       setFotoBlob(null)
       setFotoName('')

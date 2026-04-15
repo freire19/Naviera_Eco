@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { getQueue, markSynced, clearSynced, queueCount, addToQueue as dbAdd } from '../db.js'
 import { uploadFoto } from '../api.js'
 
@@ -6,6 +6,7 @@ export default function useOfflineQueue(onToast) {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [count, setCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
+  const syncingRef = useRef(false)
 
   const refreshCount = useCallback(async () => {
     try { setCount(await queueCount()) } catch {}
@@ -24,7 +25,8 @@ export default function useOfflineQueue(onToast) {
   }, [])
 
   const syncQueue = useCallback(async () => {
-    if (syncing || !navigator.onLine) return
+    if (syncingRef.current || !navigator.onLine) return
+    syncingRef.current = true
     setSyncing(true)
     try {
       const items = await getQueue()
@@ -45,9 +47,10 @@ export default function useOfflineQueue(onToast) {
         onToast(`${synced} foto(s) enviada(s) da fila offline`, 'success')
       }
     } finally {
+      syncingRef.current = false
       setSyncing(false)
     }
-  }, [syncing, onToast, refreshCount])
+  }, [onToast, refreshCount])
 
   const addOffline = useCallback(async (blob, viagemId, empresaId) => {
     await dbAdd(blob, viagemId, empresaId)

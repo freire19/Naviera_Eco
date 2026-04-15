@@ -48,8 +48,9 @@ public class UsuarioDAO {
             }
         } catch (SQLException e) {
             AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO: " + e.getMessage());
+            throw new RuntimeException("Falha ao gerar proximo ID de usuario", e);
         }
-        return 0;
+        throw new RuntimeException("Sequencia usuarios_id_seq nao retornou valor");
     }
 
     public boolean inserir(Usuario usuario) {
@@ -146,7 +147,7 @@ public class UsuarioDAO {
     }
     
     public Usuario buscarPorLogin(String loginOuEmail) {
-        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido FROM usuarios WHERE (nome = ? OR LOWER(email) = LOWER(?)) AND empresa_id = ?";
+        String sql = "SELECT id, nome, senha, email, funcao, permissao, excluido, COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha FROM usuarios WHERE (nome = ? OR LOWER(email) = LOWER(?)) AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, loginOuEmail);
@@ -206,7 +207,7 @@ public class UsuarioDAO {
     // Método para listar apenas os nomes dos usuários (para ComboBox)
     public List<String> listarNomesDeUsuarios() {
         List<String> nomesUsuarios = new ArrayList<>();
-        String sql = "SELECT nome FROM usuarios WHERE empresa_id = ? ORDER BY nome";
+        String sql = "SELECT nome FROM usuarios WHERE empresa_id = ? AND excluido IS NOT TRUE ORDER BY nome";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empresaId());

@@ -1,5 +1,7 @@
 package model;
 
+import java.util.Objects;
+
 public class TipoPassageiro {
 
     private int id;
@@ -50,5 +52,23 @@ public class TipoPassageiro {
     }
     public void setGratuito(boolean gratuito) {
         this.gratuito = gratuito;
+    }
+
+    @Override
+    public String toString() {
+        return nome != null ? nome : "";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TipoPassageiro that = (TipoPassageiro) o;
+        return id == that.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

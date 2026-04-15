@@ -390,20 +390,21 @@ public class FinanceiroSaidaController {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                String hashDoBanco = rs.getString("senha");
-                String login = rs.getString("nome");
-                try {
-                    if (hashDoBanco != null) {
-                        // Sempre usa BCrypt — sem fallback plaintext
-                        if (org.mindrot.jbcrypt.BCrypt.checkpw(senha, hashDoBanco)) {
-                            return login;
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String hashDoBanco = rs.getString("senha");
+                    String login = rs.getString("nome");
+                    try {
+                        if (hashDoBanco != null) {
+                            // Sempre usa BCrypt — sem fallback plaintext
+                            if (org.mindrot.jbcrypt.BCrypt.checkpw(senha, hashDoBanco)) {
+                                return login;
+                            }
                         }
+                    } catch (IllegalArgumentException ex) {
+                        // Hash nao e BCrypt valido — ignora este usuario
+                        AppLogger.warn("FinanceiroSaidaController", "Hash invalido para usuario " + login + ": formato nao-BCrypt");
                     }
-                } catch (IllegalArgumentException ex) {
-                    // Hash nao e BCrypt valido — ignora este usuario
-                    AppLogger.warn("FinanceiroSaidaController", "Hash invalido para usuario " + login + ": formato nao-BCrypt");
                 }
             }
         } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "FinanceiroSaidaController.validarPermissaoGerente: erro ao consultar usuarios — " + e.getMessage()); AppLogger.error("FinanceiroSaidaController", e.getMessage(), e); }
@@ -416,13 +417,14 @@ public class FinanceiroSaidaController {
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idDespesa);
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                java.sql.Date dtIda = rs.getDate("data_viagem");
-                java.sql.Date dtVolta = rs.getDate("data_chegada");
-                String sIda = (dtIda != null) ? sdf.format(dtIda) : "?";
-                String sVolta = (dtVolta != null) ? sdf.format(dtVolta) : "?";
-                info = "REF. VIAGEM: " + sIda + " A " + sVolta;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    java.sql.Date dtIda = rs.getDate("data_viagem");
+                    java.sql.Date dtVolta = rs.getDate("data_chegada");
+                    String sIda = (dtIda != null) ? sdf.format(dtIda) : "?";
+                    String sVolta = (dtVolta != null) ? sdf.format(dtVolta) : "?";
+                    info = "REF. VIAGEM: " + sIda + " A " + sVolta;
+                }
             }
         } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.buscarInfoViagem: " + e.getMessage()); }
         return info;
@@ -432,8 +434,9 @@ public class FinanceiroSaidaController {
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idDespesa);
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return rs.getInt("id_viagem");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt("id_viagem");
+            }
         } catch (Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.buscarIdViagemDaDespesa: " + e.getMessage()); }
         return 0;
     }
@@ -681,11 +684,12 @@ public class FinanceiroSaidaController {
         ObservableList<String> catsParaCadastro = FXCollections.observableArrayList();
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement pst = con.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = ? ORDER BY nome")) {
             pst.setInt(1, dao.DAOUtils.empresaId());
-            ResultSet rs = pst.executeQuery();
-            while(rs.next()) {
-                String nome = rs.getString(1);
-                listaCategoriasOriginal.add(nome);
-                catsParaCadastro.add(nome);
+            try (ResultSet rs = pst.executeQuery()) {
+                while(rs.next()) {
+                    String nome = rs.getString(1);
+                    listaCategoriasOriginal.add(nome);
+                    catsParaCadastro.add(nome);
+                }
             }
         } catch(Exception e) { AppLogger.warn("FinanceiroSaidaController", "Erro em FinanceiroSaidaController.carregarCategorias: " + e.getMessage()); }
         cmbCategoria.setItems(catsParaCadastro);
@@ -699,8 +703,9 @@ public class FinanceiroSaidaController {
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement("SELECT id FROM categorias_despesa WHERE nome = ? AND empresa_id = ?")) {
             stmt.setString(1, nome);
             stmt.setInt(2, dao.DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
-            if(rs.next()) return rs.getInt(1);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if(rs.next()) return rs.getInt(1);
+            }
         }
         return 1;
     }

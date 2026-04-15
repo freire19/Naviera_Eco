@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { API } from "../api.js";
+import { API, authFetch } from "../api.js";
 import { initials } from "../helpers.js";
 import Cd from "../components/Card.jsx";
 import Av from "../components/Avatar.jsx";
@@ -21,7 +21,7 @@ export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoCha
 
   useEffect(() => {
     if (!token) return;
-    fetch(`${API}/perfil`, { headers: authHeaders })
+    authFetch(`${API}/perfil`, { headers: authHeaders })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) { setPerfil(d); setForm({ nome: d.nome || "", email: d.email || "", telefone: d.telefone || "", cidade: d.cidade || "" }); } })
       .catch(() => {})
@@ -31,7 +31,7 @@ export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoCha
   const salvar = async () => {
     setSalvando(true); setErro(""); setSucesso("");
     try {
-      const res = await fetch(`${API}/perfil`, { method: "PUT", headers: authHeaders, body: JSON.stringify(form) });
+      const res = await authFetch(`${API}/perfil`, { method: "PUT", headers: authHeaders, body: JSON.stringify(form) });
       if (res.ok) { const d = await res.json(); setPerfil(d); setEditando(false); setSucesso("Perfil atualizado!"); }
       else { const d = await res.json(); setErro(d.erro || "Erro ao salvar."); }
     } catch { setErro("Erro de conex\u00e3o."); } finally { setSalvando(false); }
@@ -42,7 +42,7 @@ export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoCha
     setUploadingFoto(true);
     try {
       const fd = new FormData(); fd.append("foto", file);
-      const res = await fetch(`${API}/perfil/foto`, { method: "POST", headers: { "Authorization": authHeaders.Authorization }, body: fd });
+      const res = await authFetch(`${API}/perfil/foto`, { method: "POST", headers: { "Authorization": authHeaders.Authorization }, body: fd });
       if (res.ok) { const d = await res.json(); if (d.fotoUrl) { setPerfil(p => ({ ...p, fotoUrl: d.fotoUrl })); onFotoChange(`${API}${d.fotoUrl}`); } }
     } catch {} finally { setUploadingFoto(false); }
   };

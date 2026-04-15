@@ -25,14 +25,21 @@ public class OpPassagemWriteService {
         try {
             numBilhete = jdbc.queryForObject("SELECT nextval('seq_numero_bilhete')", String.class);
         } catch (Exception e) {
-            // Fallback se sequence nao existir: MAX+1 filtrado por empresa_id
+            // Fallback se sequence nao existir: advisory lock + MAX+1 filtrado por empresa_id
+            jdbc.execute("SELECT pg_advisory_xact_lock(" + empresaId + ")");
             numBilhete = jdbc.queryForObject(
                 "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens WHERE empresa_id = ?",
                 String.class, empresaId);
         }
 
-        Long idPassageiro = ((Number) dados.get("id_passageiro")).longValue();
-        Long idViagem = ((Number) dados.get("id_viagem")).longValue();
+        // #DB147: null checks on required fields prevent NPE
+        Number idPassageiroNum = (Number) dados.get("id_passageiro");
+        if (idPassageiroNum == null) throw ApiException.badRequest("id_passageiro obrigatorio");
+        Long idPassageiro = idPassageiroNum.longValue();
+
+        Number idViagemNum = (Number) dados.get("id_viagem");
+        if (idViagemNum == null) throw ApiException.badRequest("id_viagem obrigatorio");
+        Long idViagem = idViagemNum.longValue();
         Integer idRota = dados.get("id_rota") != null ? ((Number) dados.get("id_rota")).intValue() : null;
         Integer idTipoPassagem = dados.get("id_tipo_passagem") != null ? ((Number) dados.get("id_tipo_passagem")).intValue() : null;
         Integer idAcomodacao = dados.get("id_acomodacao") != null ? ((Number) dados.get("id_acomodacao")).intValue() : null;

@@ -92,12 +92,12 @@ public class FinanceiroEntradaController {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
              stmt.setInt(1, dao.DAOUtils.empresaId());
-             ResultSet rs = stmt.executeQuery();
-             
-             while(rs.next()){
-                 usuarios.add(rs.getString("nome"));
+             try (ResultSet rs = stmt.executeQuery()) {
+                 while(rs.next()){
+                     usuarios.add(rs.getString("nome"));
+                 }
              }
-             
+
         } catch (SQLException e) {
             System.out.println("Erro ao carregar usuários: " + e.getMessage());
         }

@@ -1,5 +1,6 @@
 package model;
 
+import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -25,7 +26,7 @@ public class PagamentoHistorico {
         this.tipo = tipo;
     }
 
-    public String getData() { return data.format(dtf); }
+    public String getData() { return data != null ? data.format(dtf) : "N/A"; }
     public LocalDate getDataLocal() { return data; }
     public String getDescricao() { return descricao; }
     public String getValorFormatado() {

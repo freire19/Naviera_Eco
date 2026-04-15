@@ -166,8 +166,11 @@ router.delete('/:id', async (req, res) => {
       'DELETE FROM viagens WHERE id_viagem = $1 AND empresa_id = $2 RETURNING id_viagem',
       [req.params.id, empresaId]
     )
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Viagem nao encontrada' })
+    }
     await client.query('COMMIT')
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Viagem nao encontrada' })
     res.json({ mensagem: 'Viagem excluida' })
   } catch (err) {
     await client.query('ROLLBACK')

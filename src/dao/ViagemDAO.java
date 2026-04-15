@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import gui.util.AppLogger;
 
@@ -151,13 +152,18 @@ public class ViagemDAO {
         return null;
     }
 
-    // DP013: cache da viagem ativa (muda raramente, evita 3-5 queries redundantes/ciclo)
-    // DR206: volatile para visibilidade entre threads (SyncClient bg + FX thread)
-    private static volatile Viagem cacheViagemAtiva = null;
-    public static void invalidarCacheViagem() { cacheViagemAtiva = null; }
+    // DP013: cache da viagem ativa por empresa_id (muda raramente, evita 3-5 queries redundantes/ciclo)
+    // DB101: ConcurrentHashMap keyed by empresa_id para isolar cache entre tenants
+    private static final ConcurrentHashMap<Integer, Viagem> cacheViagemAtiva = new ConcurrentHashMap<>();
+
+    public static void invalidarCacheViagem() { cacheViagemAtiva.clear(); }
+
+    public static void invalidarCacheViagem(int empresaId) { cacheViagemAtiva.remove(empresaId); }
 
     public Viagem buscarViagemAtiva() {
-        if (cacheViagemAtiva != null) return cacheViagemAtiva;
+        int empresaId = DAOUtils.empresaId();
+        Viagem cached = cacheViagemAtiva.get(empresaId);
+        if (cached != null) return cached;
         String sql = "SELECT v.*, e.nome as nome_embarcacao, r.origem as nome_rota_origem, r.destino as nome_rota_destino, ahs.descricao_horario_saida " +
                      "FROM viagens v " +
                      "LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao " +
@@ -169,11 +175,12 @@ public class ViagemDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setInt(1, empresaId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    cacheViagemAtiva = mapResultSetToViagem(rs);
-                    return cacheViagemAtiva;
+                    Viagem v = mapResultSetToViagem(rs);
+                    cacheViagemAtiva.put(empresaId, v);
+                    return v;
                 }
             }
         } catch (SQLException e) {
@@ -215,7 +222,9 @@ public class ViagemDAO {
         viagem.setOrigem(nomeRotaOrigem);
         viagem.setDestino(nomeRotaDestino);
         
-        viagem.setNomeRotaConcatenado(nomeRotaOrigem + (nomeRotaDestino != null && !nomeRotaDestino.isEmpty() ? " - " + nomeRotaDestino : ""));
+        String origemSafe = nomeRotaOrigem != null ? nomeRotaOrigem : "";
+        String destinoSafe = nomeRotaDestino != null ? nomeRotaDestino : "";
+        viagem.setNomeRotaConcatenado(origemSafe + (!destinoSafe.isEmpty() ? " - " + destinoSafe : ""));
         return viagem;
     }
 
@@ -411,7 +420,7 @@ public class ViagemDAO {
 
     // --- CORREÇÃO PRINCIPAL: DEFINIR VIAGEM ATIVA USANDO is_atual ---
     public boolean definirViagemAtiva(long idViagemParaAtivar) {
-        invalidarCacheViagem();
+        invalidarCacheViagem(DAOUtils.empresaId());
         // Zera is_atual de TODAS as viagens DESTA EMPRESA
         String sqlDesativar = "UPDATE viagens SET is_atual = false WHERE empresa_id = ?";
         // Define is_atual = true apenas para a escolhida

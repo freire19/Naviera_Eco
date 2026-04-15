@@ -196,6 +196,14 @@ router.post('/frete/:id', async (req, res) => {
       [req.params.id, valor, motivo, forma_devolucao || null, autorizador.id, autorizador.nome, empresaId]
     )
 
+    // #DB130: Update frete status_pagamento after estorno
+    await client.query(`
+      UPDATE fretes SET status_pagamento = CASE
+        WHEN valor_pago <= 0.01 THEN 'NAO_PAGO'
+        WHEN valor_pago < valor_frete_calculado - 0.01 THEN 'PARCIAL'
+        ELSE 'PAGO' END
+      WHERE id_frete = $1 AND empresa_id = $2`, [req.params.id, empresaId])
+
     await client.query('COMMIT')
     res.json(updated.rows[0])
   } catch (err) {

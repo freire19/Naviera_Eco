@@ -33,10 +33,10 @@ public class EncomendaItem {
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
 
-    public BigDecimal getValorUnitario() { return valorUnitario; }
+    public BigDecimal getValorUnitario() { return valorUnitario != null ? valorUnitario : BigDecimal.ZERO; }
     public void setValorUnitario(BigDecimal valorUnitario) { this.valorUnitario = valorUnitario; }
 
-    public BigDecimal getValorTotal() { return valorTotal; }
+    public BigDecimal getValorTotal() { return valorTotal != null ? valorTotal : BigDecimal.ZERO; }
     public void setValorTotal(BigDecimal valorTotal) { this.valorTotal = valorTotal; }
 
     public String getLocalArmazenamento() { return localArmazenamento; }

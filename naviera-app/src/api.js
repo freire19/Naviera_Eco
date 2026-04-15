@@ -2,6 +2,19 @@ import { useState, useEffect, useCallback } from "react";
 
 export const API = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
 
+/* ═══ authFetch: wrapper que trata 401/403 automaticamente ═══ */
+export function authFetch(url, options = {}) {
+  return fetch(url, options).then(res => {
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('naviera_app_token')
+      localStorage.removeItem('naviera_token')
+      localStorage.removeItem('naviera_usuario')
+      window.location.reload()
+    }
+    return res
+  })
+}
+
 /* ═══ HOOK: useApi com refresh ═══ */
 export function useApi(path, authHeaders, deps = []) {
   const [data, setData] = useState(null);

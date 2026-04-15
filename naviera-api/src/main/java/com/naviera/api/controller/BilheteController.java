@@ -1,5 +1,7 @@
 package com.naviera.api.controller;
 
+import com.naviera.api.config.ApiException;
+import com.naviera.api.config.TenantUtils;
 import com.naviera.api.service.BilheteService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,11 +30,15 @@ public class BilheteController {
         Long idViagem = toLong(body.get("idViagem"));
         Long idRota = body.containsKey("idRota") ? toLong(body.get("idRota")) : null;
         Long idTipoPassagem = toLong(body.getOrDefault("idTipoPassagem", 1));
+        // empresaId deve ser informado pelo app (ex: ao listar viagens públicas por empresa)
+        Integer empresaId = body.get("empresaId") != null ? ((Number) body.get("empresaId")).intValue() : null;
 
         if (idViagem == null)
             return ResponseEntity.badRequest().body(Map.of("erro", "idViagem é obrigatório."));
+        if (empresaId == null)
+            return ResponseEntity.badRequest().body(Map.of("erro", "empresaId é obrigatório."));
 
-        var bilhete = service.comprar(clienteId, idViagem, idRota, idTipoPassagem);
+        var bilhete = service.comprar(empresaId, clienteId, idViagem, idRota, idTipoPassagem);
         return ResponseEntity.ok(bilhete);
     }
 
@@ -49,10 +55,15 @@ public class BilheteController {
     /**
      * POST /api/bilhetes/validar
      * Body: { "qrHash": "abc123...", "totpCode": "482917" }
-     * Valida bilhete escaneado pelo operador
+     * Valida bilhete escaneado pelo operador — requer ROLE_OPERADOR
      */
     @PostMapping("/validar")
-    public ResponseEntity<?> validar(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> validar(Authentication auth, @RequestBody Map<String, String> body) {
+        // #DB146: only operators may validate bilhetes (scanner at boarding)
+        boolean isOperador = auth.getAuthorities().stream()
+            .anyMatch(a -> "ROLE_OPERADOR".equals(a.getAuthority()));
+        if (!isOperador) throw ApiException.forbidden("Somente operadores podem validar bilhetes");
+        Integer empresaId = TenantUtils.getEmpresaId(auth);
         String qrHash = body.get("qrHash");
         String totpCode = body.get("totpCode");
         String operador = body.getOrDefault("operador", "app");
@@ -60,7 +71,7 @@ public class BilheteController {
         if (qrHash == null || totpCode == null)
             return ResponseEntity.badRequest().body(Map.of("erro", "qrHash e totpCode são obrigatórios."));
 
-        var resultado = service.validar(qrHash, totpCode, operador);
+        var resultado = service.validar(empresaId, qrHash, totpCode, operador);
         return ResponseEntity.ok(Map.of("valido", true, "passageiro", resultado));
     }
 

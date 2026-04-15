@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { API, useApi } from "../api.js";
+import { API, useApi, authFetch } from "../api.js";
 import { initials } from "../helpers.js";
 import { IconSearch, IconCheck, IconPlus } from "../icons.jsx";
 import Cd from "../components/Card.jsx";
@@ -22,14 +22,14 @@ export default function AmigosCPF({ t, authHeaders }) {
     if (nome.trim().length < 2) { setResultados(null); return; }
     setBuscando(true);
     try {
-      const res = await fetch(`${API}/amigos/buscar?nome=${encodeURIComponent(nome.trim())}`, { headers: authHeaders });
+      const res = await authFetch(`${API}/amigos/buscar?nome=${encodeURIComponent(nome.trim())}`, { headers: authHeaders });
       if (res.ok) setResultados(await res.json());
     } catch {} finally { setBuscando(false); }
   };
 
   const addAmigo = async (amigoId, nome) => {
     try {
-      const res = await fetch(`${API}/amigos/${amigoId}`, { method: "POST", headers: authHeaders });
+      const res = await authFetch(`${API}/amigos/${amigoId}`, { method: "POST", headers: authHeaders });
       const data = await res.json();
       if (res.ok) { setEnviados(e => ({ ...e, [amigoId]: true })); setToast(`Convite enviado para ${nome}!`); }
       else setToast(data.erro || "Erro ao enviar.");
@@ -37,12 +37,12 @@ export default function AmigosCPF({ t, authHeaders }) {
   };
 
   const aceitarAmigo = async (amizadeId) => {
-    await fetch(`${API}/amigos/${amizadeId}/aceitar`, { method: "PUT", headers: authHeaders });
+    await authFetch(`${API}/amigos/${amizadeId}/aceitar`, { method: "PUT", headers: authHeaders });
     refresh(); refreshPendentes();
   };
 
   const removerAmigo = async (amizadeId) => {
-    await fetch(`${API}/amigos/${amizadeId}`, { method: "DELETE", headers: authHeaders });
+    await authFetch(`${API}/amigos/${amizadeId}`, { method: "DELETE", headers: authHeaders });
     refresh();
   };
 

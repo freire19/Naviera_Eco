@@ -51,11 +51,15 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Credenciais invalidas' })
     }
 
+    if (!user.empresa_id) {
+      return res.status(401).json({ error: 'Usuario sem empresa vinculada' })
+    }
+
     const token = generateToken({
       id: user.id,
       login: user.nome,
       funcao: user.funcao,
-      empresa_id: user.empresa_id || 1
+      empresa_id: user.empresa_id
     })
 
     res.json({

@@ -4,6 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record CompraPassagemRequest(
+    @NotNull(message = "ID da empresa e obrigatorio")
+    Integer empresaId,
+
     @NotNull(message = "ID da viagem e obrigatorio")
     Long idViagem,
 

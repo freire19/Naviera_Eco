@@ -74,7 +74,8 @@ public class QuitarDividaEncomendaTotalController {
 
     private void carregarFormas() {
         ObservableList<String> l = FXCollections.observableArrayList();
-        try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement("SELECT nome_forma_pagamento FROM aux_formas_pagamento").executeQuery()){
+        // #DB115: PreparedStatement em TWR para evitar leak
+        try(Connection c = ConexaoBD.getConnection(); java.sql.PreparedStatement ps = c.prepareStatement("SELECT nome_forma_pagamento FROM aux_formas_pagamento"); ResultSet rs = ps.executeQuery()){
             while(rs.next()) l.add(rs.getString(1));
         } catch(Exception e) {
             AppLogger.warn("QuitarDividaEncomendaTotalController", "Erro ao carregar formas de pagamento: " + e.getMessage());

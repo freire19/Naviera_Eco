@@ -33,7 +33,7 @@ public class BilheteService {
      * Compra uma passagem via app e gera bilhete digital com TOTP
      */
     @Transactional
-    public BilheteDTO comprar(Long clienteAppId, Long idViagem, Long idRota, Long idTipoPassagem) {
+    public BilheteDTO comprar(Integer empresaId, Long clienteAppId, Long idViagem, Long idRota, Long idTipoPassagem) {
         // 1. Buscar dados do cliente
         var cliente = jdbc.queryForMap(
             "SELECT id, nome, documento FROM clientes_app WHERE id = ? AND ativo = TRUE", clienteAppId);
@@ -41,7 +41,7 @@ public class BilheteService {
         String nomeCliente = (String) cliente.get("nome");
         String docCliente = (String) cliente.get("documento");
 
-        // 2. Verificar se a viagem existe e está ativa
+        // 2. Verificar se a viagem existe e está ativa, filtrando por empresa_id
         var viagem = jdbc.queryForMap("""
             SELECT v.id_viagem, v.data_viagem, v.data_chegada,
                    e.nome as embarcacao, r.origem, r.destino,
@@ -51,14 +51,14 @@ public class BilheteService {
             JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
-            WHERE v.id_viagem = ? AND v.is_atual = TRUE
-            """, idViagem);
+            WHERE v.id_viagem = ? AND v.is_atual = TRUE AND v.empresa_id = ?
+            """, idViagem, empresaId);
 
-        // 3. Buscar tarifa
+        // 3. Buscar tarifa, filtrando por empresa_id
         var tarifa = jdbc.queryForMap("""
             SELECT valor_transporte, valor_alimentacao, valor_cargas, valor_desconto
-            FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ?
-            """, idRota != null ? idRota : viagem.get("id_rota"), idTipoPassagem);
+            FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ? AND empresa_id = ?
+            """, idRota != null ? idRota : viagem.get("id_rota"), idTipoPassagem, empresaId);
 
         var valorTransporte = toBigDecimal(tarifa.get("valor_transporte"));
         var valorAlimentacao = toBigDecimal(tarifa.get("valor_alimentacao"));
@@ -66,33 +66,34 @@ public class BilheteService {
         var valorDesconto = toBigDecimal(tarifa.get("valor_desconto"));
         var valorTotal = valorTransporte.add(valorAlimentacao).add(valorCargas).subtract(valorDesconto);
 
-        // 4. Criar ou reutilizar passageiro
+        // 4. Criar ou reutilizar passageiro, filtrando por empresa_id
         Long idPassageiro;
         var passageiros = jdbc.queryForList(
-            "SELECT id_passageiro FROM passageiros WHERE numero_documento = ?", docCliente);
+            "SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?", docCliente, empresaId);
         if (passageiros.isEmpty()) {
             idPassageiro = jdbc.queryForObject("""
-                INSERT INTO passageiros (nome_passageiro, numero_documento)
-                VALUES (?, ?) RETURNING id_passageiro
-                """, Long.class, nomeCliente, docCliente);
+                INSERT INTO passageiros (nome_passageiro, numero_documento, empresa_id)
+                VALUES (?, ?, ?) RETURNING id_passageiro
+                """, Long.class, nomeCliente, docCliente, empresaId);
         } else {
             idPassageiro = ((Number) passageiros.get(0).get("id_passageiro")).longValue();
         }
 
-        // 5. Gerar numero do bilhete
+        // 5. Gerar numero do bilhete com advisory lock para evitar race condition no MAX+1
+        jdbc.execute("SELECT pg_advisory_xact_lock(" + empresaId + ")");
         String numeroBilhete = jdbc.queryForObject(
-            "SELECT COALESCE(MAX(CAST(SUBSTRING(numero_bilhete FROM '[0-9]+') AS INTEGER)), 0) + 1 FROM passagens WHERE id_viagem = ?",
-            Integer.class, idViagem).toString();
+            "SELECT COALESCE(MAX(CAST(SUBSTRING(numero_bilhete FROM '[0-9]+') AS INTEGER)), 0) + 1 FROM passagens WHERE id_viagem = ? AND empresa_id = ?",
+            Integer.class, idViagem, empresaId).toString();
         numeroBilhete = String.format("%05d", Integer.parseInt(numeroBilhete));
 
-        // 6. Inserir passagem
+        // 6. Inserir passagem com empresa_id
         Long idPassagem = jdbc.queryForObject("""
             INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao,
                 id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao, valor_cargas,
                 valor_desconto_tarifa, valor_total, valor_a_pagar, valor_pago, valor_devedor,
-                status_passagem, valor_pagamento_pix, id_horario_saida, observacoes)
+                status_passagem, valor_pagamento_pix, id_horario_saida, observacoes, empresa_id)
             VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0,
-                'EMITIDA', ?, ?, 'Compra via App Naviera')
+                'EMITIDA', ?, ?, 'Compra via App Naviera', ?)
             RETURNING id_passagem
             """, Long.class,
             numeroBilhete, idPassageiro, idViagem,
@@ -101,7 +102,8 @@ public class BilheteService {
             valorTransporte, valorAlimentacao, valorCargas, valorDesconto,
             valorTotal, valorTotal, valorTotal,
             valorTotal,
-            viagem.get("id_horario_saida")
+            viagem.get("id_horario_saida"),
+            empresaId
         );
 
         // 7. Gerar TOTP secret e QR hash
@@ -164,9 +166,13 @@ public class BilheteService {
      * Valida um bilhete escaneado (para o operador)
      */
     @Transactional
-    public Map<String, Object> validar(String qrHash, String totpCode, String operador) {
-        var bilhetes = jdbc.queryForList(
-            "SELECT * FROM bilhetes_digitais WHERE qr_hash = ?", qrHash);
+    public Map<String, Object> validar(Integer empresaId, String qrHash, String totpCode, String operador) {
+        // Join com passagens para garantir que o bilhete pertence a esta empresa
+        var bilhetes = jdbc.queryForList("""
+            SELECT b.* FROM bilhetes_digitais b
+            JOIN passagens p ON b.id_passagem = p.id_passagem
+            WHERE b.qr_hash = ? AND p.empresa_id = ?
+            """, qrHash, empresaId);
 
         if (bilhetes.isEmpty())
             throw ApiException.notFound("Bilhete não encontrado.");
@@ -200,7 +206,7 @@ public class BilheteService {
             WHERE qr_hash = ?
             """, operador, qrHash);
 
-        // Retornar dados do passageiro
+        // Retornar dados do passageiro, filtrando por empresa_id
         Long idPassagem = ((Number) bilhete.get("id_passagem")).longValue();
         return jdbc.queryForMap("""
             SELECT p.numero_bilhete, ps.nome_passageiro, p.valor_total,
@@ -209,8 +215,8 @@ public class BilheteService {
             JOIN passageiros ps ON p.id_passageiro = ps.id_passageiro
             JOIN viagens v ON p.id_viagem = v.id_viagem
             JOIN rotas r ON p.id_rota = r.id
-            WHERE p.id_passagem = ?
-            """, idPassagem);
+            WHERE p.id_passagem = ? AND p.empresa_id = ?
+            """, idPassagem, empresaId);
     }
 
     // ═══ TOTP CRYPTO ═══

@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +84,13 @@ public class SyncClient {
     private volatile LocalDateTime ultimaSincronizacao;
     // DR210: volatile + nao-final para permitir recriar apos shutdown via pararSyncAutomatica()
     private volatile ScheduledExecutorService scheduler;
+    // DB112: executor dedicado para operacoes de sync que fazem I/O bloqueante.
+    // Evita bloquear o ForkJoinPool common (usado por CompletableFuture sem executor).
+    private final ExecutorService syncExecutor = Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r, "SyncClient-Worker");
+        t.setDaemon(true);
+        return t;
+    });
     // DR108: CopyOnWriteArrayList para acesso thread-safe
     private final List<SyncListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
@@ -256,6 +264,24 @@ public class SyncClient {
      */
     private boolean garantirAutenticacao() {
         if (jwtToken != null && !jwtToken.isEmpty()) {
+            // Decode JWT payload and check exp
+            try {
+                String[] parts = jwtToken.split("\\.");
+                if (parts.length >= 2) {
+                    String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]), java.nio.charset.StandardCharsets.UTF_8);
+                    // Simple JSON parse for "exp" field
+                    int expIdx = payload.indexOf("\"exp\"");
+                    if (expIdx >= 0) {
+                        String after = payload.substring(expIdx + 5).replaceFirst("[^0-9]+", "");
+                        long exp = Long.parseLong(after.replaceFirst("[^0-9].*", ""));
+                        if (System.currentTimeMillis() / 1000 > exp - 60) { // 60s buffer
+                            jwtToken = null; // Force re-auth
+                        }
+                    }
+                }
+            } catch (Exception ignored) { /* If decode fails, let server reject */ }
+        }
+        if (jwtToken != null && !jwtToken.isEmpty()) {
             return true;
         }
         return autenticar();
@@ -341,6 +367,9 @@ public class SyncClient {
      * envia POST /api/sync, processa downloads, marca como sincronizado.
      */
     public CompletableFuture<SyncResult> sincronizarTudo() {
+        // DB112: passa syncExecutor (threads dedicadas a I/O) para nao bloquear ForkJoinPool common.
+        // O loop interno chama sincronizarTabelaSync() diretamente (metodo sincrono) em vez de
+        // .get() sobre outro CompletableFuture, eliminando o aninhamento bloqueante.
         return CompletableFuture.supplyAsync(() -> {
             SyncResult resultadoGeral = new SyncResult();
 
@@ -356,7 +385,8 @@ public class SyncClient {
             for (String tabela : TABELAS_SYNC) {
                 try {
                     notificarListeners(SyncEvent.PROGRESSO, "Sincronizando " + tabela + "...");
-                    SyncResult resultado = sincronizarTabela(tabela).get(60, TimeUnit.SECONDS);
+                    // DB112: chama versao sincrona — ja estamos num thread do syncExecutor
+                    SyncResult resultado = sincronizarTabelaSync(tabela);
                     resultadoGeral.registrosEnviados += resultado.registrosEnviados;
                     resultadoGeral.registrosRecebidos += resultado.registrosRecebidos;
                     if (!resultado.erros.isEmpty()) {
@@ -384,62 +414,72 @@ public class SyncClient {
             );
 
             return resultadoGeral;
-        });
+        }, syncExecutor);
     }
 
     /**
-     * Sincroniza uma tabela especifica.
-     * Fluxo: upload pendentes -> POST /api/sync -> download resposta -> mark synced.
+     * Sincroniza uma tabela especifica (async).
+     * DB112: usa syncExecutor para nao bloquear o ForkJoinPool common.
      */
     public CompletableFuture<SyncResult> sincronizarTabela(String tabela) {
-        return CompletableFuture.supplyAsync(() -> {
-            SyncResult resultado = new SyncResult();
+        return CompletableFuture.supplyAsync(() -> sincronizarTabelaSync(tabela), syncExecutor);
+    }
 
-            try {
-                // 1. Buscar registros pendentes (sincronizado = false)
-                List<RegistroPendente> pendentes = buscarRegistrosPendentes(tabela);
+    /**
+     * Implementacao sincrona de sincronizarTabela.
+     * Chamada diretamente por sincronizarTudo (que ja roda no syncExecutor)
+     * para evitar bloqueio aninhado de CompletableFuture.
+     * Fluxo: upload pendentes -> POST /api/sync -> download resposta -> mark synced.
+     */
+    private SyncResult sincronizarTabelaSync(String tabela) {
+        SyncResult resultado = new SyncResult();
 
-                // 2. Montar JSON de request conforme SyncRequest do servidor
-                String jsonRequest = montarSyncRequest(tabela, pendentes);
+        try {
+            // 1. Buscar registros pendentes (sincronizado = false)
+            List<RegistroPendente> pendentes = buscarRegistrosPendentes(tabela);
 
-                // 3. Enviar POST /api/sync com retry
-                String response = enviarComRetry("/api/sync", jsonRequest);
+            // 2. Montar JSON de request conforme SyncRequest do servidor
+            String jsonRequest = montarSyncRequest(tabela, pendentes);
 
-                // 4. Parsear resposta (SyncResponse)
-                Map<String, Object> syncResponse = parseJsonResponse(response);
+            // 3. Enviar POST /api/sync com retry
+            String response = enviarComRetry("/api/sync", jsonRequest);
 
-                Object sucessoObj = syncResponse.getOrDefault("sucesso", false);
-                resultado.sucesso = sucessoObj instanceof Boolean
-                    ? (Boolean) sucessoObj
-                    : Boolean.parseBoolean(String.valueOf(sucessoObj));
-                resultado.mensagem = (String) syncResponse.getOrDefault("mensagem", "");
-                resultado.registrosEnviados = pendentes.size();
+            // 4. Parsear resposta (SyncResponse)
+            Map<String, Object> syncResponse = parseJsonResponse(response);
 
-                // 5. Processar registros de download (INSERT ON CONFLICT DO UPDATE)
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> registrosDownload =
-                    (List<Map<String, Object>>) syncResponse.get("registrosParaDownload");
+            Object sucessoObj = syncResponse.getOrDefault("sucesso", false);
+            resultado.sucesso = sucessoObj instanceof Boolean
+                ? (Boolean) sucessoObj
+                : Boolean.parseBoolean(String.valueOf(sucessoObj));
+            resultado.mensagem = (String) syncResponse.getOrDefault("mensagem", "");
+            resultado.registrosEnviados = pendentes.size();
 
-                if (registrosDownload != null) {
-                    resultado.registrosRecebidos = registrosDownload.size();
+            // 5. Processar registros de download (INSERT ON CONFLICT DO UPDATE)
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> registrosDownload =
+                (List<Map<String, Object>>) syncResponse.get("registrosParaDownload");
+
+            if (registrosDownload != null) {
+                resultado.registrosRecebidos = registrosDownload.size();
+                try (java.sql.Connection connDownload = dao.ConexaoBD.getConnection()) {
                     for (Map<String, Object> registro : registrosDownload) {
-                        aplicarRegistroRecebido(tabela, registro);
+                        aplicarRegistroRecebido(connDownload, tabela, registro);
                     }
                 }
-
-                // 6. Marcar registros locais como sincronizados
-                if (resultado.sucesso) {
-                    marcarComoSincronizados(tabela, pendentes);
-                }
-
-            } catch (Exception e) {
-                AppLogger.error(TAG, "Sync " + tabela + ": " + e.getMessage(), e);
-                resultado.sucesso = false;
-                resultado.mensagem = "Erro: " + e.getMessage();
-                resultado.erros.add(tabela + ": " + e.getMessage());
             }
-            return resultado;
-        });
+
+            // 6. Marcar registros locais como sincronizados
+            if (resultado.sucesso) {
+                marcarComoSincronizados(tabela, pendentes);
+            }
+
+        } catch (Exception e) {
+            AppLogger.error(TAG, "Sync " + tabela + ": " + e.getMessage(), e);
+            resultado.sucesso = false;
+            resultado.mensagem = "Erro: " + e.getMessage();
+            resultado.erros.add(tabela + ": " + e.getMessage());
+        }
+        return resultado;
     }
 
     // ========================================================================
@@ -461,33 +501,34 @@ public class SyncClient {
              java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, dao.DAOUtils.empresaId());
-            java.sql.ResultSet rs = stmt.executeQuery();
-            ResultSetMetaData meta = rs.getMetaData();
-            int colCount = meta.getColumnCount();
+            try (java.sql.ResultSet rs = stmt.executeQuery()) {
+                ResultSetMetaData meta = rs.getMetaData();
+                int colCount = meta.getColumnCount();
 
-            while (rs.next()) {
-                Map<String, Object> dados = new LinkedHashMap<>();
-                for (int i = 1; i <= colCount; i++) {
-                    String colName = meta.getColumnName(i);
-                    if (COLUNAS_SKIP_DADOS.contains(colName)) continue;
-                    dados.put(colName, rs.getObject(i));
+                while (rs.next()) {
+                    Map<String, Object> dados = new LinkedHashMap<>();
+                    for (int i = 1; i <= colCount; i++) {
+                        String colName = meta.getColumnName(i);
+                        if (COLUNAS_SKIP_DADOS.contains(colName)) continue;
+                        dados.put(colName, rs.getObject(i));
+                    }
+
+                    String uuid = dados.get("uuid") != null ? dados.get("uuid").toString() : null;
+                    if (uuid == null || uuid.isEmpty()) continue;
+
+                    Object idLocal = dados.get(colunaId);
+
+                    // Determinar acao: DELETE se excluido, senao INSERT/UPDATE
+                    String acao = determinarAcao(tabela, dados);
+
+                    String ultimaAtt = dados.get("ultima_atualizacao") != null
+                        ? dados.get("ultima_atualizacao").toString()
+                        : null;
+
+                    pendentes.add(new RegistroPendente(
+                        uuid, acao, ultimaAtt, criarJsonSimples(dados), idLocal, colunaId
+                    ));
                 }
-
-                String uuid = dados.get("uuid") != null ? dados.get("uuid").toString() : null;
-                if (uuid == null || uuid.isEmpty()) continue;
-
-                Object idLocal = dados.get(colunaId);
-
-                // Determinar acao: DELETE se excluido, senao INSERT/UPDATE
-                String acao = determinarAcao(tabela, dados);
-
-                String ultimaAtt = dados.get("ultima_atualizacao") != null
-                    ? dados.get("ultima_atualizacao").toString()
-                    : null;
-
-                pendentes.add(new RegistroPendente(
-                    uuid, acao, ultimaAtt, criarJsonSimples(dados), idLocal, colunaId
-                ));
             }
         } catch (Exception e) {
             AppLogger.error(TAG, "Erro ao buscar pendentes de " + tabela + ": " + e.getMessage(), e);
@@ -554,15 +595,16 @@ public class SyncClient {
     /**
      * Aplica um registro recebido do servidor no banco local.
      * Usa INSERT ON CONFLICT (uuid) DO UPDATE para upsert.
+     * Recebe a conexao compartilhada para evitar N+1 conexoes por registro.
      */
-    private void aplicarRegistroRecebido(String tabela, Map<String, Object> registro) {
+    private void aplicarRegistroRecebido(java.sql.Connection conn, String tabela, Map<String, Object> registro) {
         String acao = (String) registro.get("acao");
         String uuid = (String) registro.get("uuid");
         String dadosJson = (String) registro.get("dadosJson");
 
         if (uuid == null || uuid.isEmpty()) return;
 
-        try (java.sql.Connection conn = dao.ConexaoBD.getConnection()) {
+        try {
             String colunaId = getColunaId(tabela);
             int empresaId = dao.DAOUtils.empresaId();
 

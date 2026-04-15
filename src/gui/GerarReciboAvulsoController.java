@@ -182,15 +182,16 @@ public class GerarReciboAvulsoController implements Initializable {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
-            ResultSet rs = stmt.executeQuery();
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            while (rs.next()) {
-                long id = rs.getLong("id_viagem");
-                java.sql.Date dtS = rs.getDate("data_viagem");
-                java.sql.Date dtC = rs.getDate("data_chegada");
-                String saida = (dtS != null) ? dtS.toLocalDate().format(dtf) : "--";
-                String chegada = (dtC != null) ? dtC.toLocalDate().format(dtf) : "--";
-                itens.add(id + " - " + saida + " até " + chegada);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long id = rs.getLong("id_viagem");
+                    java.sql.Date dtS = rs.getDate("data_viagem");
+                    java.sql.Date dtC = rs.getDate("data_chegada");
+                    String saida = (dtS != null) ? dtS.toLocalDate().format(dtf) : "--";
+                    String chegada = (dtC != null) ? dtC.toLocalDate().format(dtf) : "--";
+                    itens.add(id + " - " + saida + " até " + chegada);
+                }
             }
         } catch (SQLException e) {
             AppLogger.error("GerarReciboAvulsoController", e.getMessage(), e);

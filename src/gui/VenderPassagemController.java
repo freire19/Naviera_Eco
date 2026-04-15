@@ -276,22 +276,22 @@ public class VenderPassagemController implements Initializable {
                 try (Connection conn = ConexaoBD.getConnection();
                      PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.setInt(1, dao.DAOUtils.empresaId());
-                    ResultSet rs = stmt.executeQuery();
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            Viagem v = new Viagem();
+                            v.setId(rs.getLong("id_viagem"));
+                            v.setDataViagem(rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toLocalDate() : null);
+                            v.setDataChegada(rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toLocalDate() : null);
+                            v.setDescricao(rs.getString("descricao"));
+                            v.setIdHorarioSaida(rs.getLong("id_horario_saida"));
+                            v.setIsAtual(rs.getBoolean("is_atual"));
 
-                    while (rs.next()) {
-                        Viagem v = new Viagem();
-                        v.setId(rs.getLong("id_viagem"));
-                        v.setDataViagem(rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toLocalDate() : null);
-                        v.setDataChegada(rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toLocalDate() : null);
-                        v.setDescricao(rs.getString("descricao"));
-                        v.setIdHorarioSaida(rs.getLong("id_horario_saida"));
-                        v.setIsAtual(rs.getBoolean("is_atual"));
+                            listaViagensCarregadas.add(v);
 
-                        listaViagensCarregadas.add(v);
-
-                        String dt = (v.getDataViagem() != null) ? dateFormatter.format(v.getDataViagem()) : "--";
-                        String prev = (v.getDataChegada() != null) ? dateFormatter.format(v.getDataChegada()) : "??";
-                        viagensFormatadas.add(v.getId() + " - " + dt + " - Prev: " + prev);
+                            String dt = (v.getDataViagem() != null) ? dateFormatter.format(v.getDataViagem()) : "--";
+                            String prev = (v.getDataChegada() != null) ? dateFormatter.format(v.getDataChegada()) : "??";
+                            viagensFormatadas.add(v.getId() + " - " + dt + " - Prev: " + prev);
+                        }
                     }
                 } catch (Exception e) {
                     AppLogger.warn("VenderPassagemController", "Erro ao carregar viagens: " + e.getMessage());
@@ -440,7 +440,7 @@ public class VenderPassagemController implements Initializable {
                         String[] parts = newVal.split(" - ");
                         if (parts.length > 0) {
                             long id = Long.parseLong(parts[0].trim());
-                            Optional<Viagem> vOpt = listaViagensCarregadas.stream().filter(v -> v.getId() == id).findFirst();
+                            Optional<Viagem> vOpt = listaViagensCarregadas.stream().filter(v -> v.getId() != null && v.getId().equals(id)).findFirst();
                             if (vOpt.isPresent()) {
                                 this.viagemSelecionada = vOpt.get();
                                 configurarTelaComViagemAtiva();

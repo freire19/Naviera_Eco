@@ -124,7 +124,7 @@ export default function BilheteScreen({ bilhete, t: _t, onBack }) {
                 <text x="10" y="10" textAnchor="middle" dominantBaseline="central" fill={timeLeft <= 5 ? t.err : t.pri} fontSize="7" fontWeight="700">{timeLeft}</text>
               </svg>
               <div><div style={{ fontSize: 10, color: timeLeft <= 5 ? t.err : t.txMuted }}>{timeLeft <= 5 ? "Renovando..." : `Renova em ${timeLeft}s`}</div>
-                <div style={{ fontSize: 8, color: t.txMuted, opacity: 0.5, marginTop: 1 }}>HMAC-SHA256 \u2022 Anti-clone</div></div>
+                <div style={{ fontSize: 8, color: t.txMuted, opacity: 0.5, marginTop: 1 }}>Codigo de verificacao</div></div>
             </div>
           </div>
         </div>

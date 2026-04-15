@@ -22,7 +22,8 @@ public class EncomendaService {
         this.jdbc = jdbc; this.clienteRepo = clienteRepo;
     }
 
-    public List<EncomendaDTO> buscarPorCliente(Long clienteId) {
+    // #DB144: empresaId parameter prevents cross-tenant LIKE scan
+    public List<EncomendaDTO> buscarPorCliente(Long clienteId, Integer empresaId) {
         ClienteApp cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
 
@@ -35,7 +36,7 @@ public class EncomendaService {
             FROM encomendas e
             LEFT JOIN viagens v ON e.id_viagem = v.id_viagem
             LEFT JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
-            WHERE UPPER(e.destinatario) LIKE UPPER(?)
+            WHERE UPPER(e.destinatario) LIKE UPPER(?) AND e.empresa_id = ?
             ORDER BY e.id_encomenda DESC
             """;
 
@@ -57,7 +58,7 @@ public class EncomendaService {
             rs.getInt("total_volumes"),
             rs.getDate("data_viagem") != null ? rs.getDate("data_viagem").toString() : null,
             rs.getDate("data_chegada") != null ? rs.getDate("data_chegada").toString() : null
-        ), "%" + cliente.getNome() + "%");
+        ), "%" + cliente.getNome() + "%", empresaId);
     }
 
     /**

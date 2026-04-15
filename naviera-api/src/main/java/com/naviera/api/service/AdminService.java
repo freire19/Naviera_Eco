@@ -82,6 +82,7 @@ public class AdminService {
             return ps;
         }, keyHolder);
 
+        if (keyHolder.getKey() == null) throw new RuntimeException("Falha ao obter ID da empresa criada");
         Long id = keyHolder.getKey().longValue();
 
         // Criar primeiro usuario se dados do operador foram informados

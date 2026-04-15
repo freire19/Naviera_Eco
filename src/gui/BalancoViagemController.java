@@ -402,8 +402,8 @@ public class BalancoViagemController {
 
     private void carregarDespesasAgrupadas(Map<String, List<LinhaDespesaDetalhada>> map) {
         String sql = "SELECT s.descricao, c.nome, s.valor_total FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE s.id_viagem=? AND s.empresa_id = ? ORDER BY c.nome, s.descricao";
-        try(Connection c=ConexaoBD.getConnection(); PreparedStatement s=c.prepareStatement(sql)){ s.setInt(1,idViagemAtual); s.setInt(2, dao.DAOUtils.empresaId()); ResultSet rs=s.executeQuery();
-            while(rs.next()){ String cat=rs.getString(2)==null?"OUTROS":rs.getString(2); map.computeIfAbsent(cat,k->new ArrayList<>()).add(new LinhaDespesaDetalhada("-",rs.getString(1),cat,rs.getBigDecimal(3))); }
+        try(Connection c=ConexaoBD.getConnection(); PreparedStatement s=c.prepareStatement(sql)){ s.setInt(1,idViagemAtual); s.setInt(2, dao.DAOUtils.empresaId()); try(ResultSet rs=s.executeQuery()){
+            while(rs.next()){ String cat=rs.getString(2)==null?"OUTROS":rs.getString(2); map.computeIfAbsent(cat,k->new ArrayList<>()).add(new LinhaDespesaDetalhada("-",rs.getString(1),cat,rs.getBigDecimal(3))); }}
         }catch(Exception e){ AppLogger.warn("BalancoViagemController", "Erro em BalancoViagemController.carregarDespesasAgrupadas: " + e.getMessage()); }
     }
 
@@ -507,14 +507,15 @@ public class BalancoViagemController {
                 String valorSelecionado[] = {null};
                 try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
                     stmt.setInt(1, dao.DAOUtils.empresaId());
-                    ResultSet rs = stmt.executeQuery();
                     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-                    while (rs.next()) {
-                        String saida = rs.getDate(3) != null ? sdf.format(rs.getDate(3)) : "--/--/----";
-                        String chegada = rs.getDate(4) != null ? sdf.format(rs.getDate(4)) : "--/--/----";
-                        String item = String.format("Saída: %s - Chegada: %s (ID: %d)", saida, chegada, rs.getInt(1));
-                        l.add(item);
-                        if (rs.getInt(1) == idAtual) valorSelecionado[0] = item;
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            String saida = rs.getDate(3) != null ? sdf.format(rs.getDate(3)) : "--/--/----";
+                            String chegada = rs.getDate(4) != null ? sdf.format(rs.getDate(4)) : "--/--/----";
+                            String item = String.format("Saída: %s - Chegada: %s (ID: %d)", saida, chegada, rs.getInt(1));
+                            l.add(item);
+                            if (rs.getInt(1) == idAtual) valorSelecionado[0] = item;
+                        }
                     }
                 }
                 final String sel = valorSelecionado[0];

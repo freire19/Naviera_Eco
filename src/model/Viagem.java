@@ -89,7 +89,7 @@ public class Viagem {
     public String toString() {
         String dataStr = getDataViagemStr();
         String rotaStrPart = (origem != null && destino != null) ? origem + " - " + destino : "N/A";
-        return String.format("%d - %s (%s)", id, dataStr, rotaStrPart);
+        return String.format("%d - %s (%s)", id != null ? id : 0, dataStr, rotaStrPart);
     }
 
     @Override

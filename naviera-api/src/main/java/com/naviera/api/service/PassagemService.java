@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
+import java.math.BigDecimal;
 
 @Service
 public class PassagemService {
@@ -46,41 +47,41 @@ public class PassagemService {
     }
 
     @Transactional
-    public Map<String, Object> comprar(Long clienteId, CompraPassagemRequest req) {
+    public Map<String, Object> comprar(Integer empresaId, Long clienteId, CompraPassagemRequest req) {
         var cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
 
-        // Verificar viagem existe e é futura
+        // Verificar viagem existe e é futura, filtrando por empresa_id
         var viagem = jdbc.queryForList(
-            "SELECT v.id_viagem, v.id_rota, v.id_embarcacao FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE",
-            req.idViagem());
+            "SELECT v.id_viagem, v.id_rota, v.id_embarcacao FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE AND v.empresa_id = ?",
+            req.idViagem(), empresaId);
         if (viagem.isEmpty()) throw ApiException.badRequest("Viagem nao disponivel para compra");
 
         Long idRota = (Long) viagem.get(0).get("id_rota");
 
-        // Buscar tarifa
+        // Buscar tarifa, filtrando por empresa_id
         var tarifas = jdbc.queryForList(
-            "SELECT valor_transporte, valor_alimentacao, valor_desconto FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ?",
-            idRota, req.idTipoPassagem());
+            "SELECT valor_transporte, valor_alimentacao, valor_desconto FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ? AND empresa_id = ?",
+            idRota, req.idTipoPassagem(), empresaId);
         if (tarifas.isEmpty()) throw ApiException.badRequest("Tarifa nao encontrada para este tipo de passagem");
 
         var tarifa = tarifas.get(0);
-        var transporte = (java.math.BigDecimal) tarifa.get("valor_transporte");
-        var alimentacao = (java.math.BigDecimal) tarifa.get("valor_alimentacao");
-        var desconto = (java.math.BigDecimal) tarifa.get("valor_desconto");
+        var transporte = (BigDecimal) tarifa.get("valor_transporte");
+        var alimentacao = (BigDecimal) tarifa.get("valor_alimentacao");
+        var desconto = (BigDecimal) tarifa.get("valor_desconto");
         var total = transporte.add(alimentacao).subtract(desconto);
 
-        // Criar ou buscar passageiro
+        // Criar ou buscar passageiro, filtrando por empresa_id
         var passageiros = jdbc.queryForList(
-            "SELECT id_passageiro FROM passageiros WHERE numero_documento = ?", cliente.getDocumento());
+            "SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?", cliente.getDocumento(), empresaId);
         Long idPassageiro;
         if (passageiros.isEmpty()) {
-            jdbc.update("INSERT INTO passageiros (nome_passageiro, numero_documento) VALUES (?, ?)",
-                cliente.getNome(), cliente.getDocumento());
-            idPassageiro = jdbc.queryForObject("SELECT id_passageiro FROM passageiros WHERE numero_documento = ?",
-                Long.class, cliente.getDocumento());
+            jdbc.update("INSERT INTO passageiros (nome_passageiro, numero_documento, empresa_id) VALUES (?, ?, ?)",
+                cliente.getNome(), cliente.getDocumento(), empresaId);
+            idPassageiro = jdbc.queryForObject("SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?",
+                Long.class, cliente.getDocumento(), empresaId);
         } else {
-            idPassageiro = (Long) passageiros.get(0).get("id_passageiro");
+            idPassageiro = ((Number) passageiros.get(0).get("id_passageiro")).longValue();
         }
 
         // Gerar numero bilhete
@@ -88,17 +89,17 @@ public class PassagemService {
 
         // Status: PIX = PENDENTE_CONFIRMACAO (operador confirma depois), outros = PENDENTE
         String status = "PENDENTE_CONFIRMACAO";
-        var valorPago = "PIX".equals(req.formaPagamento()) ? total : java.math.BigDecimal.ZERO;
+        var valorPago = "PIX".equals(req.formaPagamento()) ? total : BigDecimal.ZERO;
         jdbc.update("""
             INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao,
                 id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao,
                 valor_desconto_tarifa, valor_total, valor_a_pagar, valor_pago,
-                status_passagem, origem_emissao, id_cliente_app, observacoes)
-            VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'APP', ?, ?)
+                status_passagem, origem_emissao, id_cliente_app, observacoes, empresa_id)
+            VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'APP', ?, ?, ?)
             """,
             numBilhete, idPassageiro, req.idViagem(), idRota, req.idTipoPassagem(),
             transporte, alimentacao, desconto, total, total, valorPago, status,
-            clienteId, "Compra via App - " + req.formaPagamento());
+            clienteId, "Compra via App - " + req.formaPagamento(), empresaId);
 
         return Map.of(
             "numeroBilhete", numBilhete,
@@ -110,7 +111,7 @@ public class PassagemService {
     }
 
     /** Operador escaneia QR — retorna dados completos do passageiro para conferencia */
-    public Map<String, Object> consultarParaEmbarque(String numeroBilhete) {
+    public Map<String, Object> consultarParaEmbarque(Integer empresaId, String numeroBilhete) {
         String sql = """
             SELECT p.id_passagem, p.numero_bilhete, p.status_passagem, p.origem_emissao,
                    p.valor_a_pagar, p.valor_pago, p.data_emissao,
@@ -134,18 +135,18 @@ public class PassagemService {
             LEFT JOIN aux_acomodacoes ac ON p.id_acomodacao = ac.id_acomodacao
             JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro
             LEFT JOIN clientes_app c ON p.id_cliente_app = c.id
-            WHERE p.numero_bilhete = ?
+            WHERE p.numero_bilhete = ? AND p.empresa_id = ?
             """;
-        var results = jdbc.queryForList(sql, numeroBilhete);
+        var results = jdbc.queryForList(sql, numeroBilhete, empresaId);
         if (results.isEmpty()) throw ApiException.notFound("Bilhete nao encontrado");
         return results.get(0);
     }
 
     /** Operador confirma embarque apos conferir documento com foto */
     @Transactional
-    public Map<String, Object> confirmarEmbarque(String numeroBilhete, String operador) {
+    public Map<String, Object> confirmarEmbarque(Integer empresaId, String numeroBilhete, String operador) {
         // Verificar situacao
-        var dados = consultarParaEmbarque(numeroBilhete);
+        var dados = consultarParaEmbarque(empresaId, numeroBilhete);
         String situacao = (String) dados.get("situacao");
 
         if ("EXPIRADA".equals(situacao)) throw ApiException.badRequest("Passagem expirada — viagem ja encerrada");
@@ -153,8 +154,8 @@ public class PassagemService {
         if ("CANCELADA".equals(situacao)) throw ApiException.badRequest("Passagem cancelada");
         if ("PAGAMENTO_PENDENTE".equals(situacao)) throw ApiException.badRequest("Pagamento pendente de confirmacao");
 
-        jdbc.update("UPDATE passagens SET status_passagem = 'EMBARCADO', data_embarque = NOW(), conferido_por = ? WHERE numero_bilhete = ?",
-            operador, numeroBilhete);
+        jdbc.update("UPDATE passagens SET status_passagem = 'EMBARCADO', data_embarque = NOW(), conferido_por = ? WHERE numero_bilhete = ? AND empresa_id = ?",
+            operador, numeroBilhete, empresaId);
 
         return Map.of(
             "mensagem", "Embarque confirmado",
@@ -166,10 +167,10 @@ public class PassagemService {
 
     /** Operador confirma pagamento de passagem comprada via app */
     @Transactional
-    public Map<String, Object> confirmarPagamento(String numeroBilhete) {
+    public Map<String, Object> confirmarPagamento(Integer empresaId, String numeroBilhete) {
         int updated = jdbc.update(
-            "UPDATE passagens SET status_passagem = 'CONFIRMADA' WHERE numero_bilhete = ? AND status_passagem = 'PENDENTE_CONFIRMACAO'",
-            numeroBilhete);
+            "UPDATE passagens SET status_passagem = 'CONFIRMADA' WHERE numero_bilhete = ? AND status_passagem = 'PENDENTE_CONFIRMACAO' AND empresa_id = ?",
+            numeroBilhete, empresaId);
         if (updated == 0) throw ApiException.notFound("Bilhete nao encontrado ou ja confirmado");
         return Map.of("mensagem", "Pagamento confirmado", "bilhete", numeroBilhete);
     }

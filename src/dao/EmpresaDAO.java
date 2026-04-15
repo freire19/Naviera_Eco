@@ -49,7 +49,13 @@ public class EmpresaDAO {
         return null;
     }
 
-    /** Mantém compatibilidade com chamadas existentes que passam id. */
+    /**
+     * Compatibilidade com chamadas legadas que passam um id (ex: ID_EMPRESA_PRINCIPAL).
+     * O parametro {@code id} e IGNORADO — sempre usa o tenant do TenantContext.
+     * Em ambiente multi-tenant cada Desktop opera com um unico tenant, portanto o id
+     * passado sempre corresponde ao tenant atual. Nao usar para buscar empresas
+     * arbitrarias: criar novo metodo com query WHERE id = ? nesse caso.
+     */
     public Empresa buscarPorId(int id) {
         return buscar();
     }

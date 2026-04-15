@@ -465,17 +465,19 @@ public class RelatorioEncomendaGeralController implements Initializable {
         String sql = "SELECT nome_item, unidade_medida, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item"; 
         
         try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()) {
-                String nome = rs.getString("nome_item");
-                String un = rs.getString("unidade_medida");
-                if(un == null || un.trim().isEmpty()) un = "UN";
-                itens.add(new PrecoItem(nome, un, rs.getBigDecimal("preco_unitario_padrao")));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while(rs.next()) {
+                    String nome = rs.getString("nome_item");
+                    String un = rs.getString("unidade_medida");
+                    if(un == null || un.trim().isEmpty()) un = "UN";
+                    itens.add(new PrecoItem(nome, un, rs.getBigDecimal("preco_unitario_padrao")));
+                }
             }
         } catch (Exception e) {
             try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_item, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item")) {
-                ResultSet rs = stmt.executeQuery();
-                while(rs.next()) itens.add(new PrecoItem(rs.getString("nome_item"), "UN", rs.getBigDecimal("preco_unitario_padrao")));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while(rs.next()) itens.add(new PrecoItem(rs.getString("nome_item"), "UN", rs.getBigDecimal("preco_unitario_padrao")));
+                }
             } catch(Exception ex2) {
                 AlertHelper.error("Erro ao buscar na tabela 'itens_encomenda_padrao'.");
                 return;
