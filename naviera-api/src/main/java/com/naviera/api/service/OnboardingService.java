@@ -99,7 +99,8 @@ public class OnboardingService {
             throw ApiException.conflict("Email ja cadastrado");
         }
 
-        String slug = gerarSlug(nomeEmpresa);
+        // Slug baseado no nome da embarcacao (subdominio = nome do barco)
+        String slug = gerarSlug(nomeEmbarcacao != null && !nomeEmbarcacao.isBlank() ? nomeEmbarcacao : nomeEmpresa);
         String codigo = gerarCodigoAtivacao();
         String senhaHash = encoder.encode(senha);
 

@@ -708,6 +708,10 @@ table td .actions {
   .nav-section-title { font-size: 0.6rem; }
 }
 
+/* === Mobile nav (escondida em desktop, visivel em mobile) === */
+.mobile-nav { display: none; }
+.fab-ocr { display: none; }
+
 /* Mobile (<800px) — sidebar colapsa, layout vertical */
 @media (max-width: 800px) {
   .app-layout { flex-direction: column; }
@@ -731,7 +735,55 @@ table td .actions {
 
   .main-content { margin-left: 0; }
 
-  .page { padding: 16px 12px; }
+  /* Mobile nav bar */
+  .mobile-nav {
+    display: flex;
+    overflow-x: auto;
+    gap: 2px;
+    padding: 6px 8px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .mobile-nav button {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-family: 'Sora', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .mobile-nav button.active {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* FAB — botao flutuante OCR */
+  .fab-ocr {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #059669, #34D399);
+    color: #fff;
+    font-size: 1.5rem;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
+    z-index: 1000;
+    transition: transform 0.15s;
+  }
+  .fab-ocr:active { transform: scale(0.9); }
+
+  .page { padding: 16px 12px; padding-bottom: 80px; }
 
   .topbar { padding: 0 12px; gap: 8px; }
   .topbar .breadcrumb { font-size: 0.75rem; }

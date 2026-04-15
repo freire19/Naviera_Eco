@@ -104,6 +104,10 @@ export default function Layout() {
   const pageConfig = PAGES[currentPage] || PAGES.inicio
   const PageComponent = pageConfig.component
 
+  const ocrUrl = window.location.hostname === 'localhost'
+    ? `http://${window.location.hostname}:5175`
+    : `https://ocr.${window.location.hostname.replace(/^[^.]+\./, '')}`
+
   return (
     <div className="app-layout">
       <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} pages={PAGES} />
@@ -114,6 +118,16 @@ export default function Layout() {
           viagemAtiva={viagemAtiva}
           onViagemChange={setViagemAtiva}
         />
+
+        {/* Mobile nav — visivel apenas <800px quando sidebar colapsa */}
+        <div className="mobile-nav">
+          <button className={currentPage === 'inicio' ? 'active' : ''} onClick={() => setCurrentPage('inicio')}>&#8962; Inicio</button>
+          <button className={currentPage === 'vender-passagem' ? 'active' : ''} onClick={() => setCurrentPage('vender-passagem')}>&#127915; Passagens</button>
+          <button className={currentPage === 'nova-encomenda' ? 'active' : ''} onClick={() => setCurrentPage('nova-encomenda')}>&#128230; Encomendas</button>
+          <button className={currentPage === 'lancar-frete' ? 'active' : ''} onClick={() => setCurrentPage('lancar-frete')}>&#128666; Fretes</button>
+          <button className={currentPage === 'financeiro-entrada' ? 'active' : ''} onClick={() => setCurrentPage('financeiro-entrada')}>&#128176; Financeiro</button>
+        </div>
+
         <div className="page">
           <PageComponent
             key={currentPage}
@@ -121,6 +135,17 @@ export default function Layout() {
             onNavigate={setCurrentPage}
           />
         </div>
+
+        {/* FAB — botao flutuante OCR, visivel apenas no mobile */}
+        <a
+          className="fab-ocr"
+          href={ocrUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Lancar frete por foto"
+        >
+          &#128247;
+        </a>
       </div>
     </div>
   )
