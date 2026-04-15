@@ -137,15 +137,17 @@ export default function Layout() {
         </div>
 
         {/* FAB — botao flutuante OCR, visivel apenas no mobile */}
-        <a
-          className="fab-ocr"
-          href={ocrUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Lancar frete por foto"
-        >
-          &#128247;
-        </a>
+        {window.innerWidth <= 800 && (
+          <a
+            className="fab-ocr"
+            href={ocrUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Lancar frete por foto"
+          >
+            &#128247;
+          </a>
+        )}
       </div>
     </div>
   )
