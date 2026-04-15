@@ -408,15 +408,26 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>Descricao do Item (Enter busca)</label>
-              <select style={I} onChange={handleSelectItemPadrao} value="">
-                <option value="">-- Selecione um item cadastrado ou digite abaixo --</option>
+              <input list="itens-padrao-list" style={I} value={novoItem.descricao}
+                onChange={e => {
+                  const val = e.target.value
+                  handleNovoItemChange('descricao', val)
+                  // Auto-preencher preco se selecionou item do datalist
+                  const match = itensPadrao.find(ip => ip.nome_item === val || `${ip.nome_item} — R$ ${Number(ip.preco_padrao || ip.preco_unitario_padrao || 0).toFixed(2)}` === val)
+                  if (match) {
+                    const preco = match.preco_padrao || match.preco_unitario_padrao || 0
+                    handleNovoItemChange('descricao', match.nome_item)
+                    setNovoItem(prev => ({ ...prev, descricao: match.nome_item, valor_unitario: preco, valor_total: ((parseInt(prev.quantidade) || 1) * parseFloat(preco)).toFixed(2) }))
+                  }
+                }}
+                placeholder="Digite ou selecione um item..." />
+              <datalist id="itens-padrao-list">
                 {itensPadrao.map(ip => (
-                  <option key={ip.id || ip.id_item_encomenda} value={ip.id || ip.id_item_encomenda}>
-                    {ip.nome_item} — R$ {Number(ip.preco_padrao || ip.preco_unitario_padrao || 0).toFixed(2)}
+                  <option key={ip.id || ip.id_item_encomenda} value={ip.nome_item}>
+                    R$ {Number(ip.preco_padrao || ip.preco_unitario_padrao || 0).toFixed(2)}
                   </option>
                 ))}
-              </select>
-              <input style={{ ...I, marginTop: 4 }} value={novoItem.descricao} onChange={e => handleNovoItemChange('descricao', e.target.value)} placeholder="Ou digite o nome do item..." />
+              </datalist>
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>V. Unit.</label>
