@@ -27,6 +27,7 @@ import agendaRoutes from './routes/agenda.js'
 import estornoRoutes from './routes/estornos.js'
 import ocrRoutes from './routes/ocr.js'
 import documentosRoutes from './routes/documentos.js'
+import errorHandler from './middleware/errorHandler.js'
 
 const app = express()
 // DS4-009 fix: confiar no X-Forwarded-For do proxy local (Nginx)
@@ -82,6 +83,9 @@ app.use('/api/documentos', documentosRoutes)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
+
+// Centralized error handler — must be LAST middleware
+app.use(errorHandler)
 
 const server = app.listen(PORT, () => {
   log.info('Server', `Naviera Web BFF running on http://localhost:${PORT}`)

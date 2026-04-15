@@ -3,12 +3,58 @@ import bcrypt from 'bcryptjs'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
+import { tenantCrud, auxCrud, registerCrud } from '../utils/crudFactory.js'
 
 const router = Router()
 router.use(authMiddleware)
 
-// --- Usuarios ---
-router.get('/usuarios', async (req, res) => {
+// ============================================================
+// FACTORY-GENERATED CRUD (tenant-scoped)
+// ============================================================
+
+const conferentes = tenantCrud({ table: 'conferentes', idColumn: 'id_conferente', nameColumn: 'nome_conferente' })
+registerCrud(router, '/conferentes', conferentes)
+
+const caixas = tenantCrud({ table: 'caixas', idColumn: 'id_caixa', nameColumn: 'nome_caixa' })
+registerCrud(router, '/caixas', caixas)
+
+const tiposPassageiro = tenantCrud({ table: 'tipo_passageiro', idColumn: 'id', nameColumn: 'nome' })
+registerCrud(router, '/tipos-passageiro', tiposPassageiro)
+
+const clientesEncomenda = tenantCrud({ table: 'cad_clientes_encomenda', idColumn: 'id_cliente', nameColumn: 'nome_cliente', nameField: 'nome_cliente' })
+registerCrud(router, '/clientes-encomenda', clientesEncomenda)
+
+// ============================================================
+// FACTORY-GENERATED CRUD (aux shared tables — no empresa_id)
+// ============================================================
+
+const sexos = auxCrud({ table: 'aux_sexo', idColumn: 'id_sexo', nameColumn: 'nome_sexo' })
+registerCrud(router, '/sexos', sexos)
+
+const tiposDocumento = auxCrud({ table: 'aux_tipos_documento', idColumn: 'id_tipo_doc', nameColumn: 'nome_tipo_doc' })
+registerCrud(router, '/tipos-documento', tiposDocumento)
+
+const nacionalidades = auxCrud({ table: 'aux_nacionalidades', idColumn: 'id_nacionalidade', nameColumn: 'nome_nacionalidade' })
+registerCrud(router, '/nacionalidades', nacionalidades)
+
+const tiposPassagemAux = auxCrud({ table: 'aux_tipos_passagem', idColumn: 'id_tipo_passagem', nameColumn: 'nome_tipo_passagem' })
+registerCrud(router, '/tipos-passagem-aux', tiposPassagemAux)
+
+const agentes = auxCrud({ table: 'aux_agentes', idColumn: 'id_agente', nameColumn: 'nome_agente' })
+registerCrud(router, '/agentes', agentes)
+
+const horariosSaida = auxCrud({ table: 'aux_horarios_saida', idColumn: 'id_horario_saida', nameColumn: 'descricao_horario_saida' })
+registerCrud(router, '/horarios-saida', horariosSaida)
+
+const acomodacoes = auxCrud({ table: 'aux_acomodacoes', idColumn: 'id_acomodacao', nameColumn: 'nome_acomodacao' })
+registerCrud(router, '/acomodacoes', acomodacoes)
+
+// ============================================================
+// CUSTOM ENDPOINTS (not suitable for factory)
+// ============================================================
+
+// --- Usuarios (list) ---
+router.get('/usuarios', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
@@ -16,35 +62,11 @@ router.get('/usuarios', async (req, res) => {
       [empresaId]
     )
     res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar usuarios' })
-  }
+  } catch (err) { next(err) }
 })
 
-// --- Conferentes ---
-router.get('/conferentes', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const result = await pool.query('SELECT * FROM conferentes WHERE empresa_id = $1 ORDER BY nome_conferente', [empresaId])
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar conferentes' })
-  }
-})
-
-// --- Caixas ---
-router.get('/caixas', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const result = await pool.query('SELECT * FROM caixas WHERE empresa_id = $1 ORDER BY nome_caixa', [empresaId])
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar caixas' })
-  }
-})
-
-// --- Tarifas ---
-router.get('/tarifas', async (req, res) => {
+// --- Tarifas (custom join) ---
+router.get('/tarifas', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(`
@@ -58,340 +80,11 @@ router.get('/tarifas', async (req, res) => {
       ORDER BY r.origem, COALESCE(tp.nome, atp.nome_tipo_passagem)
     `, [empresaId])
     res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar tarifas' })
-  }
-})
-
-// --- Tipo Passageiro (categoria: crianca, adulto, idoso) ---
-router.get('/tipos-passageiro', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const result = await pool.query('SELECT * FROM tipo_passageiro WHERE empresa_id = $1 ORDER BY nome', [empresaId])
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar tipos' })
-  }
-})
-
-router.post('/tipos-passageiro', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome } = req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query(
-      'INSERT INTO tipo_passageiro (nome, empresa_id) VALUES ($1, $2) RETURNING *',
-      [nome, empresaId]
-    )
-    res.status(201).json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar tipo passageiro' })
-  }
-})
-
-router.put('/tipos-passageiro/:id', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome } = req.body
-    const result = await pool.query(
-      'UPDATE tipo_passageiro SET nome = $1 WHERE id = $2 AND empresa_id = $3 RETURNING *',
-      [nome, req.params.id, empresaId]
-    )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Tipo passageiro nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar tipo passageiro' })
-  }
-})
-
-router.delete('/tipos-passageiro/:id', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const result = await pool.query(
-      'DELETE FROM tipo_passageiro WHERE id = $1 AND empresa_id = $2 RETURNING id',
-      [req.params.id, empresaId]
-    )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Tipo passageiro nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao excluir tipo passageiro' })
-  }
-})
-
-// --- Tabelas auxiliares compartilhadas (sem empresa_id) ---
-
-router.get('/tipos-passagem-aux', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT id_tipo_passagem, nome_tipo_passagem FROM aux_tipos_passagem ORDER BY nome_tipo_passagem')
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar tipos de passagem' })
-  }
-})
-
-router.get('/nacionalidades', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT id_nacionalidade, nome_nacionalidade FROM aux_nacionalidades ORDER BY nome_nacionalidade')
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar nacionalidades' })
-  }
-})
-
-router.get('/acomodacoes', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT id_acomodacao, nome_acomodacao FROM aux_acomodacoes ORDER BY nome_acomodacao')
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar acomodacoes' })
-  }
-})
-
-router.get('/agentes', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT id_agente, nome_agente FROM aux_agentes ORDER BY nome_agente')
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar agentes' })
-  }
-})
-
-router.get('/horarios-saida', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT id_horario_saida, descricao_horario_saida FROM aux_horarios_saida ORDER BY descricao_horario_saida')
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar horarios de saida' })
-  }
-})
-
-router.get('/tipos-documento', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT id_tipo_doc, nome_tipo_doc FROM aux_tipos_documento ORDER BY nome_tipo_doc')
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar tipos de documento' })
-  }
-})
-
-router.get('/sexos', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT id_sexo, nome_sexo FROM aux_sexo ORDER BY id_sexo')
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar sexos' })
-  }
-})
-
-// --- Conferentes DELETE ---
-router.delete('/conferentes/:id', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const result = await pool.query(
-      'DELETE FROM conferentes WHERE id_conferente = $1 AND empresa_id = $2 RETURNING id_conferente',
-      [req.params.id, empresaId]
-    )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Conferente nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao excluir conferente' })
-  }
-})
-
-// --- Caixas DELETE ---
-router.delete('/caixas/:id', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const result = await pool.query(
-      'DELETE FROM caixas WHERE id_caixa = $1 AND empresa_id = $2 RETURNING id_caixa',
-      [req.params.id, empresaId]
-    )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Caixa nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao excluir caixa' })
-  }
-})
-
-// --- Auxiliares CRUD (tabelas compartilhadas sem empresa_id) ---
-
-// Sexo
-router.post('/sexos', async (_req, res) => {
-  try {
-    const { nome } = _req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query('INSERT INTO aux_sexo (nome_sexo) VALUES ($1) RETURNING *', [nome])
-    res.status(201).json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao criar' }) }
-})
-router.put('/sexos/:id', async (req, res) => {
-  try {
-    const { nome } = req.body
-    const result = await pool.query('UPDATE aux_sexo SET nome_sexo = $1 WHERE id_sexo = $2 RETURNING *', [nome, req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao atualizar' }) }
-})
-router.delete('/sexos/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM aux_sexo WHERE id_sexo = $1 RETURNING id_sexo', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) { res.status(500).json({ error: 'Erro ao excluir' }) }
-})
-
-// Tipo Documento
-router.post('/tipos-documento', async (_req, res) => {
-  try {
-    const { nome } = _req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query('INSERT INTO aux_tipos_documento (nome_tipo_doc) VALUES ($1) RETURNING *', [nome])
-    res.status(201).json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao criar' }) }
-})
-router.put('/tipos-documento/:id', async (req, res) => {
-  try {
-    const { nome } = req.body
-    const result = await pool.query('UPDATE aux_tipos_documento SET nome_tipo_doc = $1 WHERE id_tipo_doc = $2 RETURNING *', [nome, req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao atualizar' }) }
-})
-router.delete('/tipos-documento/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM aux_tipos_documento WHERE id_tipo_doc = $1 RETURNING id_tipo_doc', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) { res.status(500).json({ error: 'Erro ao excluir' }) }
-})
-
-// Nacionalidade
-router.post('/nacionalidades', async (_req, res) => {
-  try {
-    const { nome } = _req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query('INSERT INTO aux_nacionalidades (nome_nacionalidade) VALUES ($1) RETURNING *', [nome])
-    res.status(201).json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao criar' }) }
-})
-router.put('/nacionalidades/:id', async (req, res) => {
-  try {
-    const { nome } = req.body
-    const result = await pool.query('UPDATE aux_nacionalidades SET nome_nacionalidade = $1 WHERE id_nacionalidade = $2 RETURNING *', [nome, req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao atualizar' }) }
-})
-router.delete('/nacionalidades/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM aux_nacionalidades WHERE id_nacionalidade = $1 RETURNING id_nacionalidade', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) { res.status(500).json({ error: 'Erro ao excluir' }) }
-})
-
-// Tipos Passagem Aux
-router.post('/tipos-passagem-aux', async (_req, res) => {
-  try {
-    const { nome } = _req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query('INSERT INTO aux_tipos_passagem (nome_tipo_passagem) VALUES ($1) RETURNING *', [nome])
-    res.status(201).json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao criar' }) }
-})
-router.put('/tipos-passagem-aux/:id', async (req, res) => {
-  try {
-    const { nome } = req.body
-    const result = await pool.query('UPDATE aux_tipos_passagem SET nome_tipo_passagem = $1 WHERE id_tipo_passagem = $2 RETURNING *', [nome, req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao atualizar' }) }
-})
-router.delete('/tipos-passagem-aux/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM aux_tipos_passagem WHERE id_tipo_passagem = $1 RETURNING id_tipo_passagem', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) { res.status(500).json({ error: 'Erro ao excluir' }) }
-})
-
-// Agentes
-router.post('/agentes', async (_req, res) => {
-  try {
-    const { nome } = _req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query('INSERT INTO aux_agentes (nome_agente) VALUES ($1) RETURNING *', [nome])
-    res.status(201).json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao criar' }) }
-})
-router.put('/agentes/:id', async (req, res) => {
-  try {
-    const { nome } = req.body
-    const result = await pool.query('UPDATE aux_agentes SET nome_agente = $1 WHERE id_agente = $2 RETURNING *', [nome, req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao atualizar' }) }
-})
-router.delete('/agentes/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM aux_agentes WHERE id_agente = $1 RETURNING id_agente', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) { res.status(500).json({ error: 'Erro ao excluir' }) }
-})
-
-// Horarios Saida
-router.post('/horarios-saida', async (_req, res) => {
-  try {
-    const { nome } = _req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query('INSERT INTO aux_horarios_saida (descricao_horario_saida) VALUES ($1) RETURNING *', [nome])
-    res.status(201).json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao criar' }) }
-})
-router.put('/horarios-saida/:id', async (req, res) => {
-  try {
-    const { nome } = req.body
-    const result = await pool.query('UPDATE aux_horarios_saida SET descricao_horario_saida = $1 WHERE id_horario_saida = $2 RETURNING *', [nome, req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao atualizar' }) }
-})
-router.delete('/horarios-saida/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM aux_horarios_saida WHERE id_horario_saida = $1 RETURNING id_horario_saida', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) { res.status(500).json({ error: 'Erro ao excluir' }) }
-})
-
-// Acomodacoes
-router.post('/acomodacoes', async (_req, res) => {
-  try {
-    const { nome } = _req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query('INSERT INTO aux_acomodacoes (nome_acomodacao) VALUES ($1) RETURNING *', [nome])
-    res.status(201).json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao criar' }) }
-})
-router.put('/acomodacoes/:id', async (req, res) => {
-  try {
-    const { nome } = req.body
-    const result = await pool.query('UPDATE aux_acomodacoes SET nome_acomodacao = $1 WHERE id_acomodacao = $2 RETURNING *', [nome, req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) { res.status(500).json({ error: 'Erro ao atualizar' }) }
-})
-router.delete('/acomodacoes/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM aux_acomodacoes WHERE id_acomodacao = $1 RETURNING id_acomodacao', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
-    res.json({ ok: true })
-  } catch (err) { res.status(500).json({ error: 'Erro ao excluir' }) }
+  } catch (err) { next(err) }
 })
 
 // --- Tarifa lookup por rota + tipo passagem ---
-router.get('/tarifas/busca', async (req, res) => {
+router.get('/tarifas/busca', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { id_rota, id_tipo_passagem } = req.query
@@ -402,27 +95,22 @@ router.get('/tarifas/busca', async (req, res) => {
       [id_rota, id_tipo_passagem, empresaId]
     )
     res.json(result.rows[0] || null)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar tarifa' })
-  }
+  } catch (err) { next(err) }
 })
 
 // --- Empresa ---
-router.get('/empresa', async (req, res) => {
+router.get('/empresa', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query('SELECT * FROM configuracao_empresa WHERE empresa_id = $1 LIMIT 1', [empresaId])
     res.json(result.rows[0] || {})
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar empresa' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.put('/empresa', async (req, res) => {
+router.put('/empresa', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { companhia, nome_embarcacao, comandante, proprietario, origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, recomendacoes_bilhete } = req.body
-    // Upsert: update if exists, insert if not
     const exists = await pool.query('SELECT id_config FROM configuracao_empresa WHERE empresa_id = $1', [empresaId])
     let result
     if (exists.rows.length > 0) {
@@ -447,23 +135,12 @@ router.put('/empresa', async (req, res) => {
     res.json(result.rows[0])
   } catch (err) {
     console.error('[Cadastros] Erro ao atualizar empresa:', err.message)
-    res.status(500).json({ error: 'Erro ao atualizar dados da empresa' })
+    next(err)
   }
 })
 
-// --- Clientes Encomenda ---
-router.get('/clientes-encomenda', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const result = await pool.query('SELECT * FROM cad_clientes_encomenda WHERE empresa_id = $1 ORDER BY nome_cliente', [empresaId])
-    res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar clientes' })
-  }
-})
-
-// --- Funcionarios ---
-router.get('/funcionarios', async (req, res) => {
+// --- Funcionarios (list) ---
+router.get('/funcionarios', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
@@ -471,39 +148,33 @@ router.get('/funcionarios', async (req, res) => {
       [empresaId]
     )
     res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar funcionarios' })
-  }
+  } catch (err) { next(err) }
 })
 
-// --- Itens Encomenda Padrao ---
-router.get('/itens-encomenda', async (req, res) => {
+// --- Itens Encomenda Padrao (list) ---
+router.get('/itens-encomenda', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query('SELECT *, id_item_encomenda AS id, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome_item', [empresaId])
     res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar itens' })
-  }
+  } catch (err) { next(err) }
 })
 
-// --- Itens Frete ---
-router.get('/itens-frete', async (req, res) => {
+// --- Itens Frete (list) ---
+router.get('/itens-frete', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query('SELECT * FROM itens_frete_padrao WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome_item', [empresaId])
     res.json(result.rows)
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao listar itens frete' })
-  }
+  } catch (err) { next(err) }
 })
 
 // ============================================================
-// WRITE ENDPOINTS
+// WRITE ENDPOINTS (custom logic — not factory-suitable)
 // ============================================================
 
 // --- Rotas CRUD ---
-router.post('/rotas', async (req, res) => {
+router.post('/rotas', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { origem, destino } = req.body
@@ -513,12 +184,10 @@ router.post('/rotas', async (req, res) => {
       [origem, destino, empresaId]
     )
     res.status(201).json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar rota' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.put('/rotas/:id', async (req, res) => {
+router.put('/rotas/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { origem, destino } = req.body
@@ -528,15 +197,12 @@ router.put('/rotas/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Rota nao encontrada' })
     res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar rota' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.delete('/rotas/:id', async (req, res) => {
+router.delete('/rotas/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
-    // Verificar se ha viagens associadas
     const check = await pool.query(
       'SELECT COUNT(*) AS cnt FROM viagens WHERE id_rota = $1 AND empresa_id = $2',
       [req.params.id, empresaId]
@@ -550,13 +216,11 @@ router.delete('/rotas/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Rota nao encontrada' })
     res.json({ ok: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao excluir rota' })
-  }
+  } catch (err) { next(err) }
 })
 
 // --- Embarcacoes CRUD ---
-router.post('/embarcacoes', async (req, res) => {
+router.post('/embarcacoes', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome, registro_capitania, capacidade_passageiros, observacoes } = req.body
@@ -568,18 +232,15 @@ router.post('/embarcacoes', async (req, res) => {
     if (result.rows.length > 0) {
       return res.status(201).json(result.rows[0])
     }
-    // Conflict: record already exists, fetch it
     const existing = await pool.query(
       'SELECT * FROM embarcacoes WHERE empresa_id = $1 AND nome = $2',
       [empresaId, nome]
     )
     res.status(200).json(existing.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar embarcacao' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.put('/embarcacoes/:id', async (req, res) => {
+router.put('/embarcacoes/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome, registro_capitania, capacidade_passageiros, observacoes } = req.body
@@ -590,106 +251,11 @@ router.put('/embarcacoes/:id', async (req, res) => {
     `, [nome, registro_capitania, capacidade_passageiros, observacoes, req.params.id, empresaId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'Embarcacao nao encontrada' })
     res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar embarcacao' })
-  }
-})
-
-// --- Conferentes CRUD ---
-router.post('/conferentes', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome } = req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query(
-      'INSERT INTO conferentes (nome_conferente, empresa_id) VALUES ($1, $2) RETURNING *',
-      [nome, empresaId]
-    )
-    res.status(201).json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar conferente' })
-  }
-})
-
-router.put('/conferentes/:id', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome } = req.body
-    const result = await pool.query(
-      'UPDATE conferentes SET nome_conferente = $1 WHERE id_conferente = $2 AND empresa_id = $3 RETURNING *',
-      [nome, req.params.id, empresaId]
-    )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Conferente nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar conferente' })
-  }
-})
-
-// --- Caixas CRUD ---
-router.post('/caixas', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome } = req.body
-    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
-    const result = await pool.query(
-      'INSERT INTO caixas (nome_caixa, empresa_id) VALUES ($1, $2) RETURNING *',
-      [nome, empresaId]
-    )
-    res.status(201).json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar caixa' })
-  }
-})
-
-router.put('/caixas/:id', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome } = req.body
-    const result = await pool.query(
-      'UPDATE caixas SET nome_caixa = $1 WHERE id_caixa = $2 AND empresa_id = $3 RETURNING *',
-      [nome, req.params.id, empresaId]
-    )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Caixa nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar caixa' })
-  }
-})
-
-// --- Clientes Encomenda CRUD ---
-router.post('/clientes-encomenda', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome_cliente } = req.body
-    if (!nome_cliente) return res.status(400).json({ error: 'nome_cliente obrigatorio' })
-    const result = await pool.query(
-      'INSERT INTO cad_clientes_encomenda (nome_cliente, empresa_id) VALUES ($1,$2) RETURNING *',
-      [nome_cliente, empresaId]
-    )
-    res.status(201).json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar cliente' })
-  }
-})
-
-router.put('/clientes-encomenda/:id', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const { nome_cliente } = req.body
-    const result = await pool.query(
-      'UPDATE cad_clientes_encomenda SET nome_cliente = COALESCE($1, nome_cliente) WHERE id_cliente = $2 AND empresa_id = $3 RETURNING *',
-      [nome_cliente, req.params.id, empresaId]
-    )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Cliente nao encontrado' })
-    res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar cliente' })
-  }
+  } catch (err) { next(err) }
 })
 
 // --- Usuarios CRUD ---
-router.post('/usuarios', validate({ nome: 'required|string|min:2', senha: 'required|string|min:4' }), async (req, res) => {
+router.post('/usuarios', validate({ nome: 'required|string|min:2', senha: 'required|string|min:4' }), async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome, email, senha, funcao, permissao } = req.body
@@ -703,11 +269,11 @@ router.post('/usuarios', validate({ nome: 'required|string|min:2', senha: 'requi
     res.status(201).json(result.rows[0])
   } catch (err) {
     console.error('[Cadastros] Erro ao criar usuario:', err.message)
-    res.status(500).json({ error: 'Erro ao criar usuario' })
+    next(err)
   }
 })
 
-router.put('/usuarios/:id', async (req, res) => {
+router.put('/usuarios/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome, email, funcao, permissao, senha } = req.body
@@ -726,16 +292,15 @@ router.put('/usuarios/:id', async (req, res) => {
     res.json(result.rows[0])
   } catch (err) {
     console.error('[Cadastros] Erro ao atualizar usuario:', err.message)
-    res.status(500).json({ error: 'Erro ao atualizar usuario' })
+    next(err)
   }
 })
 
 // --- Tarifas CRUD ---
-router.post('/tarifas', async (req, res) => {
+router.post('/tarifas', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { id_rota, valor_transporte, valor_alimentacao, valor_cargas, valor_desconto } = req.body
-    // Aceita tanto id_tipo_passagem quanto id_tipo_passageiro (retrocompat)
     const id_tipo_passagem = req.body.id_tipo_passagem || req.body.id_tipo_passageiro
     if (!id_rota || !id_tipo_passagem) return res.status(400).json({ error: 'id_rota e id_tipo_passagem obrigatorios' })
     const result = await pool.query(`
@@ -743,12 +308,10 @@ router.post('/tarifas', async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
     `, [id_rota, id_tipo_passagem, valor_transporte || 0, valor_alimentacao || 0, valor_cargas || 0, valor_desconto || 0, empresaId])
     res.status(201).json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar tarifa' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.put('/tarifas/:id', async (req, res) => {
+router.put('/tarifas/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { valor_transporte, valor_alimentacao, valor_cargas, valor_desconto } = req.body
@@ -759,12 +322,10 @@ router.put('/tarifas/:id', async (req, res) => {
     `, [valor_transporte, valor_alimentacao, valor_cargas, valor_desconto, req.params.id, empresaId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'Tarifa nao encontrada' })
     res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar tarifa' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.delete('/tarifas/:id', async (req, res) => {
+router.delete('/tarifas/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
@@ -773,13 +334,11 @@ router.delete('/tarifas/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Tarifa nao encontrada' })
     res.json({ ok: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao excluir tarifa' })
-  }
+  } catch (err) { next(err) }
 })
 
 // --- Funcionarios CRUD ---
-router.post('/funcionarios', validate({ nome: 'required|string|min:2' }), async (req, res) => {
+router.post('/funcionarios', validate({ nome: 'required|string|min:2' }), async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro } = req.body
@@ -792,11 +351,11 @@ router.post('/funcionarios', validate({ nome: 'required|string|min:2' }), async 
     res.status(201).json(result.rows[0])
   } catch (err) {
     console.error('[Cadastros] Erro ao criar funcionario:', err.message)
-    res.status(500).json({ error: 'Erro ao criar funcionario' })
+    next(err)
   }
 })
 
-router.put('/funcionarios/:id', async (req, res) => {
+router.put('/funcionarios/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro } = req.body
@@ -809,12 +368,10 @@ router.put('/funcionarios/:id', async (req, res) => {
         is_clt || false, recebe_decimo_terceiro || false, req.params.id, empresaId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
     res.json(result.rows[0])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar funcionario' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.delete('/funcionarios/:id', async (req, res) => {
+router.delete('/funcionarios/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
@@ -823,13 +380,11 @@ router.delete('/funcionarios/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
     res.json({ ok: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao desativar funcionario' })
-  }
+  } catch (err) { next(err) }
 })
 
 // --- Itens Frete Padrao CRUD ---
-router.post('/itens-frete', async (req, res) => {
+router.post('/itens-frete', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome_item, preco_padrao } = req.body
@@ -839,13 +394,10 @@ router.post('/itens-frete', async (req, res) => {
       [nome_item, parseFloat(preco_padrao) || 0, empresaId]
     )
     res.status(201).json(result.rows[0])
-  } catch (err) {
-    console.error('[Cadastros] Erro ao criar item frete:', err.message)
-    res.status(500).json({ error: 'Erro ao criar item frete' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.put('/itens-frete/:id', async (req, res) => {
+router.put('/itens-frete/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome_item, preco_padrao } = req.body
@@ -855,13 +407,10 @@ router.put('/itens-frete/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item frete nao encontrado' })
     res.json(result.rows[0])
-  } catch (err) {
-    console.error('[Cadastros] Erro ao atualizar item frete:', err.message)
-    res.status(500).json({ error: 'Erro ao atualizar item frete' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.delete('/itens-frete/:id', async (req, res) => {
+router.delete('/itens-frete/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
@@ -870,14 +419,11 @@ router.delete('/itens-frete/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item frete nao encontrado' })
     res.json({ ok: true })
-  } catch (err) {
-    console.error('[Cadastros] Erro ao desativar item frete:', err.message)
-    res.status(500).json({ error: 'Erro ao desativar item frete' })
-  }
+  } catch (err) { next(err) }
 })
 
 // --- Itens Encomenda Padrao CRUD ---
-router.post('/itens-encomenda', async (req, res) => {
+router.post('/itens-encomenda', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome_item, preco_padrao } = req.body
@@ -887,13 +433,10 @@ router.post('/itens-encomenda', async (req, res) => {
       [nome_item, parseFloat(preco_padrao) || 0, empresaId]
     )
     res.status(201).json(result.rows[0])
-  } catch (err) {
-    console.error('[Cadastros] Erro ao criar item encomenda:', err.message)
-    res.status(500).json({ error: 'Erro ao criar item encomenda' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.put('/itens-encomenda/:id', async (req, res) => {
+router.put('/itens-encomenda/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const { nome_item, preco_padrao } = req.body
@@ -903,13 +446,10 @@ router.put('/itens-encomenda/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item encomenda nao encontrado' })
     res.json(result.rows[0])
-  } catch (err) {
-    console.error('[Cadastros] Erro ao atualizar item encomenda:', err.message)
-    res.status(500).json({ error: 'Erro ao atualizar item encomenda' })
-  }
+  } catch (err) { next(err) }
 })
 
-router.delete('/itens-encomenda/:id', async (req, res) => {
+router.delete('/itens-encomenda/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
@@ -918,10 +458,7 @@ router.delete('/itens-encomenda/:id', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item encomenda nao encontrado' })
     res.json({ ok: true })
-  } catch (err) {
-    console.error('[Cadastros] Erro ao desativar item encomenda:', err.message)
-    res.status(500).json({ error: 'Erro ao desativar item encomenda' })
-  }
+  } catch (err) { next(err) }
 })
 
 export default router

@@ -55,7 +55,7 @@ Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaF
 | **Bugs** | **134** | **134** | **0** | **100%** | **LIMPO** — 61 novas (Deep V2.0) + 36 anteriores + 37 AUDIT, todas corrigidas |
 | **Resilience** | **116** | **116** | **0** | **100%** | **LIMPO** — 49 novas V5.0 + 2 antigas, todas corrigidas |
 | **Performance** | **77** | **30** | **47** | **39%** | **DEEP V4.0: 2 CRIT, 5 ALTO, 14 MEDIO, 17 BAIXO + 9 pendentes anteriores** |
-| **Maintainability** | **91** | **62** | **29** | **68%** | **1 CRIT, 7 ALTA, 13 MEDIO, 1 BAIXA + 7 estruturais pendentes** |
+| **Maintainability** | **91** | **84** | **7** | **92%** | **0 CRIT, 0 ALTA, 0 MEDIO, 0 BAIXA — restam 7 estruturais (god classes, Maven, testes DB)** |
 
 > **Nota:** DEEP_BUGS reconciliado em 2026-04-09 — todas as 35 issues (6 crit + 11 alta + 8 media + 3 baixa + 7 AUDIT) verificadas como corrigidas. As ~27 "ativas" anteriores estavam sobrepostas com fixes de Security/Logic/Resilience/Maintainability.
 

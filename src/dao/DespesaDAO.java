@@ -38,28 +38,7 @@ public class DespesaDAO {
         List<Object> params = new ArrayList<>();
         params.add(DAOUtils.empresaId());
 
-        if (idViagem > 0) {
-            sql.append(" AND s.id_viagem = ?");
-            params.add(idViagem);
-        }
-        if (apenasNaoBoletos) {
-            sql.append(" AND (s.forma_pagamento != 'BOLETO' OR s.status = 'PAGO')");
-        }
-        if (dataFiltro != null) {
-            sql.append(" AND s.data_vencimento = ?");
-            params.add(Date.valueOf(dataFiltro));
-        }
-        if (categoriaFiltro != null && !categoriaFiltro.isEmpty()
-                && !categoriaFiltro.equalsIgnoreCase("Todas")
-                && !categoriaFiltro.equalsIgnoreCase("Todas as Categorias")) {
-            sql.append(" AND c.nome = ?");
-            params.add(categoriaFiltro);
-        }
-        if (formaFiltro != null && !formaFiltro.isEmpty()
-                && !formaFiltro.equalsIgnoreCase("Todas")) {
-            sql.append(" AND s.forma_pagamento = ?");
-            params.add(formaFiltro);
-        }
+        addFiltrosComuns(sql, params, "s.", idViagem, dataFiltro, categoriaFiltro, formaFiltro, apenasNaoBoletos);
         sql.append(" ORDER BY s.data_vencimento DESC");
 
         try (Connection con = ConexaoBD.getConnection();
@@ -347,6 +326,45 @@ public class DespesaDAO {
     }
 
     // -------------------------------------------------------------------------
+    // Filtros compartilhados
+    // -------------------------------------------------------------------------
+
+    /**
+     * Adiciona filtros comuns de viagem, data, categoria e forma de pagamento ao WHERE builder.
+     * Evita duplicacao entre buscarDespesas() e buscarBoletos().
+     *
+     * @param colPrefix prefixo de coluna (ex: "s." quando há JOIN, "" quando sem alias)
+     */
+    private void addFiltrosComuns(StringBuilder sql, List<Object> params, String colPrefix,
+                                   int idViagem, LocalDate dataFiltro,
+                                   String categoriaFiltro, String formaFiltro,
+                                   boolean apenasNaoBoletos) {
+        if (idViagem > 0) {
+            sql.append(" AND ").append(colPrefix).append("id_viagem = ?");
+            params.add(idViagem);
+        }
+        if (apenasNaoBoletos) {
+            sql.append(" AND (").append(colPrefix).append("forma_pagamento != 'BOLETO' OR ")
+               .append(colPrefix).append("status = 'PAGO')");
+        }
+        if (dataFiltro != null) {
+            sql.append(" AND ").append(colPrefix).append("data_vencimento = ?");
+            params.add(Date.valueOf(dataFiltro));
+        }
+        if (categoriaFiltro != null && !categoriaFiltro.isEmpty()
+                && !categoriaFiltro.equalsIgnoreCase("Todas")
+                && !categoriaFiltro.equalsIgnoreCase("Todas as Categorias")) {
+            sql.append(" AND c.nome = ?");
+            params.add(categoriaFiltro);
+        }
+        if (formaFiltro != null && !formaFiltro.isEmpty()
+                && !formaFiltro.equalsIgnoreCase("Todas")) {
+            sql.append(" AND ").append(colPrefix).append("forma_pagamento = ?");
+            params.add(formaFiltro);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Boletos (CadastroBoletoController)
     // -------------------------------------------------------------------------
 
@@ -364,14 +382,7 @@ public class DespesaDAO {
         List<Object> params = new ArrayList<>();
         params.add(DAOUtils.empresaId());
 
-        if (idViagem > 0) {
-            sql.append(" AND id_viagem = ?");
-            params.add(idViagem);
-        }
-        if (dataFiltro != null) {
-            sql.append(" AND data_vencimento = ?");
-            params.add(Date.valueOf(dataFiltro));
-        }
+        addFiltrosComuns(sql, params, "", idViagem, dataFiltro, null, null, false);
         sql.append(" ORDER BY data_vencimento ASC");
 
         try (Connection con = ConexaoBD.getConnection();

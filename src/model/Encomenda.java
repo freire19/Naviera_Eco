@@ -88,6 +88,8 @@ public class Encomenda {
     public Integer getIdCaixa() { return idCaixa; }
     public void setIdCaixa(Integer idCaixa) { this.idCaixa = idCaixa; }
     
+    /** @deprecated Use {@link #getDataLancamentoDate()} instead. Mantido para compatibilidade com PropertyValueFactory. */
+    @Deprecated
     public String getDataLancamento() { return dataLancamento; }
     public void setDataLancamento(String dataLancamento) { this.dataLancamento = dataLancamento; }
 

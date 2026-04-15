@@ -23,4 +23,16 @@ public class ItemResumoBalanco {
     public String getRota() { return rota; }
     public int getQuantidade() { return quantidade; }
     public BigDecimal getValorTotal() { return valorTotal; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ItemResumoBalanco that = (ItemResumoBalanco) o;
+        return quantidade == that.quantidade
+            && java.util.Objects.equals(tipo, that.tipo)
+            && java.util.Objects.equals(rota, that.rota);
+    }
+    @Override
+    public int hashCode() { return java.util.Objects.hash(tipo, rota, quantidade); }
 }

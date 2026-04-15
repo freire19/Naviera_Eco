@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 import Login from './pages/Login.jsx'
 import Layout from './components/Layout.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './styles/global.css'
 
 export const AuthContext = createContext(null)
@@ -39,7 +40,9 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={{ usuario, logout, theme, toggleTheme }}>
-      <Layout />
+      <ErrorBoundary>
+        <Layout />
+      </ErrorBoundary>
     </AuthContext.Provider>
   )
 }

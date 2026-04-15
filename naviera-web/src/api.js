@@ -1,9 +1,19 @@
 const BASE = import.meta.env.VITE_API_URL || '/api'
 
+const TOKEN_KEY = 'naviera_token'
+const USER_KEY = 'naviera_usuario'
+
 function getToken() {
-  return localStorage.getItem('naviera_token')
+  return localStorage.getItem(TOKEN_KEY)
 }
 
+function clearSession() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+  window.location.reload()
+}
+
+/* ═══ Core request function (unified pattern — mirrors naviera-app/naviera-ocr) ═══ */
 async function request(path, options = {}) {
   const token = getToken()
   const headers = { 'Content-Type': 'application/json', ...options.headers }
@@ -12,9 +22,7 @@ async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
 
   if (res.status === 401) {
-    localStorage.removeItem('naviera_token')
-    localStorage.removeItem('naviera_usuario')
-    window.location.reload()
+    clearSession()
     return
   }
 
@@ -29,6 +37,7 @@ async function request(path, options = {}) {
   return res.json()
 }
 
+/* ═══ api object (unified pattern — same interface as naviera-app/naviera-ocr) ═══ */
 export const api = {
   get: (path) => request(path),
   post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),

@@ -2,82 +2,119 @@ package model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Objects; 
+import java.util.Objects;
 
+/**
+ * Modelo unificado de Passagem — 71 campos em uma unica classe.
+ *
+ * <p>Esta classe mistura campos de persistencia (colunas da tabela {@code passagens}),
+ * campos de pagamento (valores mistos dinheiro/cartao/pix) e campos de exibicao
+ * (preenchidos por JOINs nos DAOs para uso direto em TableView via PropertyValueFactory).
+ *
+ * <p><b>Por que nao foi dividida em sub-classes:</b>
+ * <ul>
+ *   <li>Todos os DAOs (PassagemDAO, VenderPassagemController, relatorios) montam o objeto
+ *       inteiro em um unico ResultSet com JOINs — separar exigiria reescrever cada query.</li>
+ *   <li>JavaFX {@code PropertyValueFactory} espera getters diretamente na classe do item
+ *       da TableView — composicao (ex: {@code passagem.getPassageiro().getNome()}) nao funciona
+ *       sem CellValueFactory customizada em cada coluna.</li>
+ *   <li>O projeto nao tem testes automatizados suficientes para garantir uma refatoracao segura.</li>
+ * </ul>
+ *
+ * <p><b>Organizacao dos campos:</b> os campos estao agrupados em secoes logicas
+ * (Identificacao, Passageiro, Viagem/Rota, Valores, Pagamento, Status, Display)
+ * para facilitar a navegacao. Campos marcados como "display-only (JOIN)" nao sao
+ * persistidos diretamente na tabela {@code passagens} — sao preenchidos por JOINs.
+ *
+ * @see dao.PassagemDAO
+ */
 public class Passagem {
-    // --- Atributos de persistência ---
-    private Long id; 
-    private Integer numBilhete; 
 
-    private Long idPassageiro; 
-    private Long idViagem; 
-    private Long idRota; 
-    private Integer idAcomodacao; 
-    private Integer idTipoPassagem; 
-    private Integer idAgente; 
-    
-    // Mantido apenas para compatibilidade com código legado, mas não usamos mais para lógica nova
-    private Integer idFormaPagamento; 
-    
-    private Integer idCaixa; 
-    private Integer idUsuarioEmissor; 
-    private Integer idHorarioSaida; 
+    // ====== Identificacao ======
+    private Long id;
+    private Integer numBilhete;
 
-    private LocalDate dataEmissao; 
+    // ====== Chaves estrangeiras (FKs) ======
+    private Long idPassageiro;
+    private Long idViagem;
+    private Long idRota;
+    private Integer idAcomodacao;
+    private Integer idTipoPassagem;
+    private Integer idAgente;
+
+    /**
+     * @deprecated Mantido apenas para compatibilidade com codigo legado e leitura de registros antigos.
+     *             Pagamentos agora usam os campos {@code valorPagamentoDinheiro}, {@code valorPagamentoCartao}
+     *             e {@code valorPagamentoPix}. Nao usar em logica nova.
+     */
+    @Deprecated
+    private Integer idFormaPagamento;
+
+    private Integer idCaixa;
+    private Integer idUsuarioEmissor;
+    private Integer idHorarioSaida;
+
+    // ====== Emissao / Assento ======
+    private LocalDate dataEmissao;
     private String assento;
-    private String requisicao; 
-    private BigDecimal valorAlimentacao; 
-    private BigDecimal valorTransporte; 
-    private BigDecimal valorCargas; 
-    private BigDecimal valorDescontoTarifa; 
-    private BigDecimal valorTotal; 
-    private BigDecimal valorDesconto; 
-    private BigDecimal valorAPagar; 
-    
-    // --- NOVOS CAMPOS MISTOS ---
-    private BigDecimal valorPago; 
-    private BigDecimal valorPagamentoDinheiro = BigDecimal.ZERO; 
-    private BigDecimal valorPagamentoCartao = BigDecimal.ZERO;   
-    private BigDecimal valorPagamentoPix = BigDecimal.ZERO;      
-    
+    private String requisicao;
+    private Integer ordem;
+
+    // ====== Valores financeiros ======
+    private BigDecimal valorAlimentacao;
+    private BigDecimal valorTransporte;
+    private BigDecimal valorCargas;
+    private BigDecimal valorDescontoTarifa;
+    private BigDecimal valorTotal;
+    private BigDecimal valorDesconto;
+    private BigDecimal valorAPagar;
+
+    // ====== Pagamento (misto: dinheiro + cartao + pix) ======
+    private BigDecimal valorPago;
+    private BigDecimal valorPagamentoDinheiro = BigDecimal.ZERO;
+    private BigDecimal valorPagamentoCartao = BigDecimal.ZERO;
+    private BigDecimal valorPagamentoPix = BigDecimal.ZERO;
     private BigDecimal troco;
-    private BigDecimal devedor; 
-    private String statusPassagem; 
+    private BigDecimal devedor;
+
+    // ====== Status / Controle ======
+    private String statusPassagem;
     private String observacoes;
 
-    // --- Atributos de exibição ---
-    private String nomePassageiro; 
-    private String numeroDoc; 
-    private LocalDate dataNascimento; 
-    private String sexo; 
-    private String tipoDoc; 
-    private String nacionalidade; 
-    private int idade; 
+    // ====== Display: Passageiro (preenchidos por JOINs) ======
+    private String nomePassageiro;       // display-only (JOIN)
+    private String numeroDoc;            // display-only (JOIN)
+    private LocalDate dataNascimento;    // display-only (JOIN)
+    private String sexo;                 // display-only (JOIN)
+    private String tipoDoc;              // display-only (JOIN)
+    private String nacionalidade;        // display-only (JOIN)
+    private int idade;                   // display-only (JOIN) — calculado
 
-    private LocalDate dataViagem; 
-    private String descricaoHorarioSaida; 
-    private String origem; 
-    private String destino; 
-    private String strViagem; 
+    // ====== Display: Viagem / Rota (preenchidos por JOINs) ======
+    private LocalDate dataViagem;              // display-only (JOIN)
+    private String descricaoHorarioSaida;      // display-only (JOIN)
+    private String origem;                     // display-only (JOIN)
+    private String destino;                    // display-only (JOIN)
+    private String strViagem;                  // display-only (JOIN)
 
-    private String acomodacao; 
-    private String tipoPassagemAux; 
-    private String agenteAux; 
-    
-    // Vamos manter a variável interna, mas o GETTER será inteligente
-    private String formaPagamento; 
-    
-    private String caixa; 
-    private Integer ordem;
+    // ====== Display: Auxiliares (preenchidos por JOINs) ======
+    private String acomodacao;           // display-only (JOIN)
+    private String tipoPassagemAux;      // display-only (JOIN)
+    private String agenteAux;            // display-only (JOIN)
+    private String formaPagamento;       // display-only (JOIN) ou calculado pelo getter inteligente
+    private String caixa;                // display-only (JOIN)
 
     public Passagem() {}
 
-    // --- Getters e Setters ---
+    // ====== Getters e Setters: Identificacao ======
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
     public Integer getNumBilhete() { return numBilhete; }
     public void setNumBilhete(Integer numBilhete) { this.numBilhete = numBilhete; }
+
+    // ====== Getters e Setters: Chaves estrangeiras ======
 
     public Long getIdPassageiro() { return idPassageiro; }
     public void setIdPassageiro(Long idPassageiro) { this.idPassageiro = idPassageiro; }
@@ -97,10 +134,16 @@ public class Passagem {
     public Integer getIdAgente() { return idAgente; }
     public void setIdAgente(Integer idAgente) { this.idAgente = idAgente; }
 
-    // >>> MÉTODOS REINTEGRADOS PARA NÃO QUEBRAR O DAO <<<
+    /**
+     * @deprecated Use os campos {@code valorPagamentoDinheiro/Cartao/Pix} em vez de idFormaPagamento.
+     */
+    @Deprecated
     public Integer getIdFormaPagamento() { return idFormaPagamento; }
+    /**
+     * @deprecated Use os campos {@code valorPagamentoDinheiro/Cartao/Pix} em vez de idFormaPagamento.
+     */
+    @Deprecated
     public void setIdFormaPagamento(Integer idFormaPagamento) { this.idFormaPagamento = idFormaPagamento; }
-    // ----------------------------------------------------
 
     public Integer getIdCaixa() { return idCaixa; }
     public void setIdCaixa(Integer idCaixa) { this.idCaixa = idCaixa; }
@@ -111,6 +154,8 @@ public class Passagem {
     public Integer getIdHorarioSaida() { return idHorarioSaida; }
     public void setIdHorarioSaida(Integer idHorarioSaida) { this.idHorarioSaida = idHorarioSaida; }
 
+    // ====== Getters e Setters: Emissao / Assento ======
+
     public LocalDate getDataEmissao() { return dataEmissao; }
     public void setDataEmissao(LocalDate dataEmissao) { this.dataEmissao = dataEmissao; }
 
@@ -119,6 +164,11 @@ public class Passagem {
 
     public String getRequisicao() { return requisicao; }
     public void setRequisicao(String requisicao) { this.requisicao = requisicao; }
+
+    public Integer getOrdem() { return ordem; }
+    public void setOrdem(Integer ordem) { this.ordem = ordem; }
+
+    // ====== Getters e Setters: Valores financeiros ======
 
     public BigDecimal getValorAlimentacao() { return valorAlimentacao; }
     public void setValorAlimentacao(BigDecimal valorAlimentacao) { this.valorAlimentacao = valorAlimentacao; }
@@ -141,10 +191,11 @@ public class Passagem {
     public BigDecimal getValorAPagar() { return valorAPagar; }
     public void setValorAPagar(BigDecimal valorAPagar) { this.valorAPagar = valorAPagar; }
 
+    // ====== Getters e Setters: Pagamento misto ======
+
     public BigDecimal getValorPago() { return valorPago; }
     public void setValorPago(BigDecimal valorPago) { this.valorPago = valorPago; }
 
-    // --- NOVOS GETTERS E SETTERS PAGAMENTO MISTO ---
     public BigDecimal getValorPagamentoDinheiro() { return valorPagamentoDinheiro != null ? valorPagamentoDinheiro : BigDecimal.ZERO; }
     public void setValorPagamentoDinheiro(BigDecimal valorPagamentoDinheiro) { this.valorPagamentoDinheiro = valorPagamentoDinheiro; }
 
@@ -160,11 +211,15 @@ public class Passagem {
     public BigDecimal getDevedor() { return devedor; }
     public void setDevedor(BigDecimal devedor) { this.devedor = devedor; }
 
+    // ====== Getters e Setters: Status / Controle ======
+
     public String getStatusPassagem() { return statusPassagem; }
     public void setStatusPassagem(String statusPassagem) { this.statusPassagem = statusPassagem; }
 
     public String getObservacoes() { return observacoes; }
     public void setObservacoes(String observacoes) { this.observacoes = observacoes; }
+
+    // ====== Getters e Setters: Display — Passageiro (JOIN) ======
 
     public String getNomePassageiro() { return nomePassageiro; }
     public void setNomePassageiro(String nomePassageiro) { this.nomePassageiro = nomePassageiro; }
@@ -186,6 +241,8 @@ public class Passagem {
 
     public int getIdade() { return idade; }
     public void setIdade(int idade) { this.idade = idade; }
+
+    // ====== Getters e Setters: Display — Viagem / Rota (JOIN) ======
 
     public LocalDate getDataViagem() { return dataViagem; }
     public void setDataViagem(LocalDate dataViagem) { this.dataViagem = dataViagem; }
@@ -209,6 +266,8 @@ public class Passagem {
     public String getStrViagem() { return strViagem; }
     public void setStrViagem(String strViagem) { this.strViagem = strViagem; }
 
+    // ====== Getters e Setters: Display — Auxiliares (JOIN) ======
+
     public String getAcomodacao() { return acomodacao; }
     public void setAcomodacao(String acomodacao) { this.acomodacao = acomodacao; }
 
@@ -218,14 +277,18 @@ public class Passagem {
     public String getAgenteAux() { return agenteAux; }
     public void setAgenteAux(String agenteAux) { this.agenteAux = agenteAux; }
 
-    // >>> CORREÇÃO DO RELATÓRIO: GET INTELIGENTE <<<
+    /**
+     * Getter inteligente para forma de pagamento.
+     * Se ja tiver um valor texto definido (ex: carregado do banco antigo), usa ele.
+     * Senao, calcula a partir dos campos {@code valorPagamentoDinheiro/Cartao/Pix}.
+     */
     public String getFormaPagamento() {
-        // Se já tiver uma forma de pagamento "texto" definida (ex: carregada do banco antigo), usa ela
+        // Se ja tiver uma forma de pagamento "texto" definida (ex: carregada do banco antigo), usa ela
         if (this.formaPagamento != null && !this.formaPagamento.isEmpty()) {
             return this.formaPagamento;
         }
-        
-        // Senão, calcula baseado nos valores
+
+        // Senao, calcula baseado nos valores
         boolean temDinheiro = getValorPagamentoDinheiro().compareTo(BigDecimal.ZERO) > 0;
         boolean temPix = getValorPagamentoPix().compareTo(BigDecimal.ZERO) > 0;
         boolean temCartao = getValorPagamentoCartao().compareTo(BigDecimal.ZERO) > 0;
@@ -239,7 +302,7 @@ public class Passagem {
         if (temDinheiro) return "DINHEIRO";
         if (temPix) return "PIX";
         if (temCartao) return "CARTÃO";
-        
+
         return "PENDENTE";
     }
 
@@ -250,8 +313,7 @@ public class Passagem {
     public String getCaixa() { return caixa; }
     public void setCaixa(String caixa) { this.caixa = caixa; }
 
-    public Integer getOrdem() { return ordem; }
-    public void setOrdem(Integer ordem) { this.ordem = ordem; }
+    // ====== Object overrides ======
 
     @Override
     public String toString() {

@@ -20,6 +20,9 @@ public class PassagemService {
     }
 
     // DS4-024: cross-tenant intencional — CPF pode ter passagens em multiplas empresas
+    // TODO DM069: Replace List<Map<String, Object>> with typed DTO (e.g. PassagemResumoDTO)
+    //   Fields: idPassagem, numeroBilhete, dataEmissao, valorAPagar, valorTotal, statusPassagem,
+    //   nomePassageiro, numeroDocumento, embarcacao, origem, destino, dataViagem, tipo, acomodacao, horarioSaida
     public List<Map<String, Object>> minhasPassagens(Long clienteId) {
         var cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
@@ -47,6 +50,8 @@ public class PassagemService {
         return jdbc.queryForList(sql, cliente.getDocumento());
     }
 
+    // TODO DM069: Return typed DTO (e.g. CompraPassagemResponse) instead of Map<String, Object>
+    //   Fields: numeroBilhete, valorTotal, formaPagamento, status, mensagem
     @Transactional
     public Map<String, Object> comprar(Long clienteId, CompraPassagemRequest req) {
         var cliente = clienteRepo.findById(clienteId)
@@ -112,6 +117,10 @@ public class PassagemService {
         );
     }
 
+    // TODO DM069: Return typed DTO (e.g. EmbarqueConsultaDTO) instead of Map<String, Object>
+    //   Fields: idPassagem, numeroBilhete, statusPassagem, origemEmissao, valorAPagar, valorPago,
+    //   dataEmissao, nomePassageiro, numeroDocumento, dataNascimento, fotoUrl, email, telefone,
+    //   cidade, embarcacao, origem, destino, dataViagem, tipo, acomodacao, dataEmbarque, situacao
     /** Operador escaneia QR — retorna dados completos do passageiro para conferencia */
     public Map<String, Object> consultarParaEmbarque(Integer empresaId, String numeroBilhete) {
         String sql = """
@@ -144,6 +153,8 @@ public class PassagemService {
         return results.get(0);
     }
 
+    // TODO DM069: Return typed DTO (e.g. EmbarqueConfirmacaoDTO) instead of Map<String, Object>
+    //   Fields: mensagem, passageiro, bilhete, embarque
     /** Operador confirma embarque apos conferir documento com foto */
     @Transactional
     public Map<String, Object> confirmarEmbarque(Integer empresaId, String numeroBilhete, String operador) {
@@ -167,6 +178,8 @@ public class PassagemService {
         );
     }
 
+    // TODO DM069: Return typed DTO (e.g. PagamentoConfirmacaoDTO) instead of Map<String, Object>
+    //   Fields: mensagem, bilhete
     /** Operador confirma pagamento de passagem comprada via app */
     @Transactional
     public Map<String, Object> confirmarPagamento(Integer empresaId, String numeroBilhete) {

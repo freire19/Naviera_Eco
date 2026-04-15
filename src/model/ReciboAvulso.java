@@ -36,4 +36,14 @@ public class ReciboAvulso {
     public void setDataEmissao(LocalDate dataEmissao) { this.dataEmissao = dataEmissao; }
     public String getTipoRecibo() { return tipoRecibo; }
     public void setTipoRecibo(String tipoRecibo) { this.tipoRecibo = tipoRecibo; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ReciboAvulso that = (ReciboAvulso) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
 }

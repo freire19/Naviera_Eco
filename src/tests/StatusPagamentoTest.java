@@ -104,6 +104,37 @@ public class StatusPagamentoTest {
     }
 
     @Test
+    public void calcular_ambosZero_PAGO() {
+        assertEquals(StatusPagamento.PAGO,
+            StatusPagamento.calcular(BigDecimal.ZERO, BigDecimal.ZERO));
+    }
+
+    @Test
+    public void calcular_ambosNull_PAGO() {
+        assertEquals(StatusPagamento.PAGO,
+            StatusPagamento.calcular(null, null));
+    }
+
+    @Test
+    public void calcularPorSaldo_saldoNull_PAGO() {
+        assertEquals(StatusPagamento.PAGO,
+            StatusPagamento.calcularPorSaldo(null, new BigDecimal("50.00")));
+    }
+
+    @Test
+    public void calcularPorSaldo_ambosNull_PAGO() {
+        assertEquals(StatusPagamento.PAGO,
+            StatusPagamento.calcularPorSaldo(null, null));
+    }
+
+    @Test
+    public void calcular_pagamentoExcedente_PAGO() {
+        // Pagou mais que o total — deve ser PAGO
+        assertEquals(StatusPagamento.PAGO,
+            StatusPagamento.calcular(new BigDecimal("150.00"), new BigDecimal("100.00")));
+    }
+
+    @Test
     public void calcularDouble_compatibilidade() {
         assertEquals(StatusPagamento.PAGO, StatusPagamento.calcular(100.0, 100.0));
         assertEquals(StatusPagamento.PARCIAL, StatusPagamento.calcular(50.0, 100.0));

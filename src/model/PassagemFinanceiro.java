@@ -30,4 +30,14 @@ public class PassagemFinanceiro {
     public String getPagoFormatado() { return String.format("R$ %,.2f", pago); }
     public String getRestanteFormatado() { return String.format("R$ %,.2f", getRestante()); }
     public String getStatus() { return status; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PassagemFinanceiro that = (PassagemFinanceiro) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
 }

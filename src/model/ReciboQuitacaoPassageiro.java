@@ -42,6 +42,16 @@ public class ReciboQuitacaoPassageiro {
     public String getItensPagos() { return itensPagos; }
     public void setItensPagos(String itensPagos) { this.itensPagos = itensPagos; }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ReciboQuitacaoPassageiro that = (ReciboQuitacaoPassageiro) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
+
     // #DB025: null check para evitar NPE em ListView/ComboBox
     @Override
     public String toString() {

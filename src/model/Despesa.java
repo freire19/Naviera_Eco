@@ -32,4 +32,14 @@ public class Despesa {
     public String getStatus() { return status; }
     public boolean isExcluido() { return excluido; }
     public String getValorFormatado() { return nf.format(valor); }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Despesa that = (Despesa) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
 }

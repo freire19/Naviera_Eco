@@ -7,8 +7,12 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+
+import java.util.List;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -279,6 +283,162 @@ public class PrintLayoutHelper {
         line.setStroke(Color.GRAY);
         sep.getChildren().add(line);
         return sep;
+    }
+
+    // -------------------------------------------------------------------------
+    // LINHA DE INFORMACAO (label + valor)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Cria uma linha horizontal com label em negrito e valor ao lado.
+     * Estilizada para impressao termica (Courier New, 10px).
+     *
+     * <p>Exemplo de uso:</p>
+     * <pre>
+     *   root.getChildren().add(PrintLayoutHelper.criarLinhaInfo("REM:", "Jose da Silva"));
+     *   root.getChildren().add(PrintLayoutHelper.criarLinhaInfo("ROTA:", "Manaus - Tabatinga"));
+     * </pre>
+     *
+     * @param label texto do rotulo (exibido em negrito, ex: "DEST:")
+     * @param valor texto do valor (exibido em peso normal)
+     * @return HBox pronta para adicionar ao layout
+     */
+    public static HBox criarLinhaInfo(String label, String valor) {
+        HBox box = new HBox(4);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(1, 0, 1, 0));
+
+        Label lblLabel = new Label(label != null ? label : "");
+        lblLabel.setFont(Font.font(FONT_THERMAL, FontWeight.BOLD, 10));
+        lblLabel.setTextFill(Color.BLACK);
+
+        Label lblValor = new Label(valor != null ? valor : "");
+        lblValor.setFont(Font.font(FONT_THERMAL, 10));
+        lblValor.setTextFill(Color.BLACK);
+        lblValor.setWrapText(true);
+
+        box.getChildren().addAll(lblLabel, lblValor);
+        return box;
+    }
+
+    // -------------------------------------------------------------------------
+    // TABELA DE ITENS (GridPane com header + linhas)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Cria uma tabela de itens com header e linhas de dados, estilizada para
+     * impressao termica (bordas pretas, Courier New 9px).
+     *
+     * <p>Reproduz o padrao de GridPane com bordas que aparece em
+     * RelatorioFretesController, VenderPassagemController e outros.</p>
+     *
+     * <p>Exemplo de uso:</p>
+     * <pre>
+     *   String[] headers = {"QTD", "DESC.", "V.UN", "TOTAL"};
+     *   List&lt;String[]&gt; rows = new ArrayList&lt;&gt;();
+     *   rows.add(new String[]{"2", "Caixa", "10,00", "20,00"});
+     *   root.getChildren().add(PrintLayoutHelper.criarTabelaItens(headers, rows));
+     * </pre>
+     *
+     * @param headers nomes das colunas do cabecalho
+     * @param rows    lista de linhas; cada linha e um array de valores (mesmo tamanho que headers)
+     * @return GridPane pronta para adicionar ao layout
+     */
+    public static GridPane criarTabelaItens(String[] headers, List<String[]> rows) {
+        GridPane grid = new GridPane();
+        grid.setHgap(0);
+        grid.setVgap(0);
+
+        String styleHeaderFirst = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; "
+                + "-fx-font-weight: 900; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 1 1 1 1;";
+        String styleHeaderRest  = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; "
+                + "-fx-font-weight: 900; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 1 1 1 0;";
+        String styleCellFirst   = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; "
+                + "-fx-font-weight: bold; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 0 1 1 1;";
+        String styleCellRest    = "-fx-padding: 2px; -fx-font-size: 9px; -fx-font-family: 'Courier New'; "
+                + "-fx-font-weight: bold; -fx-text-fill: black; -fx-border-color: black; -fx-border-width: 0 1 1 0;";
+
+        // Header row
+        for (int col = 0; col < headers.length; col++) {
+            Label lbl = new Label(headers[col] != null ? headers[col] : "");
+            lbl.setStyle(col == 0 ? styleHeaderFirst : styleHeaderRest);
+            lbl.setAlignment(Pos.CENTER);
+            lbl.setMaxWidth(Double.MAX_VALUE);
+            grid.add(lbl, col, 0);
+        }
+
+        // Data rows
+        for (int row = 0; row < rows.size(); row++) {
+            String[] valores = rows.get(row);
+            for (int col = 0; col < headers.length; col++) {
+                String val = (valores != null && col < valores.length && valores[col] != null)
+                        ? valores[col] : "";
+                Label lbl = new Label(val);
+                lbl.setStyle(col == 0 ? styleCellFirst : styleCellRest);
+                lbl.setWrapText(true);
+                lbl.setMaxWidth(Double.MAX_VALUE);
+                grid.add(lbl, col, row + 1);
+            }
+        }
+
+        return grid;
+    }
+
+    // -------------------------------------------------------------------------
+    // SEPARADOR FINO
+    // -------------------------------------------------------------------------
+
+    /**
+     * Cria um separador horizontal fino (Region com borda superior).
+     * Alternativa leve ao {@link #criarSeparador(boolean)} que usa {@code Line}.
+     *
+     * @return Region estilizada como linha fina cinza
+     */
+    public static Region criarSeparadorFino() {
+        Region sep = new Region();
+        sep.setStyle("-fx-border-width: 1 0 0 0; -fx-border-color: #cccccc;");
+        sep.setPrefHeight(1);
+        sep.setMaxWidth(Double.MAX_VALUE);
+        VBox.setMargin(sep, new Insets(5, 0, 5, 0));
+        return sep;
+    }
+
+    // -------------------------------------------------------------------------
+    // RODAPE GENERICO (multiplas linhas)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Cria um rodape com texto centralizado, podendo conter multiplas linhas.
+     * Util para data de emissao, assinatura, avisos legais etc.
+     *
+     * <p>Exemplo de uso:</p>
+     * <pre>
+     *   root.getChildren().add(PrintLayoutHelper.criarRodape(
+     *       "Emitido em: 15/04/2026 10:30",
+     *       "",
+     *       "__________________________",
+     *       "Assinatura"
+     *   ));
+     * </pre>
+     *
+     * @param linhas textos a exibir (cada argumento e uma linha)
+     * @return VBox com as linhas centralizadas
+     */
+    public static VBox criarRodape(String... linhas) {
+        VBox box = new VBox(2);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(10, 0, 5, 0));
+
+        for (String linha : linhas) {
+            Label lbl = new Label(linha != null ? linha : "");
+            lbl.setFont(Font.font(FONT_THERMAL, 9));
+            lbl.setTextFill(Color.BLACK);
+            lbl.setAlignment(Pos.CENTER);
+            lbl.setMaxWidth(Double.MAX_VALUE);
+            box.getChildren().add(lbl);
+        }
+
+        return box;
     }
 
     // -------------------------------------------------------------------------

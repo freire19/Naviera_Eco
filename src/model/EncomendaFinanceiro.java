@@ -32,4 +32,14 @@ public class EncomendaFinanceiro {
     public String getStatus() {
         return StatusPagamento.calcularPorSaldo(getRestante(), getPago()).name();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        EncomendaFinanceiro that = (EncomendaFinanceiro) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Integer.hashCode(id); }
 }

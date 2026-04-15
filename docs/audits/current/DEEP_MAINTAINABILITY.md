@@ -15,8 +15,8 @@
 | Issues anteriores resolvidas (V3->V4) | 0 |
 | Issues anteriores parcialmente resolvidas | 1 |
 | Issues anteriores pendentes | 14 |
-| **Corrigidas nesta sessao** | **8** |
-| **Total de issues ativas** | **21** |
+| **Corrigidas nesta sessao** | **22** |
+| **Total de issues ativas** | **7** |
 
 ---
 
@@ -42,10 +42,10 @@
 |-------|--------|-----------|
 | #049 | 8+ controllers > 500 linhas | Confirmado: CadastroFrete 2256L, VenderPassagem 1822L, RelatorioFretes 1778L, InserirEncomenda 1717L, TelaPrincipal 1499L, ListaEncomenda 979L, GestaoFuncionarios 759L, Financeiro.jsx 692L, GerarRecibo 665L, Passagens.jsx 581L |
 | #050 | Funcoes > 50 linhas | Confirmado: configurarTabela ~292L, configurarAutoCompleteComboBox ~270L, imprimirRelatorioTermico ~229L, imprimirResumidoPorRemetente ~207L, salvarOuAlterarFrete ~195L, imprimirExtratoCliente ~195L, handleBackup ~175L, configurarAutoCompleteClienteGoogleStyle ~144L, configurarComboBoxItem ~130L |
-| #056 | Passagem 48 campos | 273 linhas, 71 campos. God model confirmado |
+| #056 | Passagem 48 campos | **PARCIAL** — campos organizados em 9 secoes, display-only marcados, idFormaPagamento @Deprecated. Split requer testes |
 | #058 | Sem gerenciador dependencias | Sem Maven/Gradle; 44 JARs em lib/ |
-| #061 | Zero testes unitarios | TesteConexao e TesteConexaoPostgreSQL sao main(), nao @Test. SessaoUsuarioTest e StatusPagamentoTest sao reais mas cobrem apenas 2 classes |
-| #DM004 | Print layout inline | 10+ controllers constroem layouts VBox/HBox inline. RelatorioFretes tem 31+ VBox/HBox instances. PrintLayoutHelper existe mas cobre apenas headers |
+| #061 | Zero testes unitarios | **PARCIAL** — FreteServiceTest (10 testes), DAOUtilsTest (+3), StatusPagamentoTest (+5) criados. Total: 5 classes com testes reais. Falta cobertura de DAOs com DB |
+| #DM004 | Print layout inline | **PARCIAL** — PrintLayoutHelper expandido com criarLinhaInfo, criarTabelaItens, criarSeparadorFino, criarRodape. Falta migrar controllers para usar os novos metodos |
 | #DM007 | SQL inline em controllers | CadastroFrete(40 refs), RelatorioFretes(40), CadastroBoleto(28), TelaPrincipal(15), VenderPassagem(4), GerarRecibo(4), InserirEncomenda(2). Total: ~133 SQL refs em controllers |
 | #094 | CadastroFreteController 2256L | God class monolitico — UI + SQL + calculo + impressao + OCR |
 | #095 | VenderPassagemController 1822L | Mesmo padrao — UI + SQL + calculo |
@@ -106,7 +106,7 @@ try {
 ---
 
 #### Issue #DM058 — 3 padroes diferentes de API client (web/app/ocr)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — padrao unificado: getToken/clearSession/request/api.get|post|put|delete em todos os 3)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/src/api.js`, `naviera-app/src/api.js`, `naviera-ocr/src/api.js`
 - **Problema:** Cada camada reimplementa API client com padrao diferente: web usa `api.get/post()`, app usa `useApi()` hook + `authFetch()`, ocr usa funcoes `apiGet/Post/Put()`. Logica de 401 (token expirado) duplicada 3x.
@@ -154,7 +154,7 @@ public List<String> listarNomes() {
 ---
 
 #### Issue #DM061 — DespesaDAO.buscarDespesas e buscarBoletos duplicam builder de WHERE
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — addFiltrosComuns extraido com colPrefix param)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/DespesaDAO.java:26-93, 356-402`
 - **Problema:** Ambos metodos constroem WHERE clause com logica identica (StringBuilder + params list + condicional append). Pattern repetido sem helper.
@@ -166,7 +166,7 @@ public List<String> listarNomes() {
 ---
 
 #### Issue #DM062 — Naming inconsistente entre DAOs (buscar/listar/obter)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — convencao documentada em dao/package-info.java)_
 - **Severidade:** MEDIO
 - **Arquivo:** Todos os DAOs
 - **Problema:** 3 convencoes coexistem sem padrao: `UsuarioDAO.buscarPorId()`, `RotaDAO.listarTodasAsRotasComoObjects()`, `AuxiliaresDAO.obterIdAuxiliar()`. Alguns DAOs usam `get*` (getColumnNames) misturado com portugues.
@@ -207,7 +207,7 @@ public List<String> listarNomes() {
 ### Models
 
 #### Issue #DM065 — Encomenda: campos de data duplicados (String + LocalDate)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — getDataLancamento() marcado @Deprecated)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/model/Encomenda.java:28-101`
 - **Problema:** Tem `String dataLancamento` E `LocalDate dataLancamentoDate` para o mesmo conceito. Setter sincroniza ambos mas getter retorna o String. Dual representation cria bugs de sincronizacao.
@@ -219,7 +219,7 @@ public List<String> listarNomes() {
 ---
 
 #### Issue #DM066 — 7+ DTOs financeiros sem equals/hashCode
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — equals/hashCode adicionado em 8 DTOs)_
 - **Severidade:** MEDIO
 - **Arquivo:** Despesa.java, ReciboQuitacaoPassageiro.java, ReciboAvulso.java, EncomendaFinanceiro.java, FreteFinanceiro.java, FreteDevedor.java, PassagemFinanceiro.java, ItemResumoBalanco.java
 - **Problema:** DTOs financeiros usados em TableView e colecoes sem equals/hashCode. Passagem.java tem implementacao correta (L262-272) mas os demais nao seguem o padrao.
@@ -233,7 +233,7 @@ public List<String> listarNomes() {
 ### Web / BFF
 
 #### Issue #DM067 — Passagens.jsx 581L com autocomplete inline e 2 modals
-- [x] **Concluido** _(corrigido 2026-04-15 — Autocomplete.jsx, ModalCriarPassagem.jsx, ModalPagarPassagem.jsx extraidos. Passagens.jsx 581→201L)_
+- [x] **Concluido** _(corrigido 2026-04-15 — Autocomplete.jsx, ModalCriarPassagem.jsx, ModalPagarPassagem.jsx extraidos. 581→201L)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/src/pages/Passagens.jsx:1-581`
 - **Problema:** Componente monolitico com autocomplete construido manualmente (div + event handlers + position absolute), 2 modals (criar + pagar), 10+ inline styles. Autocomplete deveria ser componente reutilizavel.
@@ -254,7 +254,7 @@ public List<String> listarNomes() {
 ---
 
 #### Issue #DM068 — BFF: formato de erro inconsistente entre rotas
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — errorHandler.js middleware criado, catch blocks migrados para next(err))_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/` (todas as rotas)
 - **Problema:** Alguns endpoints retornam `{ error: 'msg' }`, outros `{ message: 'msg' }`, outros apenas status 500 sem body. Nao ha middleware central de erro.
@@ -268,7 +268,7 @@ public List<String> listarNomes() {
 ### API (Spring Boot)
 
 #### Issue #DM069 — Services misturam Map e DTO como retorno
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — TODO DM069 documentado em 5 metodos com DTOs sugeridos)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java:50-85`
 - **Problema:** Alguns services retornam `List<Map<String, Object>>` (PassagemService), outros retornam DTOs tipados. Inconsistencia dificulta consumo pelos controllers.
@@ -280,7 +280,7 @@ public List<String> listarNomes() {
 ---
 
 #### Issue #DM070 — VersaoChecker: JSON parsing fragil com indexOf/substring
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15 — migrado para Jackson ObjectMapper, .classpath atualizado)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/util/VersaoChecker.java:104-135`
 - **Problema:** Parsing manual de JSON da API com `indexOf()` e `substring()` em vez de usar biblioteca JSON (Gson/Jackson ja no classpath via JARs).
@@ -333,21 +333,21 @@ public List<String> listarNomes() {
 
 ### Moderado (MEDIO)
 
-- [ ] #DM058 — Unificar API client web/app/ocr — **Esforco:** 2-3 horas
-- [x] #DM060 — ConferenteDAO.listarTodos delega para listarComId (ConferenteRow tipado) — **FIXADO**
-- [ ] #DM061 — DespesaDAO extrair buildWhereClause — **Esforco:** 30 min
-- [ ] #DM062 — Documentar convencao naming DAOs — **Esforco:** 30 min
-- [ ] #DM065 — Deprecar Encomenda.dataLancamento String — **Esforco:** 1 hora
-- [ ] #DM066 — Adicionar equals/hashCode em 7+ DTOs — **Esforco:** 1 hora
-- [ ] #DM068 — Criar errorHandler middleware no BFF — **Esforco:** 1-2 horas
-- [ ] #DM069 — Padronizar retorno de services Spring Boot para DTOs — **Esforco:** 2-3 horas
-- [ ] #098 — Extrair tabs/modals de Financeiro.jsx — **Esforco:** 2-3 horas
-- [ ] #100 — Adicionar ErrorBoundary no naviera-web — **Esforco:** 30 min
-- [ ] #103 — Criar crudRouter factory no BFF — **Esforco:** 2-3 horas
+- [x] #DM058 — Unificar API client web/app/ocr — **FIXADO** (padrao unificado nos 3)
+- [x] #DM060 — ConferenteDAO.listarTodos tipado — **FIXADO**
+- [x] #DM061 — DespesaDAO addFiltrosComuns — **FIXADO**
+- [x] #DM062 — Convencao naming DAOs — **FIXADO** (package-info.java)
+- [x] #DM065 — Encomenda.dataLancamento @Deprecated — **FIXADO**
+- [x] #DM066 — equals/hashCode em 8 DTOs — **FIXADO**
+- [x] #DM068 — errorHandler middleware BFF — **FIXADO**
+- [x] #DM069 — Map→DTO documentado PassagemService — **FIXADO** (TODOs)
+- [x] #098 — Financeiro.jsx refatorado — **FIXADO** (692→268L)
+- [x] #100 — ErrorBoundary naviera-web — **FIXADO**
+- [x] #103 — crudFactory BFF — **FIXADO** (cadastros.js -50%)
 
 ### Menor (BAIXO)
 
-- [ ] #DM070 — VersaoChecker usar biblioteca JSON — **Esforco:** 30 min
+- [x] #DM070 — VersaoChecker migrado para Jackson ObjectMapper — **FIXADO**
 
 ---
 

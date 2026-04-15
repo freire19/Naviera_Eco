@@ -31,6 +31,17 @@ public class DAOUtilsTest {
     }
 
     @Test
+    public void nvl_comZero_retornaMesmoZero() {
+        assertSame(BigDecimal.ZERO, DAOUtils.nvl(BigDecimal.ZERO));
+    }
+
+    @Test
+    public void nvl_comValor_retornaMesmaInstancia() {
+        BigDecimal val = new BigDecimal("99.99");
+        assertSame(val, DAOUtils.nvl(val));
+    }
+
+    @Test
     public void empresaId_retornaDoTenantContext() {
         TenantContext.setEmpresaId(42);
         assertEquals(42, DAOUtils.empresaId());
@@ -41,6 +52,15 @@ public class DAOUtilsTest {
         TenantContext.setDefaultEmpresaId(7);
         TenantContext.clear();
         assertEquals(7, DAOUtils.empresaId());
+    }
+
+    @Test
+    public void empresaId_setEClear_voltaAoDefault() {
+        TenantContext.setDefaultEmpresaId(5);
+        TenantContext.setEmpresaId(99);
+        assertEquals(99, DAOUtils.empresaId());
+        TenantContext.clear();
+        assertEquals(5, DAOUtils.empresaId());
     }
 
     @Test

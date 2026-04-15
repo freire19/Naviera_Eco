@@ -1,55 +1,56 @@
 export const API = import.meta.env.VITE_API_URL || '/api'
 
-function authHeaders() {
-  const token = localStorage.getItem('naviera_ocr_token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
+const TOKEN_KEY = 'naviera_ocr_token'
+const USER_KEY = 'naviera_ocr_usuario'
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-function handle401(res) {
+function clearSession() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+  window.location.reload()
+}
+
+/* ═══ Core request function (unified pattern — mirrors naviera-web/naviera-app) ═══ */
+async function request(path, options = {}) {
+  const token = getToken()
+  const headers = { 'Content-Type': 'application/json', ...options.headers }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${API}${path}`, { ...options, headers })
+
   if (res.status === 401 || res.status === 403) {
-    localStorage.removeItem('naviera_ocr_token')
-    localStorage.removeItem('naviera_ocr_usuario')
-    window.location.reload()
-    return true
+    clearSession()
+    return null
   }
-  return false
-}
 
-export async function apiGet(path) {
-  const res = await fetch(`${API}${path}`, { headers: authHeaders() })
-  if (handle401(res)) return null
-  if (!res.ok) throw new Error(`Erro ${res.status}`)
-  return res.json()
-}
-
-export async function apiPut(path, data) {
-  const res = await fetch(`${API}${path}`, {
-    method: 'PUT',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  })
-  if (handle401(res)) return null
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `Erro ${res.status}`)
+    const body = await res.json().catch(() => ({}))
+    const err = new Error(body.error || `Erro ${res.status}`)
+    err.status = res.status
+    Object.assign(err, body)
+    throw err
   }
+
   return res.json()
 }
 
-export async function apiPost(path, data) {
-  const res = await fetch(`${API}${path}`, {
-    method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  })
-  if (handle401(res)) return null
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `Erro ${res.status}`)
-  }
-  return res.json()
+/* ═══ api object (unified pattern — same interface as naviera-web/naviera-app) ═══ */
+export const api = {
+  get: (path) => request(path),
+  post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
+  put: (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (path) => request(path, { method: 'DELETE' })
 }
 
+/* ═══ Backward-compatible aliases (match existing import names across codebase) ═══ */
+export const apiGet = api.get
+export const apiPost = api.post
+export const apiPut = api.put
+
+/* ═══ Domain-specific: OCR photo upload ═══ */
 export async function uploadFoto(file, viagemId, tipo, clientUuid) {
   const form = new FormData()
   form.append('foto', file)
@@ -58,12 +59,13 @@ export async function uploadFoto(file, viagemId, tipo, clientUuid) {
   // Idempotencia: UUID gerado no cliente para evitar duplicatas em retry/refresh
   form.append('client_uuid', clientUuid || crypto.randomUUID())
 
+  const token = getToken()
   const res = await fetch(`${API}/ocr/upload`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form
   })
-  if (handle401(res)) return null
+  if (res.status === 401 || res.status === 403) { clearSession(); return null }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || `Erro ${res.status}`)
@@ -71,17 +73,18 @@ export async function uploadFoto(file, viagemId, tipo, clientUuid) {
   return res.json()
 }
 
-// Upload foto adicional a um lancamento existente (encomenda multi-volume)
+/* ═══ Domain-specific: upload additional photo to existing lancamento ═══ */
 export async function uploadFotoAdicional(lancamentoId, file) {
   const form = new FormData()
   form.append('foto', file)
 
+  const token = getToken()
   const res = await fetch(`${API}/ocr/lancamentos/${lancamentoId}/adicionar-foto`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form
   })
-  if (handle401(res)) return null
+  if (res.status === 401 || res.status === 403) { clearSession(); return null }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || `Erro ${res.status}`)
@@ -89,9 +92,10 @@ export async function uploadFotoAdicional(lancamentoId, file) {
   return res.json()
 }
 
+/* ═══ Domain-specific: fetch photo via Authorization header ═══ */
 // #DB151: fetch foto via Authorization header instead of exposing JWT in URL
 export async function fetchFoto(lancamentoId) {
-  const token = localStorage.getItem('naviera_ocr_token')
+  const token = getToken()
   const res = await fetch(`${API}/ocr/lancamentos/${lancamentoId}/foto`, {
     headers: { 'Authorization': `Bearer ${token}` }
   })

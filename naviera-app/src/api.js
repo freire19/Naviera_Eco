@@ -2,14 +2,57 @@ import { useState, useEffect, useCallback } from "react";
 
 export const API = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
 
-/* ═══ authFetch: wrapper que trata 401/403 automaticamente ═══ */
+const TOKEN_KEY = 'naviera_token'
+const USER_KEY = 'naviera_usuario'
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+function clearSession() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+  localStorage.removeItem('naviera_app_token') // legacy key cleanup
+  window.location.reload()
+}
+
+/* ═══ Core request function (unified pattern — mirrors naviera-web/naviera-ocr) ═══ */
+async function request(path, options = {}) {
+  const token = getToken()
+  const headers = { 'Content-Type': 'application/json', ...options.headers }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${API}${path}`, { ...options, headers })
+
+  if (res.status === 401 || res.status === 403) {
+    clearSession()
+    return
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const err = new Error(body.error || `Erro ${res.status}`)
+    err.status = res.status
+    Object.assign(err, body)
+    throw err
+  }
+
+  return res.json()
+}
+
+/* ═══ api object (unified pattern — same interface as naviera-web/naviera-ocr) ═══ */
+export const api = {
+  get: (path) => request(path),
+  post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
+  put: (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (path) => request(path, { method: 'DELETE' })
+}
+
+/* ═══ authFetch: backward-compatible wrapper (delegates to unified 401 handling) ═══ */
 export function authFetch(url, options = {}) {
   return fetch(url, options).then(res => {
     if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem('naviera_app_token')
-      localStorage.removeItem('naviera_token')
-      localStorage.removeItem('naviera_usuario')
-      window.location.reload()
+      clearSession()
     }
     return res
   })
@@ -34,9 +77,8 @@ export function useApi(path, authHeaders, deps = []) {
     fetch(`${API}${path}`, { headers: authHeaders, signal })
       .then(r => {
         if (r.status === 401 || r.status === 403) {
-          localStorage.removeItem("naviera_token"); localStorage.removeItem("naviera_usuario");
-          window.location.reload();
-          return Promise.reject("Sess\u00e3o expirada");
+          clearSession()
+          return Promise.reject("Sessao expirada");
         }
         return r.ok ? r.json() : Promise.reject("Erro ao carregar");
       })

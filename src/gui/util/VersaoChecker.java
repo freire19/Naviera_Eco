@@ -8,6 +8,9 @@ import javafx.scene.layout.VBox;
 
 import util.AppLogger;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -101,39 +104,34 @@ public class VersaoChecker {
         }
     }
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     // ── Processamento da resposta ──
 
     private static void processarResposta(String json) {
-        boolean atualizado = json.contains("\"atualizado\":true");
-        if (atualizado) return; // Ja esta na versao mais recente
+        try {
+            JsonNode root = MAPPER.readTree(json);
 
-        boolean obrigatoria = json.contains("\"obrigatoria\":true");
-        String versaoNova = extrairCampo(json, "versaoNova");
-        String changelog = extrairCampo(json, "changelog");
-        String urlDownload = extrairCampo(json, "urlDownload");
+            boolean atualizado = root.path("atualizado").asBoolean(false);
+            if (atualizado) return; // Ja esta na versao mais recente
 
-        Platform.runLater(() -> mostrarDialogoAtualizacao(versaoNova, changelog, urlDownload, obrigatoria));
+            boolean obrigatoria = root.path("obrigatoria").asBoolean(false);
+            String versaoNova = textOrNull(root, "versaoNova");
+            String changelog = textOrNull(root, "changelog");
+            String urlDownload = textOrNull(root, "urlDownload");
+
+            Platform.runLater(() -> mostrarDialogoAtualizacao(versaoNova, changelog, urlDownload, obrigatoria));
+        } catch (Exception e) {
+            AppLogger.warn(TAG, "Erro ao processar resposta de versao: " + e.getMessage());
+        }
     }
 
     /**
-     * Extrai valor de um campo String do JSON (parse simples, sem dependencia externa).
-     * Retorna null se nao encontrar.
+     * Extrai valor texto de um campo do JSON, retornando null se ausente ou nulo.
      */
-    private static String extrairCampo(String json, String campo) {
-        String chave = "\"" + campo + "\":\"";
-        int idx = json.indexOf(chave);
-        if (idx < 0) {
-            // Pode ser null no JSON: "campo":null
-            return null;
-        }
-        int start = idx + chave.length();
-        int end = json.indexOf("\"", start);
-        if (end <= start) return null;
-        // Decodificar escapes basicos do JSON
-        return json.substring(start, end)
-                .replace("\\n", "\n")
-                .replace("\\\"", "\"")
-                .replace("\\\\", "\\");
+    private static String textOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return (value != null && !value.isNull()) ? value.asText() : null;
     }
 
     // ── UI ──

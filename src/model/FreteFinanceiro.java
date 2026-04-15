@@ -35,4 +35,14 @@ public class FreteFinanceiro {
     public String getStatus() {
         return StatusPagamento.calcularPorSaldo(getRestante(), getPago()).name();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        FreteFinanceiro that = (FreteFinanceiro) o;
+        return id == that.id;
+    }
+    @Override
+    public int hashCode() { return Long.hashCode(id); }
 }
