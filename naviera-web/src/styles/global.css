@@ -231,10 +231,10 @@ body {
 }
 
 .nav-section-title .chevron {
-  font-size: 0.55rem;
+  font-size: 1rem;
   margin-left: auto;
   transition: transform 0.2s;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .nav-section-title .chevron.collapsed {
