@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import ReactDOM from 'react-dom'
 import { useAuth } from '../App.jsx'
 import Sidebar from './Sidebar.jsx'
 import TopBar from './TopBar.jsx'
@@ -138,16 +139,36 @@ export default function Layout() {
 
       </div>
 
-      {/* FAB — fora do main-content para position:fixed funcionar */}
-      <a
-        className="fab-ocr"
-        href={ocrUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Lancar frete por foto"
-      >
-        &#128247;
-      </a>
+      <FabOCR url={ocrUrl} />
     </div>
+  )
+}
+
+function FabOCR({ url }) {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 800)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  if (!isMobile) return null
+  return ReactDOM.createPortal(
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Lancar frete por foto"
+      style={{
+        position: 'fixed', bottom: 20, right: 20, width: 56, height: 56,
+        borderRadius: '50%', background: 'linear-gradient(135deg, #059669, #34D399)',
+        color: '#fff', fontSize: '1.5rem', textDecoration: 'none',
+        boxShadow: '0 4px 16px rgba(5,150,105,0.4)', zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}
+    >
+      &#128247;
+    </a>,
+    document.body
   )
 }

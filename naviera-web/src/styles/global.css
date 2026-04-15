@@ -710,23 +710,7 @@ table td .actions {
 
 /* === Mobile nav (escondida em desktop, visivel em mobile) === */
 .mobile-nav { display: none; }
-.fab-ocr {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #059669, #34D399);
-  color: #fff;
-  font-size: 1.5rem;
-  text-decoration: none;
-  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
-  z-index: 1000;
-}
+/* FAB OCR — renderizado via portal no JS, sem CSS aqui */
 
 /* Mobile (<800px) — sidebar colapsa, layout vertical */
 @media (max-width: 800px) {
@@ -778,8 +762,6 @@ table td .actions {
     font-weight: 600;
   }
 
-  /* FAB — apenas trocar display para mostrar no mobile */
-  .fab-ocr { display: flex; }
 
   .page { padding: 16px 12px; padding-bottom: 80px; }
 
