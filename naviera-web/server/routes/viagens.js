@@ -73,8 +73,8 @@ router.post('/', validate({ id_embarcacao: 'required|integer', id_rota: 'require
       return res.status(400).json({ error: 'Campos obrigatorios: id_embarcacao, id_rota, data_viagem, data_chegada, descricao' })
     }
     const result = await pool.query(`
-      INSERT INTO viagens (id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida, ativa, is_atual, empresa_id)
-      VALUES ($1, $2, $3, $4, $5, $6, FALSE, FALSE, $7)
+      INSERT INTO viagens (id_viagem, id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida, ativa, is_atual, empresa_id)
+      VALUES (nextval('seq_viagem'), $1, $2, $3, $4, $5, $6, FALSE, FALSE, $7)
       RETURNING *
     `, [id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida || null, empresaId])
     res.status(201).json(result.rows[0])
