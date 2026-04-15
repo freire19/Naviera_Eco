@@ -72,7 +72,20 @@ router.post('/upload', upload.single('foto'), async (req, res) => {
     )
 
     // 3. Parsear texto OCR → itens estruturados
-    const dados = parseOcrText(ocrResult.text, padrao.rows)
+    // Gemini como parser primario (muito superior ao regex)
+    // Regex como fallback se Gemini falhar ou nao estiver configurado
+    let dados
+    if (ocrResult.text) {
+      try {
+        dados = await geminiParseOCR(ocrResult.text, padrao.rows)
+        console.log('[OCR] Gemini parser: OK -', (dados.itens?.length || 0), 'itens extraidos')
+      } catch (geminiErr) {
+        console.warn('[OCR] Gemini falhou, usando regex:', geminiErr.message)
+        dados = parseOcrText(ocrResult.text, padrao.rows)
+      }
+    } else {
+      dados = parseOcrText('', padrao.rows)
+    }
 
     // 4. Salvar no banco
     const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
