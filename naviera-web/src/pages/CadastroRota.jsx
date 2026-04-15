@@ -74,6 +74,17 @@ export default function CadastroRota({ viagemAtiva, onNavigate }) {
     }
   }
 
+  async function handleExcluir(item) {
+    if (!window.confirm(`Excluir rota "${item.origem} - ${item.destino}"?`)) return
+    try {
+      await api.delete(`/cadastros/rotas/${item.id_rota}`)
+      showToast('Rota excluida com sucesso')
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir rota', 'error')
+    }
+  }
+
   return (
     <div className="card">
       <div className="card-header">
@@ -87,6 +98,7 @@ export default function CadastroRota({ viagemAtiva, onNavigate }) {
         <table>
           <thead>
             <tr>
+              <th>ID</th>
               <th>Origem</th>
               <th>Destino</th>
               <th>Acoes</th>
@@ -94,15 +106,17 @@ export default function CadastroRota({ viagemAtiva, onNavigate }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="3">Carregando...</td></tr>
+              <tr><td colSpan="4">Carregando...</td></tr>
             ) : rotas.length === 0 ? (
-              <tr><td colSpan="3">Nenhuma rota cadastrada</td></tr>
+              <tr><td colSpan="4">Nenhuma rota cadastrada</td></tr>
             ) : rotas.map(r => (
               <tr key={r.id_rota}>
+                <td>{r.id_rota}</td>
                 <td>{r.origem || '-'}</td>
                 <td>{r.destino || '-'}</td>
                 <td>
-                  <button className="btn-sm primary" onClick={() => abrirEditar(r)}>Editar</button>
+                  <button className="btn-sm primary" onClick={() => abrirEditar(r)} style={{ marginRight: 4 }}>Editar</button>
+                  <button className="btn-sm danger" onClick={() => handleExcluir(r)}>Excluir</button>
                 </td>
               </tr>
             ))}
@@ -117,12 +131,12 @@ export default function CadastroRota({ viagemAtiva, onNavigate }) {
             <form onSubmit={handleSalvar}>
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Origem</label>
-                  <input type="text" name="origem" value={form.origem} onChange={handleChange} />
+                  <label>Origem *</label>
+                  <input type="text" name="origem" value={form.origem} onChange={handleChange} required />
                 </div>
                 <div className="form-group">
-                  <label>Destino</label>
-                  <input type="text" name="destino" value={form.destino} onChange={handleChange} />
+                  <label>Destino *</label>
+                  <input type="text" name="destino" value={form.destino} onChange={handleChange} required />
                 </div>
               </div>
               <div className="modal-actions">

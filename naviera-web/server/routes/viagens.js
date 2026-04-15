@@ -14,12 +14,14 @@ router.get('/', async (req, res) => {
       SELECT v.id_viagem, v.id_embarcacao, v.id_rota, v.is_atual,
              TO_CHAR(v.data_viagem, 'DD/MM/YYYY') AS data_viagem,
              TO_CHAR(v.data_chegada, 'DD/MM/YYYY') AS data_chegada,
-             v.descricao, v.ativa,
+             v.descricao, v.ativa, v.id_horario_saida,
              e.nome AS nome_embarcacao,
-             CASE WHEN r.origem IS NOT NULL THEN r.origem || ' - ' || COALESCE(r.destino, '') ELSE NULL END AS nome_rota
+             CASE WHEN r.origem IS NOT NULL THEN r.origem || ' - ' || COALESCE(r.destino, '') ELSE NULL END AS nome_rota,
+             hs.descricao_horario_saida AS horario
       FROM viagens v
       LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
       LEFT JOIN rotas r ON v.id_rota = r.id
+      LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
       WHERE v.empresa_id = $1
       ORDER BY v.data_viagem DESC
     `, [empresaId])
@@ -92,13 +94,14 @@ router.post('/', validate({ id_embarcacao: 'required|integer', id_rota: 'require
 router.put('/:id', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    const { id_embarcacao, id_rota, data_viagem, data_chegada, descricao } = req.body
+    const { id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida } = req.body
     const result = await pool.query(`
       UPDATE viagens SET data_viagem = COALESCE($1, data_viagem), data_chegada = COALESCE($2, data_chegada),
-        descricao = COALESCE($3, descricao), id_embarcacao = COALESCE($4, id_embarcacao), id_rota = COALESCE($5, id_rota)
-      WHERE id_viagem = $6 AND empresa_id = $7
+        descricao = COALESCE($3, descricao), id_embarcacao = COALESCE($4, id_embarcacao), id_rota = COALESCE($5, id_rota),
+        id_horario_saida = COALESCE($6, id_horario_saida)
+      WHERE id_viagem = $7 AND empresa_id = $8
       RETURNING *
-    `, [data_viagem, data_chegada, descricao, id_embarcacao, id_rota, req.params.id, empresaId])
+    `, [data_viagem, data_chegada, descricao, id_embarcacao, id_rota, id_horario_saida || null, req.params.id, empresaId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'Viagem nao encontrada' })
     res.json(result.rows[0])
   } catch (err) {

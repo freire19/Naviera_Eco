@@ -6,17 +6,18 @@ import { validate } from '../middleware/validate.js'
 const router = Router()
 router.use(authMiddleware)
 
-// GET /api/passageiros/busca?q=jon — Search passageiros by name (ILIKE)
+// GET /api/passagens/busca-passageiro?q=jon — Search passageiros by name (ILIKE)
 router.get('/busca-passageiro', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { q } = req.query
     if (!q || q.trim().length < 2) return res.json([])
     const result = await pool.query(
-      `SELECT id_passageiro, nome_passageiro, numero_documento
-       FROM passageiros
-       WHERE empresa_id = $1 AND nome_passageiro ILIKE $2
-       ORDER BY nome_passageiro
+      `SELECT p.id_passageiro, p.nome_passageiro, p.numero_documento,
+              p.data_nascimento, p.id_tipo_doc, p.id_sexo, p.id_nacionalidade
+       FROM passageiros p
+       WHERE p.empresa_id = $1 AND p.nome_passageiro ILIKE $2
+       ORDER BY p.nome_passageiro
        LIMIT 15`,
       // DS4-041 fix: escapar wildcards LIKE do input
       [empresaId, `%${q.trim().replace(/%/g, '\\%').replace(/_/g, '\\_')}%`]
@@ -34,9 +35,23 @@ router.get('/', async (req, res) => {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
     let sql = `
-      SELECT p.*, pas.nome_passageiro, pas.numero_documento AS numero_doc
+      SELECT p.*,
+             pas.nome_passageiro, pas.numero_documento AS numero_doc,
+             pas.data_nascimento, pas.id_nacionalidade AS pas_id_nacionalidade,
+             nac.nome_nacionalidade,
+             r.origem, r.destino,
+             hs.descricao_horario_saida,
+             ac.nome_acomodacao,
+             ag.nome_agente,
+             tp.nome_tipo_passagem
       FROM passagens p
       LEFT JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro AND pas.empresa_id = p.empresa_id
+      LEFT JOIN aux_nacionalidades nac ON pas.id_nacionalidade = nac.id_nacionalidade
+      LEFT JOIN rotas r ON p.id_rota = r.id
+      LEFT JOIN aux_horarios_saida hs ON p.id_horario_saida = hs.id_horario_saida
+      LEFT JOIN aux_acomodacoes ac ON p.id_acomodacao = ac.id_acomodacao
+      LEFT JOIN aux_agentes ag ON p.id_agente = ag.id_agente
+      LEFT JOIN aux_tipos_passagem tp ON p.id_tipo_passagem = tp.id_tipo_passagem
       WHERE p.empresa_id = $1
     `
     const params = [empresaId]
@@ -83,7 +98,8 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total: 'require
       id_caixa, valor_total, valor_pago, observacoes,
       valor_pagamento_dinheiro, valor_pagamento_pix, valor_pagamento_cartao,
       id_agente, numero_requisicao, valor_alimentacao, valor_transporte, valor_cargas,
-      valor_desconto_tarifa, valor_desconto_geral, troco, id_horario_saida
+      valor_desconto_tarifa, valor_desconto_geral, troco, id_horario_saida,
+      data_nascimento, id_tipo_doc, id_sexo, id_nacionalidade
     } = req.body
     if (!id_viagem || !valor_total) {
       return res.status(400).json({ error: 'Campos obrigatorios: id_viagem, valor_total' })
@@ -106,10 +122,29 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total: 'require
       )
       if (busca.rows.length > 0) {
         passageiroId = busca.rows[0].id_passageiro
+        // Atualizar dados do passageiro existente se informados
+        if (data_nascimento || id_tipo_doc || id_sexo || id_nacionalidade || documento) {
+          await client.query(
+            `UPDATE passageiros SET
+              numero_documento = COALESCE($1, numero_documento),
+              data_nascimento = COALESCE($2, data_nascimento),
+              id_tipo_doc = COALESCE($3, id_tipo_doc),
+              id_sexo = COALESCE($4, id_sexo),
+              id_nacionalidade = COALESCE($5, id_nacionalidade),
+              data_ultima_atualizacao = NOW()
+            WHERE id_passageiro = $6 AND empresa_id = $7`,
+            [documento || null, data_nascimento || null, id_tipo_doc ? parseInt(id_tipo_doc) : null,
+             id_sexo ? parseInt(id_sexo) : null, id_nacionalidade ? parseInt(id_nacionalidade) : null,
+             passageiroId, empresaId]
+          )
+        }
       } else {
         const novo = await client.query(
-          'INSERT INTO passageiros (nome_passageiro, numero_documento, empresa_id) VALUES ($1, $2, $3) RETURNING id_passageiro',
-          [nome_passageiro.trim(), documento || null, empresaId]
+          `INSERT INTO passageiros (nome_passageiro, numero_documento, data_nascimento, id_tipo_doc, id_sexo, id_nacionalidade, empresa_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_passageiro`,
+          [nome_passageiro.trim(), documento || null, data_nascimento || null,
+           id_tipo_doc ? parseInt(id_tipo_doc) : null, id_sexo ? parseInt(id_sexo) : null,
+           id_nacionalidade ? parseInt(id_nacionalidade) : null, empresaId]
         )
         passageiroId = novo.rows[0].id_passageiro
       }
@@ -187,7 +222,7 @@ router.post('/:id/pagar', async (req, res) => {
   const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const { valor_pago } = req.body
+    const { valor_pago, valor_pagamento_dinheiro, valor_pagamento_pix, valor_pagamento_cartao, id_caixa } = req.body
     if (!valor_pago || valor_pago <= 0) {
       return res.status(400).json({ error: 'valor_pago obrigatorio e deve ser positivo' })
     }
@@ -198,10 +233,18 @@ router.post('/:id/pagar', async (req, res) => {
     const result = await client.query(`
       UPDATE passagens SET valor_pago = valor_pago + $1,
         valor_devedor = valor_devedor - $1,
-        status_passagem = CASE WHEN (valor_devedor - $1) <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END
+        status_passagem = CASE WHEN (valor_devedor - $1) <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END,
+        valor_pagamento_dinheiro = COALESCE(valor_pagamento_dinheiro, 0) + $4,
+        valor_pagamento_pix = COALESCE(valor_pagamento_pix, 0) + $5,
+        valor_pagamento_cartao = COALESCE(valor_pagamento_cartao, 0) + $6,
+        id_caixa = COALESCE($7, id_caixa)
       WHERE id_passagem = $2 AND empresa_id = $3 AND valor_devedor >= $1
       RETURNING *
-    `, [valor_pago, req.params.id, empresaId])
+    `, [valor_pago, req.params.id, empresaId,
+        parseFloat(valor_pagamento_dinheiro) || 0,
+        parseFloat(valor_pagamento_pix) || 0,
+        parseFloat(valor_pagamento_cartao) || 0,
+        id_caixa ? parseInt(id_caixa) : null])
 
     if (result.rows.length === 0) {
       // Distinguish between not-found and overpayment

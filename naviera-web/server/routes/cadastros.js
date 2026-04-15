@@ -48,12 +48,12 @@ router.get('/tarifas', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(`
-      SELECT t.*, r.origem, r.destino, tp.nome AS nome_tipo_passageiro
+      SELECT t.*, r.origem, r.destino, atp.nome_tipo_passagem AS nome_tipo_passageiro
       FROM tarifas t
       LEFT JOIN rotas r ON t.id_rota = r.id
-      LEFT JOIN tipo_passageiro tp ON t.id_tipo_passagem = tp.id
+      LEFT JOIN aux_tipos_passagem atp ON t.id_tipo_passagem = atp.id_tipo_passagem
       WHERE t.empresa_id = $1
-      ORDER BY r.origem, tp.nome
+      ORDER BY r.origem, atp.nome_tipo_passagem
     `, [empresaId])
     res.json(result.rows)
   } catch (err) {
@@ -61,7 +61,7 @@ router.get('/tarifas', async (req, res) => {
   }
 })
 
-// --- Tipo Passageiro ---
+// --- Tipo Passageiro (categoria: crianca, adulto, idoso) ---
 router.get('/tipos-passageiro', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
@@ -69,6 +69,88 @@ router.get('/tipos-passageiro', async (req, res) => {
     res.json(result.rows)
   } catch (err) {
     res.status(500).json({ error: 'Erro ao listar tipos' })
+  }
+})
+
+// --- Tabelas auxiliares compartilhadas (sem empresa_id) ---
+
+router.get('/tipos-passagem-aux', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id_tipo_passagem, nome_tipo_passagem FROM aux_tipos_passagem ORDER BY nome_tipo_passagem')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar tipos de passagem' })
+  }
+})
+
+router.get('/nacionalidades', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id_nacionalidade, nome_nacionalidade FROM aux_nacionalidades ORDER BY nome_nacionalidade')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar nacionalidades' })
+  }
+})
+
+router.get('/acomodacoes', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id_acomodacao, nome_acomodacao FROM aux_acomodacoes ORDER BY nome_acomodacao')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar acomodacoes' })
+  }
+})
+
+router.get('/agentes', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id_agente, nome_agente FROM aux_agentes ORDER BY nome_agente')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar agentes' })
+  }
+})
+
+router.get('/horarios-saida', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id_horario_saida, descricao_horario_saida FROM aux_horarios_saida ORDER BY descricao_horario_saida')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar horarios de saida' })
+  }
+})
+
+router.get('/tipos-documento', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id_tipo_doc, nome_tipo_doc FROM aux_tipos_documento ORDER BY nome_tipo_doc')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar tipos de documento' })
+  }
+})
+
+router.get('/sexos', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT id_sexo, nome_sexo FROM aux_sexo ORDER BY id_sexo')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar sexos' })
+  }
+})
+
+// --- Tarifa lookup por rota + tipo passagem ---
+router.get('/tarifas/busca', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { id_rota, id_tipo_passagem } = req.query
+    if (!id_rota || !id_tipo_passagem) return res.json(null)
+    const result = await pool.query(
+      `SELECT valor_transporte, valor_alimentacao, valor_cargas, valor_desconto
+       FROM tarifas WHERE id_rota = $1 AND id_tipo_passagem = $2 AND empresa_id = $3 LIMIT 1`,
+      [id_rota, id_tipo_passagem, empresaId]
+    )
+    res.json(result.rows[0] || null)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar tarifa' })
   }
 })
 
@@ -195,6 +277,28 @@ router.put('/rotas/:id', async (req, res) => {
     res.json(result.rows[0])
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar rota' })
+  }
+})
+
+router.delete('/rotas/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    // Verificar se ha viagens associadas
+    const check = await pool.query(
+      'SELECT COUNT(*) AS cnt FROM viagens WHERE id_rota = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    if (parseInt(check.rows[0].cnt) > 0) {
+      return res.status(400).json({ error: 'Nao e possivel excluir rota com viagens associadas' })
+    }
+    const result = await pool.query(
+      'DELETE FROM rotas WHERE id = $1 AND empresa_id = $2 RETURNING id',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Rota nao encontrada' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir rota' })
   }
 })
 
@@ -374,10 +478,12 @@ router.put('/usuarios/:id', async (req, res) => {
 })
 
 // --- Tarifas CRUD ---
-router.post('/tarifas', validate({ id_rota: 'required|integer', id_tipo_passagem: 'required|integer' }), async (req, res) => {
+router.post('/tarifas', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    const { id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao, valor_cargas, valor_desconto } = req.body
+    const { id_rota, valor_transporte, valor_alimentacao, valor_cargas, valor_desconto } = req.body
+    // Aceita tanto id_tipo_passagem quanto id_tipo_passageiro (retrocompat)
+    const id_tipo_passagem = req.body.id_tipo_passagem || req.body.id_tipo_passageiro
     if (!id_rota || !id_tipo_passagem) return res.status(400).json({ error: 'id_rota e id_tipo_passagem obrigatorios' })
     const result = await pool.query(`
       INSERT INTO tarifas (id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao, valor_cargas, valor_desconto, empresa_id)
@@ -402,6 +508,20 @@ router.put('/tarifas/:id', async (req, res) => {
     res.json(result.rows[0])
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar tarifa' })
+  }
+})
+
+router.delete('/tarifas/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'DELETE FROM tarifas WHERE id_tarifa = $1 AND empresa_id = $2 RETURNING id_tarifa',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tarifa nao encontrada' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir tarifa' })
   }
 })
 

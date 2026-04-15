@@ -7,7 +7,7 @@ function formatMoney(val) {
 
 const FORM_INICIAL = {
   id_rota: '',
-  id_tipo_passageiro: '',
+  id_tipo_passagem: '',
   valor_transporte: '',
   valor_alimentacao: '',
   valor_cargas: '',
@@ -24,7 +24,7 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
   const [toast, setToast] = useState(null)
 
   const [rotas, setRotas] = useState([])
-  const [tiposPassageiro, setTiposPassageiro] = useState([])
+  const [tiposPassagem, setTiposPassagem] = useState([])
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
@@ -43,7 +43,7 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
 
   useEffect(() => {
     api.get('/rotas').then(setRotas).catch(() => {})
-    api.get('/cadastros/tipos-passageiro').then(setTiposPassageiro).catch(() => {})
+    api.get('/cadastros/tipos-passagem-aux').then(setTiposPassagem).catch(() => {})
   }, [])
 
   function abrirCriar() {
@@ -56,7 +56,7 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
     setEditando(item)
     setForm({
       id_rota: item.id_rota || '',
-      id_tipo_passageiro: item.id_tipo_passageiro || '',
+      id_tipo_passagem: item.id_tipo_passagem || '',
       valor_transporte: item.valor_transporte || '',
       valor_alimentacao: item.valor_alimentacao || '',
       valor_cargas: item.valor_cargas || '',
@@ -78,10 +78,15 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
 
   async function handleSalvar(e) {
     e.preventDefault()
+    if (!form.id_rota || !form.id_tipo_passagem) {
+      showToast('Selecione rota e tipo passageiro', 'error')
+      return
+    }
     setSalvando(true)
     try {
       const payload = {
-        ...form,
+        id_rota: form.id_rota,
+        id_tipo_passagem: form.id_tipo_passagem,
         valor_transporte: Number(form.valor_transporte) || 0,
         valor_alimentacao: Number(form.valor_alimentacao) || 0,
         valor_cargas: Number(form.valor_cargas) || 0,
@@ -103,10 +108,22 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
     }
   }
 
+  async function handleExcluir(item) {
+    const rotaStr = item.rota || item.nome_rota || `Rota ${item.id_rota}`
+    if (!window.confirm(`Excluir tarifa "${rotaStr}"?`)) return
+    try {
+      await api.delete(`/cadastros/tarifas/${item.id_tarifa}`)
+      showToast('Tarifa excluida com sucesso')
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir tarifa', 'error')
+    }
+  }
+
   return (
     <div className="card">
       <div className="card-header">
-        <h2>Cadastro de Tarifas</h2>
+        <h2>Cadastro de Tarifa</h2>
         <div className="toolbar">
           <button className="btn-primary" onClick={abrirCriar}>+ Nova Tarifa</button>
         </div>
@@ -116,30 +133,33 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
         <table>
           <thead>
             <tr>
+              <th>ID</th>
               <th>Rota</th>
               <th>Tipo Passageiro</th>
-              <th>Transporte</th>
-              <th>Alimentacao</th>
+              <th>Transp.</th>
               <th>Cargas</th>
+              <th>Aliment.</th>
               <th>Desconto</th>
               <th>Acoes</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="7">Carregando...</td></tr>
+              <tr><td colSpan="8">Carregando...</td></tr>
             ) : tarifas.length === 0 ? (
-              <tr><td colSpan="7">Nenhuma tarifa cadastrada</td></tr>
+              <tr><td colSpan="8">Nenhuma tarifa cadastrada</td></tr>
             ) : tarifas.map(t => (
               <tr key={t.id_tarifa}>
-                <td>{t.rota || t.nome_rota || '-'}</td>
-                <td>{t.tipo_passageiro || t.nome_tipo_passageiro || '-'}</td>
+                <td>{t.id_tarifa}</td>
+                <td>{t.origem && t.destino ? `${t.origem} - ${t.destino}` : t.rota || '-'}</td>
+                <td>{t.nome_tipo_passageiro || '-'}</td>
                 <td className="money">{formatMoney(t.valor_transporte)}</td>
-                <td className="money">{formatMoney(t.valor_alimentacao)}</td>
                 <td className="money">{formatMoney(t.valor_cargas)}</td>
+                <td className="money">{formatMoney(t.valor_alimentacao)}</td>
                 <td className="money">{formatMoney(t.valor_desconto)}</td>
                 <td>
-                  <button className="btn-sm primary" onClick={() => abrirEditar(t)}>Editar</button>
+                  <button className="btn-sm primary" onClick={() => abrirEditar(t)} style={{ marginRight: 4 }}>Editar</button>
+                  <button className="btn-sm danger" onClick={() => handleExcluir(t)}>Excluir</button>
                 </td>
               </tr>
             ))}
@@ -154,8 +174,8 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
             <form onSubmit={handleSalvar}>
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Rota</label>
-                  <select name="id_rota" value={form.id_rota} onChange={handleChange}>
+                  <label>Rota *</label>
+                  <select name="id_rota" value={form.id_rota} onChange={handleChange} required>
                     <option value="">Selecione...</option>
                     {rotas.map(r => (
                       <option key={r.id_rota} value={r.id_rota}>{r.origem} - {r.destino}</option>
@@ -163,29 +183,29 @@ export default function CadastroTarifa({ viagemAtiva, onNavigate }) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Tipo Passageiro</label>
-                  <select name="id_tipo_passageiro" value={form.id_tipo_passageiro} onChange={handleChange}>
+                  <label>Tipo Passageiro *</label>
+                  <select name="id_tipo_passagem" value={form.id_tipo_passagem} onChange={handleChange} required>
                     <option value="">Selecione...</option>
-                    {tiposPassageiro.map(tp => (
-                      <option key={tp.id_tipo_passageiro} value={tp.id_tipo_passageiro}>{tp.descricao || tp.nome}</option>
+                    {tiposPassagem.map(tp => (
+                      <option key={tp.id_tipo_passagem} value={tp.id_tipo_passagem}>{tp.nome_tipo_passagem}</option>
                     ))}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Valor Transporte</label>
-                  <input type="number" step="0.01" name="valor_transporte" value={form.valor_transporte} onChange={handleChange} />
+                  <label>Transporte</label>
+                  <input type="number" step="0.01" min="0" name="valor_transporte" value={form.valor_transporte} onChange={handleChange} placeholder="0.00" />
                 </div>
                 <div className="form-group">
-                  <label>Valor Alimentacao</label>
-                  <input type="number" step="0.01" name="valor_alimentacao" value={form.valor_alimentacao} onChange={handleChange} />
+                  <label>Cargas</label>
+                  <input type="number" step="0.01" min="0" name="valor_cargas" value={form.valor_cargas} onChange={handleChange} placeholder="0.00" />
                 </div>
                 <div className="form-group">
-                  <label>Valor Cargas</label>
-                  <input type="number" step="0.01" name="valor_cargas" value={form.valor_cargas} onChange={handleChange} />
+                  <label>Alimentacao</label>
+                  <input type="number" step="0.01" min="0" name="valor_alimentacao" value={form.valor_alimentacao} onChange={handleChange} placeholder="0.00" />
                 </div>
                 <div className="form-group">
-                  <label>Valor Desconto</label>
-                  <input type="number" step="0.01" name="valor_desconto" value={form.valor_desconto} onChange={handleChange} />
+                  <label>Desconto</label>
+                  <input type="number" step="0.01" min="0" name="valor_desconto" value={form.valor_desconto} onChange={handleChange} placeholder="0.00" />
                 </div>
               </div>
               <div className="modal-actions">

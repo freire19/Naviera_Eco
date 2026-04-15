@@ -8,6 +8,12 @@ function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
 
+function formatDate(val) {
+  if (!val) return '\u2014'
+  const d = new Date(val + 'T00:00:00')
+  return d.toLocaleDateString('pt-BR')
+}
+
 export default function Passagens({ viagemAtiva }) {
   const [passagens, setPassagens] = useState([])
   const [loading, setLoading] = useState(false)
@@ -21,8 +27,15 @@ export default function Passagens({ viagemAtiva }) {
   // Toast
   const [toast, setToast] = useState(null)
 
-  // Tipos passageiro (dropdown)
-  const [tiposPassageiro, setTiposPassageiro] = useState([])
+  // Dados auxiliares para o modal
+  const [rotas, setRotas] = useState([])
+  const [acomodacoes, setAcomodacoes] = useState([])
+  const [tiposPassagemAux, setTiposPassagemAux] = useState([])
+  const [agentes, setAgentes] = useState([])
+  const [nacionalidades, setNacionalidades] = useState([])
+  const [tiposDocumento, setTiposDocumento] = useState([])
+  const [sexos, setSexos] = useState([])
+  const [caixas, setCaixas] = useState([])
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
@@ -42,16 +55,24 @@ export default function Passagens({ viagemAtiva }) {
     carregarPassagens()
   }, [carregarPassagens])
 
+  // Carregar dados auxiliares uma vez
   useEffect(() => {
-    api.get('/cadastros/tipos-passageiro')
-      .then(setTiposPassageiro)
-      .catch(() => {})
+    Promise.allSettled([
+      api.get('/rotas').then(setRotas),
+      api.get('/cadastros/acomodacoes').then(setAcomodacoes),
+      api.get('/cadastros/tipos-passagem-aux').then(setTiposPassagemAux),
+      api.get('/cadastros/agentes').then(setAgentes),
+      api.get('/cadastros/nacionalidades').then(setNacionalidades),
+      api.get('/cadastros/tipos-documento').then(setTiposDocumento),
+      api.get('/cadastros/sexos').then(setSexos),
+      api.get('/cadastros/caixas').then(setCaixas)
+    ]).catch(() => {})
   }, [])
 
   // --- Excluir ---
 
   async function handleExcluir(passagem) {
-    if (!window.confirm(`Excluir passagem ${passagem.num_bilhete || passagem.id_passagem}?`)) return
+    if (!window.confirm(`Excluir passagem ${passagem.numero_bilhete || passagem.id_passagem}?`)) return
 
     try {
       await api.delete(`/passagens/${passagem.id_passagem}`)
@@ -113,27 +134,41 @@ export default function Passagens({ viagemAtiva }) {
                   <th>Bilhete</th>
                   <th>Passageiro</th>
                   <th>Documento</th>
+                  <th>Nascimento</th>
+                  <th>Nacionalidade</th>
+                  <th>Origem</th>
+                  <th>Destino</th>
                   <th>Assento</th>
                   <th>Valor Total</th>
+                  <th>Desconto</th>
                   <th>Pago</th>
+                  <th>A Pagar</th>
+                  <th>Devedor</th>
                   <th>Status</th>
                   <th>Acoes</th>
                 </tr>
               </thead>
               <tbody>
                 {passagens.map(p => {
-                  const restante = (p.valor_total || 0) - (p.valor_pago || 0)
+                  const restante = (p.valor_a_pagar || p.valor_total || 0) - (p.valor_pago || 0)
                   return (
                     <tr key={p.id_passagem}>
-                      <td>{p.num_bilhete}</td>
+                      <td>{p.numero_bilhete}</td>
                       <td>{p.nome_passageiro || '\u2014'}</td>
                       <td>{p.numero_doc || '\u2014'}</td>
+                      <td>{formatDate(p.data_nascimento)}</td>
+                      <td>{p.nome_nacionalidade || '\u2014'}</td>
+                      <td>{p.origem || '\u2014'}</td>
+                      <td>{p.destino || '\u2014'}</td>
                       <td>{p.assento || '\u2014'}</td>
                       <td className="money">{formatMoney(p.valor_total)}</td>
+                      <td className="money">{formatMoney(p.valor_desconto_geral)}</td>
                       <td className="money">{formatMoney(p.valor_pago)}</td>
+                      <td className="money">{formatMoney(p.valor_a_pagar)}</td>
+                      <td className="money">{formatMoney(p.valor_devedor)}</td>
                       <td>
-                        <span className={`badge ${p.devedor ? 'danger' : 'success'}`}>
-                          {p.devedor ? 'Devedor' : 'Pago'}
+                        <span className={`badge ${p.status_passagem === 'PAGO' ? 'success' : p.status_passagem === 'PARCIAL' ? 'warning' : 'danger'}`}>
+                          {p.status_passagem || 'PENDENTE'}
                         </span>
                       </td>
                       <td>
@@ -144,7 +179,7 @@ export default function Passagens({ viagemAtiva }) {
                         >
                           Imprimir
                         </button>
-                        {restante > 0 && (
+                        {restante > 0.01 && (
                           <button
                             className="btn-sm primary"
                             onClick={() => setModalPagar(p)}
@@ -165,7 +200,7 @@ export default function Passagens({ viagemAtiva }) {
                 })}
                 {passagens.length === 0 && (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>
+                    <td colSpan="15" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>
                       Nenhuma passagem nesta viagem
                     </td>
                   </tr>
@@ -180,7 +215,14 @@ export default function Passagens({ viagemAtiva }) {
       {modalCriar && (
         <ModalCriarPassagem
           viagemAtiva={viagemAtiva}
-          tiposPassageiro={tiposPassageiro}
+          rotas={rotas}
+          acomodacoes={acomodacoes}
+          tiposPassagemAux={tiposPassagemAux}
+          agentes={agentes}
+          nacionalidades={nacionalidades}
+          tiposDocumento={tiposDocumento}
+          sexos={sexos}
+          caixas={caixas}
           onClose={() => setModalCriar(false)}
           onSuccess={() => { setModalCriar(false); carregarPassagens() }}
           showToast={showToast}
@@ -191,6 +233,7 @@ export default function Passagens({ viagemAtiva }) {
       {modalPagar && (
         <ModalPagarPassagem
           passagem={modalPagar}
+          caixas={caixas}
           onClose={() => setModalPagar(null)}
           onSuccess={() => { setModalPagar(null); carregarPassagens() }}
           showToast={showToast}
