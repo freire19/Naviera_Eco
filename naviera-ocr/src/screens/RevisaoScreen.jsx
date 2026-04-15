@@ -1,11 +1,32 @@
-import { useState } from 'react'
-import { apiPut, apiPost } from '../api.js'
+import { useState, useRef } from 'react'
+import { apiPut, apiPost, uploadFotoAdicional } from '../api.js'
 import { money } from '../helpers.js'
 import { ConfidenceBadge } from '../components/Badge.jsx'
 import Card from '../components/Card.jsx'
 import PhotoPreview from '../components/PhotoPreview.jsx'
 import ItemList from '../components/ItemList.jsx'
-import { IconCheck, IconRefresh } from '../icons.jsx'
+import { IconCheck, IconRefresh, IconCamera, IconPlus } from '../icons.jsx'
+
+// Compress image (same logic as CameraCapture)
+function compressImage(file, maxSize = 2048) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width <= maxSize && height <= maxSize) { resolve(file); return }
+      const ratio = Math.min(maxSize / width, maxSize / height)
+      const canvas = document.createElement('canvas')
+      canvas.width = width * ratio
+      canvas.height = height * ratio
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.85)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
 
 export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToast }) {
   const [remetente, setRemetente] = useState(dados.remetente || '')
@@ -14,7 +35,11 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
   const [itens, setItens] = useState(dados.itens || [])
   const [loading, setLoading] = useState(false)
   const [iaLoading, setIaLoading] = useState(false)
+  const [fotoLoading, setFotoLoading] = useState(false)
+  const [fotosAdicionais, setFotosAdicionais] = useState(0)
+  const fotoInputRef = useRef(null)
 
+  const isEncomenda = lancamento.tipo === 'encomenda' || lancamento.tipo === 'lote'
   const valorTotal = itens.reduce((sum, i) => sum + ((i.quantidade || 0) * (i.preco_unitario || 0)), 0)
 
   const updateItem = (idx, updated) => {
@@ -26,6 +51,32 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
   const removeItem = (idx) => setItens(itens.filter((_, i) => i !== idx))
 
   const addItem = () => setItens([...itens, { nome_item: '', quantidade: 1, preco_unitario: 0, subtotal: 0 }])
+
+  // Adicionar foto extra (encomenda multi-volume)
+  const handleFotoAdicional = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    fotoInputRef.current.value = ''
+
+    setFotoLoading(true)
+    showToast('Identificando item na foto...', 'info')
+    try {
+      const compressed = await compressImage(file)
+      const fotoFile = new File([compressed], file.name || 'foto.jpg', { type: 'image/jpeg' })
+      const result = await uploadFotoAdicional(lancamento.id, fotoFile)
+      if (result?.itens?.length > 0) {
+        setItens(prev => [...prev, ...result.itens])
+        setFotosAdicionais(prev => prev + 1)
+        showToast(`${result.itens.length} item(ns) adicionado(s) da foto`, 'success')
+      } else {
+        showToast('Nenhum item identificado na foto', 'warn')
+      }
+    } catch (err) {
+      showToast(err.message || 'Erro ao processar foto', 'error')
+    } finally {
+      setFotoLoading(false)
+    }
+  }
 
   const revisarComIA = async () => {
     setIaLoading(true)
@@ -93,7 +144,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
       <button
         className="btn btn-block"
         onClick={revisarComIA}
-        disabled={iaLoading || loading}
+        disabled={iaLoading || loading || fotoLoading}
         style={{
           background: iaLoading ? t.soft : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
           color: iaLoading ? t.txMuted : '#fff',
@@ -130,9 +181,43 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
 
       <ItemList itens={itens} t={t} onUpdate={updateItem} onRemove={removeItem} onAdd={addItem} />
 
+      {/* Adicionar Foto — so para encomenda */}
+      {isEncomenda && (
+        <button
+          className="btn btn-block"
+          onClick={() => fotoInputRef.current?.click()}
+          disabled={fotoLoading || loading}
+          style={{
+            background: fotoLoading ? t.soft : t.card,
+            color: fotoLoading ? t.txMuted : t.pri,
+            padding: 14, fontSize: '0.95rem',
+            border: `1px solid ${t.border}`
+          }}
+        >
+          {fotoLoading ? (
+            <span className="pulse">Identificando item...</span>
+          ) : (
+            <>
+              <IconCamera size={18} color={t.pri} />
+              {' '}Adicionar Foto{fotosAdicionais > 0 ? ` (+${fotosAdicionais})` : ''}
+            </>
+          )}
+        </button>
+      )}
+      <input
+        ref={fotoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFotoAdicional}
+        style={{ display: 'none' }}
+      />
+
       {/* Total */}
       <Card t={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: t.txSoft, fontWeight: 500 }}>Total</span>
+        <span style={{ color: t.txSoft, fontWeight: 500 }}>
+          Total{fotosAdicionais > 0 ? ` (${1 + fotosAdicionais} fotos)` : ''}
+        </span>
         <span style={{ color: t.tx, fontWeight: 700, fontSize: '1.2rem' }}>{money(valorTotal)}</span>
       </Card>
 
@@ -140,7 +225,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
       <button
         className="btn btn-block"
         onClick={confirmar}
-        disabled={loading || iaLoading}
+        disabled={loading || iaLoading || fotoLoading}
         style={{ background: t.priGrad, color: '#fff', padding: 16, fontSize: '1rem' }}
       >
         <IconCheck size={20} color="#fff" />

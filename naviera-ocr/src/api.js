@@ -71,6 +71,24 @@ export async function uploadFoto(file, viagemId, tipo, clientUuid) {
   return res.json()
 }
 
+// Upload foto adicional a um lancamento existente (encomenda multi-volume)
+export async function uploadFotoAdicional(lancamentoId, file) {
+  const form = new FormData()
+  form.append('foto', file)
+
+  const res = await fetch(`${API}/ocr/lancamentos/${lancamentoId}/adicionar-foto`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: form
+  })
+  if (handle401(res)) return null
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `Erro ${res.status}`)
+  }
+  return res.json()
+}
+
 // #DB151: fetch foto via Authorization header instead of exposing JWT in URL
 export async function fetchFoto(lancamentoId) {
   const token = localStorage.getItem('naviera_ocr_token')

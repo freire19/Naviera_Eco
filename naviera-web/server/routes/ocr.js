@@ -539,6 +539,49 @@ router.put('/lancamentos/:id/rejeitar', async (req, res) => {
 })
 
 // ============================================================================
+// POST /api/ocr/lancamentos/:id/adicionar-foto — Processa foto extra e retorna itens
+// Usado em encomenda: operador adiciona N fotos de volumes ao mesmo lancamento
+// ============================================================================
+router.post('/lancamentos/:id/adicionar-foto', upload.single('foto'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Foto obrigatoria' })
+
+  try {
+    const empresaId = req.user.empresa_id
+
+    // Verificar que o lancamento existe e e encomenda
+    const lancResult = await pool.query(
+      `SELECT id, tipo FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2 AND status IN ('pendente', 'revisado_operador')`,
+      [req.params.id, empresaId]
+    )
+    if (lancResult.rows.length === 0) {
+      await unlink(req.file.path).catch(() => {})
+      return res.status(404).json({ error: 'Lancamento nao encontrado ou status invalido' })
+    }
+
+    const padrao = await pool.query(
+      'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+      [empresaId]
+    )
+
+    // Processar foto com Gemini Vision (item fisico)
+    const dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
+    log.info('OCR', 'Foto adicional processada', { empresa_id: empresaId, lancamento_id: req.params.id, itens: dados.itens?.length || 0 })
+
+    // Salvar foto extra no disco (mesmo diretorio do lancamento)
+    // Nao atualiza o lancamento no banco — frontend acumula itens e envia tudo no /revisar
+
+    res.json({
+      itens: dados.itens || [],
+      observacoes: dados.observacoes || ''
+    })
+  } catch (err) {
+    if (req.file?.path) await unlink(req.file.path).catch(() => {})
+    log.error('OCR', 'Erro ao processar foto adicional', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
+    res.status(500).json({ error: 'Erro ao processar foto' })
+  }
+})
+
+// ============================================================================
 // DELETE /api/ocr/lancamentos/:id — Excluir lancamento (apenas pendente/revisado)
 // ============================================================================
 router.delete('/lancamentos/:id', async (req, res) => {
