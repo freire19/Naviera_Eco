@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../App.jsx'
 
 const NAV = [
@@ -113,6 +114,12 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
   if (isAdminEmpresa) sections.push(NAV_DOCS)
   if (isAdminGlobal) sections.push(NAV_ADMIN)
 
+  const [collapsed, setCollapsed] = useState({})
+
+  function toggleSection(title) {
+    setCollapsed(prev => ({ ...prev, [title]: !prev[title] }))
+  }
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -121,24 +128,26 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
       </div>
 
       <nav className="sidebar-nav">
-        {sections.map(section => (
+        {sections.map(section => {
+          const isCollapsed = collapsed[section.title]
+          return (
           <div className="nav-section" key={section.title}>
-            <div className="nav-section-title">{section.sectionIcon && <span>{section.sectionIcon}</span>}{section.title}</div>
+            <div className="nav-section-title" onClick={() => toggleSection(section.title)}>
+              <span className={`chevron ${isCollapsed ? 'collapsed' : ''}`}>▼</span>
+              {section.sectionIcon && <span>{section.sectionIcon}</span>}
+              {section.title}
+            </div>
+            {!isCollapsed && (
+            <div className="nav-section-items">
             {section.items.map(item => {
               if (item.external) {
-                // Botao que abre naviera-ocr em nova aba
                 const ocrUrl = window.location.hostname === 'localhost'
                   ? `http://${window.location.hostname}:5175`
                   : `https://ocr.${window.location.hostname.replace(/^[^.]+\./, '')}`
                 return (
-                  <a
-                    key={item.key}
-                    className="nav-item nav-item-external"
-                    href={ocrUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}
-                  >
+                  <a key={item.key} className="nav-item nav-item-external" href={ocrUrl}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="icon">{item.icon}</span>
                     {item.label}
                     <span style={{ marginLeft: 'auto', fontSize: '0.7rem', opacity: 0.5 }}>&#8599;</span>
@@ -147,18 +156,17 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
               }
               const navKey = item.alias || item.key
               return (
-                <div
-                  key={item.key}
-                  className={`nav-item ${currentPage === navKey ? 'active' : ''}`}
-                  onClick={() => onNavigate(navKey)}
-                >
+                <div key={item.key} className={`nav-item ${currentPage === navKey ? 'active' : ''}`}
+                  onClick={() => onNavigate(navKey)}>
                   <span className="icon">{item.icon}</span>
                   {item.label}
                 </div>
               )
             })}
+            </div>
+            )}
           </div>
-        ))}
+        )})}
       </nav>
 
       <div className="sidebar-footer">
