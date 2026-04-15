@@ -158,22 +158,39 @@ router.get('/lancamentos', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { status, viagem_id } = req.query
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100)
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0)
+
     let sql = 'SELECT id, uuid, id_viagem, id_frete, id_encomenda, tipo, foto_original_name, ocr_confianca, dados_extraidos, dados_revisados, status, motivo_rejeicao, nome_usuario_criou, nome_usuario_revisou, data_revisao, criado_em FROM ocr_lancamentos WHERE empresa_id = $1'
+    let countSql = 'SELECT COUNT(*) FROM ocr_lancamentos WHERE empresa_id = $1'
     const params = [empresaId]
+    const countParams = [empresaId]
     let idx = 2
 
     if (status) {
-      sql += ` AND status = $${idx++}`
+      const clause = ` AND status = $${idx++}`
+      sql += clause
+      countSql += clause
       params.push(status)
+      countParams.push(status)
     }
     if (viagem_id) {
-      sql += ` AND id_viagem = $${idx++}`
+      const clause = ` AND id_viagem = $${idx++}`
+      sql += clause
+      countSql += clause
       params.push(viagem_id)
+      countParams.push(viagem_id)
     }
 
-    sql += ' ORDER BY criado_em DESC LIMIT 100'
-    const result = await pool.query(sql, params)
-    res.json(result.rows)
+    sql += ` ORDER BY criado_em DESC LIMIT $${idx++} OFFSET $${idx++}`
+    params.push(limit, offset)
+
+    const [result, countResult] = await Promise.all([
+      pool.query(sql, params),
+      pool.query(countSql, countParams)
+    ])
+    const total = parseInt(countResult.rows[0].count)
+    res.json({ data: result.rows, total, limit, offset })
   } catch (err) {
     console.error('[OCR] Erro ao listar:', err.message)
     res.status(500).json({ error: 'Erro ao listar lancamentos OCR' })
@@ -450,10 +467,20 @@ router.delete('/lancamentos/:id', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
-      "DELETE FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2 AND status IN ('pendente', 'revisado_operador') RETURNING id",
+      "DELETE FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2 AND status IN ('pendente', 'revisado_operador') RETURNING id, foto_path",
       [req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado ou ja aprovado/rejeitado' })
+
+    // Limpar foto do disco para evitar orfaos
+    const fotoPath = result.rows[0].foto_path
+    if (fotoPath) {
+      const fullPath = path.resolve(UPLOAD_PATH, fotoPath)
+      if (fullPath.startsWith(path.resolve(UPLOAD_PATH))) {
+        await unlink(fullPath).catch(() => {})
+      }
+    }
+
     res.json({ ok: true })
   } catch (err) {
     console.error('[OCR] Erro ao excluir:', err.message)

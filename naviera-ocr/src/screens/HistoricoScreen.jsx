@@ -1,29 +1,52 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiGet } from '../api.js'
-import { money, fmtDateTime, timeAgo } from '../helpers.js'
+import { money, timeAgo } from '../helpers.js'
 import Badge from '../components/Badge.jsx'
 import Card from '../components/Card.jsx'
 import { IconRefresh } from '../icons.jsx'
 
+const PAGE_SIZE = 30
+
 export default function HistoricoScreen({ t, showToast }) {
   const [lancamentos, setLancamentos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [filtro, setFiltro] = useState('')
+  const [total, setTotal] = useState(0)
+  const [offset, setOffset] = useState(0)
 
-  const carregar = async () => {
-    setLoading(true)
+  const carregar = useCallback(async (append = false) => {
+    const currentOffset = append ? offset : 0
+    if (!append) setLoading(true)
+    else setLoadingMore(true)
     try {
-      const url = filtro ? `/ocr/lancamentos?status=${filtro}` : '/ocr/lancamentos'
-      const data = await apiGet(url)
-      setLancamentos(data || [])
+      let url = `/ocr/lancamentos?limit=${PAGE_SIZE}&offset=${currentOffset}`
+      if (filtro) url += `&status=${filtro}`
+      const res = await apiGet(url)
+      // Suporte ao formato paginado e ao antigo (array direto)
+      const rows = Array.isArray(res) ? res : (res.data || [])
+      const count = Array.isArray(res) ? rows.length : (res.total || rows.length)
+      if (append) {
+        setLancamentos(prev => [...prev, ...rows])
+      } else {
+        setLancamentos(rows)
+      }
+      setTotal(count)
+      setOffset(currentOffset + rows.length)
     } catch {
       showToast('Erro ao carregar historico', 'error')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }
+  }, [filtro, offset, showToast])
 
-  useEffect(() => { carregar() }, [filtro])
+  useEffect(() => {
+    setOffset(0)
+    carregar(false)
+  }, [filtro])
+
+  const temMais = offset < total
 
   const filtros = [
     { key: '', label: 'Todos' },
@@ -37,7 +60,7 @@ export default function HistoricoScreen({ t, showToast }) {
     <div className="screen-enter" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 100 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ color: t.tx, fontSize: '1.1rem', fontWeight: 600 }}>Historico</h2>
-        <button onClick={carregar} style={{
+        <button onClick={() => { setOffset(0); carregar(false) }} style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: 4
         }}>
           <IconRefresh size={18} color={t.txMuted} />
@@ -123,9 +146,33 @@ export default function HistoricoScreen({ t, showToast }) {
                     Frete #{l.id_frete} criado
                   </div>
                 )}
+
+                {l.id_encomenda && (
+                  <div style={{
+                    background: t.okBg, color: t.okTx, borderRadius: 6,
+                    padding: '4px 8px', fontSize: '0.8rem'
+                  }}>
+                    Encomenda #{l.id_encomenda} criada
+                  </div>
+                )}
               </Card>
             )
           })}
+
+          {/* Carregar mais */}
+          {temMais && (
+            <button
+              className="btn btn-block"
+              onClick={() => carregar(true)}
+              disabled={loadingMore}
+              style={{
+                background: t.soft, color: t.txSoft, padding: 12, fontSize: '0.9rem',
+                border: `1px solid ${t.border}`
+              }}
+            >
+              {loadingMore ? 'Carregando...' : `Carregar mais (${total - offset} restantes)`}
+            </button>
+          )}
         </div>
       )}
     </div>

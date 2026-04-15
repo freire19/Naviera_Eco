@@ -52,7 +52,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
     setLoading(true)
     const params = filtro ? `?status=${filtro}` : ''
     api.get(`/ocr/lancamentos${params}`)
-      .then(setLancamentos)
+      .then(res => setLancamentos(Array.isArray(res) ? res : (res.data || [])))
       .catch(() => showToast('Erro ao carregar lancamentos OCR', 'error'))
       .finally(() => setLoading(false))
   }, [filtro])

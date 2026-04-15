@@ -1,3 +1,5 @@
+import { fetchWithRetry } from './fetchWithRetry.js'
+
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent'
 
 /**
@@ -54,7 +56,7 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
     }
   }
 
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const res = await fetchWithRetry(`${GEMINI_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

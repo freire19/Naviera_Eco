@@ -1,4 +1,5 @@
 import { readFile } from 'fs/promises'
+import { fetchWithRetry } from './fetchWithRetry.js'
 
 const VISION_URL = 'https://vision.googleapis.com/v1/images:annotate'
 
@@ -25,7 +26,7 @@ export async function callVisionOCR(imagePath) {
     }]
   }
 
-  const res = await fetch(`${VISION_URL}?key=${apiKey}`, {
+  const res = await fetchWithRetry(`${VISION_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
