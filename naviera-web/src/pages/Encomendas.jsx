@@ -130,10 +130,48 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
     setNovoItem(updated)
   }
 
-  function handleAdicionarItem() {
+  async function handleAdicionarItem() {
     if (!novoItem.descricao.trim()) { showToast('Informe a descricao do item', 'error'); return }
+
+    // Verificar se item existe no catalogo
+    const descLower = novoItem.descricao.trim().toLowerCase()
+    const itemExiste = itensPadrao.some(ip => (ip.nome_item || '').toLowerCase() === descLower)
+    if (!itemExiste && novoItem.descricao.trim()) {
+      const salvar = window.confirm(`Item "${novoItem.descricao.trim()}" nao encontrado no catalogo.\n\nDeseja salvar para futuras encomendas?`)
+      if (salvar) {
+        try {
+          await api.post('/cadastros/itens-encomenda', {
+            nome_item: novoItem.descricao.trim(),
+            preco_padrao: parseFloat(novoItem.valor_unitario) || 0
+          })
+          // Recarregar lista de itens padrao
+          const novosItens = await api.get('/cadastros/itens-encomenda')
+          setItensPadrao(novosItens)
+          showToast(`Item "${novoItem.descricao.trim()}" salvo no catalogo`)
+        } catch { /* silencioso se falhar */ }
+      }
+    }
+
     setItens(prev => [...prev, { ...novoItem, valor_total: parseFloat(novoItem.valor_total) || 0, valor_unitario: parseFloat(novoItem.valor_unitario) || 0, quantidade: parseInt(novoItem.quantidade) || 1 }])
     setNovoItem({ ...ITEM_VAZIO })
+  }
+
+  // Verificar e salvar cliente novo (remetente ou destinatario)
+  async function verificarSalvarCliente(nome) {
+    if (!nome || !nome.trim()) return
+    const nomeLower = nome.trim().toLowerCase()
+    const existe = clientes.some(c => (c.nome_cliente || '').toLowerCase() === nomeLower)
+    if (!existe) {
+      const salvar = window.confirm(`Cliente "${nome.trim()}" nao encontrado no cadastro.\n\nDeseja salvar para futuras encomendas?`)
+      if (salvar) {
+        try {
+          await api.post('/cadastros/clientes-encomenda', { nome_cliente: nome.trim() })
+          const novosClientes = await api.get('/cadastros/clientes-encomenda')
+          setClientes(novosClientes)
+          showToast(`Cliente "${nome.trim()}" salvo no cadastro`)
+        } catch { /* silencioso */ }
+      }
+    }
   }
 
   function handleRemoverItem(idx) {
@@ -294,7 +332,7 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
               <option value=""></option>
               {clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente}>{c.nome_cliente}</option>)}
             </select>
-            <input style={{ ...I, marginTop: 4 }} placeholder="Ou digite o nome..." value={remetente} onChange={e => setRemetente(e.target.value)} />
+            <input style={{ ...I, marginTop: 4 }} placeholder="Ou digite o nome..." value={remetente} onChange={e => setRemetente(e.target.value)} onBlur={() => verificarSalvarCliente(remetente)} />
           </div>
           <div style={{ marginBottom: 8 }}>
             <label style={L}>Destinatario:</label>
@@ -302,7 +340,7 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
               <option value=""></option>
               {clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente}>{c.nome_cliente}</option>)}
             </select>
-            <input style={{ ...I, marginTop: 4 }} placeholder="Ou digite o nome..." value={destinatario} onChange={e => setDestinatario(e.target.value)} />
+            <input style={{ ...I, marginTop: 4 }} placeholder="Ou digite o nome..." value={destinatario} onChange={e => setDestinatario(e.target.value)} onBlur={() => verificarSalvarCliente(destinatario)} />
           </div>
           <div style={{ marginBottom: 8 }}>
             <label style={L}>Rota:</label>
