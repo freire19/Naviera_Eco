@@ -248,6 +248,36 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
 
     const lanc = lancResult.rows[0]
     const dados = lanc.dados_revisados || lanc.dados_extraidos
+    const { auto_cadastrar } = req.body || {}
+
+    // Verificar se remetente/destinatario existem em cad_clientes_encomenda
+    const clientesFaltantes = []
+    for (const campo of ['remetente', 'destinatario']) {
+      const nome = (dados[campo] || '').trim()
+      if (!nome) continue
+      const existe = await client.query(
+        'SELECT id_cliente FROM cad_clientes_encomenda WHERE LOWER(nome_cliente) = LOWER($1) AND empresa_id = $2',
+        [nome, empresaId]
+      )
+      if (existe.rows.length === 0) clientesFaltantes.push({ campo, nome })
+    }
+
+    if (clientesFaltantes.length > 0 && !auto_cadastrar) {
+      await client.query('ROLLBACK')
+      return res.status(409).json({
+        error: 'Clientes nao cadastrados',
+        clientes_faltantes: clientesFaltantes,
+        mensagem: clientesFaltantes.map(c => `${c.campo === 'remetente' ? 'Remetente' : 'Destinatario'}: "${c.nome}"`).join(', ') + ' — nao cadastrado(s). Deseja cadastrar automaticamente?'
+      })
+    }
+
+    // Auto-cadastrar clientes faltantes se solicitado
+    for (const c of clientesFaltantes) {
+      await client.query(
+        'INSERT INTO cad_clientes_encomenda (nome_cliente, empresa_id) VALUES ($1, $2) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING',
+        [c.nome, empresaId]
+      )
+    }
 
     // Montar payload para criarFreteComItens
     const valor_total_itens = dados.itens

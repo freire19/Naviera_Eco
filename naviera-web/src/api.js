@@ -20,7 +20,10 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || `Erro ${res.status}`)
+    const err = new Error(body.error || `Erro ${res.status}`)
+    err.status = res.status
+    Object.assign(err, body)
+    throw err
   }
 
   return res.json()

@@ -59,18 +59,28 @@ export default function ReviewOCR({ viagemAtiva }) {
 
   useEffect(() => { carregar() }, [carregar])
 
-  const aprovar = async (id) => {
-    if (!confirm('Aprovar este lancamento? Um frete sera criado automaticamente.')) return
+  const aprovar = async (id, autoCadastrar = false) => {
+    if (!autoCadastrar && !confirm('Aprovar este lancamento? Um frete sera criado automaticamente.')) return
     setActionLoading(id)
     try {
-      const result = await api.put(`/ocr/lancamentos/${id}/aprovar`, {})
+      const result = await api.put(`/ocr/lancamentos/${id}/aprovar`, { auto_cadastrar: autoCadastrar })
       showToast(`Frete #${result.frete?.numero_frete || result.frete?.id_frete} criado com sucesso!`)
       carregar()
       setExpandido(null)
     } catch (err) {
-      showToast(err.message || 'Erro ao aprovar', 'error')
+      if (err.status === 409 && err.clientes_faltantes) {
+        const nomes = err.clientes_faltantes.map(c =>
+          `${c.campo === 'remetente' ? 'Remetente' : 'Destinatario'}: "${c.nome}"`
+        ).join('\n')
+        if (confirm(`Clientes nao cadastrados:\n${nomes}\n\nDeseja cadastrar automaticamente e aprovar?`)) {
+          aprovar(id, true)
+          return
+        }
+      } else {
+        showToast(err.message || 'Erro ao aprovar', 'error')
+      }
     } finally {
-      setActionLoading(null)
+      if (!autoCadastrar) setActionLoading(null)
     }
   }
 
@@ -232,6 +242,16 @@ export default function ReviewOCR({ viagemAtiva }) {
                             ) : (
                               <p style={{ color: '#888' }}>Nenhum item extraido</p>
                             )}
+
+                            {/* Remetente / Destinatario */}
+                            <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                              {dados.remetente && (
+                                <p><strong>Remetente:</strong> {dados.remetente}</p>
+                              )}
+                              {dados.destinatario && (
+                                <p><strong>Destinatario:</strong> {dados.destinatario}</p>
+                              )}
+                            </div>
 
                             {/* Rota e obs */}
                             {dados.rota && <p style={{ marginTop: 8 }}><strong>Rota:</strong> {dados.rota}</p>}
