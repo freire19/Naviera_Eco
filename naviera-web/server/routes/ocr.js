@@ -362,6 +362,58 @@ router.put('/lancamentos/:id/rejeitar', async (req, res) => {
 })
 
 // ============================================================================
+// DELETE /api/ocr/lancamentos/:id — Excluir lancamento (apenas pendente/revisado)
+// ============================================================================
+router.delete('/lancamentos/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      "DELETE FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2 AND status IN ('pendente', 'revisado_operador') RETURNING id",
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado ou ja aprovado/rejeitado' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[OCR] Erro ao excluir:', err.message)
+    res.status(500).json({ error: 'Erro ao excluir lancamento' })
+  }
+})
+
+// ============================================================================
+// PUT /api/ocr/lancamentos/:id/reanalisar — Re-rodar Gemini AI no texto OCR
+// ============================================================================
+router.put('/lancamentos/:id/reanalisar', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const lancResult = await pool.query(
+      'SELECT id, ocr_texto_bruto FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    if (lancResult.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado' })
+
+    const { ocr_texto_bruto } = lancResult.rows[0]
+    if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
+
+    const padrao = await pool.query(
+      'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+      [empresaId]
+    )
+
+    const dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
+
+    await pool.query(
+      'UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2 AND empresa_id = $3',
+      [JSON.stringify(dados), req.params.id, empresaId]
+    )
+
+    res.json({ dados_extraidos: dados })
+  } catch (err) {
+    console.error('[OCR] Erro ao reanalisar:', err.message)
+    res.status(500).json({ error: 'Erro ao reanalisar com IA' })
+  }
+})
+
+// ============================================================================
 // GET /api/ocr/lancamentos/:id/foto — Servir foto do filesystem
 // DS4-015 fix: auth via middleware padrao (antes aceitava JWT em query param — expoe token em logs)
 // ============================================================================

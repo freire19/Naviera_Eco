@@ -34,7 +34,7 @@ const STATUS_CLASSES = {
   rejeitado: 'danger'
 }
 
-export default function ReviewOCR({ viagemAtiva }) {
+export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   const [lancamentos, setLancamentos] = useState([])
   const [loading, setLoading] = useState(false)
   const [filtro, setFiltro] = useState('revisado_operador')
@@ -103,6 +103,34 @@ export default function ReviewOCR({ viagemAtiva }) {
     }
   }
 
+  const reanalisar = async (id) => {
+    setActionLoading(id)
+    try {
+      const result = await api.put(`/ocr/lancamentos/${id}/reanalisar`, {})
+      showToast(`Reanalisado: ${result.dados_extraidos?.itens?.length || 0} itens encontrados`)
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro ao reanalisar', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const excluir = async (id) => {
+    if (!confirm('Excluir este lancamento? Esta acao nao pode ser desfeita.')) return
+    setActionLoading(id)
+    try {
+      await api.delete(`/ocr/lancamentos/${id}`)
+      showToast('Lancamento excluido')
+      carregar()
+      setExpandido(null)
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const filtros = ['', 'pendente', 'revisado_operador', 'aprovado', 'rejeitado']
 
   return (
@@ -111,7 +139,14 @@ export default function ReviewOCR({ viagemAtiva }) {
 
       <div className="card">
         <div className="card-header">
-          <h3>Conferir Lancamentos OCR</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {onNavigate && (
+              <button className="btn btn-sm btn-outline" onClick={() => onNavigate('dashboard')}>
+                ← Voltar
+              </button>
+            )}
+            <h3 style={{ margin: 0 }}>Conferir Lancamentos OCR</h3>
+          </div>
           <button className="btn btn-sm" onClick={carregar} disabled={loading}>
             {loading ? 'Carregando...' : 'Atualizar'}
           </button>
@@ -196,7 +231,22 @@ export default function ReviewOCR({ viagemAtiva }) {
                                 onClick={() => aprovar(l.id)}
                                 disabled={actionLoading === l.id}
                               >
-                                {actionLoading === l.id ? '...' : 'Aprovar'}
+                                Aprovar
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline"
+                                onClick={() => reanalisar(l.id)}
+                                disabled={actionLoading === l.id}
+                                title="Re-analisar com Gemini IA"
+                              >
+                                {actionLoading === l.id ? '...' : 'IA'}
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => excluir(l.id)}
+                                disabled={actionLoading === l.id}
+                              >
+                                Excluir
                               </button>
                             </>
                           )}
