@@ -38,7 +38,7 @@ export default function App() {
   }, [])
 
   // Offline queue
-  const { isOnline, queueCount, addOffline, syncQueue } = useOfflineQueue(showToast)
+  const { isOnline, queueCount, syncing, syncProgress, addOffline, syncQueue } = useOfflineQueue(showToast)
 
   // Login
   const handleLogin = (data) => {
@@ -138,6 +138,8 @@ export default function App() {
         usuario={usuario}
         isOnline={isOnline}
         queueCount={queueCount}
+        syncing={syncing}
+        syncProgress={syncProgress}
         onLogout={handleLogout}
         mode={mode}
         onToggleMode={toggleMode}

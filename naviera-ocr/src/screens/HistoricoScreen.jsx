@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiGet } from '../api.js'
 import { money, timeAgo } from '../helpers.js'
+import { OCR_STATUS, FILTROS_STATUS } from '../constants.js'
 import Badge from '../components/Badge.jsx'
 import Card from '../components/Card.jsx'
 import { IconRefresh } from '../icons.jsx'
@@ -48,13 +49,7 @@ export default function HistoricoScreen({ t, showToast }) {
 
   const temMais = offset < total
 
-  const filtros = [
-    { key: '', label: 'Todos' },
-    { key: 'pendente', label: 'Pendentes' },
-    { key: 'revisado_operador', label: 'Revisados' },
-    { key: 'aprovado', label: 'Aprovados' },
-    { key: 'rejeitado', label: 'Rejeitados' }
-  ]
+  const filtros = FILTROS_STATUS
 
   return (
     <div className="screen-enter" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 100 }}>
@@ -129,7 +124,7 @@ export default function HistoricoScreen({ t, showToast }) {
                   <span>{timeAgo(l.criado_em)}</span>
                 </div>
 
-                {l.status === 'rejeitado' && l.motivo_rejeicao && (
+                {l.status === OCR_STATUS.REJEITADO && l.motivo_rejeicao && (
                   <div style={{
                     background: t.errBg, color: t.errTx, borderRadius: 6,
                     padding: '4px 8px', fontSize: '0.8rem'

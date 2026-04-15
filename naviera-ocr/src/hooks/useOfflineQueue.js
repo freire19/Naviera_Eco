@@ -9,6 +9,7 @@ export default function useOfflineQueue(onToast) {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [count, setCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState(null) // { current, total, failed }
   const syncingRef = useRef(false)
   const retryRef = useRef(null)
   const retryAttemptRef = useRef(0)
@@ -51,6 +52,8 @@ export default function useOfflineQueue(onToast) {
         return
       }
       let synced = 0
+      let failed = 0
+      setSyncProgress({ current: 0, total: items.length, failed: 0 })
       for (const item of items) {
         try {
           const file = new File([item.blob], `offline-${item.id}.jpg`, { type: 'image/jpeg' })
@@ -59,7 +62,9 @@ export default function useOfflineQueue(onToast) {
           synced++
         } catch {
           hadFailures = true
+          failed++
         }
+        setSyncProgress({ current: synced + failed, total: items.length, failed })
       }
       await clearSynced()
       await refreshCount()
@@ -69,6 +74,7 @@ export default function useOfflineQueue(onToast) {
     } finally {
       syncingRef.current = false
       setSyncing(false)
+      setSyncProgress(null)
       scheduleRetry(hadFailures)
     }
   }, [onToast, refreshCount, scheduleRetry])
@@ -102,5 +108,5 @@ export default function useOfflineQueue(onToast) {
     await refreshCount()
   }, [refreshCount])
 
-  return { isOnline, queueCount: count, syncing, addOffline, syncQueue }
+  return { isOnline, queueCount: count, syncing, syncProgress, addOffline, syncQueue }
 }

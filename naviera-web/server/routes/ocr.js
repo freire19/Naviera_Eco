@@ -12,6 +12,8 @@ import { parseOcrText } from '../helpers/parseOcrText.js'
 import { criarFreteComItens } from '../helpers/criarFrete.js'
 import { geminiParseOCR } from '../helpers/geminiParser.js'
 import { geminiVisionAnalyze } from '../helpers/geminiVision.js'
+import { OCR_STATUS, EDITAVEIS } from '../helpers/ocrStatus.js'
+import log from '../logger.js'
 
 const router = Router()
 
@@ -79,9 +81,9 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
         )
         dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
         ocrResult.confidence = 85
-        console.log('[OCR] Gemini Vision (encomenda): OK -', (dados.itens?.length || 0), 'itens identificados')
+        log.info('OCR', 'Gemini Vision (encomenda) OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
       } catch (err) {
-        console.error('[OCR] Gemini Vision falhou:', err.message)
+        log.error('OCR', 'Gemini Vision falhou', { empresa_id: empresaId, erro: err.message })
         dados = { remetente: '', destinatario: '', itens: [], total_volumes: 0, total_a_pagar: 0, observacoes: 'Gemini Vision falhou — preencha manualmente' }
       }
     } else {
@@ -89,7 +91,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
       try {
         ocrResult = await callVisionOCR(req.file.path)
       } catch (err) {
-        console.error('[OCR] Erro na Vision API:', err.message)
+        log.error('OCR', 'Vision API falhou', { empresa_id: empresaId, erro: err.message })
       }
 
       const padrao = await pool.query(
@@ -100,9 +102,9 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
       if (ocrResult.text) {
         try {
           dados = await geminiParseOCR(ocrResult.text, padrao.rows)
-          console.log('[OCR] Gemini parser: OK -', (dados.itens?.length || 0), 'itens extraidos')
+          log.info('OCR', 'Gemini parser OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
         } catch (geminiErr) {
-          console.warn('[OCR] Gemini falhou, usando regex:', geminiErr.message)
+          log.warn('OCR', 'Gemini falhou, usando regex', { empresa_id: empresaId, erro: geminiErr.message })
           dados = parseOcrText(ocrResult.text, padrao.rows)
         }
       } else {
@@ -146,7 +148,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
     if (req.file?.path) {
       await unlink(req.file.path).catch(() => {})
     }
-    console.error('[OCR] Erro no upload:', err.message)
+    log.error('OCR', 'Erro no upload', { empresa_id: req.user?.empresa_id, erro: err.message })
     res.status(500).json({ error: 'Erro ao processar foto' })
   }
 })
@@ -192,7 +194,7 @@ router.get('/lancamentos', async (req, res) => {
     const total = parseInt(countResult.rows[0].count)
     res.json({ data: result.rows, total, limit, offset })
   } catch (err) {
-    console.error('[OCR] Erro ao listar:', err.message)
+    log.error('OCR', 'Erro ao listar', { empresa_id: req.user?.empresa_id, erro: err.message })
     res.status(500).json({ error: 'Erro ao listar lancamentos OCR' })
   }
 })
@@ -262,7 +264,7 @@ router.post('/lancamentos/:id/ia-review', async (req, res) => {
 
     res.json({ dados_extraidos: dados })
   } catch (err) {
-    console.error('[OCR] Erro na revisao IA:', err.message)
+    log.error('OCR', 'Erro na revisao IA', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
     // DS4-030 fix: mensagem generica (antes: err.message podia vazar API keys/paths)
     res.status(500).json({ error: 'Erro ao processar com IA. Tente novamente.' })
   }
@@ -290,7 +292,7 @@ router.put('/lancamentos/:id/revisar', async (req, res) => {
     }
     res.json(result.rows[0])
   } catch (err) {
-    console.error('[OCR] Erro ao revisar:', err.message)
+    log.error('OCR', 'Erro ao revisar', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
     res.status(500).json({ error: 'Erro ao revisar lancamento' })
   }
 })
@@ -428,7 +430,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
     res.json(resultado)
   } catch (err) {
     await client.query('ROLLBACK')
-    console.error('[OCR] Erro ao aprovar:', err.message)
+    log.error('OCR', 'Erro ao aprovar', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
     res.status(500).json({ error: 'Erro ao aprovar lancamento' })
   } finally {
     client.release()
@@ -455,7 +457,7 @@ router.put('/lancamentos/:id/rejeitar', async (req, res) => {
     }
     res.json(result.rows[0])
   } catch (err) {
-    console.error('[OCR] Erro ao rejeitar:', err.message)
+    log.error('OCR', 'Erro ao rejeitar', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
     res.status(500).json({ error: 'Erro ao rejeitar lancamento' })
   }
 })
@@ -483,7 +485,7 @@ router.delete('/lancamentos/:id', async (req, res) => {
 
     res.json({ ok: true })
   } catch (err) {
-    console.error('[OCR] Erro ao excluir:', err.message)
+    log.error('OCR', 'Erro ao excluir', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
     res.status(500).json({ error: 'Erro ao excluir lancamento' })
   }
 })
@@ -531,7 +533,7 @@ router.put('/lancamentos/:id/reanalisar', async (req, res) => {
 
     res.json({ dados_extraidos: dados })
   } catch (err) {
-    console.error('[OCR] Erro ao reanalisar:', err.message)
+    log.error('OCR', 'Erro ao reanalisar', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
     res.status(500).json({ error: 'Erro ao reanalisar com IA' })
   }
 })
