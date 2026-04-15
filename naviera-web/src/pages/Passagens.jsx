@@ -325,8 +325,8 @@ export default function Passagens({ viagemAtiva }) {
         </button>
         <h2 style={{ fontSize: '1.1rem', margin: 0, flex: 1, textAlign: 'center' }}>EMISSAO DE PASSAGENS</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={labelStyle}>N° Bilhete:</span>
-          <input style={{ ...roStyle, width: 80, textAlign: 'center' }} value={selecionada?.numero_bilhete || '—'} readOnly />
+          <span style={L}>N° Bilhete:</span>
+          <input style={{ ...RO, width: 80, textAlign: 'center' }} value={selecionada?.numero_bilhete || '—'} readOnly />
         </div>
       </div>
 
@@ -470,13 +470,13 @@ export default function Passagens({ viagemAtiva }) {
 
       {/* BUSCA */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', padding: '6px 0' }}>
-        <span style={{ ...labelStyle, whiteSpace: 'nowrap' }}>Pesquisar:</span>
-        <select style={{ ...inputStyle, width: 100 }} value={modoBusca} onChange={e => setModoBusca(e.target.value)}>
+        <span style={{ ...L, whiteSpace: 'nowrap' }}>Pesquisar:</span>
+        <select style={{ ...I, width: 100 }} value={modoBusca} onChange={e => setModoBusca(e.target.value)}>
           <option value="numero">Numero...</option>
           <option value="nome">Passageiro</option>
           <option value="doc">Documento</option>
         </select>
-        <input style={{ ...inputStyle, flex: 1 }} placeholder="Digite para buscar..." value={filtro} onChange={e => setFiltro(e.target.value)} />
+        <input style={{ ...I, flex: 1 }} placeholder="Digite para buscar..." value={filtro} onChange={e => setFiltro(e.target.value)} />
         <button className="btn-primary" style={{ width: 'auto', padding: '6px 16px' }} onClick={() => {}}>BUSCAR</button>
       </div>
 
