@@ -575,8 +575,12 @@ router.post('/lancamentos/:id/adicionar-foto', upload.single('foto'), async (req
 
 Extraia APENAS:
 1. Nome completo da pessoa
-2. Numero do documento (RG, CPF, ou CNH — o que estiver visivel)
-3. Tipo do documento (RG, CPF, CNH, CTPS, etc.)
+2. Numero do CPF (formato 000.000.000-00) — PRIORIDADE MAXIMA
+3. Se nao houver CPF, extraia o numero do RG
+4. NUNCA use o numero de registro da CNH como documento. Na CNH, o CPF aparece no campo "CPF" e o RG no campo "Doc. Identidade / Org. Emissor". O numero grande no topo da CNH e o registro da CNH, NAO use esse.
+5. Tipo do documento identificado
+
+PRIORIDADE de numero: CPF > RG > outros
 
 Texto OCR:
 """
@@ -584,7 +588,7 @@ ${ocrText}
 """
 
 Responda APENAS com JSON valido (sem markdown):
-{"nome": "NOME COMPLETO", "numero_doc": "000.000.000-00", "tipo_doc": "RG"}`
+{"nome": "NOME COMPLETO", "cpf": "000.000.000-00", "rg": "0000000", "tipo_doc": "CNH"}`
 
       const { fetchWithRetry: fetchRetry } = await import('../helpers/fetchWithRetry.js')
       const apiKey = process.env.GEMINI_API_KEY
@@ -604,23 +608,27 @@ Responda APENAS com JSON valido (sem markdown):
       const parts = geminiData.candidates?.[0]?.content?.parts || []
       const jsonText = parts.find(p => p.text?.includes('{'))?.text || ''
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/)
-      let docInfo = { nome: '', numero_doc: '', tipo_doc: '' }
+      let docInfo = { nome: '', cpf: '', rg: '', tipo_doc: '' }
       if (jsonMatch) {
         try { docInfo = JSON.parse(jsonMatch[0]) } catch {}
       }
 
-      // Arquivar foto do documento (pasta segura, nao publica)
+      // Montar numero_doc priorizando CPF > RG
+      const cpf = (docInfo.cpf || '').trim()
+      const rg = (docInfo.rg || docInfo.numero_doc || '').trim()
+
       const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
 
       log.info('OCR', 'Documento identificado', {
         empresa_id: empresaId, lancamento_id: req.params.id,
-        tipo_doc: docInfo.tipo_doc, nome: docInfo.nome
+        tipo_doc: docInfo.tipo_doc, nome: docInfo.nome, cpf, rg
       })
 
       return res.json({
         tipo: 'documento',
         nome: docInfo.nome || '',
-        numero_doc: docInfo.numero_doc || '',
+        cpf,
+        rg,
         tipo_doc: docInfo.tipo_doc || '',
         foto_doc_path: fotoRelPath
       })

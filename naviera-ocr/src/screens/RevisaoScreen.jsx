@@ -68,10 +68,9 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
       const result = await uploadFotoAdicional(lancamento.id, fotoFile)
 
       if (result?.tipo === 'documento') {
-        // Documento de identidade detectado
         if (result.nome) setRemetente(result.nome)
-        setDocRemetente({ tipo_doc: result.tipo_doc, numero_doc: result.numero_doc, foto_doc_path: result.foto_doc_path })
-        showToast(`Documento ${result.tipo_doc || ''} identificado: ${result.nome || 'sem nome'}`, 'success')
+        setDocRemetente({ tipo_doc: result.tipo_doc, cpf: result.cpf || '', rg: result.rg || '', foto_doc_path: result.foto_doc_path })
+        showToast(`${result.tipo_doc || 'Documento'} identificado: ${result.nome || 'sem nome'}`, 'success')
       } else if (result?.itens?.length > 0) {
         // Item fisico
         setItens(prev => [...prev, ...result.itens])
@@ -181,21 +180,25 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
         {isEncomenda && docRemetente && (
           <div style={{
             background: t.okBg, borderRadius: 8, padding: '8px 12px',
-            display: 'flex', flexDirection: 'column', gap: 4
+            display: 'flex', flexDirection: 'column', gap: 6
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: t.okTx }}>
-                Doc. {docRemetente.tipo_doc || 'ID'} arquivado
+                {docRemetente.tipo_doc || 'Documento'} arquivado
               </span>
               <button onClick={() => setDocRemetente(null)} style={{
                 background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: t.txMuted
               }}>remover</button>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input className="input" value={docRemetente.tipo_doc || ''} onChange={e => setDocRemetente(prev => ({ ...prev, tipo_doc: e.target.value }))}
-                placeholder="Tipo (RG, CPF, CNH)" style={{ background: t.card, color: t.tx, borderColor: t.border, flex: 1, fontSize: '0.85rem' }} />
-              <input className="input" value={docRemetente.numero_doc || ''} onChange={e => setDocRemetente(prev => ({ ...prev, numero_doc: e.target.value }))}
-                placeholder="Numero do documento" style={{ background: t.card, color: t.tx, borderColor: t.border, flex: 2, fontSize: '0.85rem' }} />
+            <div>
+              <label style={{ color: t.okTx, fontSize: '0.75rem', fontWeight: 500 }}>CPF</label>
+              <input className="input" value={docRemetente.cpf || ''} onChange={e => setDocRemetente(prev => ({ ...prev, cpf: e.target.value }))}
+                placeholder="000.000.000-00" style={{ background: t.card, color: t.tx, borderColor: t.border, fontSize: '0.85rem', marginTop: 2 }} />
+            </div>
+            <div>
+              <label style={{ color: t.okTx, fontSize: '0.75rem', fontWeight: 500 }}>RG</label>
+              <input className="input" value={docRemetente.rg || ''} onChange={e => setDocRemetente(prev => ({ ...prev, rg: e.target.value }))}
+                placeholder="0000000" style={{ background: t.card, color: t.tx, borderColor: t.border, fontSize: '0.85rem', marginTop: 2 }} />
             </div>
           </div>
         )}
