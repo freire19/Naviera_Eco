@@ -114,12 +114,13 @@ router.put('/:id/ativar', async (req, res) => {
     const empresaId = req.user.empresa_id
     const { ativa } = req.body
     await client.query('BEGIN')
-    if (ativa) {
-      await client.query('UPDATE viagens SET is_atual = FALSE WHERE empresa_id = $1', [empresaId])
+    const ativar = ativa !== false
+    if (ativar) {
+      await client.query('UPDATE viagens SET is_atual = FALSE, ativa = FALSE WHERE empresa_id = $1', [empresaId])
     }
     const result = await client.query(
-      'UPDATE viagens SET is_atual = $1 WHERE id_viagem = $2 AND empresa_id = $3 RETURNING *',
-      [ativa !== false, req.params.id, empresaId]
+      'UPDATE viagens SET is_atual = $1, ativa = $1 WHERE id_viagem = $2 AND empresa_id = $3 RETURNING *',
+      [ativar, req.params.id, empresaId]
     )
     if (result.rows.length === 0) {
       await client.query('ROLLBACK')
