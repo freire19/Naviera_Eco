@@ -140,6 +140,8 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total: 'require
           )
         }
       } else {
+        // Sincronizar sequence passageiros para evitar conflito de PK
+        await client.query(`SELECT setval(pg_get_serial_sequence('passageiros', 'id_passageiro'), COALESCE((SELECT MAX(id_passageiro) FROM passageiros), 0) + 1, false)`)
         const novo = await client.query(
           `INSERT INTO passageiros (nome_passageiro, numero_documento, data_nascimento, id_tipo_doc, id_sexo, id_nacionalidade, empresa_id)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_passageiro`,
