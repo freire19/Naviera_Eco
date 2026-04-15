@@ -25,6 +25,7 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
   const [viagens, setViagens] = useState([])
   const [viagemId, setViagemId] = useState('')
   const [tipo, setTipo] = useState('frete')
+  const [lote, setLote] = useState(false)
   const [fotoBlob, setFotoBlob] = useState(null)
   const [fotoName, setFotoName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -96,12 +97,36 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
     <div className="screen-enter" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h2 style={{ color: t.tx, fontSize: '1.1rem', fontWeight: 600 }}>Nova Captura</h2>
 
-      {/* Toggle Frete / Encomenda / Lote */}
+      {/* Toggle Frete / Encomenda */}
       <div style={{ display: 'flex', gap: 6, background: t.soft, borderRadius: 10, padding: 4 }}>
-        <button style={tabStyle(tipo === 'frete')} onClick={() => setTipo('frete')}>Frete</button>
-        <button style={tabStyle(tipo === 'encomenda')} onClick={() => setTipo('encomenda')}>Encomenda</button>
-        <button style={tabStyle(tipo === 'lote')} onClick={() => setTipo('lote')}>Lote</button>
+        <button style={tabStyle(tipo === 'frete')} onClick={() => { setTipo('frete'); setLote(false) }}>Frete</button>
+        <button style={tabStyle(tipo === 'encomenda' || tipo === 'lote')} onClick={() => setTipo(lote ? 'lote' : 'encomenda')}>Encomenda</button>
       </div>
+
+      {/* Toggle Lote — dentro de encomenda */}
+      {(tipo === 'encomenda' || tipo === 'lote') && (
+        <div
+          onClick={() => { setLote(!lote); setTipo(!lote ? 'lote' : 'encomenda') }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+            padding: '8px 12px', background: t.soft, borderRadius: 8
+          }}
+        >
+          <div style={{
+            width: 40, height: 22, borderRadius: 11, padding: 2,
+            background: lote ? t.pri : t.border, transition: 'background 0.2s'
+          }}>
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%', background: '#fff',
+              transition: 'transform 0.2s',
+              transform: lote ? 'translateX(18px)' : 'translateX(0)'
+            }} />
+          </div>
+          <span style={{ color: t.tx, fontSize: '0.85rem', fontWeight: 500 }}>
+            Lote (varias encomendas na mesma foto)
+          </span>
+        </div>
+      )}
 
       {/* Seletor de viagem */}
       <Card t={t}>
