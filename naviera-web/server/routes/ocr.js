@@ -12,6 +12,7 @@ import { parseOcrText } from '../helpers/parseOcrText.js'
 import { criarFreteComItens } from '../helpers/criarFrete.js'
 import { geminiParseOCR } from '../helpers/geminiParser.js'
 import { geminiVisionAnalyze } from '../helpers/geminiVision.js'
+import { geminiParseEncomenda } from '../helpers/geminiEncomendaParser.js'
 import { OCR_STATUS, EDITAVEIS } from '../helpers/ocrStatus.js'
 import log from '../logger.js'
 
@@ -73,18 +74,42 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
     let dados
 
     if (tipoLanc === 'encomenda') {
-      // ENCOMENDA: Gemini Vision analisa a IMAGEM diretamente (item fisico)
+      // ENCOMENDA: primeiro tenta Vision OCR para detectar texto (protocolo manuscrito)
+      // Se detectar texto substancial → parser de encomenda (Gemini text)
+      // Se pouco/nenhum texto → Gemini Vision (foto de item fisico)
       try {
-        const padrao = await pool.query(
-          'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
-          [empresaId]
-        )
-        dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
-        ocrResult.confidence = 85
-        log.info('OCR', 'Gemini Vision (encomenda) OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
+        ocrResult = await callVisionOCR(req.file.path)
       } catch (err) {
-        log.error('OCR', 'Gemini Vision falhou', { empresa_id: empresaId, erro: err.message })
-        dados = { remetente: '', destinatario: '', itens: [], total_volumes: 0, total_a_pagar: 0, observacoes: 'Gemini Vision falhou — preencha manualmente' }
+        log.warn('OCR', 'Vision OCR falhou para encomenda, tentando Gemini Vision', { empresa_id: empresaId, erro: err.message })
+      }
+
+      const padrao = await pool.query(
+        'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
+        [empresaId]
+      )
+
+      const MIN_TEXT_LENGTH = 30 // protocolo manuscrito tem pelo menos 30 chars
+      if (ocrResult.text && ocrResult.text.length >= MIN_TEXT_LENGTH) {
+        // Texto detectado — protocolo manuscrito ou documento
+        try {
+          dados = await geminiParseEncomenda(ocrResult.text, padrao.rows)
+          log.info('OCR', 'Gemini encomenda parser OK (protocolo)', { empresa_id: empresaId, itens: dados.itens?.length || 0, textLen: ocrResult.text.length })
+        } catch (geminiErr) {
+          log.warn('OCR', 'Gemini encomenda parser falhou, tentando Vision', { empresa_id: empresaId, erro: geminiErr.message })
+          // Fallback: Gemini Vision na imagem
+          dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
+          log.info('OCR', 'Gemini Vision (encomenda fallback) OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
+        }
+      } else {
+        // Pouco/nenhum texto — foto de item fisico
+        try {
+          dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
+          ocrResult.confidence = 85
+          log.info('OCR', 'Gemini Vision (encomenda item) OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
+        } catch (err) {
+          log.error('OCR', 'Gemini Vision falhou', { empresa_id: empresaId, erro: err.message })
+          dados = { remetente: '', destinatario: '', itens: [], total_volumes: 0, total_a_pagar: 0, observacoes: 'Falha na analise — preencha manualmente' }
+        }
       }
     } else {
       // FRETE: Google Vision OCR + Gemini text parser (fluxo original)
@@ -236,15 +261,19 @@ router.post('/lancamentos/:id/ia-review', async (req, res) => {
     let dados
 
     if (tipo === 'encomenda') {
-      // Encomenda: Gemini Vision analisa a imagem
-      const fullPath = path.resolve(UPLOAD_PATH, foto_path)
-      if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada' })
-
       const padrao = await pool.query(
         'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
         [empresaId]
       )
-      dados = await geminiVisionAnalyze(fullPath, padrao.rows)
+      if (ocr_texto_bruto && ocr_texto_bruto.length >= 30) {
+        // Protocolo manuscrito — re-parsear texto
+        dados = await geminiParseEncomenda(ocr_texto_bruto, padrao.rows)
+      } else {
+        // Item fisico — re-analisar imagem
+        const fullPath = path.resolve(UPLOAD_PATH, foto_path)
+        if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada' })
+        dados = await geminiVisionAnalyze(fullPath, padrao.rows)
+      }
     } else {
       // Frete: Gemini text parser
       if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
@@ -506,15 +535,17 @@ router.put('/lancamentos/:id/reanalisar', async (req, res) => {
     let dados
 
     if (tipo === 'encomenda') {
-      // Encomenda: usar Gemini Vision com a imagem
-      const fullPath = path.resolve(UPLOAD_PATH, foto_path)
-      if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
-
       const padrao = await pool.query(
         'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
         [empresaId]
       )
-      dados = await geminiVisionAnalyze(fullPath, padrao.rows)
+      if (ocr_texto_bruto && ocr_texto_bruto.length >= 30) {
+        dados = await geminiParseEncomenda(ocr_texto_bruto, padrao.rows)
+      } else {
+        const fullPath = path.resolve(UPLOAD_PATH, foto_path)
+        if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
+        dados = await geminiVisionAnalyze(fullPath, padrao.rows)
+      }
     } else {
       // Frete: usar Gemini text parser
       if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
