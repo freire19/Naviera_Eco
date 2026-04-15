@@ -37,7 +37,7 @@ export default function CadastroTarifa() {
 
   useEffect(() => {
     api.get('/rotas').then(setRotas).catch(() => {})
-    api.get('/cadastros/tipos-passagem-aux').then(setTiposPassagem).catch(() => {})
+    api.get('/cadastros/tipos-passageiro').then(setTiposPassagem).catch(() => {})
   }, [])
 
   function handleSelectRow(item) {
@@ -164,7 +164,7 @@ export default function CadastroTarifa() {
         <select name="id_tipo_passagem" value={form.id_tipo_passagem} onChange={handleChange}>
           <option value=""></option>
           {tiposPassagem.map(tp => (
-            <option key={tp.id_tipo_passagem} value={tp.id_tipo_passagem}>{tp.nome_tipo_passagem}</option>
+            <option key={tp.id || tp.id_tipo_passagem} value={tp.id || tp.id_tipo_passagem}>{tp.nome || tp.nome_tipo_passagem}</option>
           ))}
         </select>
 

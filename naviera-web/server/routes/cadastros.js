@@ -48,12 +48,14 @@ router.get('/tarifas', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(`
-      SELECT t.*, r.origem, r.destino, atp.nome_tipo_passagem AS nome_tipo_passageiro
+      SELECT t.*, r.origem, r.destino,
+             COALESCE(tp.nome, atp.nome_tipo_passagem) AS nome_tipo_passageiro
       FROM tarifas t
       LEFT JOIN rotas r ON t.id_rota = r.id
+      LEFT JOIN tipo_passageiro tp ON t.id_tipo_passagem = tp.id AND tp.empresa_id = t.empresa_id
       LEFT JOIN aux_tipos_passagem atp ON t.id_tipo_passagem = atp.id_tipo_passagem
       WHERE t.empresa_id = $1
-      ORDER BY r.origem, atp.nome_tipo_passagem
+      ORDER BY r.origem, COALESCE(tp.nome, atp.nome_tipo_passagem)
     `, [empresaId])
     res.json(result.rows)
   } catch (err) {
@@ -69,6 +71,50 @@ router.get('/tipos-passageiro', async (req, res) => {
     res.json(result.rows)
   } catch (err) {
     res.status(500).json({ error: 'Erro ao listar tipos' })
+  }
+})
+
+router.post('/tipos-passageiro', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome } = req.body
+    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
+    const result = await pool.query(
+      'INSERT INTO tipo_passageiro (nome, empresa_id) VALUES ($1, $2) RETURNING *',
+      [nome, empresaId]
+    )
+    res.status(201).json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar tipo passageiro' })
+  }
+})
+
+router.put('/tipos-passageiro/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome } = req.body
+    const result = await pool.query(
+      'UPDATE tipo_passageiro SET nome = $1 WHERE id = $2 AND empresa_id = $3 RETURNING *',
+      [nome, req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tipo passageiro nao encontrado' })
+    res.json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar tipo passageiro' })
+  }
+})
+
+router.delete('/tipos-passageiro/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'DELETE FROM tipo_passageiro WHERE id = $1 AND empresa_id = $2 RETURNING id',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tipo passageiro nao encontrado' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir tipo passageiro' })
   }
 })
 

@@ -5,7 +5,7 @@ const TABS = [
   { key: 'sexo', label: 'Sexo', endpoint: '/cadastros/sexos', idField: 'id_sexo', nomeField: 'nome_sexo' },
   { key: 'tipo_doc', label: 'Tipo Doc', endpoint: '/cadastros/tipos-documento', idField: 'id_tipo_doc', nomeField: 'nome_tipo_doc' },
   { key: 'nacionalidade', label: 'Nacionalidade', endpoint: '/cadastros/nacionalidades', idField: 'id_nacionalidade', nomeField: 'nome_nacionalidade' },
-  { key: 'passagem_aux', label: 'Passagem Aux', endpoint: '/cadastros/tipos-passagem-aux', idField: 'id_tipo_passagem', nomeField: 'nome_tipo_passagem' },
+  { key: 'passagem_aux', label: 'Passagem Aux', endpoint: '/cadastros/tipos-passageiro', idField: 'id', nomeField: 'nome' },
   { key: 'agente_aux', label: 'Agente Aux', endpoint: '/cadastros/agentes', idField: 'id_agente', nomeField: 'nome_agente' },
   { key: 'horario_saida', label: 'Horario Saida', endpoint: '/cadastros/horarios-saida', idField: 'id_horario_saida', nomeField: 'descricao_horario_saida' },
   { key: 'acomodacao', label: 'Acomodacao', endpoint: '/cadastros/acomodacoes', idField: 'id_acomodacao', nomeField: 'nome_acomodacao' }

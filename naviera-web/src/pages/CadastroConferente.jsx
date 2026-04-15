@@ -71,7 +71,24 @@ export default function CadastroConferente() {
     <div className="card">
       <h2 style={{ marginBottom: 16 }}>Cadastro de Conferente</h2>
 
-      <div className="table-container">
+      <div className="cadastro-inline-form">
+        <label>ID:</label>
+        <input type="text" value={selecionado?.id_conferente || 'Automatico'} readOnly />
+
+        <label>Nome:</label>
+        <input type="text" value={nome} onChange={e => setNome(e.target.value)}
+               placeholder="Nome completo do conferente" />
+      </div>
+
+      <div className="cadastro-buttons">
+        <button onClick={handleNovo}>Novo</button>
+        <button onClick={handleSalvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : 'Salvar'}
+        </button>
+        <button onClick={handleExcluir}>Excluir</button>
+      </div>
+
+      <div className="table-container" style={{ marginTop: 8 }}>
         <table>
           <thead>
             <tr>
@@ -94,23 +111,6 @@ export default function CadastroConferente() {
             ))}
           </tbody>
         </table>
-      </div>
-
-      <div className="cadastro-inline-form">
-        <label>ID:</label>
-        <input type="text" value={selecionado?.id_conferente || 'Automatico'} readOnly />
-
-        <label>Nome:</label>
-        <input type="text" value={nome} onChange={e => setNome(e.target.value)}
-               placeholder="Nome completo do conferente" />
-      </div>
-
-      <div className="cadastro-buttons">
-        <button onClick={handleNovo}>Novo</button>
-        <button onClick={handleSalvar} disabled={salvando}>
-          {salvando ? 'Salvando...' : 'Salvar'}
-        </button>
-        <button onClick={handleExcluir}>Excluir</button>
       </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}

@@ -3,7 +3,7 @@ import { api } from '../api.js'
 
 export default function CadastroEmpresa() {
   const [form, setForm] = useState({
-    companhia: '', nome_embarcacao: '', comandante: '', proprietario: '',
+    path_logo: '', companhia: '', nome_embarcacao: '', comandante: '', proprietario: '',
     origem_padrao: '', gerente: '', linha_rio_padrao: '', cnpj: '', ie: '',
     endereco: '', cep: '', telefone: '', frase_relatorio: '', recomendacoes_bilhete: ''
   })
@@ -39,7 +39,7 @@ export default function CadastroEmpresa() {
 
   function handleLimpar() {
     setForm({
-      companhia: '', nome_embarcacao: '', comandante: '', proprietario: '',
+      path_logo: '', companhia: '', nome_embarcacao: '', comandante: '', proprietario: '',
       origem_padrao: '', gerente: '', linha_rio_padrao: '', cnpj: '', ie: '',
       endereco: '', cep: '', telefone: '', frase_relatorio: '', recomendacoes_bilhete: ''
     })
@@ -65,6 +65,26 @@ export default function CadastroEmpresa() {
       <h2 style={{ textAlign: 'center', marginBottom: 20 }}>Configuracoes da Empresa & Bilhete</h2>
 
       <div className="cadastro-form-4col">
+        <label>Logo (Caminho):</label>
+        <div style={{ display: 'flex', gap: 8, gridColumn: '2 / -1' }}>
+          <input type="text" name="path_logo" value={form.path_logo} onChange={handleChange}
+                 style={{ flex: 1 }} placeholder="Caminho da imagem do logo" />
+          <button type="button" onClick={() => {
+            const input = document.createElement('input')
+            input.type = 'file'
+            input.accept = 'image/*'
+            input.onchange = (e) => {
+              const file = e.target.files[0]
+              if (file) setForm(prev => ({ ...prev, path_logo: file.name }))
+            }
+            input.click()
+          }} style={{
+            padding: '8px 16px', fontSize: '0.82rem', fontFamily: 'Sora, sans-serif',
+            borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border)',
+            background: 'var(--bg-soft)', color: 'var(--text-soft)', whiteSpace: 'nowrap'
+          }}>Buscar Foto</button>
+        </div>
+
         <label>Companhia:</label>
         <input type="text" name="companhia" value={form.companhia} onChange={handleChange} />
 
