@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { useAuth } from '../App.jsx'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -35,6 +36,8 @@ const STATUS_CLASSES = {
 }
 
 export default function ReviewOCR({ viagemAtiva, onNavigate }) {
+  const { usuario } = useAuth()
+  const isAdmin = ['administrador', 'admin'].includes((usuario?.funcao || '').toLowerCase())
   const [lancamentos, setLancamentos] = useState([])
   const [loading, setLoading] = useState(false)
   const [filtro, setFiltro] = useState('revisado_operador')
@@ -42,6 +45,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   const [expandido, setExpandido] = useState(null)
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
+  const [docFotoUrl, setDocFotoUrl] = useState(null)
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
@@ -133,6 +137,26 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const verDocFoto = async (id) => {
+    try {
+      const token = localStorage.getItem('naviera_token')
+      const res = await fetch(`/api/ocr/lancamentos/${id}/doc-foto`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error('Foto nao disponivel')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setDocFotoUrl(url)
+    } catch (err) {
+      showToast(err.message || 'Erro ao carregar foto do documento', 'error')
+    }
+  }
+
+  const fecharDocFoto = () => {
+    if (docFotoUrl) URL.revokeObjectURL(docFotoUrl)
+    setDocFotoUrl(null)
   }
 
   const filtros = ['', 'pendente', 'revisado_operador', 'aprovado', 'rejeitado']
@@ -326,7 +350,18 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                                 marginTop: 8, padding: '8px 12px', borderRadius: 6,
                                 background: '#d4edda', border: '1px solid #c3e6cb'
                               }}>
-                                <strong style={{ fontSize: '0.85rem' }}>Documento arquivado:</strong>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <strong style={{ fontSize: '0.85rem' }}>Documento arquivado:</strong>
+                                  {isAdmin && dados.doc_remetente.foto_doc_path && (
+                                    <button
+                                      className="btn btn-sm"
+                                      onClick={() => verDocFoto(l.id)}
+                                      style={{ fontSize: '0.8rem' }}
+                                    >
+                                      Ver Doc
+                                    </button>
+                                  )}
+                                </div>
                                 <div style={{ display: 'flex', gap: 16, marginTop: 4, fontSize: '0.9rem' }}>
                                   {dados.doc_remetente.cpf && (
                                     <span><strong>CPF:</strong> {dados.doc_remetente.cpf}</span>
@@ -401,6 +436,27 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
           </div>
         )}
       </div>
+
+      {/* Modal foto documento — admin only */}
+      {docFotoUrl && (
+        <div onClick={fecharDocFoto} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 9999, cursor: 'pointer', padding: 20
+        }}>
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img src={docFotoUrl} alt="Documento do remetente" style={{
+              maxWidth: '100%', maxHeight: '85vh', borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+            }} />
+            <div style={{
+              position: 'absolute', top: -36, right: 0, color: '#fff',
+              fontSize: '0.85rem', opacity: 0.7
+            }}>
+              Clique para fechar
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -662,6 +662,38 @@ Responda APENAS com JSON valido (sem markdown):
 })
 
 // ============================================================================
+// GET /api/ocr/lancamentos/:id/doc-foto — Servir foto do documento do remetente
+// ADMIN ONLY — dados sensiveis, acesso restrito
+// ============================================================================
+router.get('/lancamentos/:id/doc-foto', async (req, res) => {
+  try {
+    const funcao = (req.user.funcao || '').toLowerCase()
+    if (funcao !== 'administrador' && funcao !== 'admin') {
+      return res.status(403).json({ error: 'Acesso restrito a administradores' })
+    }
+
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'SELECT dados_revisados, dados_extraidos FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
+
+    const dados = result.rows[0].dados_revisados || result.rows[0].dados_extraidos || {}
+    const docPath = dados.doc_remetente?.foto_doc_path
+    if (!docPath) return res.status(404).json({ error: 'Nenhum documento anexado' })
+
+    const fullPath = path.resolve(UPLOAD_PATH, docPath)
+    if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
+    if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
+
+    res.sendFile(fullPath)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao servir foto do documento' })
+  }
+})
+
+// ============================================================================
 // DELETE /api/ocr/lancamentos/:id — Excluir lancamento (apenas pendente/revisado)
 // ============================================================================
 router.delete('/lancamentos/:id', async (req, res) => {
