@@ -639,7 +639,7 @@ function buildEmpresaHeader(emp, titulo) {
       <div style="font-size:10px; color:#555;">${emp.endereco || ''}</div>
       <div style="font-size:10px; color:#555;">CNPJ: ${emp.cnpj || '—'}</div>
       <div style="font-size:10px; color:#555;">Tel: ${emp.telefone || '—'}</div>
-      <div style="font-size:15px; font-weight:700; margin-top:10px; border-top:2px solid #1a3a6e; border-bottom:2px solid #1a3a6e; padding:6px 0;">${titulo}</div>
+      <div style="font-size:15px; font-weight:700; margin-top:10px; border-top:2px solid #059669; border-bottom:2px solid #059669; padding:6px 0;">${titulo}</div>
     </div>`
 }
 
@@ -672,7 +672,7 @@ export async function printListaPassageiros(passagens, viagem) {
   body { font-family: Arial, sans-serif; color:#111; padding:15mm; }
   @page { size: A4; margin: 12mm; }
   table { width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }
-  th { background:#1a3a6e; color:#fff; padding:6px 8px; text-align:left; font-size:10px; text-transform:uppercase; font-weight:600; }
+  th { background:#059669; color:#fff; padding:6px 8px; text-align:left; font-size:10px; text-transform:uppercase; font-weight:600; }
   td { padding:5px 8px; border-bottom:1px solid #ccc; }
   tr:nth-child(even) td { background:#f5f7fa; }
   .footer { position:fixed; bottom:10mm; left:15mm; right:15mm; display:flex; justify-content:space-between; font-size:9px; color:#888; border-top:1px solid #ccc; padding-top:4px; }
@@ -746,7 +746,7 @@ export async function printRelatorioPassagens(passagens, viagem, filtrosTexto) {
   body { font-family: Arial, sans-serif; color:#111; padding:12mm; }
   @page { size: A4 landscape; margin: 10mm; }
   table { width:100%; border-collapse:collapse; font-size:10px; margin-top:8px; }
-  th { background:#1a3a6e; color:#fff; padding:5px 6px; text-align:left; font-size:9px; text-transform:uppercase; font-weight:600; }
+  th { background:#059669; color:#fff; padding:5px 6px; text-align:left; font-size:9px; text-transform:uppercase; font-weight:600; }
   td { padding:4px 6px; border-bottom:1px solid #ddd; }
   tr:nth-child(even) td { background:#f5f7fa; }
   .totais { display:flex; justify-content:center; gap:40px; margin:12px 0; }
@@ -770,11 +770,11 @@ export async function printRelatorioPassagens(passagens, viagem, filtrosTexto) {
     </tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr style="font-weight:700; background:#e8ecf1;">
-      <td colspan="6" style="text-align:right; border-top:2px solid #1a3a6e; padding:6px;">TOTAIS (${passagens.length} passagens):</td>
-      <td style="text-align:right; border-top:2px solid #1a3a6e;">${formatMoney(totalVendido)}</td>
-      <td style="text-align:right; border-top:2px solid #1a3a6e;">${formatMoney(totalRecebido)}</td>
-      <td style="text-align:right; border-top:2px solid #1a3a6e; color:#c00;">${formatMoney(totalAReceber)}</td>
-      <td colspan="2" style="border-top:2px solid #1a3a6e;"></td>
+      <td colspan="6" style="text-align:right; border-top:2px solid #059669; padding:6px;">TOTAIS (${passagens.length} passagens):</td>
+      <td style="text-align:right; border-top:2px solid #059669;">${formatMoney(totalVendido)}</td>
+      <td style="text-align:right; border-top:2px solid #059669;">${formatMoney(totalRecebido)}</td>
+      <td style="text-align:right; border-top:2px solid #059669; color:#c00;">${formatMoney(totalAReceber)}</td>
+      <td colspan="2" style="border-top:2px solid #059669;"></td>
     </tr></tfoot>
   </table>
   <div class="footer">
