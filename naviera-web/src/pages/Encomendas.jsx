@@ -479,42 +479,8 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
         </div>
       </div>
 
-      {/* Lista de encomendas abaixo */}
-      <div className="table-container" style={{ marginTop: 8 }}>
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: 50 }}>N°</th>
-              <th>Remetente</th>
-              <th>Destinatario</th>
-              <th>Rota</th>
-              <th>Total</th>
-              <th>Pago</th>
-              <th>Status</th>
-              <th>Entrega</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="8">Carregando...</td></tr>
-            ) : encomendas.length === 0 ? (
-              <tr><td colSpan="8" style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>Nenhuma encomenda nesta viagem</td></tr>
-            ) : encomendas.map(e => (
-              <tr key={e.id_encomenda}
-                  className={`clickable ${selecionada?.id_encomenda === e.id_encomenda ? 'selected' : ''}`}
-                  onClick={() => handleSelectRow(e)}>
-                <td>{e.numero_encomenda}</td>
-                <td>{e.remetente || '—'}</td>
-                <td>{e.destinatario || '—'}</td>
-                <td>{e.rota || '—'}</td>
-                <td className="money">{formatMoney(e.total_a_pagar)}</td>
-                <td className="money">{formatMoney(e.valor_pago)}</td>
-                <td><span className={`badge ${e.status_pagamento === 'PAGO' ? 'success' : 'warning'}`}>{e.status_pagamento || 'PENDENTE'}</span></td>
-                <td><span className={`badge ${e.entregue ? 'success' : 'warning'}`}>{e.entregue ? 'Entregue' : 'Pendente'}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Lista removida — acesse via "Ver Lista" no menu lateral */}
+      <div style={{ display: 'none' }}>
       </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}

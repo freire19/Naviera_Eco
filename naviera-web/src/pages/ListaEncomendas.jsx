@@ -18,6 +18,7 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
   const [filtroEntrega, setFiltroEntrega] = useState('')
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroNumero, setFiltroNumero] = useState('')
+  const [filtroItem, setFiltroItem] = useState('')
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type }); setTimeout(() => setToast(null), 3500)
@@ -159,10 +160,14 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
           <div style={{ marginBottom: 8 }}><label style={L}>Cliente (Nome):</label>
             <input style={I} placeholder="Digite parte do nome..." value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} /></div>
 
-          <div style={{ marginBottom: 12 }}><label style={L}>N° Encomenda:</label>
+          <div style={{ marginBottom: 8 }}><label style={L}>N° Encomenda:</label>
             <input style={I} placeholder="Ex: 5" value={filtroNumero} onChange={e => setFiltroNumero(e.target.value)} /></div>
 
-          <button className="btn-secondary" style={{ width: '100%', marginBottom: 8 }} onClick={() => { setFiltroPagamento(''); setFiltroEntrega(''); setFiltroCliente(''); setFiltroNumero(''); setFiltroRota('') }}>Limpar Filtros</button>
+          <div style={{ marginBottom: 12 }}><label style={L}>Contem o Produto (Item):</label>
+            <input style={I} placeholder="Ex: Cimento, Motor..." value={filtroItem} onChange={e => setFiltroItem(e.target.value)} /></div>
+
+          <button className="btn-primary" style={{ marginBottom: 8 }} onClick={() => {}}>IMPRIMIR LISTA</button>
+          <button className="btn-secondary" style={{ width: '100%', marginBottom: 8 }} onClick={() => { setFiltroPagamento(''); setFiltroEntrega(''); setFiltroCliente(''); setFiltroNumero(''); setFiltroRota(''); setFiltroItem('') }}>Limpar Filtros</button>
           {onNavigate && <button className="btn-secondary" style={{ width: '100%' }} onClick={() => onNavigate('nova-encomenda')}>FECHAR</button>}
         </div>
       </div>

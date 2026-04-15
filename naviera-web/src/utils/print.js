@@ -353,98 +353,88 @@ function buildFormaPagamento(p) {
 }
 
 /**
- * Prints a recibo de encomenda — thermal 80mm format.
+ * Prints recibo de encomenda — estilo desktop com cabecalho empresa.
  */
-export function printReciboEncomenda(encomenda, viagem) {
-  const viagemDesc = viagem?.descricao || `Viagem #${encomenda.id_viagem || '\u2014'}`
+export async function printReciboEncomenda(encomenda, viagem) {
+  const emp = await loadEmpresa()
+  const num = encomenda.numero_encomenda || encomenda.id_encomenda || '—'
+  const vTotal = parseFloat(encomenda.total_a_pagar) || 0
+  const vPago = parseFloat(encomenda.valor_pago) || 0
+  const status = vPago >= vTotal && vTotal > 0 ? 'PAGO' : 'PENDENTE'
 
-  const content = `
-    ${buildHeader('Recibo de Encomenda')}
+  // Carregar itens se nao vier no objeto
+  let itensHtml = ''
+  let itensData = encomenda.itens || []
+  if (!itensData.length && encomenda.id_encomenda) {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/encomendas/${encomenda.id_encomenda}/itens`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) itensData = await res.json()
+    } catch {}
+  }
+  if (itensData.length > 0) {
+    itensHtml = `<table style="width:100%; border-collapse:collapse; font-size:12px; font-family:Courier,monospace; margin:8px 0;">
+      <thead><tr style="border-bottom:1px solid #000;">
+        <th style="text-align:left; padding:2px 4px; width:30px;">QTD</th>
+        <th style="text-align:left; padding:2px 4px;">DESC.</th>
+        <th style="text-align:right; padding:2px 4px;">V.UN</th>
+        <th style="text-align:right; padding:2px 4px;">TOTAL</th>
+      </tr></thead>
+      <tbody>${itensData.map(i => `<tr style="border-bottom:1px solid #ccc;">
+        <td style="padding:2px 4px;">${i.quantidade || 1}</td>
+        <td style="padding:2px 4px;">${(i.descricao || '').toUpperCase()}</td>
+        <td style="text-align:right; padding:2px 4px;">${formatMoney(i.valor_unitario)}</td>
+        <td style="text-align:right; padding:2px 4px;">${formatMoney(i.valor_total)}</td>
+      </tr>`).join('')}</tbody>
+    </table>`
+  }
 
-    <div class="section">
-      <div class="info-row">
-        <span class="label">N. Encomenda:</span>
-        <span class="value"><strong>${encomenda.numero_encomenda || encomenda.id_encomenda || '\u2014'}</strong></span>
-      </div>
-      <div class="info-row">
-        <span class="label">Viagem:</span>
-        <span class="value">${viagemDesc}</span>
-      </div>
-    </div>
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Encomenda ${num}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', Courier, monospace; color:#000; width:80mm; max-width:80mm; padding:4mm; font-size:12px; }
+  @page { size: 80mm auto; margin: 2mm; }
+  .center { text-align:center; }
+  .bold { font-weight:700; }
+  .big { font-size:18px; }
+  .hr { border:none; border-top:1px solid #000; margin:6px 0; }
+</style></head><body>
+  <div class="center bold" style="font-size:14px;">${emp.nome_embarcacao ? 'F/B ' + emp.nome_embarcacao : emp.companhia || 'NAVIERA'}</div>
+  <div class="center" style="font-size:10px;">CNPJ: ${emp.cnpj || '—'}</div>
+  <div class="center" style="font-size:10px;">Tel: ${emp.telefone || '—'}</div>
+  <div class="center" style="font-size:10px;">${emp.endereco || ''}</div>
 
-    <hr class="divider">
+  <div class="center bold" style="margin:8px 0; font-size:14px;">RECIBO DE ENCOMENDA</div>
 
-    <div class="section">
-      <div class="section-title">Remetente / Destinatario</div>
-      <div class="info-row">
-        <span class="label">Remetente:</span>
-        <span class="value">${encomenda.remetente || '\u2014'}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Destinatario:</span>
-        <span class="value">${encomenda.destinatario || '\u2014'}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Rota:</span>
-        <span class="value">${encomenda.rota || '\u2014'}</span>
-      </div>
-    </div>
+  <div class="center" style="border:2px solid #000; display:inline-block; padding:4px 16px; margin:4px auto; font-size:20px; font-weight:700;">N° ${num}</div>
 
-    <hr class="divider">
+  <hr class="hr">
+  <div><strong>REM:</strong> ${(encomenda.remetente || '').toUpperCase()}</div>
+  <div><strong>DEST:</strong> ${(encomenda.destinatario || '').toUpperCase()}</div>
+  <div><strong>ROTA:</strong> ${encomenda.rota || '—'}</div>
+  <hr class="hr">
 
-    <div class="section">
-      <div class="section-title">Detalhes</div>
-      <div class="info-row">
-        <span class="label">Volumes:</span>
-        <span class="value">${encomenda.total_volumes || 0}</span>
-      </div>
-      ${encomenda.itens && encomenda.itens.length > 0 ? `
-        <table style="margin-top: 6px;">
-          <thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead>
-          <tbody>
-            ${encomenda.itens.map(i => `
-              <tr>
-                <td>${i.descricao || i.nome || '\u2014'}</td>
-                <td>${i.quantidade || 1}</td>
-                <td>${formatMoney(i.valor)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      ` : ''}
-    </div>
+  ${itensHtml}
 
-    <hr class="divider">
+  <div style="color:#059669; font-weight:700; margin-top:4px;">VOLUMES: ${encomenda.total_volumes || itensData.reduce((s,i) => s + (parseInt(i.quantidade) || 0), 0)}</div>
 
-    <div class="section">
-      <div class="section-title">Pagamento</div>
-      <div class="info-row">
-        <span class="label">Total:</span>
-        <span class="value"><strong>${formatMoney(encomenda.total_a_pagar)}</strong></span>
-      </div>
-      <div class="info-row">
-        <span class="label">Desconto:</span>
-        <span class="value">${formatMoney(encomenda.desconto)}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Pago:</span>
-        <span class="value">${formatMoney(encomenda.valor_pago)}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Forma Pgto:</span>
-        <span class="value">${encomenda.forma_pagamento || '\u2014'}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Status:</span>
-        <span class="value">${encomenda.status_pagamento || 'Pendente'}</span>
-      </div>
-    </div>
+  <div class="center" style="margin-top:12px;">
+    <div class="big bold">TOTAL: ${formatMoney(vTotal)}</div>
+    <div class="bold">PAGO: ${formatMoney(vPago)}</div>
+    <div style="border:1px solid #000; display:inline-block; padding:2px 10px; margin-top:4px; font-weight:700;">STATUS: ${status}</div>
+  </div>
 
-    ${buildFooter()}
-  `
+  <div class="center" style="margin-top:12px; font-size:10px;">Emitido em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}</div>
 
-  const html = buildPage(content, `Recibo Encomenda ${encomenda.numero_encomenda || ''}`, true)
-  printContent(html)
+  <div class="center" style="margin-top:16px;">
+    <div style="width:60%; margin:0 auto; border-top:1px solid #000;"></div>
+    <div style="font-size:10px; margin-top:2px;">Assinatura</div>
+  </div>
+
+  <script>window.onload = function() { window.print(); }</script>
+</body></html>`
+
+  printContent(html, `Recibo Encomenda ${num}`)
 }
 
 /**
