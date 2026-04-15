@@ -218,6 +218,18 @@ mkdir -p "$JPACKAGE_INPUT/lib"
 cp "$DIST_DIR/$JAR_NAME" "$JPACKAGE_INPUT/"
 cp "$LIB_DIR"/*.jar "$JPACKAGE_INPUT/lib/"
 
+# Bundle database_scripts for the setup wizard (migrations)
+if [ -d "$PROJECT_ROOT/database_scripts" ]; then
+    cp -r "$PROJECT_ROOT/database_scripts" "$JPACKAGE_INPUT/database_scripts"
+    ok "  database_scripts/ bundled for setup wizard"
+fi
+
+# Bundle relatorios (JasperReports)
+if [ -d "$PROJECT_ROOT/relatorios" ]; then
+    cp -r "$PROJECT_ROOT/relatorios" "$JPACKAGE_INPUT/relatorios"
+    ok "  relatorios/ bundled"
+fi
+
 # Icon
 JPACKAGE_ICON_OPT=""
 if [ -f "$ICON_FILE" ]; then

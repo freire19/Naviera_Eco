@@ -364,6 +364,14 @@ public class SetupWizardController implements Initializable {
                         String migrationsDir = localizarDiretorioMigrations();
                         log("Rodando migrations de: " + migrationsDir);
 
+                        // Verificar se o arquivo principal existe
+                        File schemaFile = new File(migrationsDir, "000_schema_completo.sql");
+                        if (!schemaFile.exists()) {
+                            throw new Exception("Scripts de banco de dados nao encontrados em: " + migrationsDir +
+                                ". Reinstale o Naviera ou ligue para o suporte: (92) 00000-0000");
+                        }
+
+                        int executados = 0;
                         for (int i = 0; i < MIGRATION_FILES.length; i++) {
                             String fileName = MIGRATION_FILES[i];
                             File sqlFile = new File(migrationsDir, fileName);
@@ -378,7 +386,9 @@ public class SetupWizardController implements Initializable {
                             String sql = Files.readString(sqlFile.toPath(), StandardCharsets.UTF_8);
                             executarSql(conn, sql, fileName);
                             log("Migration OK: " + fileName);
+                            executados++;
                         }
+                        log("Total de migrations executadas: " + executados + "/" + MIGRATION_FILES.length);
                     } else {
                         log("Banco ja possui tabelas — migrations puladas.");
                     }
@@ -724,19 +734,44 @@ public class SetupWizardController implements Initializable {
     }
 
     private String localizarDiretorioMigrations() {
-        String[] candidatos = { "database_scripts", "../database_scripts",
-            System.getProperty("user.dir") + "/database_scripts" };
+        // Candidatos em ordem de prioridade:
+        // 1. Relativo ao diretorio de trabalho (dev/Eclipse)
+        // 2. Dentro do diretorio do app jpackage (/opt/naviera/lib/app/)
+        // 3. System property user.dir
+        String[] candidatos = {
+            "database_scripts",
+            "../database_scripts",
+            System.getProperty("user.dir") + "/database_scripts",
+            "/opt/naviera/lib/app/database_scripts",       // jpackage Linux .deb
+            "/opt/Naviera/lib/app/database_scripts",       // jpackage case-sensitive
+        };
         for (String path : candidatos) {
             File dir = new File(path);
-            if (dir.isDirectory() && new File(dir, "000_schema_completo.sql").exists()) return dir.getAbsolutePath();
+            if (dir.isDirectory() && new File(dir, "000_schema_completo.sql").exists()) {
+                log("Migrations encontradas em: " + dir.getAbsolutePath());
+                return dir.getAbsolutePath();
+            }
         }
+        // Fallback: relativo ao JAR
         try {
             File jarDir = new File(SetupWizardController.class.getProtectionDomain()
                 .getCodeSource().getLocation().toURI()).getParentFile();
             File dir = new File(jarDir, "database_scripts");
-            if (dir.isDirectory()) return dir.getAbsolutePath();
-        } catch (Exception ignored) {}
-        return "database_scripts";
+            if (dir.isDirectory() && new File(dir, "000_schema_completo.sql").exists()) {
+                log("Migrations encontradas via JAR: " + dir.getAbsolutePath());
+                return dir.getAbsolutePath();
+            }
+            // Tentar um nivel acima do JAR (caso o JAR esteja em lib/app/)
+            File parentDir = new File(jarDir.getParentFile(), "database_scripts");
+            if (parentDir.isDirectory() && new File(parentDir, "000_schema_completo.sql").exists()) {
+                log("Migrations encontradas via JAR parent: " + parentDir.getAbsolutePath());
+                return parentDir.getAbsolutePath();
+            }
+        } catch (Exception e) {
+            log("Erro ao resolver diretorio de migrations via JAR: " + e.getMessage());
+        }
+        log("AVISO: database_scripts nao encontrado em nenhum caminho conhecido!");
+        return "database_scripts"; // fallback — vai falhar mas com mensagem clara
     }
 
     // ========================================================================
