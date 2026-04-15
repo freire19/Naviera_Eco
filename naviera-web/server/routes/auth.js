@@ -19,6 +19,10 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Se o tenant foi resolvido pelo subdominio, filtrar por empresa_id
     const tenantId = req.tenant?.id || null
 
+    // OCR app (ocr.naviera.com.br) nao tem tenant — resolve empresa_id pelo proprio usuario
+    const origin = req.headers.origin || req.headers.referer || ''
+    const isOcrApp = /ocr\.naviera\.com\.br/.test(origin) || req.headers['x-tenant-slug'] === 'ocr'
+
     let sql, params
     if (tenantId) {
       // Producao: filtrar usuario pela empresa do subdominio
@@ -29,6 +33,14 @@ router.post('/login', loginLimiter, async (req, res) => {
                AND (excluido = FALSE OR excluido IS NULL)
                AND empresa_id = $2`
       params = [login, tenantId]
+    } else if (isOcrApp) {
+      // OCR app: usuario resolve empresa_id pelo banco (sem filtro de tenant)
+      sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id,
+                    COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha
+             FROM usuarios
+             WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1))
+               AND (excluido = FALSE OR excluido IS NULL)`
+      params = [login]
     } else if (process.env.NODE_ENV === 'production') {
       // Producao: obrigar subdominio de empresa
       return res.status(400).json({ error: 'Subdominio da empresa obrigatorio' })
