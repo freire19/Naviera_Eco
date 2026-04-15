@@ -97,10 +97,16 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
     setEditando(false)
   }
 
-  function handleNovo() {
+  async function handleNovo() {
     limparForm()
     setEditando(true)
-    setNumEncomenda('')
+    // Buscar proximo numero automatico
+    try {
+      const res = await api.get('/encomendas/proximo-numero')
+      setNumEncomenda(res.numero || '1')
+    } catch {
+      setNumEncomenda('—')
+    }
   }
 
   function handleSelectRow(enc) {

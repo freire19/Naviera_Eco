@@ -43,6 +43,20 @@ router.get('/resumo', async (req, res) => {
   }
 })
 
+// GET /api/encomendas/proximo-numero
+router.get('/proximo-numero', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      `SELECT COALESCE(MAX(CASE WHEN numero_encomenda ~ '^[0-9]+$' THEN numero_encomenda::bigint ELSE 0 END), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1`,
+      [empresaId]
+    )
+    res.json({ numero: String(result.rows[0].next_num) })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar numero' })
+  }
+})
+
 // GET /api/encomendas/:id/itens
 router.get('/:id/itens', async (req, res) => {
   try {
@@ -75,10 +89,10 @@ router.post('/', validate({ id_viagem: 'required|integer', destinatario: 'requir
     await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
 
     const seqResult = await client.query(
-      'SELECT COALESCE(MAX(numero_encomenda), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1',
+      `SELECT COALESCE(MAX(CASE WHEN numero_encomenda ~ '^[0-9]+$' THEN numero_encomenda::bigint ELSE 0 END), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1`,
       [empresaId]
     )
-    const numEncomenda = seqResult.rows[0].next_num
+    const numEncomenda = String(seqResult.rows[0].next_num)
 
     const vPagar = parseFloat(total_a_pagar) || 0
     const vPago = parseFloat(valor_pago) || 0

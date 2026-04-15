@@ -480,7 +480,7 @@ router.get('/funcionarios', async (req, res) => {
 router.get('/itens-encomenda', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    const result = await pool.query('SELECT * FROM itens_encomenda_padrao WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome_item', [empresaId])
+    const result = await pool.query('SELECT *, id_item_encomenda AS id, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome_item', [empresaId])
     res.json(result.rows)
   } catch (err) {
     res.status(500).json({ error: 'Erro ao listar itens' })
@@ -883,7 +883,7 @@ router.post('/itens-encomenda', async (req, res) => {
     const { nome_item, preco_padrao } = req.body
     if (!nome_item) return res.status(400).json({ error: 'nome_item obrigatorio' })
     const result = await pool.query(
-      'INSERT INTO itens_encomenda_padrao (nome_item, preco_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) RETURNING *',
+      'INSERT INTO itens_encomenda_padrao (nome_item, preco_unitario_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) RETURNING *, preco_unitario_padrao AS preco_padrao',
       [nome_item, parseFloat(preco_padrao) || 0, empresaId]
     )
     res.status(201).json(result.rows[0])
@@ -898,7 +898,7 @@ router.put('/itens-encomenda/:id', async (req, res) => {
     const empresaId = req.user.empresa_id
     const { nome_item, preco_padrao } = req.body
     const result = await pool.query(
-      'UPDATE itens_encomenda_padrao SET nome_item = COALESCE($1, nome_item), preco_padrao = COALESCE($2, preco_padrao) WHERE id = $3 AND empresa_id = $4 RETURNING *',
+      'UPDATE itens_encomenda_padrao SET nome_item = COALESCE($1, nome_item), preco_unitario_padrao = COALESCE($2, preco_unitario_padrao) WHERE id_item_encomenda = $3 AND empresa_id = $4 RETURNING *, preco_unitario_padrao AS preco_padrao',
       [nome_item, preco_padrao != null ? parseFloat(preco_padrao) : null, req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item encomenda nao encontrado' })
@@ -913,7 +913,7 @@ router.delete('/itens-encomenda/:id', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
-      'UPDATE itens_encomenda_padrao SET ativo = FALSE WHERE id = $1 AND empresa_id = $2 RETURNING *',
+      'UPDATE itens_encomenda_padrao SET ativo = FALSE WHERE id_item_encomenda = $1 AND empresa_id = $2 RETURNING *',
       [req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item encomenda nao encontrado' })
