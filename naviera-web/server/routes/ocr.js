@@ -359,7 +359,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
 
       await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
       const seqResult = await client.query(
-        'SELECT COALESCE(MAX(numero_encomenda), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1',
+        'SELECT COALESCE(MAX(numero_encomenda::INTEGER), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1',
         [empresaId]
       )
       const numEncomenda = seqResult.rows[0].next_num
