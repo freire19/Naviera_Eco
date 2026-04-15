@@ -193,50 +193,56 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
     }
   }
 
-  // FINALIZAR
+  // Monta payload da encomenda
+  function buildPayload(totalPago = 0, formaPgto = '', idCaixa = null) {
+    const rota = rotas.find(r => String(r.id_rota) === idRota)
+    const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : ''
+    return {
+      id_viagem: viagemAtiva.id_viagem,
+      remetente: remetente.trim(),
+      destinatario: destinatario.trim(),
+      rota: rotaNome,
+      observacoes: observacoes.trim(),
+      total_volumes: totalVolumes,
+      total_a_pagar: totalItens || 0,
+      valor_pago: totalPago,
+      desconto: 0,
+      forma_pagamento: formaPgto || null,
+      id_caixa: idCaixa || null,
+      itens: itens.map(i => ({
+        quantidade: i.quantidade,
+        descricao: i.descricao,
+        valor_unitario: i.valor_unitario,
+        valor_total: i.valor_total,
+        local_armazenamento: i.local_armazenamento || null
+      }))
+    }
+  }
+
+  // FINALIZAR — pergunta se quer registrar pagamento agora ou salvar como pendente
   async function handleFinalizar() {
     if (!destinatario.trim()) { showToast('Informe o destinatario', 'error'); return }
 
-    // Abrir modal pagamento
-    setModalPagar({ totalAPagar: totalItens })
-    setPgDinheiro('')
-    setPgPix('')
-    setPgCartao('')
-    setPgCaixa('')
+    if (totalItens > 0) {
+      const pagarAgora = window.confirm(`Total: ${formatMoney(totalItens)}\n\nDeseja registrar o pagamento agora?\n\n[OK] = Registrar pagamento\n[Cancelar] = Salvar como PENDENTE`)
+      if (pagarAgora) {
+        setModalPagar({ totalAPagar: totalItens })
+        setPgDinheiro('')
+        setPgPix('')
+        setPgCartao('')
+        setPgCaixa('')
+        return
+      }
+    }
+
+    // Salvar direto como pendente (sem pagamento)
+    await salvarEncomenda(0, '', null)
   }
 
-  async function handleConfirmarPagamento() {
-    const vDin = parseFloat(pgDinheiro) || 0
-    const vPix = parseFloat(pgPix) || 0
-    const vCart = parseFloat(pgCartao) || 0
-    const totalPago = vDin + vPix + vCart
-
+  async function salvarEncomenda(totalPago, formaPgto, idCaixa) {
     setSalvando(true)
     try {
-      const rota = rotas.find(r => String(r.id_rota) === idRota)
-      const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : ''
-
-      const payload = {
-        id_viagem: viagemAtiva.id_viagem,
-        remetente: remetente.trim(),
-        destinatario: destinatario.trim(),
-        rota: rotaNome,
-        observacoes: observacoes.trim(),
-        total_volumes: totalVolumes,
-        total_a_pagar: totalItens,
-        valor_pago: totalPago,
-        desconto: 0,
-        forma_pagamento: [vDin > 0 && 'DINHEIRO', vPix > 0 && 'PIX', vCart > 0 && 'CARTAO'].filter(Boolean).join(', ') || 'DINHEIRO',
-        id_caixa: pgCaixa || null,
-        itens: itens.map(i => ({
-          quantidade: i.quantidade,
-          descricao: i.descricao,
-          valor_unitario: i.valor_unitario,
-          valor_total: i.valor_total,
-          local_armazenamento: i.local_armazenamento || null
-        }))
-      }
-
+      const payload = buildPayload(totalPago, formaPgto, idCaixa)
       if (selecionada) {
         await api.put(`/encomendas/${selecionada.id_encomenda}`, payload)
         showToast('Encomenda atualizada')
@@ -253,6 +259,17 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
     } finally {
       setSalvando(false)
     }
+  }
+
+  // Confirmar pagamento do modal
+  async function handleConfirmarPagamento() {
+    const vDin = parseFloat(pgDinheiro) || 0
+    const vPix = parseFloat(pgPix) || 0
+    const vCart = parseFloat(pgCartao) || 0
+    const totalPago = vDin + vPix + vCart
+    const formaPgto = [vDin > 0 && 'DINHEIRO', vPix > 0 && 'PIX', vCart > 0 && 'CARTAO'].filter(Boolean).join(', ') || ''
+    setModalPagar(null)
+    await salvarEncomenda(totalPago, formaPgto, pgCaixa || null)
   }
 
   // Excluir
