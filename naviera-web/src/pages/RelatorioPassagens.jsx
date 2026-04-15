@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { printRelatorioPassagens } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -258,7 +259,17 @@ export default function RelatorioPassagens({ viagemAtiva, onNavigate }) {
           </div>
 
           <button className="btn-primary" style={{ marginBottom: 8 }}
-                  onClick={() => window.print()}>
+                  onClick={() => {
+                    const filtrosTexto = [
+                      filtroStatus && `Status: ${filtroStatus}`,
+                      filtroRota && `Rota: ${rotas.find(r => String(r.id_rota) === filtroRota)?.origem || ''} - ${rotas.find(r => String(r.id_rota) === filtroRota)?.destino || ''}`,
+                      filtroAgente && `Agente: ${agentes.find(a => String(a.id_agente) === filtroAgente)?.nome_agente || ''}`,
+                      filtroTipo && `Tipo: ${tiposPassagem.find(t => String(t.id || t.id_tipo_passagem) === filtroTipo)?.nome || ''}`,
+                      filtroFormaPgto && `Forma: ${filtroFormaPgto}`,
+                      filtroCaixa && `Caixa: ${caixas.find(c => String(c.id_caixa) === filtroCaixa)?.nome_caixa || ''}`
+                    ].filter(Boolean).join(' | ') || 'Todos'
+                    printRelatorioPassagens(filtradas, viagemAtiva, filtrosTexto)
+                  }}>
             Imprimir Relatorio
           </button>
           {onNavigate && (

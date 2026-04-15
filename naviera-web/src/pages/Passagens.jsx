@@ -331,7 +331,7 @@ export default function Passagens({ viagemAtiva, onNavigate }) {
       </div>
 
       {/* FORM — Passageiro (grid 6 colunas) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1.2fr 0.7fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '5fr 1fr 1fr 1fr 1.5fr 0.7fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
         <div>
           <label style={L}>Passageiro (Nome Completo) *</label>
           <Autocomplete

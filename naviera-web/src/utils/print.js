@@ -607,75 +607,182 @@ export function printEtiquetaFrete(frete) {
   printContent(html)
 }
 
+/** Helper: carrega dados da empresa para impressao */
+async function loadEmpresa() {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await fetch('/api/cadastros/empresa', { headers: { Authorization: `Bearer ${token}` } })
+    if (res.ok) return await res.json()
+  } catch {}
+  return {}
+}
+
+function calcIdadePrint(dataNasc) {
+  if (!dataNasc) return ''
+  try {
+    const s = String(dataNasc)
+    const nasc = new Date(s.includes('T') ? s : s + 'T00:00:00')
+    if (isNaN(nasc.getTime())) return ''
+    const hoje = new Date()
+    let idade = hoje.getFullYear() - nasc.getFullYear()
+    const m = hoje.getMonth() - nasc.getMonth()
+    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--
+    return idade >= 0 ? idade : ''
+  } catch { return '' }
+}
+
+/** Cabecalho padrao para relatorios A4 (empresa + titulo) */
+function buildEmpresaHeader(emp, titulo) {
+  return `
+    <div style="text-align:center; margin-bottom:12px;">
+      <div style="font-size:18px; font-weight:700;">${emp.nome_embarcacao || emp.companhia || 'NAVIERA'}</div>
+      <div style="font-size:10px; color:#555;">${emp.endereco || ''}</div>
+      <div style="font-size:10px; color:#555;">CNPJ: ${emp.cnpj || '—'}</div>
+      <div style="font-size:10px; color:#555;">Tel: ${emp.telefone || '—'}</div>
+      <div style="font-size:15px; font-weight:700; margin-top:10px; border-top:2px solid #1a3a6e; border-bottom:2px solid #1a3a6e; padding:6px 0;">${titulo}</div>
+    </div>`
+}
+
 /**
- * Prints a lista de passageiros — A4 table format.
+ * Prints a lista de passageiros — A4 estilo desktop.
+ * Colunas: ORD, Nome do Passageiro, Doc/RG, Nasc., Origem, Destino
  */
-export function printListaPassageiros(passagens, viagem) {
-  const viagemDesc = viagem?.descricao || `Viagem #${viagem?.id_viagem || '\u2014'}`
-  const dataViagem = formatDateTime(viagem?.data_saida || viagem?.data_viagem)
+export async function printListaPassageiros(passagens, viagem) {
+  const emp = await loadEmpresa()
+  const vEmb = emp.nome_embarcacao || viagem?.nome_embarcacao || '—'
+  const vData = viagem?.data_viagem || '—'
+  const vCheg = viagem?.data_chegada || '—'
+  const vHora = viagem?.horario || '—'
 
   const rows = passagens.map((p, i) => `
     <tr>
-      <td style="text-align:center">${i + 1}</td>
-      <td>${p.num_bilhete || '\u2014'}</td>
-      <td>${p.nome_passageiro || '\u2014'}</td>
-      <td>${p.numero_doc || '\u2014'}</td>
-      <td style="text-align:center">${p.assento || '\u2014'}</td>
-      <td style="text-align:right">${formatMoney(p.valor_total)}</td>
-      <td style="text-align:center">${p.devedor ? 'Devedor' : 'Pago'}</td>
+      <td style="text-align:center; width:35px;">${i + 1}</td>
+      <td style="text-transform:uppercase;">${p.nome_passageiro || '—'}</td>
+      <td>${p.numero_doc || '—'}</td>
+      <td>${formatDate(p.data_nascimento)}</td>
+      <td>${p.origem || '—'}</td>
+      <td>${p.destino || '—'}</td>
     </tr>
   `).join('')
 
-  const totalValor = passagens.reduce((s, p) => s + (p.valor_total || 0), 0)
-  const totalPago = passagens.reduce((s, p) => s + (p.valor_pago || 0), 0)
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Lista de Passageiros</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; color:#111; padding:15mm; }
+  @page { size: A4; margin: 12mm; }
+  table { width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }
+  th { background:#1a3a6e; color:#fff; padding:6px 8px; text-align:left; font-size:10px; text-transform:uppercase; font-weight:600; }
+  td { padding:5px 8px; border-bottom:1px solid #ccc; }
+  tr:nth-child(even) td { background:#f5f7fa; }
+  .footer { position:fixed; bottom:10mm; left:15mm; right:15mm; display:flex; justify-content:space-between; font-size:9px; color:#888; border-top:1px solid #ccc; padding-top:4px; }
+</style></head><body>
+  ${buildEmpresaHeader(emp, 'LISTA DE PASSAGEIROS')}
+  <div style="font-size:10px; margin-bottom:10px;">
+    Embarcacao: <strong>${vEmb}</strong> | Saida: <strong>${vData}</strong> | Prev. Chegada: <strong>${vCheg}</strong> | Hora: <strong>${vHora}</strong>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:35px;">ORD</th>
+      <th>NOME DO PASSAGEIRO</th>
+      <th>DOC/RG</th>
+      <th>NASC.</th>
+      <th>ORIGEM</th>
+      <th>DESTINO</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <span>Impresso por: Jessyca</span>
+    <span>Data: ${new Date().toLocaleString('pt-BR')}</span>
+    <span>Pagina 1</span>
+  </div>
+  <script>window.onload = function() { window.print(); }</script>
+</body></html>`
 
-  const content = `
-    ${buildHeader('Lista de Passageiros')}
+  printContent(html, 'Lista de Passageiros')
+}
 
-    <div class="section">
-      <div class="info-row">
-        <span class="label">Viagem:</span>
-        <span class="value">${viagemDesc}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Data Saida:</span>
-        <span class="value">${dataViagem}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Total Passageiros:</span>
-        <span class="value"><strong>${passagens.length}</strong></span>
-      </div>
-    </div>
+/**
+ * Prints relatorio financeiro de passagens — A4 com filtros aplicados.
+ */
+export async function printRelatorioPassagens(passagens, viagem, filtrosTexto) {
+  const emp = await loadEmpresa()
 
-    <hr class="divider">
+  const totalVendido = passagens.reduce((s, p) => s + (parseFloat(p.valor_total) || 0), 0)
+  const totalRecebido = passagens.reduce((s, p) => s + (parseFloat(p.valor_pago) || 0), 0)
+  const totalAReceber = totalVendido - totalRecebido
 
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:center">#</th>
-          <th>Bilhete</th>
-          <th>Passageiro</th>
-          <th>Documento</th>
-          <th style="text-align:center">Assento</th>
-          <th style="text-align:right">Valor</th>
-          <th style="text-align:center">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows}
-      </tbody>
-      <tfoot>
-        <tr style="font-weight:700; background:#f5f5f5;">
-          <td colspan="5" style="text-align:right; border:1px solid #ccc; padding:5px 8px;">TOTAIS:</td>
-          <td style="text-align:right; border:1px solid #ccc; padding:5px 8px;">${formatMoney(totalValor)}</td>
-          <td style="text-align:center; border:1px solid #ccc; padding:5px 8px;">Pago: ${formatMoney(totalPago)}</td>
-        </tr>
-      </tfoot>
-    </table>
+  function formaPgto(p) {
+    const parts = []
+    if (parseFloat(p.valor_pagamento_dinheiro) > 0) parts.push('Dinheiro')
+    if (parseFloat(p.valor_pagamento_pix) > 0) parts.push('PIX')
+    if (parseFloat(p.valor_pagamento_cartao) > 0) parts.push('Cartao')
+    return parts.join(', ') || '—'
+  }
 
-    ${buildFooter()}
-  `
+  const rows = passagens.map(p => `
+    <tr>
+      <td>${p.numero_bilhete || '—'}</td>
+      <td>${formatDate(p.data_emissao)}</td>
+      <td>${p.nome_passageiro || '—'}</td>
+      <td>${p.origem && p.destino ? p.origem + ' - ' + p.destino : '—'}</td>
+      <td>${p.nome_tipo_passagem || '—'}</td>
+      <td>${p.nome_agente || '—'}</td>
+      <td style="text-align:right;">${formatMoney(p.valor_total)}</td>
+      <td style="text-align:right;">${formatMoney(p.valor_pago)}</td>
+      <td style="text-align:right; color:${parseFloat(p.valor_devedor) > 0 ? '#c00' : '#000'};">${formatMoney(p.valor_devedor)}</td>
+      <td>${formaPgto(p)}</td>
+      <td style="text-align:center;"><span style="padding:2px 6px; border-radius:3px; font-size:9px; font-weight:600; background:${p.status_passagem === 'PAGO' ? '#d4edda' : '#f8d7da'}; color:${p.status_passagem === 'PAGO' ? '#155724' : '#721c24'};">${p.status_passagem || 'PENDENTE'}</span></td>
+    </tr>
+  `).join('')
 
-  const html = buildPage(content, `Lista Passageiros - ${viagemDesc}`, false)
-  printContent(html)
+  const filtrosHtml = filtrosTexto ? `<div style="font-size:10px; margin-bottom:8px; color:#555;">Filtros: ${filtrosTexto}</div>` : ''
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatorio Passagens</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; color:#111; padding:12mm; }
+  @page { size: A4 landscape; margin: 10mm; }
+  table { width:100%; border-collapse:collapse; font-size:10px; margin-top:8px; }
+  th { background:#1a3a6e; color:#fff; padding:5px 6px; text-align:left; font-size:9px; text-transform:uppercase; font-weight:600; }
+  td { padding:4px 6px; border-bottom:1px solid #ddd; }
+  tr:nth-child(even) td { background:#f5f7fa; }
+  .totais { display:flex; justify-content:center; gap:40px; margin:12px 0; }
+  .totais div { text-align:center; }
+  .totais .label { font-size:10px; color:#666; }
+  .totais .valor { font-size:16px; font-weight:700; }
+  .footer { margin-top:16px; display:flex; justify-content:space-between; font-size:9px; color:#888; border-top:1px solid #ccc; padding-top:4px; }
+</style></head><body>
+  ${buildEmpresaHeader(emp, 'RELATORIO FINANCEIRO DE PASSAGENS')}
+  ${filtrosHtml}
+  <div class="totais">
+    <div><div class="label">Total Vendido</div><div class="valor">${formatMoney(totalVendido)}</div></div>
+    <div><div class="label">Total Recebido</div><div class="valor" style="color:#059669;">${formatMoney(totalRecebido)}</div></div>
+    <div><div class="label">Total a Receber</div><div class="valor" style="color:${totalAReceber > 0 ? '#c00' : '#000'};">${formatMoney(totalAReceber)}</div></div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Bilhete</th><th>Data</th><th>Passageiro</th><th>Rota</th><th>Tipo</th><th>Agente</th>
+      <th style="text-align:right;">Total</th><th style="text-align:right;">Pago</th><th style="text-align:right;">Devedor</th>
+      <th>Forma Pag.</th><th style="text-align:center;">Status</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="font-weight:700; background:#e8ecf1;">
+      <td colspan="6" style="text-align:right; border-top:2px solid #1a3a6e; padding:6px;">TOTAIS (${passagens.length} passagens):</td>
+      <td style="text-align:right; border-top:2px solid #1a3a6e;">${formatMoney(totalVendido)}</td>
+      <td style="text-align:right; border-top:2px solid #1a3a6e;">${formatMoney(totalRecebido)}</td>
+      <td style="text-align:right; border-top:2px solid #1a3a6e; color:#c00;">${formatMoney(totalAReceber)}</td>
+      <td colspan="2" style="border-top:2px solid #1a3a6e;"></td>
+    </tr></tfoot>
+  </table>
+  <div class="footer">
+    <span>Viagem: ${viagem?.id_viagem || '—'} - ${viagem?.data_viagem || ''} (${viagem?.nome_rota || viagem?.origem && viagem?.destino ? viagem.origem + ' - ' + viagem.destino : ''})</span>
+    <span>Data: ${new Date().toLocaleString('pt-BR')}</span>
+  </div>
+  <script>window.onload = function() { window.print(); }</script>
+</body></html>`
+
+  printContent(html, 'Relatorio Passagens')
 }
