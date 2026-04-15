@@ -43,6 +43,19 @@ router.get('/resumo', async (req, res) => {
   }
 })
 
+// GET /api/encomendas/:id/itens
+router.get('/:id/itens', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM encomenda_itens WHERE id_encomenda = $1 ORDER BY id',
+      [req.params.id]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar itens' })
+  }
+})
+
 // POST /api/encomendas
 router.post('/', validate({ id_viagem: 'required|integer', remetente: 'required|string', destinatario: 'required|string', total_a_pagar: 'required|number' }), async (req, res) => {
   const client = await pool.connect()
