@@ -304,16 +304,17 @@ export default function Passagens({ viagemAtiva }) {
     )
   }
 
-  const inputStyle = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%' }
-  const labelStyle = { fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.03em' }
-  const cellStyle = { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 100 }
-  const roStyle = { ...inputStyle, opacity: 0.6, cursor: 'default' }
+  const I = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
+  const L = { fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.03em', display: 'block' }
+  const RO = { ...I, opacity: 0.6, cursor: 'default' }
+  const MONO = { ...I, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontSize: '0.82rem' }
 
-  // Helper para exibir data da viagem (pode vir como DD/MM/YYYY ou ISO)
-  const viagemData = viagemAtiva.data_viagem ? formatDate(viagemAtiva.data_viagem) : '—'
-  const viagemChegada = viagemAtiva.data_chegada ? formatDate(viagemAtiva.data_chegada) : '—'
-  const viagemHora = viagemAtiva.horario || viagemAtiva.descricao_horario_saida || '—'
-  const viagemRota = viagemAtiva.nome_rota || (viagemAtiva.origem && viagemAtiva.destino ? `${viagemAtiva.origem} - ${viagemAtiva.destino}` : '')
+  // Datas da viagem
+  const vData = formatDate(viagemAtiva.data_viagem)
+  const vCheg = formatDate(viagemAtiva.data_chegada)
+  const vHora = viagemAtiva.horario || '—'
+  const vRota = viagemAtiva.nome_rota || [viagemAtiva.origem, viagemAtiva.destino].filter(Boolean).join(' - ')
+  const vDescViagem = `${viagemAtiva.id_viagem} - ${vData} (${vRota}) - Prev: ${vCheg}`
 
   return (
     <div className="card" style={{ padding: 12 }}>
@@ -329,10 +330,10 @@ export default function Passagens({ viagemAtiva }) {
         </div>
       </div>
 
-      {/* FORM — Passageiro */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', padding: '8px', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <div style={{ ...cellStyle, flex: 4, minWidth: 280 }}>
-          <label style={labelStyle}>Passageiro (Nome Completo) *</label>
+      {/* FORM — Passageiro (grid 6 colunas) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1.2fr 0.7fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
+        <div>
+          <label style={L}>Passageiro (Nome Completo) *</label>
           <Autocomplete
             value={form.nome_passageiro}
             onChange={handleNomeChange}
@@ -344,126 +345,127 @@ export default function Passagens({ viagemAtiva }) {
             renderItem={(s) => <><strong>{s.nome_passageiro}</strong>{s.numero_documento && <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 11 }}>{s.numero_documento}</span>}</>}
           />
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>N° Documento</label>
-          <input style={inputStyle} name="numero_doc" value={form.numero_doc} onChange={handleChange} />
+        <div>
+          <label style={L}>N° Documento</label>
+          <input style={I} name="numero_doc" value={form.numero_doc} onChange={handleChange} />
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Tipo Doc</label>
-          <select style={inputStyle} name="id_tipo_doc" value={form.id_tipo_doc} onChange={handleChange}>
+        <div>
+          <label style={L}>Tipo Doc</label>
+          <select style={I} name="id_tipo_doc" value={form.id_tipo_doc} onChange={handleChange}>
             <option value=""></option>
             {tiposDocumento.map(t => <option key={t.id_tipo_doc} value={t.id_tipo_doc}>{t.nome_tipo_doc}</option>)}
           </select>
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Nacionalidade</label>
-          <select style={inputStyle} name="id_nacionalidade" value={form.id_nacionalidade} onChange={handleChange}>
+        <div>
+          <label style={L}>Nacionalidade</label>
+          <select style={I} name="id_nacionalidade" value={form.id_nacionalidade} onChange={handleChange}>
             <option value=""></option>
             {nacionalidades.map(n => <option key={n.id_nacionalidade} value={n.id_nacionalidade}>{n.nome_nacionalidade}</option>)}
           </select>
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Nascimento / Idade</label>
+        <div>
+          <label style={L}>Nascimento / Idade</label>
           <div style={{ display: 'flex', gap: 4 }}>
-            <input type="date" style={{ ...inputStyle, flex: 1 }} name="data_nascimento" value={form.data_nascimento} onChange={handleChange} />
-            <input style={{ ...roStyle, width: 40, textAlign: 'center', fontSize: '0.75rem' }} value={idade} readOnly tabIndex={-1} />
+            <input type="date" style={{ ...I, flex: 1 }} name="data_nascimento" value={form.data_nascimento} onChange={handleChange} />
+            <input style={{ ...RO, width: 38, textAlign: 'center', fontSize: '0.75rem', padding: '7px 2px' }} value={idade} readOnly tabIndex={-1} />
           </div>
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Sexo</label>
-          <select style={inputStyle} name="id_sexo" value={form.id_sexo} onChange={handleChange}>
+        <div>
+          <label style={L}>Sexo</label>
+          <select style={I} name="id_sexo" value={form.id_sexo} onChange={handleChange}>
             <option value=""></option>
             {sexos.map(s => <option key={s.id_sexo} value={s.id_sexo}>{s.nome_sexo}</option>)}
           </select>
         </div>
       </div>
 
-      {/* FORM — Viagem */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', padding: '8px', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <div style={{ ...cellStyle, flex: 2, minWidth: 220 }}>
-          <label style={labelStyle}>Viagem Selecionada</label>
-          <input style={{ ...roStyle, fontWeight: 600 }} value={`${viagemAtiva.id_viagem} - ${viagemData} (${viagemRota}) - Prev: ${viagemChegada}`} readOnly tabIndex={-1} />
+      {/* FORM — Viagem (grid 7 colunas) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.3fr 1.2fr 1fr 1fr 1fr 0.6fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
+        <div>
+          <label style={L}>Viagem Selecionada</label>
+          <input style={{ ...RO, fontWeight: 600, fontSize: '0.78rem' }} value={vDescViagem} readOnly tabIndex={-1} />
         </div>
-        <div style={{ ...cellStyle, minWidth: 140 }}>
-          <label style={labelStyle}>Data / Hora</label>
+        <div>
+          <label style={L}>Data / Hora</label>
           <div style={{ display: 'flex', gap: 4 }}>
-            <input style={{ ...roStyle, flex: 1 }} value={viagemData} readOnly tabIndex={-1} />
-            <input style={{ ...roStyle, width: 60, textAlign: 'center' }} value={viagemHora} readOnly tabIndex={-1} />
+            <input style={{ ...RO, flex: 1 }} value={vData} readOnly tabIndex={-1} />
+            <input style={{ ...RO, width: 55, textAlign: 'center' }} value={vHora} readOnly tabIndex={-1} />
           </div>
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Rota</label>
-          <select style={inputStyle} name="id_rota" value={form.id_rota} onChange={handleChange}>
+        <div>
+          <label style={L}>Rota</label>
+          <select style={I} name="id_rota" value={form.id_rota} onChange={handleChange}>
             <option value=""></option>
-            {rotas.map(r => <option key={r.id_rota} value={r.id_rota}>{r.origem} → {r.destino}</option>)}
+            {rotas.map(r => <option key={r.id_rota} value={r.id_rota}>{r.origem} - {r.destino}</option>)}
           </select>
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Acomodacao</label>
-          <select style={inputStyle} name="id_acomodacao" value={form.id_acomodacao} onChange={handleChange}>
+        <div>
+          <label style={L}>Acomodacao</label>
+          <select style={I} name="id_acomodacao" value={form.id_acomodacao} onChange={handleChange}>
             <option value=""></option>
             {acomodacoes.map(a => <option key={a.id_acomodacao} value={a.id_acomodacao}>{a.nome_acomodacao}</option>)}
           </select>
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Tipo Pass.</label>
-          <select style={inputStyle} name="id_tipo_passagem" value={form.id_tipo_passagem} onChange={handleChange}>
+        <div>
+          <label style={L}>Tipo Pass.</label>
+          <select style={I} name="id_tipo_passagem" value={form.id_tipo_passagem} onChange={handleChange}>
             <option value=""></option>
             {tiposPassagem.map(t => <option key={t.id || t.id_tipo_passagem} value={t.id || t.id_tipo_passagem}>{t.nome || t.nome_tipo_passagem}</option>)}
           </select>
         </div>
-        <div style={cellStyle}>
-          <label style={labelStyle}>Agente</label>
-          <select style={inputStyle} name="id_agente" value={form.id_agente} onChange={handleChange}>
+        <div>
+          <label style={L}>Agente</label>
+          <select style={I} name="id_agente" value={form.id_agente} onChange={handleChange}>
             <option value=""></option>
             {agentes.map(a => <option key={a.id_agente} value={a.id_agente}>{a.nome_agente}</option>)}
           </select>
         </div>
-        <div style={{ ...cellStyle, maxWidth: 80 }}>
-          <label style={labelStyle}>Req.</label>
-          <input style={inputStyle} name="numero_requisicao" value={form.numero_requisicao} onChange={handleChange} />
+        <div>
+          <label style={L}>Req.</label>
+          <input style={I} name="numero_requisicao" value={form.numero_requisicao} onChange={handleChange} />
         </div>
       </div>
 
-      {/* TARIFAS + FINALIZAR */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'flex-end', flexWrap: 'wrap', padding: '8px', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px' }}>
-          <span style={{ ...labelStyle, whiteSpace: 'nowrap', paddingBottom: 6 }}>TARIFAS:</span>
+      {/* TARIFAS + FINALIZAR (grid fixo) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0 16px', marginBottom: 12, padding: 10, border: '1px solid var(--border)', borderRadius: 6, alignItems: 'end' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 10px' }}>
+          <span style={{ ...L, whiteSpace: 'nowrap', paddingBottom: 8, marginBottom: 0 }}>TARIFAS:</span>
           {[
             { label: 'Alim.', name: 'valor_alimentacao' },
             { label: 'Transp.', name: 'valor_transporte' },
             { label: 'Cargas', name: 'valor_cargas' },
             { label: 'Desc.', name: 'valor_desconto_tarifa' }
           ].map(f => (
-            <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 1, width: 90 }}>
-              <label style={{ ...labelStyle, fontSize: '0.65rem' }}>{f.label}</label>
-              <input style={{ ...inputStyle, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontSize: '0.8rem', padding: '7px 6px' }} type="number" step="0.01" min="0" name={f.name} value={form[f.name]} onChange={handleChange} />
+            <div key={f.name} style={{ width: 80 }}>
+              <label style={{ ...L, fontSize: '0.62rem' }}>{f.label}</label>
+              <input style={MONO} type="number" step="0.01" min="0" name={f.name} value={form[f.name]} onChange={handleChange} />
             </div>
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginLeft: 'auto' }}>
-          <div style={cellStyle}>
-            <label style={labelStyle}>Subtotal</label>
-            <input style={{ ...roStyle, textAlign: 'right', fontFamily: 'Space Mono, monospace', width: 85 }} value={subtotal.toFixed(2)} readOnly tabIndex={-1} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+          <div style={{ width: 100 }}>
+            <label style={L}>Subtotal</label>
+            <input style={{ ...RO, textAlign: 'right', fontFamily: 'Space Mono, monospace' }} value={subtotal.toFixed(2)} readOnly tabIndex={-1} />
           </div>
-          <div style={cellStyle}>
-            <label style={{ ...labelStyle, color: 'var(--danger)' }}>Desconto</label>
-            <input style={{ ...inputStyle, textAlign: 'right', fontFamily: 'Space Mono, monospace', width: 85, color: 'var(--danger)' }} type="number" step="0.01" min="0" name="valor_desconto_geral" value={form.valor_desconto_geral} onChange={handleChange} />
+          <div style={{ width: 100 }}>
+            <label style={{ ...L, color: 'var(--danger)' }}>Desconto</label>
+            <input style={{ ...MONO, color: 'var(--danger)' }} type="number" step="0.01" min="0" name="valor_desconto_geral" value={form.valor_desconto_geral} onChange={handleChange} />
           </div>
-          <div style={cellStyle}>
-            <label style={{ ...labelStyle, color: 'var(--primary)', fontWeight: 700 }}>A PAGAR</label>
-            <input style={{ ...roStyle, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: '1rem', width: 100, color: 'var(--primary)' }} value={valorAPagar.toFixed(2)} readOnly tabIndex={-1} />
+          <div style={{ width: 110 }}>
+            <label style={{ ...L, color: 'var(--primary)', fontWeight: 700 }}>A PAGAR</label>
+            <input style={{ ...RO, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary)' }} value={valorAPagar.toFixed(2)} readOnly tabIndex={-1} />
           </div>
-          <button
-            className="btn-primary"
-            onClick={handleFinalizar}
-            disabled={salvando || !editando}
-            style={{ width: 'auto', padding: '10px 24px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}
-          >
-            {salvando ? 'Salvando...' : 'FINALIZAR (F1)'}
-          </button>
         </div>
+
+        <button
+          className="btn-primary"
+          onClick={handleFinalizar}
+          disabled={salvando || !editando}
+          style={{ width: 'auto', padding: '12px 28px', fontSize: '0.9rem', whiteSpace: 'nowrap', height: 'fit-content' }}
+        >
+          {salvando ? 'Salvando...' : 'FINALIZAR (F1)'}
+        </button>
       </div>
 
       {/* BUSCA */}
