@@ -1,3 +1,11 @@
+function formatViagem(v) {
+  const data = v.data_viagem_fmt || v.data_viagem || ''
+  const rota = v.nome_rota || (v.origem && v.destino ? `${v.origem} - ${v.destino}` : '')
+  const desc = v.descricao ? ` ${v.descricao}` : ''
+  const ativa = v.ativa ? ' (ATIVA)' : ''
+  return `${v.id_viagem} - ${data}${desc} (${rota})${ativa}`
+}
+
 export default function TopBar({ label, viagens, viagemAtiva, onViagemChange }) {
   function handleChange(e) {
     const id = parseInt(e.target.value)
@@ -20,8 +28,7 @@ export default function TopBar({ label, viagens, viagemAtiva, onViagemChange }) 
           <option value="">Selecione...</option>
           {viagens.map(v => (
             <option key={v.id_viagem} value={v.id_viagem}>
-              {v.descricao || `#${v.id_viagem}`} — {v.origem} → {v.destino}
-              {v.ativa ? ' (ATIVA)' : ''}
+              {formatViagem(v)}
             </option>
           ))}
         </select>

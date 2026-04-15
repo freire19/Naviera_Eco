@@ -269,7 +269,7 @@ export default function ModalCriarPassagem({
                 <select name="id_tipo_passagem" value={form.id_tipo_passagem} onChange={handleFormChange}>
                   <option value="">Selecione...</option>
                   {tiposPassagemAux.map(t => (
-                    <option key={t.id_tipo_passagem} value={t.id_tipo_passagem}>{t.nome_tipo_passagem}</option>
+                    <option key={t.id || t.id_tipo_passagem} value={t.id || t.id_tipo_passagem}>{t.nome || t.nome_tipo_passagem}</option>
                   ))}
                 </select>
               </div>

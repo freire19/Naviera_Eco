@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
              hs.descricao_horario_saida,
              ac.nome_acomodacao,
              ag.nome_agente,
-             tp.nome_tipo_passagem
+             COALESCE(tpas.nome, tp.nome_tipo_passagem) AS nome_tipo_passagem
       FROM passagens p
       LEFT JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro AND pas.empresa_id = p.empresa_id
       LEFT JOIN aux_nacionalidades nac ON pas.id_nacionalidade = nac.id_nacionalidade
@@ -51,6 +51,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN aux_horarios_saida hs ON p.id_horario_saida = hs.id_horario_saida
       LEFT JOIN aux_acomodacoes ac ON p.id_acomodacao = ac.id_acomodacao
       LEFT JOIN aux_agentes ag ON p.id_agente = ag.id_agente
+      LEFT JOIN tipo_passageiro tpas ON p.id_tipo_passagem = tpas.id AND tpas.empresa_id = p.empresa_id
       LEFT JOIN aux_tipos_passagem tp ON p.id_tipo_passagem = tp.id_tipo_passagem
       WHERE p.empresa_id = $1
     `
