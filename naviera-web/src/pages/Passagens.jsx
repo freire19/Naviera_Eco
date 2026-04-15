@@ -37,7 +37,7 @@ const FORM_INICIAL = {
   valor_desconto_tarifa: '', valor_desconto_geral: '', observacoes: ''
 }
 
-export default function Passagens({ viagemAtiva }) {
+export default function Passagens({ viagemAtiva, onNavigate }) {
   const [passagens, setPassagens] = useState([])
   const [loading, setLoading] = useState(false)
   const [selecionada, setSelecionada] = useState(null)
@@ -536,8 +536,8 @@ export default function Passagens({ viagemAtiva }) {
         <button className="btn-sm danger" onClick={handleExcluir}>EXCLUIR (F4)</button>
         <button className="btn-sm" onClick={handleCancelar}>CANCELAR (F5)</button>
         <button className="btn-sm primary" onClick={() => { if (selecionada) printBilhete(selecionada, viagemAtiva) }}>BILHETE (F6)</button>
-        <button className="btn-sm primary" onClick={() => printListaPassageiros(passagens, viagemAtiva)} style={{ fontWeight: 600 }}>LISTA DE PASSAGEIROS (F7)</button>
-        <button className="btn-sm primary" onClick={() => showToast('Funcao disponivel em breve')}>RELATORIO (F8)</button>
+        <button className="btn-sm primary" onClick={() => onNavigate ? onNavigate('listar-passageiros') : printListaPassageiros(passagens, viagemAtiva)} style={{ fontWeight: 600 }}>LISTA DE PASSAGEIROS (F7)</button>
+        <button className="btn-sm primary" onClick={() => onNavigate ? onNavigate('relatorio-passagens') : showToast('Funcao disponivel em breve')}>RELATORIO (F8)</button>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontWeight: 600, color: 'var(--text-soft)' }}>Total:</span>
           <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text)' }}>{passagens.length}</span>
