@@ -617,7 +617,14 @@ Responda APENAS com JSON valido (sem markdown):
       const cpf = (docInfo.cpf || '').trim()
       const rg = (docInfo.rg || docInfo.numero_doc || '').trim()
 
-      const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
+      // Mover foto para subpasta segura docs/{empresa_id}/
+      const docsDir = path.join(UPLOAD_PATH, 'docs', String(empresaId))
+      if (!existsSync(docsDir)) mkdirSync(docsDir, { recursive: true })
+      const docFilename = path.basename(req.file.path)
+      const docDestPath = path.join(docsDir, docFilename)
+      const { rename } = await import('fs/promises')
+      await rename(req.file.path, docDestPath)
+      const fotoRelPath = path.relative(UPLOAD_PATH, docDestPath)
 
       log.info('OCR', 'Documento identificado', {
         empresa_id: empresaId, lancamento_id: req.params.id,
