@@ -11,8 +11,12 @@ router.get('/', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(`
-      SELECT v.id_viagem, v.data_viagem, v.data_chegada, v.descricao, v.ativa,
-             e.nome AS nome_embarcacao, r.origem, r.destino
+      SELECT v.id_viagem, v.id_embarcacao, v.id_rota, v.is_atual,
+             TO_CHAR(v.data_viagem, 'DD/MM/YYYY') AS data_viagem,
+             TO_CHAR(v.data_chegada, 'DD/MM/YYYY') AS data_chegada,
+             v.descricao, v.ativa,
+             e.nome AS nome_embarcacao,
+             CASE WHEN r.origem IS NOT NULL THEN r.origem || ' - ' || COALESCE(r.destino, '') ELSE NULL END AS nome_rota
       FROM viagens v
       LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
       LEFT JOIN rotas r ON v.id_rota = r.id
@@ -74,7 +78,7 @@ router.post('/', validate({ id_embarcacao: 'required|integer', id_rota: 'require
     }
     const result = await pool.query(`
       INSERT INTO viagens (id_viagem, id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida, ativa, is_atual, empresa_id)
-      VALUES (nextval('seq_viagem'), $1, $2, $3, $4, $5, $6, FALSE, FALSE, $7)
+      VALUES (nextval('seq_viagem'), $1, $2, $3, $4, $5, $6, TRUE, FALSE, $7)
       RETURNING *
     `, [id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida || null, empresaId])
     res.status(201).json(result.rows[0])
