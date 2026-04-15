@@ -37,6 +37,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
   const [iaLoading, setIaLoading] = useState(false)
   const [fotoLoading, setFotoLoading] = useState(false)
   const [fotosAdicionais, setFotosAdicionais] = useState(0)
+  const [docRemetente, setDocRemetente] = useState(dados.doc_remetente || null) // {tipo_doc, numero_doc, foto_doc_path}
   const fotoCameraRef = useRef(null)
   const fotoGaleriaRef = useRef(null)
 
@@ -60,17 +61,24 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
     e.target.value = ''
 
     setFotoLoading(true)
-    showToast('Identificando item na foto...', 'info')
+    showToast('Analisando foto...', 'info')
     try {
       const compressed = await compressImage(file)
       const fotoFile = new File([compressed], file.name || 'foto.jpg', { type: 'image/jpeg' })
       const result = await uploadFotoAdicional(lancamento.id, fotoFile)
-      if (result?.itens?.length > 0) {
+
+      if (result?.tipo === 'documento') {
+        // Documento de identidade detectado
+        if (result.nome) setRemetente(result.nome)
+        setDocRemetente({ tipo_doc: result.tipo_doc, numero_doc: result.numero_doc, foto_doc_path: result.foto_doc_path })
+        showToast(`Documento ${result.tipo_doc || ''} identificado: ${result.nome || 'sem nome'}`, 'success')
+      } else if (result?.itens?.length > 0) {
+        // Item fisico
         setItens(prev => [...prev, ...result.itens])
         setFotosAdicionais(prev => prev + 1)
-        showToast(`${result.itens.length} item(ns) adicionado(s) da foto`, 'success')
+        showToast(`${result.itens.length} item(ns) adicionado(s)`, 'success')
       } else {
-        showToast('Nenhum item identificado na foto', 'warn')
+        showToast('Nenhum item ou documento identificado na foto', 'warn')
       }
     } catch (err) {
       showToast(err.message || 'Erro ao processar foto', 'error')
@@ -119,7 +127,8 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
           subtotal: (i.quantidade || 0) * (i.preco_unitario || 0)
         })),
         valor_total: valorTotal,
-        observacoes: dados.observacoes || ''
+        observacoes: dados.observacoes || '',
+        doc_remetente: docRemetente || null
       }
       await apiPut(`/ocr/lancamentos/${lancamento.id}/revisar`, { dados_revisados: dadosRevisados })
       onConfirm(lancamento.id)
@@ -162,22 +171,45 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
 
       {/* Remetente / Destinatario / Rota */}
       <Card t={t} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[
-          { label: 'Remetente', value: remetente, set: setRemetente, placeholder: 'Nome do remetente' },
-          { label: 'Destinatario', value: destinatario, set: setDestinatario, placeholder: 'Nome do destinatario' },
-          { label: 'Rota', value: rota, set: setRota, placeholder: 'Ex: Manaus - Parintins' }
-        ].map(f => (
-          <div key={f.label}>
-            <label style={{ color: t.txSoft, fontSize: '0.8rem', fontWeight: 500 }}>{f.label}</label>
-            <input
-              className="input"
-              value={f.value}
-              onChange={(e) => f.set(e.target.value)}
-              placeholder={f.placeholder}
-              style={{ background: t.card, color: t.tx, borderColor: t.border, marginTop: 4 }}
-            />
+        <div>
+          <label style={{ color: t.txSoft, fontSize: '0.8rem', fontWeight: 500 }}>Remetente</label>
+          <input className="input" value={remetente} onChange={e => setRemetente(e.target.value)}
+            placeholder="Nome do remetente" style={{ background: t.card, color: t.tx, borderColor: t.border, marginTop: 4 }} />
+        </div>
+
+        {/* Documento do remetente */}
+        {isEncomenda && docRemetente && (
+          <div style={{
+            background: t.okBg, borderRadius: 8, padding: '8px 12px',
+            display: 'flex', flexDirection: 'column', gap: 4
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: t.okTx }}>
+                Doc. {docRemetente.tipo_doc || 'ID'} arquivado
+              </span>
+              <button onClick={() => setDocRemetente(null)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: t.txMuted
+              }}>remover</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" value={docRemetente.tipo_doc || ''} onChange={e => setDocRemetente(prev => ({ ...prev, tipo_doc: e.target.value }))}
+                placeholder="Tipo (RG, CPF, CNH)" style={{ background: t.card, color: t.tx, borderColor: t.border, flex: 1, fontSize: '0.85rem' }} />
+              <input className="input" value={docRemetente.numero_doc || ''} onChange={e => setDocRemetente(prev => ({ ...prev, numero_doc: e.target.value }))}
+                placeholder="Numero do documento" style={{ background: t.card, color: t.tx, borderColor: t.border, flex: 2, fontSize: '0.85rem' }} />
+            </div>
           </div>
-        ))}
+        )}
+
+        <div>
+          <label style={{ color: t.txSoft, fontSize: '0.8rem', fontWeight: 500 }}>Destinatario</label>
+          <input className="input" value={destinatario} onChange={e => setDestinatario(e.target.value)}
+            placeholder="Nome do destinatario" style={{ background: t.card, color: t.tx, borderColor: t.border, marginTop: 4 }} />
+        </div>
+        <div>
+          <label style={{ color: t.txSoft, fontSize: '0.8rem', fontWeight: 500 }}>Rota</label>
+          <input className="input" value={rota} onChange={e => setRota(e.target.value)}
+            placeholder="Ex: Manaus - Parintins" style={{ background: t.card, color: t.tx, borderColor: t.border, marginTop: 4 }} />
+        </div>
       </Card>
 
       <ItemList itens={itens} t={t} onUpdate={updateItem} onRemove={removeItem} onAdd={addItem} />

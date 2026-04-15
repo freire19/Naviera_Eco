@@ -539,16 +539,18 @@ router.put('/lancamentos/:id/rejeitar', async (req, res) => {
 })
 
 // ============================================================================
-// POST /api/ocr/lancamentos/:id/adicionar-foto — Processa foto extra e retorna itens
-// Usado em encomenda: operador adiciona N fotos de volumes ao mesmo lancamento
+// POST /api/ocr/lancamentos/:id/adicionar-foto — Processa foto extra (item OU documento)
+// Detecta automaticamente: se for RG/CNH/CPF extrai nome+numero do remetente
+// Se for item fisico, extrai itens normalmente
 // ============================================================================
+const DOC_KEYWORDS = /\b(registro\s*geral|identidade|habilitac|cpf|cnpj|rg[\s:.-]|cnh|cart\s*de\s*ident|orgao\s*emissor|data\s*de\s*nascimento|filiacao|naturalidade|doc\.?\s*de\s*identidade|republica\s*federativa)\b/i
+
 router.post('/lancamentos/:id/adicionar-foto', upload.single('foto'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Foto obrigatoria' })
 
   try {
     const empresaId = req.user.empresa_id
 
-    // Verificar que o lancamento existe e e encomenda
     const lancResult = await pool.query(
       `SELECT id, tipo FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2 AND status IN ('pendente', 'revisado_operador')`,
       [req.params.id, empresaId]
@@ -558,19 +560,82 @@ router.post('/lancamentos/:id/adicionar-foto', upload.single('foto'), async (req
       return res.status(404).json({ error: 'Lancamento nao encontrado ou status invalido' })
     }
 
+    // Vision OCR primeiro para detectar se e documento
+    let ocrText = ''
+    try {
+      const ocrResult = await callVisionOCR(req.file.path)
+      ocrText = ocrResult.text || ''
+    } catch { /* sem texto — provavelmente item fisico */ }
+
+    const isDocumento = DOC_KEYWORDS.test(ocrText)
+
+    if (isDocumento) {
+      // DOCUMENTO: extrair nome + numero via Gemini
+      const docPrompt = `Analise este texto extraido de um DOCUMENTO DE IDENTIDADE brasileiro (RG, CNH, CPF, ou similar).
+
+Extraia APENAS:
+1. Nome completo da pessoa
+2. Numero do documento (RG, CPF, ou CNH — o que estiver visivel)
+3. Tipo do documento (RG, CPF, CNH, CTPS, etc.)
+
+Texto OCR:
+"""
+${ocrText}
+"""
+
+Responda APENAS com JSON valido (sem markdown):
+{"nome": "NOME COMPLETO", "numero_doc": "000.000.000-00", "tipo_doc": "RG"}`
+
+      const { fetchWithRetry: fetchRetry } = await import('../helpers/fetchWithRetry.js')
+      const apiKey = process.env.GEMINI_API_KEY
+      const geminiRes = await fetchRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: docPrompt }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+          }),
+          signal: AbortSignal.timeout(30000)
+        }
+      )
+      const geminiData = await geminiRes.json()
+      const parts = geminiData.candidates?.[0]?.content?.parts || []
+      const jsonText = parts.find(p => p.text?.includes('{'))?.text || ''
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/)
+      let docInfo = { nome: '', numero_doc: '', tipo_doc: '' }
+      if (jsonMatch) {
+        try { docInfo = JSON.parse(jsonMatch[0]) } catch {}
+      }
+
+      // Arquivar foto do documento (pasta segura, nao publica)
+      const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
+
+      log.info('OCR', 'Documento identificado', {
+        empresa_id: empresaId, lancamento_id: req.params.id,
+        tipo_doc: docInfo.tipo_doc, nome: docInfo.nome
+      })
+
+      return res.json({
+        tipo: 'documento',
+        nome: docInfo.nome || '',
+        numero_doc: docInfo.numero_doc || '',
+        tipo_doc: docInfo.tipo_doc || '',
+        foto_doc_path: fotoRelPath
+      })
+    }
+
+    // ITEM FISICO: fluxo normal
     const padrao = await pool.query(
       'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
       [empresaId]
     )
-
-    // Processar foto com Gemini Vision (item fisico)
     const dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
-    log.info('OCR', 'Foto adicional processada', { empresa_id: empresaId, lancamento_id: req.params.id, itens: dados.itens?.length || 0 })
-
-    // Salvar foto extra no disco (mesmo diretorio do lancamento)
-    // Nao atualiza o lancamento no banco — frontend acumula itens e envia tudo no /revisar
+    log.info('OCR', 'Foto adicional (item)', { empresa_id: empresaId, lancamento_id: req.params.id, itens: dados.itens?.length || 0 })
 
     res.json({
+      tipo: 'item',
       itens: dados.itens || [],
       observacoes: dados.observacoes || ''
     })
