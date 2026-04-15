@@ -164,6 +164,9 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total: 'require
     const vDevedor = Math.round((vTotal - vPago) * 100) / 100
     const status = vDevedor <= 0.01 ? 'PAGO' : 'PENDENTE'
 
+    // Sincronizar sequence do id_passagem para evitar conflitos de PK
+    await client.query(`SELECT setval(pg_get_serial_sequence('passagens', 'id_passagem'), COALESCE((SELECT MAX(id_passagem) FROM passagens), 0) + 1, false)`)
+
     const params = [
       String(numBilhete), parseInt(passageiroId), parseInt(id_viagem), assento || null,
       id_rota ? parseInt(id_rota) : null, id_tipo_passagem ? parseInt(id_tipo_passagem) : null, id_acomodacao ? parseInt(id_acomodacao) : null,

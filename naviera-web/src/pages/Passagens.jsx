@@ -8,10 +8,15 @@ function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
 function formatDate(val) {
-  if (!val) return ''
-  if (val.includes('/')) return val
-  const d = new Date(val + 'T00:00:00')
-  return d.toLocaleDateString('pt-BR')
+  if (!val) return '—'
+  const s = String(val)
+  if (s.includes('/')) return s
+  if (s === 'Invalid Date' || s === 'undefined' || s === 'null') return '—'
+  try {
+    const d = new Date(s.includes('T') ? s : s + 'T00:00:00')
+    if (isNaN(d.getTime())) return '—'
+    return d.toLocaleDateString('pt-BR')
+  } catch { return '—' }
 }
 function calcIdade(dataNasc) {
   if (!dataNasc) return ''
@@ -299,10 +304,16 @@ export default function Passagens({ viagemAtiva }) {
     )
   }
 
-  const inputStyle = { padding: '6px 8px', fontSize: '0.8rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%' }
+  const inputStyle = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%' }
   const labelStyle = { fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.03em' }
-  const cellStyle = { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }
+  const cellStyle = { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 100 }
   const roStyle = { ...inputStyle, opacity: 0.6, cursor: 'default' }
+
+  // Helper para exibir data da viagem (pode vir como DD/MM/YYYY ou ISO)
+  const viagemData = viagemAtiva.data_viagem ? formatDate(viagemAtiva.data_viagem) : '—'
+  const viagemChegada = viagemAtiva.data_chegada ? formatDate(viagemAtiva.data_chegada) : '—'
+  const viagemHora = viagemAtiva.horario || viagemAtiva.descricao_horario_saida || '—'
+  const viagemRota = viagemAtiva.nome_rota || (viagemAtiva.origem && viagemAtiva.destino ? `${viagemAtiva.origem} - ${viagemAtiva.destino}` : '')
 
   return (
     <div className="card" style={{ padding: 12 }}>
@@ -320,7 +331,7 @@ export default function Passagens({ viagemAtiva }) {
 
       {/* FORM — Passageiro */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', padding: '8px', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <div style={{ ...cellStyle, flex: 3, minWidth: 180 }}>
+        <div style={{ ...cellStyle, flex: 4, minWidth: 280 }}>
           <label style={labelStyle}>Passageiro (Nome Completo) *</label>
           <Autocomplete
             value={form.nome_passageiro}
@@ -329,7 +340,7 @@ export default function Passagens({ viagemAtiva }) {
             suggestions={sugestoes}
             loading={buscando}
             placeholder="Digite o nome do passageiro..."
-            emptyMessage=""
+            emptyMessage="Nenhum encontrado. Sera cadastrado como novo."
             renderItem={(s) => <><strong>{s.nome_passageiro}</strong>{s.numero_documento && <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 11 }}>{s.numero_documento}</span>}</>}
           />
         </div>
@@ -369,15 +380,15 @@ export default function Passagens({ viagemAtiva }) {
 
       {/* FORM — Viagem */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', padding: '8px', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <div style={{ ...cellStyle, flex: 2, minWidth: 200 }}>
+        <div style={{ ...cellStyle, flex: 2, minWidth: 220 }}>
           <label style={labelStyle}>Viagem Selecionada</label>
-          <input style={roStyle} value={`${viagemAtiva.id_viagem} - ${formatDate(viagemAtiva.data_viagem)} - Prev: ${formatDate(viagemAtiva.data_chegada)}`} readOnly tabIndex={-1} />
+          <input style={{ ...roStyle, fontWeight: 600 }} value={`${viagemAtiva.id_viagem} - ${viagemData} (${viagemRota}) - Prev: ${viagemChegada}`} readOnly tabIndex={-1} />
         </div>
-        <div style={cellStyle}>
+        <div style={{ ...cellStyle, minWidth: 140 }}>
           <label style={labelStyle}>Data / Hora</label>
           <div style={{ display: 'flex', gap: 4 }}>
-            <input style={{ ...roStyle, flex: 1 }} value={formatDate(viagemAtiva.data_viagem)} readOnly tabIndex={-1} />
-            <input style={{ ...roStyle, width: 55, textAlign: 'center' }} value={viagemAtiva.horario || '—'} readOnly tabIndex={-1} />
+            <input style={{ ...roStyle, flex: 1 }} value={viagemData} readOnly tabIndex={-1} />
+            <input style={{ ...roStyle, width: 60, textAlign: 'center' }} value={viagemHora} readOnly tabIndex={-1} />
           </div>
         </div>
         <div style={cellStyle}>
@@ -424,9 +435,9 @@ export default function Passagens({ viagemAtiva }) {
             { label: 'Cargas', name: 'valor_cargas' },
             { label: 'Desc.', name: 'valor_desconto_tarifa' }
           ].map(f => (
-            <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 1, width: 65 }}>
-              <label style={{ ...labelStyle, fontSize: '0.6rem' }}>{f.label}</label>
-              <input style={{ ...inputStyle, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontSize: '0.75rem' }} type="number" step="0.01" min="0" name={f.name} value={form[f.name]} onChange={handleChange} />
+            <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 1, width: 90 }}>
+              <label style={{ ...labelStyle, fontSize: '0.65rem' }}>{f.label}</label>
+              <input style={{ ...inputStyle, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontSize: '0.8rem', padding: '7px 6px' }} type="number" step="0.01" min="0" name={f.name} value={form[f.name]} onChange={handleChange} />
             </div>
           ))}
         </div>
