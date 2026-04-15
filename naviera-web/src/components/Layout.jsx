@@ -98,7 +98,9 @@ const PAGES = {
 }
 
 export default function Layout() {
-  const [currentPage, setCurrentPage] = useState('inicio')
+  // Sistema de abas multiplas — cada aba permanece viva
+  const [tabs, setTabs] = useState([{ id: 'inicio', page: 'inicio' }])
+  const [activeTab, setActiveTab] = useState('inicio')
   const [viagens, setViagens] = useState([])
   const [viagemAtiva, setViagemAtiva] = useState(null)
 
@@ -107,43 +109,106 @@ export default function Layout() {
     api.get('/viagens/ativa').then(v => { if (v) setViagemAtiva(v) }).catch(() => {})
   }, [])
 
-  const pageConfig = PAGES[currentPage] || PAGES.inicio
-  const PageComponent = pageConfig.component
+  // Navegar para pagina — abre nova aba ou foca existente
+  function navigateTo(page) {
+    const existing = tabs.find(t => t.page === page)
+    if (existing) {
+      setActiveTab(existing.id)
+    } else {
+      const newTab = { id: `${page}-${Date.now()}`, page }
+      setTabs(prev => [...prev, newTab])
+      setActiveTab(newTab.id)
+    }
+  }
 
-  const ocrUrl = window.location.hostname === 'localhost'
-    ? `http://${window.location.hostname}:5175`
-    : `https://ocr.${window.location.hostname.replace(/^[^.]+\./, '')}`
+  // Fechar aba (nunca fecha Inicio)
+  function closeTab(tabId) {
+    const tab = tabs.find(t => t.id === tabId)
+    if (tab?.page === 'inicio') return
+    const newTabs = tabs.filter(t => t.id !== tabId)
+    if (activeTab === tabId) {
+      const idx = tabs.findIndex(t => t.id === tabId)
+      const nextTab = newTabs[Math.min(idx, newTabs.length - 1)]
+      setActiveTab(nextTab?.id || 'inicio')
+    }
+    setTabs(newTabs)
+  }
+
+  const activeTabObj = tabs.find(t => t.id === activeTab) || tabs[0]
+  const activePageConfig = PAGES[activeTabObj?.page] || PAGES.inicio
 
   return (
     <div className="app-layout">
-      <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} pages={PAGES} />
+      <Sidebar currentPage={activeTabObj?.page} onNavigate={navigateTo} pages={PAGES} />
       <div className="main-content">
         <TopBar
-          label={pageConfig.label}
+          label={activePageConfig.label}
           viagens={viagens}
           viagemAtiva={viagemAtiva}
           onViagemChange={setViagemAtiva}
         />
 
-        {/* Mobile nav — visivel apenas <800px quando sidebar colapsa */}
+        {/* BARRA DE ABAS */}
+        {tabs.length > 1 && (
+          <div style={{
+            display: 'flex', gap: 0, background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
+            overflowX: 'auto', padding: '0 8px', minHeight: 32
+          }}>
+            {tabs.map(tab => {
+              const cfg = PAGES[tab.page] || PAGES.inicio
+              const isActive = tab.id === activeTab
+              const isInicio = tab.page === 'inicio'
+              return (
+                <div key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap',
+                    fontSize: '0.78rem', fontWeight: isActive ? 600 : 400,
+                    color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                    background: isActive ? 'var(--bg-soft)' : 'transparent',
+                    borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
+                    transition: 'all 0.15s'
+                  }}>
+                  {isInicio ? '⌂ ' : ''}{cfg.label}
+                  {!isInicio && (
+                    <span onClick={e => { e.stopPropagation(); closeTab(tab.id) }}
+                      style={{ marginLeft: 4, fontSize: '0.9rem', opacity: 0.5, cursor: 'pointer', lineHeight: 1 }}
+                      title="Fechar aba">×</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Mobile nav */}
         <div className="mobile-nav">
-          <button className={currentPage === 'inicio' ? 'active' : ''} onClick={() => setCurrentPage('inicio')}>&#8962; Inicio</button>
-          <button className={currentPage === 'vender-passagem' ? 'active' : ''} onClick={() => setCurrentPage('vender-passagem')}>&#127915; Passagens</button>
-          <button className={currentPage === 'nova-encomenda' ? 'active' : ''} onClick={() => setCurrentPage('nova-encomenda')}>&#128230; Encomendas</button>
-          <button className={currentPage === 'lancar-frete' ? 'active' : ''} onClick={() => setCurrentPage('lancar-frete')}>&#128666; Fretes</button>
-          <button className={currentPage === 'financeiro-entrada' ? 'active' : ''} onClick={() => setCurrentPage('financeiro-entrada')}>&#128176; Financeiro</button>
+          <button className={activeTabObj?.page === 'inicio' ? 'active' : ''} onClick={() => navigateTo('inicio')}>&#8962; Inicio</button>
+          <button className={activeTabObj?.page === 'vender-passagem' ? 'active' : ''} onClick={() => navigateTo('vender-passagem')}>&#127915; Passagens</button>
+          <button className={activeTabObj?.page === 'nova-encomenda' ? 'active' : ''} onClick={() => navigateTo('nova-encomenda')}>&#128230; Encomendas</button>
+          <button className={activeTabObj?.page === 'lancar-frete' ? 'active' : ''} onClick={() => navigateTo('lancar-frete')}>&#128666; Fretes</button>
+          <button className={activeTabObj?.page === 'financeiro-entrada' ? 'active' : ''} onClick={() => navigateTo('financeiro-entrada')}>&#128176; Financeiro</button>
         </div>
 
-        <div className="page">
-          <PageComponent
-            key={currentPage}
-            viagemAtiva={viagemAtiva}
-            onNavigate={setCurrentPage}
-          />
+        {/* CONTEUDO DAS ABAS — todas permanecem montadas, so a ativa e visivel */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          {tabs.map(tab => {
+            const cfg = PAGES[tab.page] || PAGES.inicio
+            const PageComponent = cfg.component
+            const isVisible = tab.id === activeTab
+            return (
+              <div key={tab.id} className="page" style={{ display: isVisible ? 'block' : 'none' }}>
+                <PageComponent
+                  viagemAtiva={viagemAtiva}
+                  onNavigate={navigateTo}
+                />
+              </div>
+            )
+          })}
         </div>
 
       </div>
-
     </div>
   )
 }
