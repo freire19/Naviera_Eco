@@ -668,11 +668,11 @@ Responda APENAS com JSON valido (sem markdown):
 router.get('/documentos', async (req, res) => {
   try {
     const funcao = (req.user.funcao || '').toLowerCase()
-    if (funcao !== 'administrador' && funcao !== 'admin') {
-      return res.status(403).json({ error: 'Acesso restrito a administradores' })
+    if (funcao !== 'administrador' && funcao !== 'admin' && funcao !== 'gerente') {
+      return res.status(403).json({ error: 'Acesso restrito a administradores da empresa' })
     }
     const empresaId = req.user.empresa_id
-    const { categoria } = req.query // frete, encomenda, lote, ou vazio = todos
+    const { categoria } = req.query
 
     let sql = `SELECT id, tipo, status, dados_revisados, dados_extraidos,
       nome_usuario_criou, criado_em, id_frete, id_encomenda
@@ -719,8 +719,8 @@ router.get('/documentos', async (req, res) => {
 router.get('/lancamentos/:id/doc-foto', async (req, res) => {
   try {
     const funcao = (req.user.funcao || '').toLowerCase()
-    if (funcao !== 'administrador' && funcao !== 'admin') {
-      return res.status(403).json({ error: 'Acesso restrito a administradores' })
+    if (funcao !== 'administrador' && funcao !== 'admin' && funcao !== 'gerente') {
+      return res.status(403).json({ error: 'Acesso restrito a administradores da empresa' })
     }
 
     const empresaId = req.user.empresa_id

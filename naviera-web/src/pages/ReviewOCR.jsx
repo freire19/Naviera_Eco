@@ -37,7 +37,7 @@ const STATUS_CLASSES = {
 
 export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   const { usuario } = useAuth()
-  const isAdmin = ['administrador', 'admin'].includes((usuario?.funcao || '').toLowerCase())
+  const isAdmin = ['administrador', 'admin', 'gerente'].includes((usuario?.funcao || '').toLowerCase())
   const [lancamentos, setLancamentos] = useState([])
   const [loading, setLoading] = useState(false)
   const [filtro, setFiltro] = useState('revisado_operador')

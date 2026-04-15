@@ -77,12 +77,18 @@ const NAV = [
   }
 ]
 
+const NAV_DOCS = {
+  title: 'Documentos',
+  items: [
+    { key: 'admin-documentos', icon: '\uD83D\uDD12', label: 'Docs Arquivados' }
+  ]
+}
+
 const NAV_ADMIN = {
-  title: 'Admin',
+  title: 'Admin Naviera',
   items: [
     { key: 'admin-empresas', icon: '\uD83C\uDFE2', label: 'Empresas' },
-    { key: 'admin-metricas', icon: '\uD83D\uDCCA', label: 'Metricas' },
-    { key: 'admin-documentos', icon: '\uD83D\uDD12', label: 'Documentos' }
+    { key: 'admin-metricas', icon: '\uD83D\uDCCA', label: 'Metricas' }
   ]
 }
 
@@ -97,8 +103,13 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
     .toUpperCase()
 
   const isAdminSubdomain = window.location.hostname.startsWith('admin.')
-  const isAdmin = usuario?.funcao === 'Administrador' && isAdminSubdomain
-  const sections = isAdmin ? [...NAV, NAV_ADMIN] : NAV
+  const funcaoLower = (usuario?.funcao || '').toLowerCase()
+  const isAdminGlobal = (funcaoLower === 'administrador' || funcaoLower === 'admin') && isAdminSubdomain
+  const isAdminEmpresa = funcaoLower === 'administrador' || funcaoLower === 'admin' || funcaoLower === 'gerente'
+
+  const sections = [...NAV]
+  if (isAdminEmpresa) sections.push(NAV_DOCS)
+  if (isAdminGlobal) sections.push(NAV_ADMIN)
 
   return (
     <aside className="sidebar">
