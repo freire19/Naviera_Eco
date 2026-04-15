@@ -27,7 +27,9 @@ const storage = multer.diskStorage({
     cb(null, dir)
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg'
+    // DS4-029 fix: forcar extensao por mimetype (antes: user-controlled originalname)
+    const extMap = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }
+    const ext = extMap[file.mimetype] || '.jpg'
     const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
     cb(null, name)
   }
@@ -192,7 +194,8 @@ router.post('/lancamentos/:id/ia-review', async (req, res) => {
     res.json({ dados_extraidos: dados })
   } catch (err) {
     console.error('[OCR] Erro na revisao IA:', err.message)
-    res.status(500).json({ error: 'Erro ao processar com IA: ' + err.message })
+    // DS4-030 fix: mensagem generica (antes: err.message podia vazar API keys/paths)
+    res.status(500).json({ error: 'Erro ao processar com IA. Tente novamente.' })
   }
 })
 
@@ -330,8 +333,8 @@ router.get('/lancamentos/:id/foto', async (req, res) => {
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
 
-    const fullPath = path.join(UPLOAD_PATH, result.rows[0].foto_path)
-    // #DB126: path traversal guard
+    // DS4-043 fix: path.resolve em ambos para normalizar completamente (antes: path.join parcial)
+    const fullPath = path.resolve(UPLOAD_PATH, result.rows[0].foto_path)
     if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
     if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
 

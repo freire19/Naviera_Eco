@@ -26,6 +26,10 @@ public class GpsController {
         Double velocidade = dados.get("velocidade") != null ? ((Number) dados.get("velocidade")).doubleValue() : null;
         Double curso = dados.get("curso") != null ? ((Number) dados.get("curso")).doubleValue() : null;
 
+        // DS4-033 fix: validar ranges de coordenadas
+        if (lat < -90 || lat > 90) return ResponseEntity.badRequest().body(Map.of("erro", "Latitude deve estar entre -90 e 90"));
+        if (lon < -180 || lon > 180) return ResponseEntity.badRequest().body(Map.of("erro", "Longitude deve estar entre -180 e 180"));
+
         return ResponseEntity.ok(service.registrarPosicao(empresaId, idEmbarcacao, idViagem, lat, lon, velocidade, curso));
     }
 

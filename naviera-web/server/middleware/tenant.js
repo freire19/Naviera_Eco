@@ -2,7 +2,8 @@ import pool from '../db.js'
 
 // Cache de slug → empresa para evitar query a cada request
 const cache = new Map()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+// DS4-040 fix: reduzido de 5min para 60s (empresa desativada fica acessivel por menos tempo)
+const CACHE_TTL = 60 * 1000 // 60 segundos
 
 /**
  * Middleware que resolve o tenant (empresa) pelo slug do subdominio.

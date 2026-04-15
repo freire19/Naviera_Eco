@@ -23,8 +23,12 @@ public class AdminService {
         this.encoder = encoder;
     }
 
+    // DS4-034 fix: colunas explicitas (excluir codigo_ativacao da listagem)
     public List<Map<String, Object>> listarEmpresas() {
-        return jdbc.queryForList("SELECT * FROM empresas ORDER BY nome");
+        return jdbc.queryForList("""
+            SELECT id, nome, cnpj, ie, endereco, cep, telefone, email, path_logo,
+                   plano, ativo, slug, cor_primaria, ativado_em, created_at
+            FROM empresas ORDER BY nome""");
     }
 
     public Map<String, Object> buscarEmpresa(Long id) {

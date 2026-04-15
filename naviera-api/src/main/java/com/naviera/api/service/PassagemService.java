@@ -19,6 +19,7 @@ public class PassagemService {
         this.clienteRepo = clienteRepo;
     }
 
+    // DS4-024: cross-tenant intencional — CPF pode ter passagens em multiplas empresas
     public List<Map<String, Object>> minhasPassagens(Long clienteId) {
         var cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));

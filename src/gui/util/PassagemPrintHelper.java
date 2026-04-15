@@ -19,6 +19,8 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 import model.Passagem;
 
+import util.AppLogger;
+
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;

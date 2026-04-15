@@ -24,6 +24,8 @@ public class AuthOperadorController {
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication auth) {
         Integer id = ((Number) auth.getPrincipal()).intValue();
-        return ResponseEntity.ok(service.me(id));
+        // DS4-023 fix: passar empresa_id para defense-in-depth
+        Integer empresaId = com.naviera.api.config.TenantUtils.getEmpresaIdOrNull(auth);
+        return ResponseEntity.ok(service.me(id, empresaId));
     }
 }

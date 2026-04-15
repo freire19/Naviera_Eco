@@ -230,7 +230,7 @@ router.get('/historico', async (req, res) => {
       let idx = params.length + 1
       if (data_inicio) { where += ` AND l.data_hora >= $${idx}`; params.push(data_inicio); idx++ }
       if (data_fim) { where += ` AND l.data_hora <= ($${idx}::date + INTERVAL '1 day')`; params.push(data_fim); idx++ }
-      if (autorizador) { where += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador}%`); idx++ }
+      if (autorizador) { where += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`); idx++ }
       return { where, params }
     }
 
@@ -288,7 +288,7 @@ router.get('/historico/passagens', async (req, res) => {
     let idx = 2
     if (data_inicio) { sql += ` AND l.data_hora >= $${idx}`; params.push(data_inicio); idx++ }
     if (data_fim) { sql += ` AND l.data_hora <= ($${idx}::date + INTERVAL '1 day')`; params.push(data_fim); idx++ }
-    if (autorizador) { sql += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador}%`); idx++ }
+    if (autorizador) { sql += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`); idx++ }
     sql += ' ORDER BY l.data_hora DESC'
     const result = await pool.query(sql, params)
     res.json(result.rows)
@@ -311,7 +311,7 @@ router.get('/historico/encomendas', async (req, res) => {
     let idx = 2
     if (data_inicio) { sql += ` AND l.data_hora >= $${idx}`; params.push(data_inicio); idx++ }
     if (data_fim) { sql += ` AND l.data_hora <= ($${idx}::date + INTERVAL '1 day')`; params.push(data_fim); idx++ }
-    if (autorizador) { sql += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador}%`); idx++ }
+    if (autorizador) { sql += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`); idx++ }
     sql += ' ORDER BY l.data_hora DESC'
     const result = await pool.query(sql, params)
     res.json(result.rows)
@@ -334,7 +334,7 @@ router.get('/historico/fretes', async (req, res) => {
     let idx = 2
     if (data_inicio) { sql += ` AND l.data_hora >= $${idx}`; params.push(data_inicio); idx++ }
     if (data_fim) { sql += ` AND l.data_hora <= ($${idx}::date + INTERVAL '1 day')`; params.push(data_fim); idx++ }
-    if (autorizador) { sql += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador}%`); idx++ }
+    if (autorizador) { sql += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`); idx++ }
     sql += ' ORDER BY l.data_hora DESC'
     const result = await pool.query(sql, params)
     res.json(result.rows)

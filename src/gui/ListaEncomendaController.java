@@ -12,6 +12,7 @@ import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
 import gui.util.PermissaoService;
+import gui.util.TableCellMoney;
 import dao.CaixaDAO;
 import dao.EncomendaDAO;
 import dao.EncomendaItemDAO;
@@ -403,35 +404,6 @@ public class ListaEncomendaController implements Initializable {
         }
     }
 
-    private static class TableCellMoney extends TableCell<Encomenda, BigDecimal> {
-        private final boolean destacarDevedor;
-
-        public TableCellMoney() {
-            this(false);
-        }
-
-        public TableCellMoney(boolean destacarDevedor) {
-            this.destacarDevedor = destacarDevedor;
-        }
-
-        @Override
-        protected void updateItem(BigDecimal item, boolean empty) {
-            super.updateItem(item, empty);
-            if (empty || item == null) {
-                setText(null);
-                setStyle("");
-            } else {
-                setText(String.format("R$ %,.2f", item));
-                if (destacarDevedor && item.compareTo(BigDecimal.ZERO) > 0) {
-                    setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-                } else if (!destacarDevedor && item.compareTo(BigDecimal.ZERO) > 0) {
-                    setStyle("-fx-text-fill: green;");
-                } else {
-                    setStyle("-fx-text-fill: black;");
-                }
-            }
-        }
-    }
 
     private void carregarEncomendasDaViagem(Viagem viagem) {
         try {

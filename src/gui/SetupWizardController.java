@@ -479,8 +479,10 @@ public class SetupWizardController implements Initializable {
      */
     private boolean resetarSenhaPgViaPeer() {
         try {
+            // DS4-031 fix: sanitizar senha antes de interpolar (UUID e safe, mas defense-in-depth)
+            String senhaSafe = pgSenhaLocal.replaceAll("[^a-zA-Z0-9]", "");
             String script =
-                "su - postgres -c \"psql -c \\\"ALTER USER postgres PASSWORD '" + pgSenhaLocal + "';\\\"\"";
+                "su - postgres -c \"psql -c \\\"ALTER USER postgres PASSWORD '" + senhaSafe + "';\\\"\"";
 
             ProcessBuilder pb = new ProcessBuilder("pkexec", "bash", "-c", script);
             pb.redirectErrorStream(true);
@@ -532,6 +534,7 @@ public class SetupWizardController implements Initializable {
             String script =
                 "set -e\n" +
                 "apt-get update -qq\n" +
+                "apt-get --fix-broken install -y\n" +
                 "apt-get install -y postgresql postgresql-client\n" +
                 "systemctl start postgresql\n" +
                 "sleep 3\n" +
@@ -545,8 +548,8 @@ public class SetupWizardController implements Initializable {
                 "sed -i '2i host all all 127.0.0.1/32 md5' $PG_HBA\n" +
                 "systemctl reload postgresql\n" +
                 "sleep 2\n" +
-                // ALTER via peer auth (socket, sem senha)
-                "su - postgres -c \"psql -c \\\"ALTER USER postgres PASSWORD '" + pgSenhaLocal + "';\\\"\"\n" +
+                // ALTER via peer auth (socket, sem senha) — DS4-031 fix: senha sanitizada
+                "su - postgres -c \"psql -c \\\"ALTER USER postgres PASSWORD '" + pgSenhaLocal.replaceAll("[^a-zA-Z0-9]", "") + "';\\\"\"\n" +
                 "echo 'Senha PG alterada com sucesso'\n";
 
             log("Executando script de instalacao PG...");

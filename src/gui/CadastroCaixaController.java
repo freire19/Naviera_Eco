@@ -96,7 +96,7 @@ public class CadastroCaixaController implements Initializable {
         // int novoId = caixaDAO.gerarNovoIdCaixa(); // Se caixaDAO estivesse sendo usado
         // txtId.setText(String.valueOf(novoId));
         txtId.setText("NOVO"); // Indica que é uma nova entrada
-        System.out.println("Botão Novo Caixa clicado.");
+        AppLogger.debug("CadastroCaixaController", "Novo caixa");
     }
 
     @FXML
@@ -123,7 +123,7 @@ public class CadastroCaixaController implements Initializable {
                 // } else {
                 //    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao atualizar o Tipo de Caixa.");
                 // }
-                System.out.println("Tentando ATUALIZAR Caixa ID: " + idAtual + " para Nome: " + nome.trim());
+                AppLogger.debug("CadastroCaixaController", "Atualizando caixa ID: " + idAtual);
                 AlertHelper.show(AlertType.INFORMATION, "Operação (Placeholder)", "Atualizar Caixa ID: " + idAtual + " com nome: " + nome.trim());
             } else { // Inserir novo
                 // Caixa novoCaixa = new Caixa();
@@ -135,7 +135,7 @@ public class CadastroCaixaController implements Initializable {
                 // } else {
                 //    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao salvar o Tipo de Caixa.");
                 // }
-                 System.out.println("Tentando INSERIR Caixa com Nome: " + nome.trim());
+                 AppLogger.debug("CadastroCaixaController", "Inserindo novo caixa");
                  AlertHelper.show(AlertType.INFORMATION, "Operação (Placeholder)", "Inserir Caixa com nome: " + nome.trim());
             }
             carregarDadosCaixa(); // Recarrega dados na tabela
@@ -161,7 +161,7 @@ public class CadastroCaixaController implements Initializable {
         // } else {
         //    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao excluir o Tipo de Caixa. Verifique se não está em uso.");
         // }
-        System.out.println("Tentando EXCLUIR Caixa ID: " + selecionado.getId());
+        AppLogger.debug("CadastroCaixaController", "Excluindo caixa ID: " + selecionado.getId());
         AlertHelper.show(AlertType.INFORMATION, "Operação (Placeholder)", "Excluir Caixa ID: " + selecionado.getId());
         
         carregarDadosCaixa(); // Recarrega dados

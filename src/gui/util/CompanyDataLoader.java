@@ -4,6 +4,8 @@ import dao.ConexaoBD;
 import dao.EmpresaDAO;
 import model.Empresa;
 
+import util.AppLogger;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -67,6 +69,7 @@ public class CompanyDataLoader {
                         }
                     }
                 }
+            }
         } catch (Exception e) {
             // DR220: logar erro em vez de silenciar completamente
             AppLogger.warn("CompanyDataLoader", "Erro ao carregar dados da empresa: " + e.getMessage());

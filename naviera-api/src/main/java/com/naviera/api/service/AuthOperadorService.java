@@ -52,8 +52,10 @@ public class AuthOperadorService {
         return new AuthOperadorResponse(token, deveTrocar, dto);
     }
 
-    public UsuarioDTO me(Integer usuarioId) {
+    // DS4-023 fix: filtrar por empresa_id para defense-in-depth
+    public UsuarioDTO me(Integer usuarioId, Integer empresaId) {
         var usuario = repo.findById(usuarioId)
+            .filter(u -> empresaId == null || empresaId.equals(u.getEmpresaId()))
             .orElseThrow(() -> ApiException.notFound("Usuario nao encontrado"));
 
         return new UsuarioDTO(

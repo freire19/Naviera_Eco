@@ -1,6 +1,7 @@
 package gui;
 
 import dao.ConexaoBD;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
 import gui.util.StatusPagamentoView;
 import model.ItemExtratoEncomenda;

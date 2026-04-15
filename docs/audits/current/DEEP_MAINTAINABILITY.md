@@ -15,8 +15,8 @@
 | Issues anteriores resolvidas (V3->V4) | 0 |
 | Issues anteriores parcialmente resolvidas | 1 |
 | Issues anteriores pendentes | 14 |
-| **Corrigidas nesta sessao** | **5** |
-| **Total de issues ativas** | **24** |
+| **Corrigidas nesta sessao** | **8** |
+| **Total de issues ativas** | **21** |
 
 ---
 
@@ -34,7 +34,7 @@
 
 | Issue | Titulo | O que falta |
 |-------|--------|------------|
-| #DM032 | Inner classes em controllers | V3.0 estimou ~6 restantes. Contagem real: **19 inner classes** em 14 controllers (FreteItemCadastro, FreteCompleto, ItemFrete, FreteItemRelatorio, Boleto, ValorExtensoUtil, EstornoLog, ResultadoQueryPassagens, ItemExtrato x2, ItemNota, LogEstornoPassagem, Rota, Conferente, EstornoFreteLog, DadosEmpresa, ViagemFiltroWrapper, FreteView, TableCellMoney, PrecoItem) |
+| #DM032 | Inner classes em controllers | **RESOLVIDO** — 16/19 extraidos (15 inner classes + ValorExtensoUtil). Restam 3 intencionais: FreteItemCadastro (JavaFX SimpleProperty), Conferente (ConferenteRow existe), Rota (conflito nome). 16 novos arquivos em model/ e gui/util/ |
 
 ### Pendentes
 
@@ -324,9 +324,9 @@ public List<String> listarNomes() {
 - [x] #DM056 — Mover AppLogger para pacote nao-GUI (91 arquivos atualizados) — **FIXADO**
 - [x] #DM059 — Reescrever TipoPassageiroDAO.listarNomes com SELECT direto — **FIXADO**
 - [x] #DM063 — Mover ValorExtensoUtil para gui/util/ — **FIXADO**
-- [ ] #DM064 — Extrair BackupService de TelaPrincipalController — **Esforco:** 1-2 horas
-- [ ] #DM067 — Extrair Autocomplete + Modals de Passagens.jsx — **Esforco:** 2-3 horas
-- [ ] #DM032 — Mover 19 inner classes restantes para model/ — **Esforco:** 2-3 horas
+- [x] #DM064 — Extrair BackupService de TelaPrincipalController — **FIXADO** (handleBackup 175→55L)
+- [x] #DM067 — Extrair Autocomplete + Modals de Passagens.jsx — **FIXADO** (581→201L, 3 componentes)
+- [x] #DM032 — Mover inner classes para model/ — **FIXADO** (16/19 extraidos, 3 intencionais)
 - [ ] #DM004 — Expandir PrintLayoutHelper (corpo + itens, nao so headers) — **Esforco:** 1-2 dias
 - **Notas:**
 > _DM056 e DM059/DM063 sao quick wins mecanicos. DM064 e DM067 reduzem god classes. DM032 e trabalho repetitivo mas de baixo risco._

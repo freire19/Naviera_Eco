@@ -4,7 +4,8 @@ public class Usuario {
     private int id;             // Corresponde a id (PK)
     private String nomeCompleto; // Corresponde a nome (usado tambem como login)
     private String email;
-    private transient String senhaPlana; // Temporario — nunca persiste, nunca serializa
+    // DS4-037 fix: char[] em vez de String — pode ser zerado apos uso (String fica no heap ate GC)
+    private transient char[] senhaPlana; // Temporario — nunca persiste, nunca serializa
     private String senhaHash;   // Hash BCrypt — coluna 'senha' no banco
     private String funcao;
     private String permissoes; // Corresponde a permissao (singular no banco)
@@ -21,7 +22,7 @@ public class Usuario {
         this.nomeCompleto = nomeCompleto;
         this.loginUsuario = loginUsuario;
         this.email = email;
-        this.senhaPlana = senha; // Temporario — DAO fará hash antes de persistir
+        this.senhaPlana = senha != null ? senha.toCharArray() : null; // Temporario — DAO fará hash
         this.funcao = funcao;
         this.permissoes = permissoes;
         this.ativo = ativo;
@@ -52,18 +53,24 @@ public class Usuario {
     }
 
     /**
-     * Retorna a senha em texto plano (uso temporario pelo DAO para hash).
-     * Nunca deve ser logada, serializada ou exibida.
+     * Retorna a senha em texto plano como String (uso temporario pelo DAO para hash).
+     * DS4-037: armazenada internamente como char[] para permitir zeragem.
      */
     public String getSenhaPlana() {
-        return senhaPlana;
+        return senhaPlana != null ? new String(senhaPlana) : null;
     }
 
     /**
      * Define senha em texto plano temporariamente. O DAO fara o hash antes de persistir.
      */
     public void setSenhaPlana(String senhaPlana) {
-        this.senhaPlana = senhaPlana;
+        this.senhaPlana = senhaPlana != null ? senhaPlana.toCharArray() : null;
+    }
+
+    /** DS4-037 fix: zerar senha da memoria apos uso (chamar apos hash pelo DAO) */
+    public void limparSenha() {
+        if (senhaPlana != null) java.util.Arrays.fill(senhaPlana, '\0');
+        senhaPlana = null;
     }
 
     public String getSenhaHash() {

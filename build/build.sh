@@ -231,7 +231,7 @@ if [ "$PKG_TYPE" = "deb" ]; then
     LINUX_OPTS="--linux-deb-maintainer suporte@naviera.com.br"
     LINUX_OPTS="$LINUX_OPTS --linux-app-category utilities"
     LINUX_OPTS="$LINUX_OPTS --linux-shortcut"
-    LINUX_OPTS="$LINUX_OPTS --linux-package-deps postgresql,libgtk-3-0"
+    LINUX_OPTS="$LINUX_OPTS --linux-package-deps libgtk-3-0"
 fi
 
 # jpackage uses Liberica Full JDK — JavaFX + java.sql are built-in

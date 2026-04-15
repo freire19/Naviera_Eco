@@ -18,7 +18,8 @@ router.get('/busca-passageiro', async (req, res) => {
        WHERE empresa_id = $1 AND nome_passageiro ILIKE $2
        ORDER BY nome_passageiro
        LIMIT 15`,
-      [empresaId, `%${q.trim()}%`]
+      // DS4-041 fix: escapar wildcards LIKE do input
+      [empresaId, `%${q.trim().replace(/%/g, '\\%').replace(/_/g, '\\_')}%`]
     )
     res.json(result.rows)
   } catch (err) {
@@ -225,7 +226,12 @@ router.post('/:id/pagar', async (req, res) => {
 })
 
 // DELETE /api/passagens/:id
+// DS4-032 fix: somente Administrador/Gerente pode deletar
 router.delete('/:id', async (req, res) => {
+  const funcao = (req.user.funcao || '').toLowerCase()
+  if (funcao !== 'administrador' && funcao !== 'admin' && funcao !== 'gerente') {
+    return res.status(403).json({ error: 'Somente Administrador ou Gerente pode excluir passagens' })
+  }
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(

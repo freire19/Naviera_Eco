@@ -56,7 +56,9 @@ public class PushService {
                     .build();
                 FirebaseMessaging.getInstance().send(msg);
             } catch (Exception e) {
-                System.err.println("[Push] Erro ao enviar para " + token + ": " + e.getMessage());
+                // DS4-039 fix: truncar token no log (antes: token completo = device identifier exposto)
+                String tokenTrunc = token != null && token.length() > 10 ? token.substring(0, 10) + "..." : "null";
+                System.err.println("[Push] Erro ao enviar para " + tokenTrunc + ": " + e.getMessage());
                 // Token inválido — desativar
                 jdbc.update("UPDATE dispositivos_push SET ativo = FALSE WHERE token_fcm = ?", token);
             }

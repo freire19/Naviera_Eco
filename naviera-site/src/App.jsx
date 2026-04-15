@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
+// DS4-042 fix: URL da API via env var (antes hardcoded)
+const API_URL = import.meta.env.VITE_API_URL || "https://api.naviera.com.br/api";
+
 const NAV_ITEMS = [
   { id: "empresas", label: "Para Empresas" },
   { id: "passageiros", label: "Para Passageiros" },
@@ -447,7 +450,7 @@ function CadastroPage({ go }) {
 
     setSalvando(true); setErro('');
     try {
-      const resp = await fetch('https://api.naviera.com.br/api/public/registrar-empresa', {
+      const resp = await fetch(`${API_URL}/public/registrar-empresa`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           nome_empresa: form.nome_empresa.trim(),

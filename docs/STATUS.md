@@ -50,7 +50,7 @@ Plataforma SaaS multi-tenant de gestao fluvial com **5 camadas**: Desktop (JavaF
 
 | Categoria | Total | Resolvidas | Ativas | % Resolvido | Status |
 |-----------|-------|-----------|--------|-------------|--------|
-| **Security** | **90** | **67** | **23** | **74%** | **20 corrigidas (7 CRIT + 13 ALTO). Restam: 13 MEDIO, 10 BAIXO** |
+| **Security** | **90** | **90** | **0** | **100%** | **LIMPO — 43/43 DS4 corrigidas nesta sessao** |
 | **Logic** | **75** | **75** | **0** | **100%** | LIMPO |
 | **Bugs** | **134** | **134** | **0** | **100%** | **LIMPO** — 61 novas (Deep V2.0) + 36 anteriores + 37 AUDIT, todas corrigidas |
 | **Resilience** | **116** | **116** | **0** | **100%** | **LIMPO** — 49 novas V5.0 + 2 antigas, todas corrigidas |

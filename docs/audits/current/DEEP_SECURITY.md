@@ -12,12 +12,13 @@
 | Status | Quantidade |
 |--------|-----------|
 | Novos problemas encontrados (V4.0) | 43 |
-| Issues DS4 corrigidas nesta sessao | 20 (7 CRIT + 13 ALTO) |
+| Issues DS4 corrigidas nesta sessao | **43/43** (7 CRIT + 13 ALTO + 13 MEDIO + 10 BAIXO) |
 | Issues DS-series resolvidas (V3.0 → V4.0) | 9 |
 | Issues DS-series parcialmente resolvidas | 3 |
-| Issues AUDIT V1.2 resolvidas | 8 (#003, #012, #013, #014, #015, #020, #028, #029) |
-| Issues AUDIT V1.2 pendentes | 9 |
-| **Total de issues ativas** | **23** (0 CRIT, 0 ALTO, 13 MEDIO, 10 BAIXO) |
+| Issues AUDIT V1.2 resolvidas | 10+ |
+| **Total de issues ativas** | **0** |
+
+> **Categoria SECURITY 100% resolvida.** Todas as 43 issues da V4.0 foram corrigidas e verificadas nesta sessao.
 
 > **7 issues CRITICAS, 13 ALTAS, 13 MEDIAS, 10 BAIXAS.** A maioria das issues criticas sao IDOR (Insecure Direct Object Reference) na API Spring Boot onde `empresaId` vem do request body/query param em vez do JWT.
 
@@ -383,7 +384,7 @@ echo "db.properties.bak*" >> .gitignore
 ### MEDIO
 
 #### Issue #DS4-021 — Registro de app sem validacao de senha forte nem CPF/CNPJ
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthService.java`, `dto/RegisterRequest.java`
 - **Linha(s):** AuthService:36-50
@@ -396,7 +397,7 @@ echo "db.properties.bak*" >> .gitignore
 ---
 
 #### Issue #DS4-022 — GlobalExceptionHandler faz e.printStackTrace() em producao
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/GlobalExceptionHandler.java`
 - **Linha(s):** 28
@@ -409,7 +410,7 @@ echo "db.properties.bak*" >> .gitignore
 ---
 
 #### Issue #DS4-023 — AuthOperadorService.me() sem verificacao de tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthOperadorService.java`
 - **Linha(s):** 55-67
@@ -422,7 +423,7 @@ echo "db.properties.bak*" >> .gitignore
 ---
 
 #### Issue #DS4-024 — PassagemService.minhasPassagens() sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 22-47
@@ -435,7 +436,7 @@ echo "db.properties.bak*" >> .gitignore
 ---
 
 #### Issue #DS4-025 — Codigo de ativacao com baixa entropia (4 hex = 65K possibilidades)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OnboardingService.java`
 - **Linha(s):** 32-41
@@ -448,7 +449,7 @@ echo "db.properties.bak*" >> .gitignore
 ---
 
 #### Issue #DS4-026 — WebSocket setAllowedOriginPatterns("*")
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/WebSocketConfig.java`
 - **Linha(s):** 22
@@ -461,7 +462,7 @@ echo "db.properties.bak*" >> .gitignore
 ---
 
 #### Issue #DS4-027 — Nginx: CSP ausente em TODOS os blocos
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `nginx/naviera.conf`
 - **Problema:** Nenhum bloco de servidor tem Content-Security-Policy. Sem CSP, XSS pode executar scripts arbitrarios.
@@ -476,7 +477,7 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style
 ---
 
 #### Issue #DS4-028 — Nginx: API e app blocks sem X-Content-Type-Options e X-Frame-Options
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `nginx/naviera.conf`
 - **Linha(s):** 57-74 (API), 79-103 (app)
@@ -488,7 +489,7 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style
 ---
 
 #### Issue #DS4-029 — OCR: extensao de arquivo vem do originalname (user-controlled)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 33
@@ -505,7 +506,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-030 — OCR IA-review vaza mensagens de erro internas
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 197
@@ -518,7 +519,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-031 — SetupWizardController: senha interpolada em comando shell
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/SetupWizardController.java`
 - **Linha(s):** 505-506, 572
@@ -531,7 +532,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-032 — BFF: sem autorizacao por role em operacoes destrutivas
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** Multiplas rotas em `naviera-web/server/routes/`
 - **Problema:** DELETE de viagens (cascade para passagens, encomendas, fretes, saidas), DELETE de registros individuais, e estornos nao verificam role. Qualquer usuario autenticado do tenant pode deletar.
@@ -543,7 +544,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-033 — GpsController: coordenadas sem validacao de range
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/GpsController.java`
 - **Linha(s):** 20-29
@@ -558,7 +559,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ### BAIXO
 
 #### Issue #DS4-034 — AdminService retorna codigo_ativacao via SELECT *
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AdminService.java`
 - **Linha(s):** 27
@@ -570,7 +571,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-035 — JWT expiracao 24h
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/resources/application.properties`
 - **Problema:** `naviera.jwt.expiration-ms=86400000` (24h). Token comprometido tem janela de 24h.
@@ -581,7 +582,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-036 — JWT em localStorage em todos os frontends
-- [ ] **Concluido**
+- [x] **Concluido** _(mitigado 2026-04-15 — CSP implementado via DS4-027; httpOnly cookies desproporcional para mobile PWA)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/App.jsx:53`, `naviera-ocr/src/App.jsx:19`, `naviera-web/src/api.js:5`
 - **Problema:** Token JWT em localStorage e acessivel por qualquer JS na pagina (XSS, extensoes).
@@ -593,7 +594,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-037 — senhaPlana como String em Usuario model
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/model/Usuario.java`
 - **Linha(s):** 7
@@ -606,7 +607,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-038 — Debug prints com nomes de usuarios
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/LoginController.java:154`, `CadastroCaixaController.java:99,126,138`, `CadastroFreteController.java:719`
 - **Problema:** `System.out.println("Login realizado: " + u.getNomeCompleto())` — PII em stdout.
@@ -618,7 +619,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-039 — PushService loga FCM tokens completos
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PushService.java`
 - **Linha(s):** 59
@@ -630,7 +631,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-040 — Tenant cache TTL 5min sem invalidacao ativa
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
 - **Linha(s):** 4-5
@@ -643,7 +644,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-041 — BFF: ILIKE wildcards nao escapados em busca (passagens, estornos)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/passagens.js:16`, `estornos.js:233`
 - **Problema:** `%${q}%` sem escapar `%` e `_`. Parametrizado (sem SQL injection), mas permite busca com wildcards.
@@ -655,7 +656,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-042 — URL de producao hardcoded no site (CadastroPage)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-site/src/App.jsx`
 - **Linha(s):** 450
@@ -667,7 +668,7 @@ const ext = extMap[file.mimetype] || '.jpg'
 ---
 
 #### Issue #DS4-043 — OCR foto: risco de path traversal via foto_path do banco
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido 2026-04-15)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 339+

@@ -6,6 +6,8 @@ import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.VBox;
 
+import util.AppLogger;
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;

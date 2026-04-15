@@ -151,7 +151,8 @@ public class LoginController implements Initializable {
             Usuario u = usuarioDAO.buscarPorUsuarioESenha(login, senha);
             if (u != null) {
                 SessaoUsuario.setUsuarioLogado(u);
-                System.out.println("Login realizado: " + u.getNomeCompleto());
+                // DS4-038 fix: sem PII no console (antes: nome completo)
+                AppLogger.info("LoginController", "Login realizado com sucesso");
                 return true;
             }
         } catch (Exception e) {

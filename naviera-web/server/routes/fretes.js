@@ -111,7 +111,12 @@ router.post('/:id/pagar', async (req, res) => {
 })
 
 // DELETE /api/fretes/:id
+// DS4-032 fix: somente Administrador/Gerente pode deletar
 router.delete('/:id', async (req, res) => {
+  const funcao = (req.user.funcao || '').toLowerCase()
+  if (funcao !== 'administrador' && funcao !== 'admin' && funcao !== 'gerente') {
+    return res.status(403).json({ error: 'Somente Administrador ou Gerente pode excluir fretes' })
+  }
   const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id

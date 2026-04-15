@@ -5,6 +5,9 @@ import dao.EmpresaDAO;
 import dao.RotaDAO;
 import dao.ViagemDAO;
 import gui.util.RelatorioUtil;
+import model.FreteCompleto;
+import model.FreteItemDetalhe;
+import model.FreteItemRelatorio;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -788,7 +791,7 @@ public class RelatorioFretesController implements Initializable {
                         fretesMap.put(numFrete, frete);
                     }
 
-                    ItemFrete item = new ItemFrete();
+                    FreteItemDetalhe item = new FreteItemDetalhe();
                     item.descricao = rs.getString("nome_item_ou_id_produto");
                     item.quantidade = rs.getDouble("quantidade");
                     item.valorUnitario = rs.getDouble("preco_unitario");
@@ -868,17 +871,6 @@ public class RelatorioFretesController implements Initializable {
         job.endJob();
     }
     
-    // Classe auxiliar para frete completo
-    private static class FreteCompleto {
-        String numeroFrete, remetente, destinatario;
-        double valorTotal, valorPago, valorDevedor;
-        List<ItemFrete> itens;
-    }
-    
-    private static class ItemFrete {
-        String descricao;
-        double quantidade, valorUnitario, valorTotal;
-    }
     
     private VBox criarBlocoFrete(FreteCompleto frete, double larguraTotal) {
         VBox box = new VBox(0);
@@ -945,7 +937,7 @@ public class RelatorioFretesController implements Initializable {
             grid.add(hQtd, 0, 0); grid.add(hDesc, 1, 0); grid.add(hUnit, 2, 0); grid.add(hTotal, 3, 0);
             
             int row = 1;
-            for (ItemFrete it : frete.itens) {
+            for (FreteItemDetalhe it : frete.itens) {
                 Label q = new Label(String.format("%.0fx", it.quantidade)); q.setFont(FONT_NORMAL);
                 Label d = new Label(it.descricao); d.setFont(FONT_NORMAL); d.setWrapText(true);
                 Label u = new Label(fmtMoeda(it.valorUnitario)); u.setFont(FONT_NORMAL); u.setAlignment(Pos.CENTER_RIGHT); u.setMaxWidth(Double.MAX_VALUE);
@@ -1396,7 +1388,7 @@ public class RelatorioFretesController implements Initializable {
                         fretesMap.put(numFrete, frete);
                     }
 
-                    ItemFrete item = new ItemFrete();
+                    FreteItemDetalhe item = new FreteItemDetalhe();
                     item.descricao = rs.getString("nome_item_ou_id_produto");
                     item.quantidade = rs.getDouble("quantidade");
                     item.valorUnitario = rs.getDouble("preco_unitario");
@@ -1748,32 +1740,6 @@ public class RelatorioFretesController implements Initializable {
 
         alert.getDialogPane().setExpandableContent(expContent);
         alert.showAndWait();
-    }
-
-    // ============================================================================
-    // CLASSES INTERNAS
-    // ============================================================================
-
-    public static class FreteItemRelatorio {
-        private String codFrete, dataViagem, remetente, item, quantidade, preco, total;
-
-        public FreteItemRelatorio(String codFrete, String dataViagem, String remetente, String item, double quantidade, double preco, double total) {
-            this.codFrete = codFrete;
-            this.dataViagem = dataViagem;
-            this.remetente = remetente != null ? remetente : "";
-            this.item = item != null ? item : "";
-            this.quantidade = String.format("%.0f", quantidade);
-            this.preco = String.format("R$ %.2f", preco);
-            this.total = String.format("R$ %.2f", total);
-        }
-
-        public String getCodFrete() { return codFrete; }
-        public String getDataViagem() { return dataViagem; }
-        public String getRemetente() { return remetente; }
-        public String getItem() { return item; }
-        public String getQuantidade() { return quantidade; }
-        public String getPreco() { return preco; }
-        public String getTotal() { return total; }
     }
 
 }

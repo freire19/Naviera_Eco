@@ -458,8 +458,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
     // 4. TABELA DE PREÇOS GERAL - HEADER SIMPLIFICADO
     // =========================================================================================
     private void executarRelatorioTabelaPrecosGeral() {
-        class PrecoItem { String desc; String un; BigDecimal val; PrecoItem(String d, String u, BigDecimal v){desc=d;un=u;val=v;}}
-        List<PrecoItem> itens = new ArrayList<>();
+        List<model.PrecoItem> itens = new ArrayList<>();
 
         // BUSCANDO DADOS DA TABELA CORRETA
         String sql = "SELECT nome_item, unidade_medida, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item"; 
@@ -470,13 +469,13 @@ public class RelatorioEncomendaGeralController implements Initializable {
                     String nome = rs.getString("nome_item");
                     String un = rs.getString("unidade_medida");
                     if(un == null || un.trim().isEmpty()) un = "UN";
-                    itens.add(new PrecoItem(nome, un, rs.getBigDecimal("preco_unitario_padrao")));
+                    itens.add(new model.PrecoItem(nome, un, rs.getBigDecimal("preco_unitario_padrao")));
                 }
             }
         } catch (Exception e) {
             try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_item, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item")) {
                 try (ResultSet rs = stmt.executeQuery()) {
-                    while(rs.next()) itens.add(new PrecoItem(rs.getString("nome_item"), "UN", rs.getBigDecimal("preco_unitario_padrao")));
+                    while(rs.next()) itens.add(new model.PrecoItem(rs.getString("nome_item"), "UN", rs.getBigDecimal("preco_unitario_padrao")));
                 }
             } catch(Exception ex2) {
                 AlertHelper.error("Erro ao buscar na tabela 'itens_encomenda_padrao'.");
@@ -526,7 +525,7 @@ public class RelatorioEncomendaGeralController implements Initializable {
 
             double y = 100;
             int i = 0;
-            for(PrecoItem pi : itens) {
+            for(model.PrecoItem pi : itens) {
                 HBox linha = new HBox(10);
                 linha.setPadding(new Insets(4));
                 linha.setStyle(i%2==0 ? "-fx-background-color: white;" : "-fx-background-color: #f0f0f0;");
