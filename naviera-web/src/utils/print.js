@@ -212,82 +212,130 @@ export function printContent(htmlContent, title = 'Naviera - Impressao') {
 }
 
 /**
- * Prints a bilhete (passagem) — thermal 80mm format.
+ * Prints a bilhete (passagem) — formato desktop (2 paineis: esquerdo 65% + direito 35%).
+ * Carrega dados da empresa automaticamente.
  */
-export function printBilhete(passagem, viagem) {
-  const viagemDesc = viagem?.descricao || `Viagem #${passagem.id_viagem || '\u2014'}`
-  const origem = viagem?.origem || viagem?.nome_origem || ''
-  const destino = viagem?.destino || viagem?.nome_destino || ''
-  const rota = (origem && destino) ? `${origem} \u2192 ${destino}` : (viagem?.nome_rota || '\u2014')
+export async function printBilhete(passagem, viagem, empresaData) {
+  // Carregar dados da empresa se nao fornecidos
+  let emp = empresaData || {}
+  if (!emp.companhia) {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/cadastros/empresa', { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) emp = await res.json()
+    } catch {}
+  }
 
-  const content = `
-    ${buildHeader('Bilhete de Passagem')}
+  const origem = viagem?.origem || ''
+  const destino = viagem?.destino || ''
+  const rota = (origem && destino) ? `${origem} - ${destino}` : (viagem?.nome_rota || '\u2014')
+  const dataViagem = viagem?.data_viagem || '\u2014'
+  const dataChegada = viagem?.data_chegada || '\u2014'
+  const numBilhete = passagem.numero_bilhete || passagem.num_bilhete || passagem.id_passagem || '\u2014'
+  const vTotal = parseFloat(passagem.valor_total) || 0
+  const vPago = parseFloat(passagem.valor_pago) || 0
+  const vDevedor = parseFloat(passagem.valor_devedor) || Math.max(0, vTotal - vPago)
+  const troco = parseFloat(passagem.troco) || 0
+  const situacao = vDevedor <= 0.01 ? 'A VISTA' : 'PENDENTE'
+  const statusColor = vDevedor <= 0.01 ? '#059669' : '#DC2626'
 
-    <div class="section">
-      <div class="info-row">
-        <span class="label">N. Bilhete:</span>
-        <span class="value"><strong>${passagem.num_bilhete || passagem.id_passagem || '\u2014'}</strong></span>
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Bilhete ${numBilhete}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; color: #111; }
+  @page { size: 80mm auto; margin: 2mm; }
+  @media print { body { width: 76mm; } }
+  .ticket { border: 2px solid #000; width: 100%; display: flex; }
+  .left { width: 65%; padding: 8px 10px; border-right: 2px solid #000; }
+  .right { width: 35%; display: flex; flex-direction: column; align-items: center; }
+
+  /* Header empresa */
+  .emp-header { text-align: center; border-bottom: 2.5px solid #000; padding-bottom: 6px; margin-bottom: 6px; }
+  .emp-nome { font-size: 16px; font-weight: 700; }
+  .emp-prop { font-size: 10px; }
+  .emp-info { font-size: 9px; color: #444; }
+  .emp-frase { font-size: 8px; font-style: italic; color: #666; margin-top: 2px; }
+
+  /* Secoes */
+  .sec-title { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #059669; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin: 6px 0 4px; }
+  .row { display: flex; font-size: 9px; line-height: 1.5; }
+  .row .lbl { font-weight: 600; min-width: 42px; color: #333; }
+  .row .val { flex: 1; }
+
+  /* Pagamento 2 colunas */
+  .pag-grid { display: flex; gap: 8px; margin-top: 4px; }
+  .pag-col { flex: 1; }
+  .pag-total { font-size: 14px; font-weight: 700; text-align: right; }
+
+  /* Painel direito */
+  .bilhete-box { background: #eee; border-bottom: 2px solid #000; width: 100%; text-align: center; padding: 10px 4px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .bilhete-label { font-size: 16px; font-weight: 700; }
+  .bilhete-num { font-size: 22px; font-weight: 700; margin: 4px 0; }
+  .bilhete-status { font-size: 14px; font-weight: 700; }
+  .avisos-box { padding: 6px 4px; font-size: 7px; color: #555; text-align: left; flex: 1; }
+  .avisos-title { font-size: 8px; font-weight: 700; color: #059669; margin-bottom: 3px; text-transform: uppercase; }
+
+  .footer { font-size: 7px; color: #888; text-align: left; margin-top: 4px; }
+</style></head><body>
+<div class="ticket">
+  <!-- PAINEL ESQUERDO -->
+  <div class="left">
+    <div class="emp-header">
+      <div class="emp-nome">${emp.companhia || emp.nome_embarcacao || 'NAVIERA'}</div>
+      <div class="emp-prop">${emp.proprietario || ''}</div>
+      <div class="emp-info">${[emp.cnpj, emp.telefone].filter(Boolean).join(' | ')}</div>
+      ${emp.frase_relatorio ? `<div class="emp-frase">${emp.frase_relatorio}</div>` : ''}
+    </div>
+
+    <div class="sec-title">VIAGEM</div>
+    <div class="row"><span class="lbl">De:</span><span class="val">${origem || '\u2014'}</span></div>
+    <div class="row"><span class="lbl">Para:</span><span class="val">${destino || '\u2014'}</span></div>
+    <div class="row"><span class="lbl">Data:</span><span class="val">${dataViagem} | Prev: ${dataChegada}</span></div>
+    <div class="row"><span class="lbl">Acom.:</span><span class="val">${passagem.nome_acomodacao || '\u2014'} | Agente: ${passagem.nome_agente || '\u2014'}</span></div>
+
+    <div class="sec-title">PASSAGEIRO</div>
+    <div class="row"><span class="lbl">Nome:</span><span class="val">${passagem.nome_passageiro || '\u2014'}</span></div>
+    <div class="row"><span class="lbl">Doc:</span><span class="val">${passagem.numero_doc || '\u2014'} | Nac: ${passagem.nome_nacionalidade || '\u2014'}</span></div>
+    <div class="row"><span class="lbl">DN:</span><span class="val">${formatDate(passagem.data_nascimento)} | Sx: ${passagem.nome_sexo || '\u2014'}</span></div>
+
+    <div class="sec-title">PAGAMENTO</div>
+    <div class="pag-grid">
+      <div class="pag-col">
+        <div class="row"><span class="lbl">Alim.:</span><span class="val">${formatMoney(passagem.valor_alimentacao)}</span></div>
+        <div class="row"><span class="lbl">Transp.:</span><span class="val">${formatMoney(passagem.valor_transporte)}</span></div>
+        <div class="row"><span class="lbl">Carga:</span><span class="val">${formatMoney(passagem.valor_cargas)}</span></div>
       </div>
-      <div class="info-row">
-        <span class="label">Viagem:</span>
-        <span class="value">${viagemDesc}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Rota:</span>
-        <span class="value">${rota}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Data Viagem:</span>
-        <span class="value">${formatDateTime(viagem?.data_saida || viagem?.data_viagem)}</span>
+      <div class="pag-col" style="text-align:right;">
+        <div class="pag-total">TOTAL: ${formatMoney(vTotal)}</div>
+        ${passagem.valor_desconto_geral > 0 ? `<div class="row" style="justify-content:flex-end;"><span>Desc.: ${formatMoney(passagem.valor_desconto_geral)}</span></div>` : ''}
+        <div class="row" style="justify-content:flex-end;"><span>Pago: ${formatMoney(vPago)}</span></div>
+        ${troco > 0 ? `<div class="row" style="justify-content:flex-end;"><span>Troco: ${formatMoney(troco)}</span></div>` : ''}
+        ${vDevedor > 0.01 ? `<div class="row" style="justify-content:flex-end; color:#DC2626;"><span>Falta: ${formatMoney(vDevedor)}</span></div>` : ''}
+        <div class="row" style="justify-content:flex-end; font-weight:600;"><span>Situacao: ${situacao}</span></div>
       </div>
     </div>
 
-    <hr class="divider">
+    <div class="footer">Emissao: ${new Date().toLocaleString('pt-BR')}</div>
+  </div>
 
-    <div class="section">
-      <div class="section-title">Passageiro</div>
-      <div class="info-row">
-        <span class="label">Nome:</span>
-        <span class="value">${passagem.nome_passageiro || '\u2014'}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Documento:</span>
-        <span class="value">${passagem.numero_doc || '\u2014'}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Assento:</span>
-        <span class="value">${passagem.assento || '\u2014'}</span>
-      </div>
+  <!-- PAINEL DIREITO -->
+  <div class="right">
+    <div class="bilhete-box">
+      <div class="bilhete-label">BILHETE</div>
+      <div class="bilhete-num">${numBilhete}</div>
+      <div class="bilhete-status" style="color:${statusColor};">${situacao === 'A VISTA' ? 'PAGO' : 'PENDENTE'}</div>
     </div>
-
-    <hr class="divider">
-
-    <div class="section">
-      <div class="section-title">Pagamento</div>
-      <div class="info-row">
-        <span class="label">Valor Total:</span>
-        <span class="value"><strong>${formatMoney(passagem.valor_total)}</strong></span>
-      </div>
-      <div class="info-row">
-        <span class="label">Valor Pago:</span>
-        <span class="value">${formatMoney(passagem.valor_pago)}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Forma Pgto:</span>
-        <span class="value">${passagem.forma_pagamento || buildFormaPagamento(passagem)}</span>
-      </div>
+    <div class="avisos-box">
+      <div class="avisos-title">AVISOS</div>
+      ${(emp.recomendacoes_bilhete || '- Chegar com 01 hora de antecedencia.\n- Documento original obrigatorio.\n- Menores so com responsavel.').replace(/\\n/g, '\n').split('\n').map(l => `<div>${l.trim()}</div>`).join('')}
     </div>
+  </div>
+</div>
+<script>window.onload = function() { window.print(); }</script>
+</body></html>`
 
-    <div class="qr-placeholder">
-      [ QR Code / Codigo de Barras ]<br>
-      ${passagem.num_bilhete || passagem.id_passagem || ''}
-    </div>
-
-    ${buildFooter()}
-  `
-
-  const html = buildPage(content, `Bilhete ${passagem.num_bilhete || ''}`, true)
-  printContent(html)
+  printContent(html, `Bilhete ${numBilhete}`)
 }
 
 function buildFormaPagamento(p) {
