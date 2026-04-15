@@ -1,4 +1,5 @@
 import { readFile } from 'fs/promises'
+import { repairTruncatedJSON } from './geminiParser.js'
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent'
 
@@ -59,7 +60,7 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
     }],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 4096
+      maxOutputTokens: 16384
     }
   }
 
@@ -67,7 +68,7 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30000)
+    signal: AbortSignal.timeout(60000)
   })
 
   if (!res.ok) {
@@ -88,7 +89,13 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('Gemini Vision nao retornou JSON valido')
 
-  const parsed = JSON.parse(jsonMatch[0])
+  let parsed
+  try {
+    parsed = JSON.parse(jsonMatch[0])
+  } catch {
+    parsed = repairTruncatedJSON(jsonMatch[0])
+    if (!parsed) throw new Error('JSON truncado do Gemini Vision')
+  }
 
   return {
     remetente: parsed.remetente || '',

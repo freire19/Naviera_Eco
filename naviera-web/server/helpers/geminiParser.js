@@ -50,7 +50,7 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 4096
+      maxOutputTokens: 16384
     }
   }
 
@@ -58,7 +58,7 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30000)
+    signal: AbortSignal.timeout(60000)
   })
 
   if (!res.ok) {
@@ -93,7 +93,9 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
   try {
     parsed = JSON.parse(jsonMatch[0])
   } catch (e) {
-    throw new Error('JSON invalido do Gemini: ' + jsonMatch[0].substring(0, 200))
+    // Tentar reparar JSON truncado (Gemini cortou no meio)
+    parsed = repairTruncatedJSON(jsonMatch[0])
+    if (!parsed) throw new Error('JSON invalido do Gemini: ' + jsonMatch[0].substring(0, 200))
   }
 
   // Garantir estrutura correta
@@ -111,5 +113,34 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
     })),
     valor_total: parsed.valor_total || 0,
     observacoes: parsed.observacoes || 'Revisado por IA (Gemini)'
+  }
+}
+
+/**
+ * Tenta reparar JSON truncado pelo Gemini (cortou no maxOutputTokens).
+ * Estrategia: fechar arrays/objetos abertos e tentar parse.
+ */
+export function repairTruncatedJSON(text) {
+  // Remover item incompleto no final (cortado no meio de um objeto)
+  let cleaned = text.replace(/,\s*\{[^}]*$/, '')  // remove ultimo objeto incompleto de array
+  cleaned = cleaned.replace(/,\s*"[^"]*$/, '')     // remove ultima chave incompleta
+
+  // Contar brackets abertos e fechar
+  const opens = { '{': 0, '[': 0 }
+  const closes = { '}': '{', ']': '[' }
+  for (const ch of cleaned) {
+    if (ch in opens) opens[ch]++
+    if (ch in closes) opens[closes[ch]]--
+  }
+
+  // Fechar na ordem inversa
+  let suffix = ''
+  for (let i = 0; i < opens['[']; i++) suffix += ']'
+  for (let i = 0; i < opens['{']; i++) suffix += '}'
+
+  try {
+    return JSON.parse(cleaned + suffix)
+  } catch {
+    return null
   }
 }
