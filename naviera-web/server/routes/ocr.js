@@ -100,7 +100,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
 
       for (let i = 0; i < loteResult.encomendas.length; i++) {
         const enc = loteResult.encomendas[i]
-        const encUuid = client_uuid ? `${client_uuid}-${i}` : crypto.randomUUID()
+        const encUuid = crypto.randomUUID()
         const encDados = { ...enc, rota: enc.rota || loteResult.rota || '' }
 
         const result = await pool.query(`
@@ -435,7 +435,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
 
       await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
       const seqResult = await client.query(
-        'SELECT COALESCE(MAX(numero_encomenda::INTEGER), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1',
+        `SELECT COALESCE(MAX(CASE WHEN numero_encomenda ~ '^[0-9]+$' THEN numero_encomenda::INTEGER END), 0) + 1 AS next_num FROM encomendas WHERE empresa_id = $1`,
         [empresaId]
       )
       const numEncomenda = seqResult.rows[0].next_num
