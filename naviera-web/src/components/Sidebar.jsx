@@ -65,6 +65,7 @@ const NAV = [
       { key: 'cadastro-caixa', icon: '\uD83D\uDCB3', label: 'Caixas' },
       { key: 'cadastro-item', icon: '\uD83D\uDCE6', label: 'Itens' },
       { key: 'cadastro-produto', icon: '\uD83D\uDC64', label: 'Clientes Encomenda' },
+      { key: 'cadastro-contato-frete', icon: '\uD83D\uDC64', label: 'Contatos Frete' },
       { key: 'auxiliares', icon: '\uD83D\uDDD2', label: 'Auxiliares' },
       { key: 'gestao-funcionarios', icon: '\uD83D\uDC65', label: 'Funcionarios' }
     ]

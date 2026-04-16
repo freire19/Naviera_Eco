@@ -46,7 +46,11 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
   const [conferentes, setConferentes] = useState([])
   const [itensPadrao, setItensPadrao] = useState([])
   const [caixas, setCaixas] = useState([])
-  const [clientes, setClientes] = useState([])
+  const [contatos, setContatos] = useState([])
+  const [showRemList, setShowRemList] = useState(false)
+  const [showDestList, setShowDestList] = useState(false)
+  const remDropdownRef = useRef(null)
+  const destDropdownRef = useRef(null)
 
   // Pagamento modal
   const [modalPagar, setModalPagar] = useState(null)
@@ -65,17 +69,20 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       api.get('/cadastros/conferentes').then(setConferentes),
       api.get('/cadastros/itens-frete').then(setItensPadrao),
       api.get('/cadastros/caixas').then(setCaixas),
-      api.get('/cadastros/clientes-encomenda').then(setClientes)
+      api.get('/fretes/contatos').then(setContatos)
     ]).catch(() => {})
   }, [])
 
-  // Fechar dropdown ao clicar fora
+  // Fechar dropdowns ao clicar fora
   useEffect(() => {
-    if (!showItemList) return
-    const handler = (e) => { if (itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) setShowItemList(false) }
+    const handler = (e) => {
+      if (showItemList && itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) setShowItemList(false)
+      if (showRemList && remDropdownRef.current && !remDropdownRef.current.contains(e.target)) setShowRemList(false)
+      if (showDestList && destDropdownRef.current && !destDropdownRef.current.contains(e.target)) setShowDestList(false)
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showItemList])
+  }, [showItemList, showRemList, showDestList])
 
   // ESC
   useEffect(() => {
@@ -109,22 +116,47 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     setNovoItem(updated)
   }
 
-  // Verificar e salvar cliente novo
-  async function verificarSalvarCliente(nome) {
+  // Verificar e salvar contato novo (tabela contatos, separada de clientes encomenda)
+  async function verificarSalvarContato(nome) {
     if (!nome || !nome.trim()) return
     const nomeLower = nome.trim().toLowerCase()
-    const existe = clientes.some(c => (c.nome_cliente || '').toLowerCase() === nomeLower)
+    const existe = contatos.some(c => (c.nome_razao_social || '').toLowerCase() === nomeLower)
     if (!existe) {
-      const salvar = window.confirm(`Cliente "${nome.trim()}" nao encontrado.\n\nDeseja salvar para futuras consultas?`)
+      const salvar = window.confirm(`Contato "${nome.trim()}" nao encontrado.\n\nDeseja salvar para futuras consultas?`)
       if (salvar) {
         try {
-          await api.post('/cadastros/clientes-encomenda', { nome_cliente: nome.trim().toUpperCase() })
-          const novos = await api.get('/cadastros/clientes-encomenda')
-          setClientes(novos)
-          showToast(`Cliente "${nome.trim()}" salvo`)
+          await api.post('/fretes/contatos', { nome: nome.trim().toUpperCase() })
+          const novos = await api.get('/fretes/contatos')
+          setContatos(novos)
+          showToast(`Contato "${nome.trim()}" salvo`)
         } catch {}
       }
     }
+  }
+
+  // Renderizar dropdown de contatos
+  function renderContatoDropdown(valor, setValor, show, setShow, ref, id) {
+    const q = (valor || '').toLowerCase()
+    const filtered = contatos.filter(c => !q || (c.nome_razao_social || '').toLowerCase().includes(q))
+    return (
+      <div style={{ position: 'relative' }} ref={ref}>
+        <input style={I} value={valor} onChange={e => { setValor(e.target.value); setShow(true) }}
+          onFocus={() => setShow(true)} onBlur={() => setTimeout(() => verificarSalvarContato(valor), 300)}
+          placeholder="Selecione ou Digite..." />
+        {show && filtered.length > 0 && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
+            {filtered.map((c, idx) => (
+              <div key={c.id || idx} onMouseDown={() => { setValor(c.nome_razao_social); setShow(false) }}
+                style={{ padding: '7px 12px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500, background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}>
+                {c.nome_razao_social}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   async function handleAdicionarItem() {
@@ -233,13 +265,11 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
         <div>
           <label style={L}>Remetente:</label>
-          <input list="clientes-rem" style={I} value={remetente} onChange={e => setRemetente(e.target.value)} onBlur={() => verificarSalvarCliente(remetente)} placeholder="Selecione ou Digite..." />
-          <datalist id="clientes-rem">{clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente} />)}</datalist>
+          {renderContatoDropdown(remetente, setRemetente, showRemList, setShowRemList, remDropdownRef, 'rem')}
         </div>
         <div>
           <label style={L}>Destinatario:</label>
-          <input list="clientes-dest" style={I} value={destinatario} onChange={e => setDestinatario(e.target.value)} onBlur={() => verificarSalvarCliente(destinatario)} placeholder="Selecione ou Digite..." />
-          <datalist id="clientes-dest">{clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente} />)}</datalist>
+          {renderContatoDropdown(destinatario, setDestinatario, showDestList, setShowDestList, destDropdownRef, 'dest')}
         </div>
       </div>
 

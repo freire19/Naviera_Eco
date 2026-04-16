@@ -7,6 +7,34 @@ import { criarFreteComItens } from '../helpers/criarFrete.js'
 const router = Router()
 router.use(authMiddleware)
 
+// GET /api/fretes/contatos — lista contatos de frete (tabela separada de clientes encomenda)
+router.get('/contatos', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM contatos ORDER BY nome_razao_social')
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar contatos' })
+  }
+})
+
+// POST /api/fretes/contatos — criar contato de frete
+router.post('/contatos', async (req, res) => {
+  try {
+    const { nome } = req.body
+    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
+    const result = await pool.query(
+      'INSERT INTO contatos (nome_razao_social) VALUES ($1) ON CONFLICT DO NOTHING RETURNING *',
+      [nome.trim().toUpperCase()]
+    )
+    if (result.rows.length > 0) return res.status(201).json(result.rows[0])
+    // Ja existe
+    const existing = await pool.query('SELECT * FROM contatos WHERE UPPER(nome_razao_social) = UPPER($1)', [nome.trim()])
+    res.json(existing.rows[0] || {})
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar contato' })
+  }
+})
+
 // GET /api/fretes/proximo-numero
 router.get('/proximo-numero', async (req, res) => {
   try {
