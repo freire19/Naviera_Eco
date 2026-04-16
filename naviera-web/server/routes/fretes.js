@@ -53,7 +53,7 @@ router.get('/proximo-numero', async (req, res) => {
 router.get('/:id/itens', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM frete_itens WHERE id_frete = $1 ORDER BY id_frete_item',
+      'SELECT * FROM frete_itens WHERE id_frete = $1 ORDER BY id_item_frete',
       [req.params.id]
     )
     res.json(result.rows)
