@@ -562,7 +562,6 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
                   </tr>
                 ))}
               </tbody>
-              </tbody>
             </table>
           </div>
 
