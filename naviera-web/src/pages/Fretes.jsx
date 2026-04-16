@@ -104,8 +104,8 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
             setItens(data.map(i => ({
               quantidade: i.quantidade || 1,
               descricao: i.nome_item_ou_id_produto || '',
-              valor_unitario: parseFloat(i.preco_unitario) || 0,
-              subtotal: parseFloat(i.subtotal_item) || 0
+              valor_unitario: (parseFloat(i.preco_unitario) || 0).toFixed(2),
+              subtotal: (parseFloat(i.subtotal_item) || 0).toFixed(2)
             })))
           }
         }).catch(() => {})
