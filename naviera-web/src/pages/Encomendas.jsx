@@ -562,6 +562,18 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
                   </tr>
                 ))}
               </tbody>
+              {itens.length > 0 && (
+              <tfoot>
+                <tr style={{ borderTop: '2px solid var(--primary)' }}>
+                  <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{totalVolumes}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--primary)' }}>TOTAL VOLUMES: {totalVolumes}</td>
+                  <td></td>
+                  <td style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)', fontFamily: 'Space Mono, monospace' }}>{formatMoney(totalItens)}</td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              </tfoot>
+              )}
             </table>
           </div>
         </div>
@@ -587,14 +599,8 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
         </div>
       )}
 
-      {/* TOTAIS + BOTOES */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem' }}>Total Volumes: <strong>{totalVolumes}</strong></span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)', fontFamily: 'Space Mono, monospace' }}>
-            TOTAL A PAGAR: {formatMoney(totalItens)}
-          </span>
-        </div>
+      {/* BOTOES */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '10px 0', borderTop: '1px solid var(--border)', gap: 6 }}>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="btn-sm primary" onClick={handleFinalizar} disabled={!editando || salvando} style={{ padding: '8px 16px', fontWeight: 700 }}>F3 - FINALIZAR</button>
           <button className="btn-sm primary" onClick={() => { if (selecionada) { setEditando(true) } }}>Editar</button>
