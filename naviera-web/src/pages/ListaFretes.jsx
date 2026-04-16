@@ -167,6 +167,7 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
   // Styles
   const I = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
   const L = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text)', marginBottom: 3, display: 'block', marginTop: 10 }
+  const C = { padding: '4px 6px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 0 }
   const selI = { ...I, background: 'var(--primary)', color: '#fff', border: '1px solid var(--primary)', fontWeight: 600 }
   const toggleStyle = { cursor: 'pointer', padding: '4px 8px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 12 }
 
@@ -185,18 +186,30 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
 
           {/* TABELA ZEBRADA */}
           <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 240px)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '9%' }} />
+              </colgroup>
               <thead><tr style={{ background: '#047857', color: '#fff', position: 'sticky', top: 0, zIndex: 2 }}>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'left', width: 60 }}>N° Frete</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'left' }}>Remetente</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'left' }}>Destinatario</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'left' }}>Rota/Viagem</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'left', width: 90 }}>Data Viagem</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'left', width: 90 }}>Emissao</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'right', width: 100 }}>Vlr. Frete</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'right', width: 100 }}>A Receber</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'right', width: 90 }}>Recebido</th>
-                <th style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textAlign: 'left', width: 100 }}>Conferente</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'left' }}>N° Frete</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'left' }}>Remetente</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'left' }}>Destinatario</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'left' }}>Rota/Viagem</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'left' }}>Data Viagem</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'left' }}>Emissao</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'right' }}>Vlr. Frete</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'right' }}>A Receber</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'right' }}>Recebido</th>
+                <th style={{ padding: '6px 6px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'left' }}>Conferente</th>
               </tr></thead>
               <tbody>
                 {loading ? <tr><td colSpan="10" style={{ padding: 30, textAlign: 'center' }}>Carregando...</td></tr>
@@ -219,16 +232,16 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
                         onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(4,120,87,0.15)' }}
                         onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = zebraColor }}
                         title="Clique para selecionar, duplo-clique para editar">
-                      <td style={{ padding: '5px 10px', fontWeight: 700, color: '#047857', fontSize: '0.85rem' }}>{f.numero_frete}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem' }}>{(f.remetente || f.remetente_nome_temp || '\u2014').toUpperCase()}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem' }}>{(f.destinatario || f.destinatario_nome_temp || '\u2014').toUpperCase()}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem' }}>{f.rota || f.rota_temp || '\u2014'}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem' }}>{formatDate(f.data_emissao)}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem' }}>{formatDate(f.data_emissao)}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem', textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 700, color: '#047857' }}>{formatMoney(valor)}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem', textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 700, color: devedor > 0.01 ? '#DC2626' : '#047857' }}>{formatMoney(devedor)}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem', textAlign: 'right', fontFamily: 'Space Mono, monospace', color: '#059669' }}>{formatMoney(pago)}</td>
-                      <td style={{ padding: '5px 10px', fontSize: '0.8rem' }}>{f.conferente || f.conferente_temp || '\u2014'}</td>
+                      <td style={C}><span style={{ fontWeight: 700, color: '#047857' }}>{f.numero_frete}</span></td>
+                      <td style={C} title={f.remetente || f.remetente_nome_temp || ''}>{(f.remetente || f.remetente_nome_temp || '\u2014').toUpperCase()}</td>
+                      <td style={C} title={f.destinatario || f.destinatario_nome_temp || ''}>{(f.destinatario || f.destinatario_nome_temp || '\u2014').toUpperCase()}</td>
+                      <td style={C}>{f.rota || f.rota_temp || '\u2014'}</td>
+                      <td style={C}>{formatDate(f.data_emissao)}</td>
+                      <td style={C}>{formatDate(f.data_emissao)}</td>
+                      <td style={{ ...C, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 700, color: '#047857' }}>{formatMoney(valor)}</td>
+                      <td style={{ ...C, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 700, color: devedor > 0.01 ? '#DC2626' : '#047857' }}>{formatMoney(devedor)}</td>
+                      <td style={{ ...C, textAlign: 'right', fontFamily: 'Space Mono, monospace', color: '#059669' }}>{formatMoney(pago)}</td>
+                      <td style={C}>{f.conferente || f.conferente_temp || '\u2014'}</td>
                     </tr>
                   )
                 })}
