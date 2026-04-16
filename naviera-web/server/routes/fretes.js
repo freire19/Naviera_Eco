@@ -12,7 +12,8 @@ router.get('/contatos', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
-      'SELECT id_cliente AS id, nome_cliente AS nome_razao_social FROM cad_clientes_frete WHERE empresa_id = $1 ORDER BY nome_cliente',
+      `SELECT id_cliente AS id, nome_cliente AS nome_razao_social, razao_social, cpf_cnpj, endereco, inscricao_estadual, email, telefone
+       FROM cad_clientes_frete WHERE empresa_id = $1 ORDER BY nome_cliente`,
       [empresaId]
     )
     res.json(result.rows)
@@ -26,19 +27,39 @@ router.get('/contatos', async (req, res) => {
 router.post('/contatos', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    const { nome } = req.body
+    const { nome, razao_social, cpf_cnpj, endereco, inscricao_estadual, email, telefone } = req.body
     if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
     const nomeUpper = nome.trim().toUpperCase()
     const result = await pool.query(
-      'INSERT INTO cad_clientes_frete (nome_cliente, empresa_id) VALUES ($1, $2) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING RETURNING *',
-      [nomeUpper, empresaId]
+      `INSERT INTO cad_clientes_frete (nome_cliente, razao_social, cpf_cnpj, endereco, inscricao_estadual, email, telefone, empresa_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING RETURNING *`,
+      [nomeUpper, (razao_social || '').toUpperCase() || null, cpf_cnpj || null, (endereco || '').toUpperCase() || null, inscricao_estadual || null, email || null, telefone || null, empresaId]
     )
-    if (result.rows.length > 0) return res.status(201).json({ id: result.rows[0].id_cliente, nome_razao_social: result.rows[0].nome_cliente })
-    const existing = await pool.query('SELECT id_cliente, nome_cliente FROM cad_clientes_frete WHERE LOWER(nome_cliente) = LOWER($1) AND empresa_id = $2', [nomeUpper, empresaId])
-    res.json(existing.rows.length > 0 ? { id: existing.rows[0].id_cliente, nome_razao_social: existing.rows[0].nome_cliente } : { nome_razao_social: nomeUpper })
+    if (result.rows.length > 0) return res.status(201).json({ id: result.rows[0].id_cliente, nome_razao_social: result.rows[0].nome_cliente, ...result.rows[0] })
+    const existing = await pool.query('SELECT * FROM cad_clientes_frete WHERE LOWER(nome_cliente) = LOWER($1) AND empresa_id = $2', [nomeUpper, empresaId])
+    res.json(existing.rows[0] || { nome_razao_social: nomeUpper })
   } catch (err) {
     console.error('[Fretes] Erro ao criar contato:', err.message)
     res.status(500).json({ error: 'Erro ao criar contato' })
+  }
+})
+
+// PUT /api/fretes/contatos/:id — atualizar cliente de frete
+router.put('/contatos/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome, razao_social, cpf_cnpj, endereco, inscricao_estadual, email, telefone } = req.body
+    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
+    const result = await pool.query(
+      `UPDATE cad_clientes_frete SET nome_cliente = $1, razao_social = $2, cpf_cnpj = $3, endereco = $4, inscricao_estadual = $5, email = $6, telefone = $7
+       WHERE id_cliente = $8 AND empresa_id = $9 RETURNING *`,
+      [nome.trim().toUpperCase(), (razao_social || '').toUpperCase() || null, cpf_cnpj || null, (endereco || '').toUpperCase() || null, inscricao_estadual || null, email || null, telefone || null, req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Cliente nao encontrado' })
+    res.json(result.rows[0])
+  } catch (err) {
+    console.error('[Fretes] Erro ao atualizar contato:', err.message)
+    res.status(500).json({ error: 'Erro ao atualizar contato' })
   }
 })
 
