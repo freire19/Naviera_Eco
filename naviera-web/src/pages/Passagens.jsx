@@ -305,7 +305,7 @@ export default function Passagens({ viagemAtiva, onNavigate }) {
   }
 
   const I = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
-  const L = { fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.03em', display: 'block' }
+  const L = { fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text)', marginBottom: 2, letterSpacing: '0.03em', display: 'block' }
   const RO = { ...I, opacity: 0.6, cursor: 'default' }
   const MONO = { ...I, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontSize: '0.82rem' }
 

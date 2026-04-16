@@ -359,7 +359,7 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
   }, [modalPagar])
 
   const I = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
-  const L = { fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 3, display: 'block' }
+  const L = { fontSize: '0.75rem', fontWeight: 700, color: 'var(--text)', marginBottom: 3, display: 'block' }
   const RO = { ...I, opacity: 0.6, cursor: 'default' }
 
   const vData = formatDate(viagemAtiva.data_viagem)
@@ -447,7 +447,7 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
         </div>
 
         {/* PAINEL DIREITO — Itens */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           {/* Entrada de item */}
           <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 90px 90px auto', gap: 10, padding: 10, background: 'rgba(5,150,105,0.05)', borderRadius: 6, border: '1px solid var(--primary)', marginBottom: 8, alignItems: 'end' }}>
             <div>
@@ -562,20 +562,24 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
                   </tr>
                 ))}
               </tbody>
-              {itens.length > 0 && (
-              <tfoot>
-                <tr style={{ borderTop: '2px solid var(--primary)' }}>
-                  <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{totalVolumes}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--primary)' }}>TOTAL VOLUMES: {totalVolumes}</td>
-                  <td></td>
-                  <td style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)', fontFamily: 'Space Mono, monospace' }}>{formatMoney(totalItens)}</td>
-                  <td></td>
-                  <td></td>
-                </tr>
-              </tfoot>
-              )}
+              </tbody>
             </table>
           </div>
+
+          {/* TOTAL — fixo no final do painel direito */}
+          {itens.length > 0 && (
+            <div style={{
+              marginTop: 'auto', borderTop: '2px solid var(--primary)', padding: '10px 0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--primary)' }}>
+                TOTAL VOLUMES: {totalVolumes}
+              </span>
+              <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)', fontFamily: 'Space Mono, monospace' }}>
+                TOTAL: {formatMoney(totalItens)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
