@@ -282,9 +282,14 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
         status_frete: 'PENDENTE',
         itens: itens.map(i => ({ nome_item: i.descricao, quantidade: i.quantidade, preco_unitario: i.valor_unitario, subtotal_item: i.subtotal }))
       }
-      await api.post('/fretes', payload)
-      showToast('Frete salvo como PENDENTE')
-      // Preparar automaticamente para proximo frete (sem precisar clicar Novo)
+      if (selecionado && selecionado.id_frete) {
+        await api.put(`/fretes/${selecionado.id_frete}`, payload)
+        showToast('Frete atualizado')
+      } else {
+        await api.post('/fretes', payload)
+        showToast('Frete salvo como PENDENTE')
+      }
+      // Preparar automaticamente para proximo frete
       limparForm()
       setEditando(true)
       try { const res = await api.get('/fretes/proximo-numero'); setNumFrete(res.numero || '') } catch { setNumFrete('—') }

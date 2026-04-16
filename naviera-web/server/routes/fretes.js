@@ -131,24 +131,63 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total_itens: 'r
   }
 })
 
-// PUT /api/fretes/:id
+// PUT /api/fretes/:id — atualizar frete completo com itens
 router.put('/:id', async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const { remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, observacoes } = req.body
-    const result = await pool.query(`
-      UPDATE fretes SET remetente_nome_temp = COALESCE($1, remetente_nome_temp),
-        destinatario_nome_temp = COALESCE($2, destinatario_nome_temp),
-        rota_temp = COALESCE($3, rota_temp), conferente_temp = COALESCE($4, conferente_temp),
-        observacoes = COALESCE($5, observacoes)
-      WHERE id_frete = $6 AND empresa_id = $7
+    const {
+      remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp,
+      observacoes, valor_total_itens, local_transporte, cidade_cobranca,
+      num_notafiscal, valor_notafiscal, peso_notafiscal, itens
+    } = req.body
+
+    const vItens = parseFloat(valor_total_itens) || 0
+
+    await client.query('BEGIN')
+    const result = await client.query(`
+      UPDATE fretes SET remetente_nome_temp = $1, destinatario_nome_temp = $2,
+        rota_temp = $3, conferente_temp = $4, observacoes = $5,
+        valor_total_itens = $6, valor_frete_calculado = $6,
+        local_transporte = $7, cidade_cobranca = $8,
+        num_notafiscal = $9, valor_notafiscal = $10, peso_notafiscal = $11,
+        valor_devedor = GREATEST(0, $6 - COALESCE(valor_pago, 0))
+      WHERE id_frete = $12 AND empresa_id = $13
       RETURNING *
-    `, [remetente_nome_temp, destinatario_nome_temp, rota_temp, conferente_temp, observacoes, req.params.id, empresaId])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Frete nao encontrado' })
+    `, [remetente_nome_temp || null, destinatario_nome_temp || null,
+        rota_temp || null, conferente_temp || null, observacoes || null,
+        vItens, local_transporte || null, cidade_cobranca || null,
+        num_notafiscal || null, parseFloat(valor_notafiscal) || 0, parseFloat(peso_notafiscal) || 0,
+        req.params.id, empresaId])
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Frete nao encontrado' })
+    }
+
+    // Substituir itens
+    if (itens && Array.isArray(itens)) {
+      await client.query('DELETE FROM frete_itens WHERE id_frete = $1', [req.params.id])
+      if (itens.length > 0) {
+        const values = []
+        const params = []
+        itens.forEach((item, i) => {
+          const off = i * 5
+          values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5})`)
+          params.push(req.params.id, item.nome_item || item.descricao || null, item.quantidade || 1, item.preco_unitario || item.valor_unitario || 0, item.subtotal_item || item.subtotal || 0)
+        })
+        await client.query(`INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES ${values.join(', ')}`, params)
+      }
+    }
+
+    await client.query('COMMIT')
     res.json(result.rows[0])
   } catch (err) {
+    await client.query('ROLLBACK')
     console.error('[Fretes] Erro ao atualizar:', err.message)
     res.status(500).json({ error: 'Erro ao atualizar frete' })
+  } finally {
+    client.release()
   }
 })
 

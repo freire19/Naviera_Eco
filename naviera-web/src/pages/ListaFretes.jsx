@@ -150,7 +150,7 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
       {/* TOGGLE FILTROS */}
       <div onClick={() => setFiltrosVisiveis(prev => !prev)}
         style={{ writingMode: 'vertical-rl', cursor: 'pointer', padding: '12px 4px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '4px 0 0 4px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)', userSelect: 'none' }}>
-        {filtrosVisiveis ? '▶' : '◀'} FILTROS
+        {filtrosVisiveis ? '>' : '<'} FILTROS
       </div>
 
       {/* FILTROS LATERAIS */}

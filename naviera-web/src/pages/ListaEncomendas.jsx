@@ -170,7 +170,7 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate, onClose }) {
           userSelect: 'none', letterSpacing: '0.05em'
         }}
         title={filtrosVisiveis ? 'Ocultar filtros' : 'Mostrar filtros'}>
-        {filtrosVisiveis ? '▶' : '◀'} FILTROS
+        {filtrosVisiveis ? '>' : '<'} FILTROS
       </div>
 
       {/* PAINEL FILTROS */}
