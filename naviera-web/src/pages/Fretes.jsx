@@ -52,6 +52,15 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
   const remDropdownRef = useRef(null)
   const destDropdownRef = useRef(null)
 
+  // Modal novo contato (cliente frete)
+  const [modalNovoContato, setModalNovoContato] = useState(null)
+  const [ncRazaoSocial, setNcRazaoSocial] = useState('')
+  const [ncCpfCnpj, setNcCpfCnpj] = useState('')
+  const [ncEndereco, setNcEndereco] = useState('')
+  const [ncInscricao, setNcInscricao] = useState('')
+  const [ncEmail, setNcEmail] = useState('')
+  const [ncTelefone, setNcTelefone] = useState('')
+
   // Modal salvar item novo
   const [modalNovoItem, setModalNovoItem] = useState(null)
   const [novoItemPrecoNormal, setNovoItemPrecoNormal] = useState('')
@@ -170,20 +179,34 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
   }
 
   // Verificar e salvar contato novo (tabela contatos, separada de clientes encomenda)
-  async function verificarSalvarContato(nome) {
+  function verificarSalvarContato(nome) {
     if (!nome || !nome.trim()) return
     const nomeLower = nome.trim().toLowerCase()
     const existe = contatos.some(c => (c.nome_razao_social || '').toLowerCase() === nomeLower)
     if (!existe) {
-      const salvar = window.confirm(`Contato "${nome.trim()}" nao encontrado.\n\nDeseja salvar para futuras consultas?`)
-      if (salvar) {
-        try {
-          await api.post('/fretes/contatos', { nome: nome.trim().toUpperCase() })
-          const novos = await api.get('/fretes/contatos')
-          setContatos(novos)
-          showToast(`Contato "${nome.trim()}" salvo`)
-        } catch {}
-      }
+      setModalNovoContato(nome.trim().toUpperCase())
+      setNcRazaoSocial(''); setNcCpfCnpj(''); setNcEndereco(''); setNcInscricao(''); setNcEmail(''); setNcTelefone('')
+    }
+  }
+
+  async function salvarNovoContato() {
+    if (!modalNovoContato) return
+    try {
+      await api.post('/fretes/contatos', {
+        nome: modalNovoContato,
+        razao_social: ncRazaoSocial || null,
+        cpf_cnpj: ncCpfCnpj || null,
+        endereco: ncEndereco || null,
+        inscricao_estadual: ncInscricao || null,
+        email: ncEmail || null,
+        telefone: ncTelefone || null
+      })
+      const novos = await api.get('/fretes/contatos')
+      setContatos(novos)
+      showToast(`Cliente "${modalNovoContato}" cadastrado`)
+      setModalNovoContato(null)
+    } catch (err) {
+      showToast(err.message || 'Erro ao salvar', 'error')
     }
   }
 
@@ -200,10 +223,11 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
             {filtered.map((c, idx) => (
               <div key={c.id || idx} onMouseDown={() => { setValor(c.nome_razao_social); setShow(false) }}
-                style={{ padding: '7px 12px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500, background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
+                style={{ padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem', background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
                 onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}>
-                {c.nome_razao_social}
+                <div style={{ fontWeight: 600 }}>{c.nome_razao_social}</div>
+                {(c.cpf_cnpj || c.telefone) && <div style={{ fontSize: '0.68rem', opacity: 0.7 }}>{c.cpf_cnpj || ''}{c.cpf_cnpj && c.telefone ? ' | ' : ''}{c.telefone || ''}</div>}
               </div>
             ))}
           </div>
@@ -535,6 +559,53 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+      {/* MODAL CADASTRAR NOVO CONTATO/CLIENTE */}
+      {modalNovoContato && (
+        <div className="modal-overlay" onClick={() => setModalNovoContato(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+            <h3>Cadastrar Novo Cliente</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
+              Cliente <strong>"{modalNovoContato}"</strong> nao esta cadastrado. Preencha os dados (apenas nome e obrigatorio):
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={L}>Nome: *</label>
+                <input style={I} value={modalNovoContato} readOnly />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={L}>Razao Social:</label>
+                <input style={I} value={ncRazaoSocial} onChange={e => setNcRazaoSocial(e.target.value)} placeholder="Razao social completa" />
+              </div>
+              <div>
+                <label style={L}>CPF ou CNPJ:</label>
+                <input style={I} value={ncCpfCnpj} onChange={e => setNcCpfCnpj(e.target.value)} placeholder="000.000.000-00" />
+              </div>
+              <div>
+                <label style={L}>Inscricao Estadual:</label>
+                <input style={I} value={ncInscricao} onChange={e => setNcInscricao(e.target.value)} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={L}>Endereco:</label>
+                <input style={I} value={ncEndereco} onChange={e => setNcEndereco(e.target.value)} placeholder="Rua, numero, bairro, cidade" />
+              </div>
+              <div>
+                <label style={L}>Email:</label>
+                <input style={I} value={ncEmail} onChange={e => setNcEmail(e.target.value)} placeholder="email@exemplo.com" />
+              </div>
+              <div>
+                <label style={L}>Telefone:</label>
+                <input style={I} value={ncTelefone} onChange={e => setNcTelefone(e.target.value)} placeholder="(00) 00000-0000" />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+              <button className="btn-sm" onClick={() => setModalNovoContato(null)}>Cancelar</button>
+              <button className="btn-sm" onClick={() => { api.post('/fretes/contatos', { nome: modalNovoContato }).then(() => api.get('/fretes/contatos').then(setContatos)); setModalNovoContato(null); showToast('Salvo apenas com nome') }} style={{ background: 'var(--bg-soft)' }}>Salvar so Nome</button>
+              <button className="btn-sm primary" style={{ fontWeight: 700 }} onClick={salvarNovoContato}>Salvar Completo</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL CADASTRAR NOVO ITEM */}
       {modalNovoItem && (
