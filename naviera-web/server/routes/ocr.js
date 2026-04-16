@@ -72,17 +72,31 @@ const upload = multer({
   }
 })
 
+// Upload multiplo para fretes (ate 10 paginas) + single para encomenda/lote
+const uploadMulti = upload.fields([
+  { name: 'foto', maxCount: 1 },
+  { name: 'fotos', maxCount: 10 }
+])
+
 // ============================================================================
-// POST /api/ocr/upload — Upload foto, rodar OCR, salvar lancamento
+// POST /api/ocr/upload — Upload foto(s), rodar OCR, salvar lancamento
 // ============================================================================
-router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'Foto obrigatoria (campo "foto", max 10MB, jpeg/png/webp)' })
+router.post('/upload', uploadLimiter, uploadMulti, async (req, res) => {
+  // Compatibilidade: aceita 'foto' (single) ou 'fotos' (multiplas)
+  const allFiles = [
+    ...(req.files?.fotos || []),
+    ...(req.files?.foto || [])
+  ]
+  if (allFiles.length === 0) {
+    return res.status(400).json({ error: 'Foto obrigatoria (campo "foto" ou "fotos", max 10MB, jpeg/png/webp)' })
   }
 
   const empresaId = req.user.empresa_id
   const { viagem_id, tipo, client_uuid } = req.body
   const tipoLanc = ['encomenda', 'lote'].includes(tipo) ? tipo : 'frete'
+
+  // Para backward compat, req.file aponta para o primeiro arquivo
+  const primaryFile = allFiles[0]
 
   try {
     let ocrResult = { text: '', confidence: 0, fullResponse: null }
@@ -91,7 +105,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
     if (tipoLanc === 'lote') {
       // LOTE: foto de protocolo com N encomendas separadas
       try {
-        ocrResult = await callVisionOCR(req.file.path)
+        ocrResult = await callVisionOCR(primaryFile.path)
       } catch (err) {
         log.error('OCR', 'Vision OCR falhou para lote', { empresa_id: empresaId, erro: err.message })
       }
@@ -109,7 +123,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
       log.info('OCR', 'Lote parser OK', { empresa_id: empresaId, encomendas: loteResult.encomendas.length })
 
       // Criar N lancamentos — 1 por encomenda
-      const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
+      const fotoRelPath = path.relative(UPLOAD_PATH, primaryFile.path)
       const loteUuid = crypto.randomUUID()
       const lancamentos = []
 
@@ -126,7 +140,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
           ON CONFLICT (uuid) DO UPDATE SET uuid = ocr_lancamentos.uuid
           RETURNING *
         `, [
-          encUuid, empresaId, viagem_id || null, fotoRelPath, req.file.originalname,
+          encUuid, empresaId, viagem_id || null, fotoRelPath, primaryFile.originalname,
           ocrResult.text, ocrResult.confidence, JSON.stringify(encDados),
           req.user.id, req.user.login || null, loteUuid, i
         ])
@@ -145,7 +159,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
       // Se detectar texto substancial → parser de encomenda
       // Se pouco/nenhum texto → Gemini Vision (foto de item fisico)
       try {
-        ocrResult = await callVisionOCR(req.file.path)
+        ocrResult = await callVisionOCR(primaryFile.path)
       } catch (err) {
         log.warn('OCR', 'Vision OCR falhou para encomenda, tentando Gemini Vision', { empresa_id: empresaId, erro: err.message })
       }
@@ -161,11 +175,11 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
           log.info('OCR', 'Gemini encomenda parser OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
         } catch (geminiErr) {
           log.warn('OCR', 'Gemini encomenda parser falhou, tentando Vision', { empresa_id: empresaId, erro: geminiErr.message })
-          dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
+          dados = await geminiVisionAnalyze(primaryFile.path, padrao.rows)
         }
       } else {
         try {
-          dados = await geminiVisionAnalyze(req.file.path, padrao.rows)
+          dados = await geminiVisionAnalyze(primaryFile.path, padrao.rows)
           ocrResult.confidence = 85
           log.info('OCR', 'Gemini Vision (encomenda item) OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
         } catch (err) {
@@ -174,11 +188,31 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
         }
       }
     } else {
-      // FRETE: Google Vision OCR + Gemini text parser (fluxo original)
-      try {
-        ocrResult = await callVisionOCR(req.file.path)
-      } catch (err) {
-        log.error('OCR', 'Vision API falhou', { empresa_id: empresaId, erro: err.message })
+      // FRETE: Google Vision OCR + Gemini multimodal
+      // Suporte a multiplas paginas: OCR cada foto e combinar texto
+      const ocrTexts = []
+      let totalConfidence = 0
+      let firstFullResponse = null
+
+      for (const file of allFiles) {
+        try {
+          const pageResult = await callVisionOCR(file.path)
+          if (pageResult.text) ocrTexts.push(pageResult.text)
+          totalConfidence += pageResult.confidence || 0
+          if (!firstFullResponse) firstFullResponse = pageResult.fullResponse
+        } catch (err) {
+          log.warn('OCR', `Vision API falhou para pagina ${file.originalname}`, { empresa_id: empresaId, erro: err.message })
+        }
+      }
+
+      ocrResult = {
+        text: ocrTexts.join('\n\n--- PAGINA ---\n\n'),
+        confidence: ocrTexts.length > 0 ? Math.round(totalConfidence / allFiles.length) : 0,
+        fullResponse: firstFullResponse
+      }
+
+      if (allFiles.length > 1) {
+        log.info('OCR', `Frete multi-pagina: ${allFiles.length} fotos, ${ocrTexts.length} com texto`, { empresa_id: empresaId })
       }
 
       const padrao = await pool.query(
@@ -188,8 +222,8 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
 
       if (ocrResult.text) {
         try {
-          // Modo multimodal: envia imagem + texto para detectar numero_nota e marca-texto
-          dados = await geminiParseOCR(ocrResult.text, padrao.rows, req.file.path)
+          // Modo multimodal: envia primeira imagem + texto combinado para detectar numero_nota e marca-texto
+          dados = await geminiParseOCR(ocrResult.text, padrao.rows, primaryFile.path)
           log.info('OCR', 'Gemini parser OK', {
             empresa_id: empresaId, itens: dados.itens?.length || 0,
             numero_nota: dados.numero_nota || null,
@@ -205,7 +239,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
     }
 
     // Salvar no banco (com idempotencia via client_uuid)
-    const fotoRelPath = path.relative(UPLOAD_PATH, req.file.path)
+    const fotoRelPath = path.relative(UPLOAD_PATH, primaryFile.path)
     const uuid = client_uuid || crypto.randomUUID()
 
     // ON CONFLICT: se o mesmo uuid ja existe, retorna o registro existente sem duplicar
@@ -221,7 +255,7 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
       empresaId,
       viagem_id || null,
       fotoRelPath,
-      req.file.originalname,
+      primaryFile.originalname,
       ocrResult.text || null,
       JSON.stringify(ocrResult.fullResponse),
       ocrResult.confidence,
@@ -237,8 +271,9 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
       ocr_confianca: ocrResult.confidence
     })
   } catch (err) {
-    if (req.file?.path) {
-      await unlink(req.file.path).catch(() => {})
+    // Limpar todos os arquivos em caso de erro
+    for (const f of allFiles) {
+      if (f?.path) await unlink(f.path).catch(() => {})
     }
     log.error('OCR', 'Erro no upload', { empresa_id: req.user?.empresa_id, erro: err.message })
     res.status(500).json({ error: 'Erro ao processar foto' })

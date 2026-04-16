@@ -29,6 +29,7 @@ function compressImage(file, maxSize = 2048) {
 }
 
 export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToast }) {
+  const [numeroNota, setNumeroNota] = useState(dados.numero_nota || '')
   const [remetente, setRemetente] = useState(dados.remetente || '')
   const [destinatario, setDestinatario] = useState(dados.destinatario || '')
   const [rota, setRota] = useState(dados.rota || '')
@@ -96,6 +97,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
         if (itens.length > 0 && d.itens && d.itens.length > 0) {
           if (!window.confirm(`A IA retornou ${d.itens.length} itens. Deseja substituir seus ${itens.length} itens editados?`)) return
         }
+        if (d.numero_nota) setNumeroNota(d.numero_nota)
         setRemetente(d.remetente || remetente)
         setDestinatario(d.destinatario || destinatario)
         setRota(d.rota || rota)
@@ -118,6 +120,7 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
     setLoading(true)
     try {
       const dadosRevisados = {
+        numero_nota: numeroNota || '',
         remetente, destinatario, rota,
         itens: itens.map(i => ({
           nome_item: i.nome_item,
@@ -167,6 +170,35 @@ export default function RevisaoScreen({ t, lancamento, dados, onConfirm, showToa
           <><IconRefresh size={18} color="#fff" /> Revisar com IA</>
         )}
       </button>
+
+      {/* Numero da Nota + Modo Marcador */}
+      {!isEncomenda && (
+        <Card t={t} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: '0 0 auto' }}>
+            <label style={{ color: t.txSoft, fontSize: '0.8rem', fontWeight: 500 }}>N. Nota</label>
+            <input className="input" value={numeroNota} onChange={e => setNumeroNota(e.target.value)}
+              placeholder="826"
+              inputMode="numeric"
+              style={{
+                background: t.card, color: t.tx, borderColor: t.border, marginTop: 4,
+                fontSize: '1.3rem', fontWeight: 700, textAlign: 'center',
+                width: 100, letterSpacing: 2
+              }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            {dados.modo_marcador && (
+              <span style={{
+                display: 'inline-block', padding: '4px 10px', borderRadius: 6,
+                background: t.warnBg || 'rgba(245,158,11,0.15)',
+                color: t.warnTx || '#B45309',
+                fontSize: '0.78rem', fontWeight: 600
+              }}>
+                MARCADOR — itens simplificados
+              </span>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Remetente / Destinatario / Rota */}
       <Card t={t} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
