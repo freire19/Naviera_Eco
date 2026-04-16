@@ -63,6 +63,22 @@ router.put('/contatos/:id', async (req, res) => {
   }
 })
 
+// DELETE /api/fretes/contatos/:id — excluir cliente de frete
+router.delete('/contatos/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'DELETE FROM cad_clientes_frete WHERE id_cliente = $1 AND empresa_id = $2 RETURNING id_cliente',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Cliente nao encontrado' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[Fretes] Erro ao excluir contato:', err.message)
+    res.status(500).json({ error: 'Erro ao excluir contato' })
+  }
+})
+
 // GET /api/fretes/proximo-numero
 router.get('/proximo-numero', async (req, res) => {
   try {

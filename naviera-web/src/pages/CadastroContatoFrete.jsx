@@ -78,6 +78,19 @@ export default function CadastroContatoFrete() {
     }
   }
 
+  async function handleExcluir() {
+    if (!selecionado?.id) { showToast('Selecione um cliente para excluir', 'error'); return }
+    if (!confirm(`Excluir cliente "${selecionado.nome_razao_social}"? Esta acao nao pode ser desfeita.`)) return
+    try {
+      await api.delete(`/fretes/contatos/${selecionado.id}`)
+      showToast('Cliente excluido')
+      limparForm()
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir', 'error')
+    }
+  }
+
   // Filtrar lista por busca
   const filtrados = busca
     ? contatos.filter(c => (c.nome_razao_social || '').toLowerCase().includes(busca.toLowerCase()) || (c.cpf_cnpj || '').includes(busca))
@@ -163,10 +176,14 @@ export default function CadastroContatoFrete() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-            <button className="btn-secondary" style={{ padding: '8px 20px' }} onClick={limparForm}>Novo</button>
-            <button className="btn-primary" style={{ padding: '8px 24px', fontWeight: 700 }} onClick={handleSalvar} disabled={salvando}>
-              {salvando ? 'Salvando...' : selecionado ? 'Atualizar' : 'Salvar'}
+          <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button style={{ padding: '8px 20px', background: '#047857', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }} onClick={limparForm}>Novo</button>
+              <button style={{ padding: '8px 20px', background: '#047857', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem', opacity: selecionado ? 1 : 0.5 }} onClick={handleSalvar} disabled={!selecionado || salvando}>Editar</button>
+              <button style={{ padding: '8px 20px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem', opacity: selecionado ? 1 : 0.5 }} onClick={handleExcluir} disabled={!selecionado}>Excluir</button>
+            </div>
+            <button style={{ padding: '8px 28px', background: '#059669', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }} onClick={handleSalvar} disabled={salvando}>
+              {salvando ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>
