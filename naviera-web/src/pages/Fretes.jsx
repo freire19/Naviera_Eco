@@ -1,305 +1,379 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 import { printNotaFrete, printEtiquetaFrete } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
-
-const FORM_INITIAL = {
-  remetente_nome_temp: '',
-  destinatario_nome_temp: '',
-  rota_temp: '',
-  conferente_temp: '',
-  valor_total_itens: '',
-  desconto: '',
-  valor_pago: '',
-  tipo_pagamento: 'DINHEIRO',
-  nome_caixa: '',
-  observacoes: '',
+function formatDate(val) {
+  if (!val) return '—'
+  const s = String(val)
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s
+  try { const p = (s.includes('T') ? s.substring(0,10) : s).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s } catch { return s }
 }
 
-export default function Fretes({ viagemAtiva }) {
-  const [fretes, setFretes] = useState([])
-  const [loading, setLoading] = useState(false)
+const ITEM_VAZIO = { quantidade: 1, descricao: '', valor_unitario: '', subtotal: '' }
 
-  // Modal de criacao
-  const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState(FORM_INITIAL)
-  const [saving, setSaving] = useState(false)
-
-  // Modal de pagamento
-  const [showPay, setShowPay] = useState(null) // frete selecionado
-  const [valorPago, setValorPago] = useState('')
-  const [paying, setPaying] = useState(false)
-
-  // Toast
+export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
+  const [selecionado, setSelecionado] = useState(null)
+  const [editando, setEditando] = useState(false)
+  const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState(null)
+  const [numFrete, setNumFrete] = useState('')
 
-  const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3500)
-  }, [])
+  // Form
+  const [remetente, setRemetente] = useState('')
+  const [destinatario, setDestinatario] = useState('')
+  const [idRota, setIdRota] = useState('')
+  const [localTransporte, setLocalTransporte] = useState('')
+  const [conferente, setConferente] = useState('')
+  const [cidadeCobranca, setCidadeCobranca] = useState('')
+  const [notaFiscal, setNotaFiscal] = useState(false)
+  const [numNota, setNumNota] = useState('')
+  const [valorNota, setValorNota] = useState('')
+  const [pesoNota, setPesoNota] = useState('')
+  const [observacoes, setObservacoes] = useState('')
+  const [precoTipo, setPrecoTipo] = useState('normal')
 
-  const fetchFretes = useCallback(() => {
-    if (!viagemAtiva) return
-    setLoading(true)
-    api.get(`/fretes?viagem_id=${viagemAtiva.id_viagem}`)
-      .then(setFretes)
-      .catch(() => showToast('Erro ao carregar fretes', 'error'))
-      .finally(() => setLoading(false))
-  }, [viagemAtiva, showToast])
+  // Itens
+  const [itens, setItens] = useState([])
+  const [novoItem, setNovoItem] = useState({ ...ITEM_VAZIO })
+  const [showItemList, setShowItemList] = useState(false)
+  const itemDropdownRef = useRef(null)
+
+  // Auxiliares
+  const [rotas, setRotas] = useState([])
+  const [conferentes, setConferentes] = useState([])
+  const [itensPadrao, setItensPadrao] = useState([])
+  const [caixas, setCaixas] = useState([])
+  const [clientes, setClientes] = useState([])
+
+  // Pagamento modal
+  const [modalPagar, setModalPagar] = useState(null)
+  const [pgDesconto, setPgDesconto] = useState('')
+  const [pgValorPago, setPgValorPago] = useState('')
+  const [pgTipo, setPgTipo] = useState('Dinheiro')
+  const [pgCaixa, setPgCaixa] = useState('')
+
+  function showToast(msg, type = 'success') {
+    setToast({ msg, type }); setTimeout(() => setToast(null), 3500)
+  }
 
   useEffect(() => {
-    fetchFretes()
-  }, [fetchFretes])
+    Promise.allSettled([
+      api.get('/rotas').then(setRotas),
+      api.get('/cadastros/conferentes').then(setConferentes),
+      api.get('/cadastros/itens-frete').then(setItensPadrao),
+      api.get('/cadastros/caixas').then(setCaixas),
+      api.get('/cadastros/clientes-encomenda').then(setClientes)
+    ]).catch(() => {})
+  }, [])
 
-  // --- Criar frete ---
-  function handleFormChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    if (!showItemList) return
+    const handler = (e) => { if (itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) setShowItemList(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showItemList])
+
+  // ESC
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') { if (modalPagar) setModalPagar(null); else limparForm() } }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [modalPagar])
+
+  // Calculos
+  const totalItens = itens.reduce((s, i) => s + (parseFloat(i.subtotal) || 0), 0)
+  const totalVolumes = itens.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
+
+  function limparForm() {
+    setRemetente(''); setDestinatario(''); setIdRota(''); setLocalTransporte('')
+    setConferente(''); setCidadeCobranca(''); setNotaFiscal(false); setNumNota('')
+    setValorNota(''); setPesoNota(''); setObservacoes(''); setPrecoTipo('normal')
+    setItens([]); setNovoItem({ ...ITEM_VAZIO }); setSelecionado(null); setEditando(false)
   }
 
-  function openCreateModal() {
-    setForm(FORM_INITIAL)
-    setShowCreate(true)
+  async function handleNovo() {
+    limparForm()
+    setEditando(true)
+    try { const res = await api.get('/fretes/proximo-numero'); setNumFrete(res.numero || '1') } catch { setNumFrete('—') }
   }
 
-  async function handleCreate(e) {
-    e.preventDefault()
-    setSaving(true)
+  function handleNovoItemChange(field, value) {
+    const updated = { ...novoItem, [field]: value }
+    if (field === 'quantidade' || field === 'valor_unitario') {
+      updated.subtotal = ((parseFloat(updated.quantidade) || 0) * (parseFloat(updated.valor_unitario) || 0)).toFixed(2)
+    }
+    setNovoItem(updated)
+  }
+
+  function handleAdicionarItem() {
+    if (!novoItem.descricao.trim()) { showToast('Informe o item', 'error'); return }
+    setItens(prev => [...prev, { ...novoItem, subtotal: parseFloat(novoItem.subtotal) || 0, valor_unitario: parseFloat(novoItem.valor_unitario) || 0, quantidade: parseInt(novoItem.quantidade) || 1 }])
+    setNovoItem({ ...ITEM_VAZIO })
+  }
+
+  function handleSelectItemPadrao(ip) {
+    const preco = precoTipo === 'normal' ? (ip.preco_padrao || ip.preco_unitario_padrao || 0) : (ip.preco_unitario_desconto || ip.preco_padrao || 0)
+    setNovoItem(prev => ({ ...prev, descricao: ip.nome_item, valor_unitario: preco, subtotal: ((parseInt(prev.quantidade) || 1) * parseFloat(preco)).toFixed(2) }))
+    setShowItemList(false)
+  }
+
+  // SALVAR
+  async function handleSalvar() {
+    if (!destinatario.trim()) { showToast('Informe o destinatario', 'error'); return }
+    // Abrir modal pagamento
+    setModalPagar({ total: totalItens })
+    setPgDesconto(''); setPgValorPago(''); setPgTipo('Dinheiro'); setPgCaixa('')
+  }
+
+  async function handleConfirmarPagamento() {
+    const vDesc = parseFloat(pgDesconto) || 0
+    const vPago = parseFloat(pgValorPago) || 0
+    setSalvando(true)
     try {
-      await api.post('/fretes', {
+      const rota = rotas.find(r => String(r.id_rota) === idRota)
+      const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : ''
+      const payload = {
         id_viagem: viagemAtiva.id_viagem,
-        remetente_nome_temp: form.remetente_nome_temp,
-        destinatario_nome_temp: form.destinatario_nome_temp,
-        rota_temp: form.rota_temp,
-        conferente_temp: form.conferente_temp,
-        observacoes: form.observacoes,
-        valor_total_itens: parseFloat(form.valor_total_itens) || 0,
-        desconto: parseFloat(form.desconto) || 0,
-        valor_pago: parseFloat(form.valor_pago) || 0,
-        tipo_pagamento: form.tipo_pagamento,
-        nome_caixa: form.nome_caixa,
-      })
-      showToast('Frete criado com sucesso')
-      setShowCreate(false)
-      fetchFretes()
-    } catch {
-      showToast('Erro ao criar frete', 'error')
+        remetente_nome_temp: remetente.trim().toUpperCase(),
+        destinatario_nome_temp: destinatario.trim().toUpperCase(),
+        rota_temp: rotaNome,
+        conferente_temp: conferente,
+        observacoes: observacoes.trim(),
+        local_transporte: localTransporte,
+        cidade_cobranca: cidadeCobranca,
+        num_notafiscal: notaFiscal ? numNota : null,
+        valor_notafiscal: notaFiscal ? parseFloat(valorNota) || 0 : 0,
+        peso_notafiscal: notaFiscal ? parseFloat(pesoNota) || 0 : 0,
+        valor_total_itens: totalItens,
+        desconto: vDesc,
+        valor_pago: vPago,
+        troco: Math.max(0, vPago - (totalItens - vDesc)),
+        tipo_pagamento: pgTipo,
+        nome_caixa: caixas.find(c => String(c.id_caixa) === pgCaixa)?.nome_caixa || '',
+        status_frete: vPago >= (totalItens - vDesc) ? 'PAGO' : vPago > 0 ? 'PARCIAL' : 'PENDENTE',
+        itens: itens.map(i => ({ nome_item: i.descricao, quantidade: i.quantidade, preco_unitario: i.valor_unitario, subtotal_item: i.subtotal }))
+      }
+      await api.post('/fretes', payload)
+      showToast('Frete salvo com sucesso')
+      setModalPagar(null)
+      limparForm()
+    } catch (err) {
+      showToast(err.message || 'Erro ao salvar', 'error')
     } finally {
-      setSaving(false)
+      setSalvando(false)
     }
   }
 
-  // --- Pagar frete ---
-  function openPayModal(frete) {
-    setShowPay(frete)
-    setValorPago('')
-  }
-
-  async function handlePay(e) {
-    e.preventDefault()
-    if (!showPay) return
-    setPaying(true)
-    try {
-      await api.post(`/fretes/${showPay.id_frete}/pagar`, {
-        valor_pago: parseFloat(valorPago) || 0,
-      })
-      showToast('Pagamento registrado com sucesso')
-      setShowPay(null)
-      fetchFretes()
-    } catch {
-      showToast('Erro ao registrar pagamento', 'error')
-    } finally {
-      setPaying(false)
-    }
-  }
-
-  // --- Excluir frete ---
-  async function handleDelete(frete) {
-    if (!window.confirm(`Excluir frete #${frete.numero_frete || frete.id_frete}? Esta acao nao pode ser desfeita.`)) return
-    try {
-      await api.delete(`/fretes/${frete.id_frete}`)
-      showToast('Frete excluido com sucesso')
-      fetchFretes()
-    } catch {
-      showToast('Erro ao excluir frete', 'error')
-    }
-  }
-
-  // --- Placeholder sem viagem ---
   if (!viagemAtiva) {
-    return (
-      <div className="placeholder-page">
-        <div className="ph-icon">{'\uD83D\uDE9A'}</div>
-        <h2>Fretes</h2>
-        <p>Selecione uma viagem para ver os fretes.</p>
-      </div>
-    )
+    return <div className="placeholder-page"><div className="ph-icon">🚚</div><h2>Lancamento de Frete</h2><p>Selecione uma viagem.</p></div>
   }
+
+  const I = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
+  const L = { fontSize: '0.75rem', fontWeight: 700, color: 'var(--text)', marginBottom: 3, display: 'block' }
+  const RO = { ...I, opacity: 0.6, cursor: 'default' }
+  const vData = formatDate(viagemAtiva.data_viagem)
+
+  // Pagamento calculos
+  const pgDesc = parseFloat(pgDesconto) || 0
+  const pgPago = parseFloat(pgValorPago) || 0
+  const pgAPagar = Math.max(0, (modalPagar?.total || 0) - pgDesc)
+  const pgDevedor = Math.max(0, pgAPagar - pgPago)
+  const pgTroco = Math.max(0, pgPago - pgAPagar)
 
   return (
-    <div>
-      {/* Toast */}
-      {toast && (
-        <div className={`toast ${toast.type}`}>{toast.message}</div>
-      )}
-
-      <div className="card">
-        <div className="card-header">
-          <h3>Fretes — {viagemAtiva.descricao || `Viagem #${viagemAtiva.id_viagem}`}</h3>
-          <div className="toolbar">
-            <span className="badge info">{fretes.length} registros</span>
-            <button className="btn-primary" onClick={openCreateModal}>+ Novo Frete</button>
-          </div>
+    <div className="card" style={{ padding: 12 }}>
+      {/* HEADER */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h2 style={{ fontSize: '1.05rem', margin: 0 }}>Lancamento de Frete</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={L}>N° Frete:</span>
+          <input style={{ ...RO, width: 80, textAlign: 'center', fontWeight: 700, fontSize: '1rem' }} value={numFrete || '—'} readOnly />
         </div>
-
-        {loading ? (
-          <p style={{ color: 'var(--text-muted)', padding: 20 }}>Carregando...</p>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>N. Frete</th>
-                  <th>Remetente</th>
-                  <th>Destinatario</th>
-                  <th>Rota</th>
-                  <th>Valor</th>
-                  <th>Pago</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fretes.map(f => (
-                  <tr key={f.id_frete}>
-                    <td>{f.numero_frete}</td>
-                    <td>{f.nome_remetente || '\u2014'}</td>
-                    <td>{f.nome_destinatario || '\u2014'}</td>
-                    <td>{f.nome_rota || '\u2014'}</td>
-                    <td className="money">{formatMoney(f.valor_nominal)}</td>
-                    <td className="money">{formatMoney(f.valor_pago)}</td>
-                    <td>
-                      <span className={`badge ${f.status === 'PAGO' ? 'success' : f.status === 'CANCELADO' ? 'danger' : 'warning'}`}>
-                        {f.status || 'Pendente'}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="btn-sm primary" onClick={() => printNotaFrete(f, viagemAtiva)} style={{ marginRight: 4 }}>Nota</button>
-                      <button className="btn-sm primary" onClick={() => printEtiquetaFrete(f)} style={{ marginRight: 4 }}>Etiqueta</button>
-                      {f.status !== 'PAGO' && f.status !== 'CANCELADO' && (
-                        <button className="btn-sm primary" onClick={() => openPayModal(f)} style={{ marginRight: 4 }}>Pagar</button>
-                      )}
-                      <button className="btn-sm danger" onClick={() => handleDelete(f)}>Excluir</button>
-                    </td>
-                  </tr>
-                ))}
-                {fretes.length === 0 && (
-                  <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>
-                      Nenhum frete nesta viagem
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
-      {/* Modal Criar Frete */}
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Novo Frete</h3>
-            <form onSubmit={handleCreate}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Remetente</label>
-                  <input name="remetente_nome_temp" value={form.remetente_nome_temp} onChange={handleFormChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Destinatario</label>
-                  <input name="destinatario_nome_temp" value={form.destinatario_nome_temp} onChange={handleFormChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Rota</label>
-                  <input name="rota_temp" value={form.rota_temp} onChange={handleFormChange} />
-                </div>
-                <div className="form-group">
-                  <label>Conferente</label>
-                  <input name="conferente_temp" value={form.conferente_temp} onChange={handleFormChange} />
-                </div>
-                <div className="form-group">
-                  <label>Valor Total Itens (R$)</label>
-                  <input name="valor_total_itens" type="number" step="0.01" min="0" value={form.valor_total_itens} onChange={handleFormChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Desconto (R$)</label>
-                  <input name="desconto" type="number" step="0.01" min="0" value={form.desconto} onChange={handleFormChange} />
-                </div>
-                <div className="form-group">
-                  <label>Valor Pago (R$)</label>
-                  <input name="valor_pago" type="number" step="0.01" min="0" value={form.valor_pago} onChange={handleFormChange} />
-                </div>
-                <div className="form-group">
-                  <label>Tipo Pagamento</label>
-                  <select name="tipo_pagamento" value={form.tipo_pagamento} onChange={handleFormChange}>
-                    <option value="DINHEIRO">Dinheiro</option>
-                    <option value="PIX">PIX</option>
-                    <option value="CARTAO">Cartao</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Nome do Caixa</label>
-                  <input name="nome_caixa" value={form.nome_caixa} onChange={handleFormChange} />
-                </div>
-                <div className="form-group full-width">
-                  <label>Observacoes</label>
-                  <textarea name="observacoes" value={form.observacoes} onChange={handleFormChange} rows={3} />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowCreate(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={saving}>
-                  {saving ? 'Salvando...' : 'Criar Frete'}
-                </button>
-              </div>
-            </form>
+      {/* ROW 1: Remetente + Destinatario */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+        <div>
+          <label style={L}>Remetente:</label>
+          <input style={I} value={remetente} onChange={e => setRemetente(e.target.value)} placeholder="Selecione ou Digite..." />
+        </div>
+        <div>
+          <label style={L}>Destinatario:</label>
+          <input style={I} value={destinatario} onChange={e => setDestinatario(e.target.value)} placeholder="Selecione ou Digite..." />
+        </div>
+      </div>
+
+      {/* ROW 2: Rota, Data, Emissao, Local, Conferente, Cidade */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1.5fr 1.5fr', gap: 8, marginBottom: 8 }}>
+        <div>
+          <label style={L}>Rota:</label>
+          <select style={I} value={idRota} onChange={e => setIdRota(e.target.value)}>
+            <option value=""></option>
+            {rotas.map(r => <option key={r.id_rota} value={r.id_rota}>{r.origem} - {r.destino}</option>)}
+          </select>
+        </div>
+        <div><label style={L}>Data Viagem:</label><input style={RO} value={vData} readOnly /></div>
+        <div><label style={L}>Emissao:</label><input style={RO} value={new Date().toLocaleDateString('pt-BR')} readOnly /></div>
+        <div><label style={L}>Local Transp.:</label><input style={I} value={localTransporte} onChange={e => setLocalTransporte(e.target.value)} placeholder="Ex: Porao" /></div>
+        <div>
+          <label style={L}>Conferente:</label>
+          <select style={I} value={conferente} onChange={e => setConferente(e.target.value)}>
+            <option value=""></option>
+            {conferentes.map(c => <option key={c.id_conferente} value={c.nome_conferente || c.nome}>{c.nome_conferente || c.nome}</option>)}
+          </select>
+        </div>
+        <div><label style={L}>Cidade Cobranca:</label><input style={I} value={cidadeCobranca} onChange={e => setCidadeCobranca(e.target.value)} /></div>
+      </div>
+
+      {/* ROW 3: Nota Fiscal + Observacoes */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+        <div style={{ padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <label style={{ ...L, marginBottom: 0 }}>Nota Fiscal?</label>
+            <label style={{ fontSize: '0.82rem' }}><input type="radio" checked={notaFiscal} onChange={() => setNotaFiscal(true)} /> Sim</label>
+            <label style={{ fontSize: '0.82rem' }}><input type="radio" checked={!notaFiscal} onChange={() => setNotaFiscal(false)} /> Nao</label>
           </div>
+          {notaFiscal && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <div><label style={{ ...L, fontSize: '0.68rem' }}>N° Nota:</label><input style={I} value={numNota} onChange={e => setNumNota(e.target.value)} /></div>
+              <div><label style={{ ...L, fontSize: '0.68rem' }}>Valor (R$):</label><input style={I} type="number" step="0.01" value={valorNota} onChange={e => setValorNota(e.target.value)} /></div>
+              <div><label style={{ ...L, fontSize: '0.68rem' }}>Peso (kg):</label><input style={I} type="number" step="0.01" value={pesoNota} onChange={e => setPesoNota(e.target.value)} /></div>
+            </div>
+          )}
+        </div>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+            <label style={{ ...L, marginBottom: 0 }}>Observacoes:</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>
+              <label style={L}>Preco:</label>
+              <label><input type="radio" checked={precoTipo === 'normal'} onChange={() => setPrecoTipo('normal')} /> Normal</label>
+              <label><input type="radio" checked={precoTipo === 'desconto'} onChange={() => setPrecoTipo('desconto')} /> Desc.</label>
+            </div>
+          </div>
+          <textarea style={{ ...I, minHeight: 60, resize: 'vertical' }} value={observacoes} onChange={e => setObservacoes(e.target.value)} />
+        </div>
+      </div>
+
+      {/* ITEM ENTRY */}
+      <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 100px 100px auto', gap: 8, padding: 10, background: 'rgba(5,150,105,0.05)', border: '1px solid var(--primary)', borderRadius: 6, marginBottom: 8, alignItems: 'end' }}>
+        <div><label style={{ ...L, fontSize: '0.65rem' }}>Qtd.</label><input style={{ ...I, textAlign: 'center' }} type="number" min="1" value={novoItem.quantidade} onChange={e => handleNovoItemChange('quantidade', e.target.value)} /></div>
+        <div style={{ position: 'relative' }} ref={itemDropdownRef}>
+          <label style={{ ...L, fontSize: '0.65rem' }}>Item / Produto</label>
+          <input style={I} value={novoItem.descricao} onChange={e => { handleNovoItemChange('descricao', e.target.value); setShowItemList(true) }} onFocus={() => setShowItemList(true)} placeholder="Digite para buscar..." />
+          {showItemList && (() => {
+            const q = (novoItem.descricao || '').toLowerCase()
+            const filtered = itensPadrao.filter(ip => !q || (ip.nome_item || '').toLowerCase().includes(q))
+            if (!filtered.length) return null
+            return <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
+              {filtered.map((ip, idx) => {
+                const preco = Number(precoTipo === 'normal' ? (ip.preco_padrao || ip.preco_unitario_padrao || 0) : (ip.preco_unitario_desconto || ip.preco_padrao || 0))
+                return <div key={ip.id || idx} onMouseDown={() => handleSelectItemPadrao(ip)} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', cursor: 'pointer', fontSize: '0.82rem', background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}>
+                  <span style={{ fontWeight: 600 }}>{ip.nome_item}</span>
+                  <span style={{ fontFamily: 'Space Mono, monospace' }}>R$ {preco.toFixed(2)}</span>
+                </div>
+              })}
+            </div>
+          })()}
+        </div>
+        <div><label style={{ ...L, fontSize: '0.65rem' }}>Preco Unit. (R$)</label><input style={{ ...I, textAlign: 'right', fontFamily: 'Space Mono, monospace' }} type="number" step="0.01" value={novoItem.valor_unitario} onChange={e => handleNovoItemChange('valor_unitario', e.target.value)} /></div>
+        <div><label style={{ ...L, fontSize: '0.65rem' }}>Subtotal (R$)</label><input style={{ ...RO, textAlign: 'right', fontFamily: 'Space Mono, monospace' }} value={novoItem.subtotal || '0.00'} readOnly /></div>
+        <button onClick={handleAdicionarItem} style={{ padding: '8px 16px', background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>ADICIONAR</button>
+      </div>
+
+      {/* TABELA ITENS */}
+      <div className="table-container" style={{ marginBottom: 0, flex: 1 }}>
+        <table>
+          <thead><tr>
+            <th style={{ width: 60 }}>Qtd</th>
+            <th>Descricao do Item</th>
+            <th style={{ width: 110 }}>Preco Unit.</th>
+            <th style={{ width: 110 }}>Subtotal</th>
+            <th style={{ width: 40 }}></th>
+          </tr></thead>
+          <tbody>
+            {itens.length === 0 ? (
+              <tr><td colSpan="5" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>Nao ha conteudo na tabela</td></tr>
+            ) : itens.map((item, idx) => (
+              <tr key={idx}>
+                <td style={{ textAlign: 'center' }}>
+                  <input type="number" min="1" value={item.quantidade} style={{ width: 40, textAlign: 'center', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'transparent'}
+                    onChange={e => { const v = parseInt(e.target.value) || 1; setItens(prev => prev.map((it, i) => i === idx ? { ...it, quantidade: v, subtotal: (v * (parseFloat(it.valor_unitario) || 0)).toFixed(2) } : it)) }} />
+                </td>
+                <td><input value={item.descricao} style={{ width: '100%', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit' }}
+                  onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'transparent'}
+                  onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, descricao: e.target.value } : it))} /></td>
+                <td className="money">
+                  <input type="number" step="0.01" value={item.valor_unitario} style={{ width: 80, textAlign: 'right', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontFamily: 'Space Mono, monospace' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'transparent'}
+                    onChange={e => { const v = parseFloat(e.target.value) || 0; setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: v, subtotal: ((parseInt(it.quantidade) || 1) * v).toFixed(2) } : it)) }} />
+                </td>
+                <td className="money" style={{ fontWeight: 700 }}>{formatMoney(item.subtotal)}</td>
+                <td><button className="btn-sm danger" onClick={() => setItens(prev => prev.filter((_, i) => i !== idx))} style={{ padding: '2px 6px' }}>×</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* TOTAIS no final */}
+      {itens.length > 0 && (
+        <div style={{ borderTop: '2px solid var(--primary)', padding: '10px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><label style={L}>Volumes:</label><span style={{ fontWeight: 700, fontSize: '1rem' }}>{totalVolumes}</span></div>
+          <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--primary)', fontFamily: 'Space Mono, monospace' }}>TOTAL GERAL: {formatMoney(totalItens)}</div>
         </div>
       )}
 
-      {/* Modal Pagar Frete */}
-      {showPay && (
-        <div className="modal-overlay" onClick={() => setShowPay(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Registrar Pagamento — Frete #{showPay.numero_frete || showPay.id_frete}</h3>
-            <p style={{ color: 'var(--text-muted)', margin: '8px 0 16px' }}>
-              Valor pendente: {formatMoney((showPay.valor_nominal || 0) - (showPay.valor_pago || 0))}
-            </p>
-            <form onSubmit={handlePay}>
-              <div className="form-group">
-                <label>Valor Pago (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={valorPago}
-                  onChange={e => setValorPago(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowPay(null)}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={paying}>
-                  {paying ? 'Processando...' : 'Confirmar Pagamento'}
-                </button>
-              </div>
-            </form>
+      {/* BOTOES */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--border)', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn-sm primary" onClick={handleNovo}>Novo (F1)</button>
+          <button className="btn-sm primary" onClick={() => {}}>Alterar (F2)</button>
+          <button className="btn-sm primary" onClick={handleSalvar} disabled={!editando || salvando} style={{ fontWeight: 700 }}>SALVAR (F3)</button>
+          <button className="btn-sm danger" onClick={() => {}}>Excluir (F4)</button>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn-sm primary" onClick={() => onNavigate && onNavigate('listar-fretes')}>Lista de Fretes (F5)</button>
+          <button className="btn-sm primary" onClick={() => { if (selecionado) printNotaFrete(selecionado, viagemAtiva) }}>Imprimir (F6)</button>
+          <button className="btn-sm primary" onClick={() => { if (selecionado) printEtiquetaFrete(selecionado) }}>Etiqueta</button>
+          <button className="btn-sm" onClick={() => onClose ? onClose() : limparForm()}>SAIR (Esc)</button>
+        </div>
+      </div>
+
+      {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+      {/* MODAL PAGAMENTO */}
+      {modalPagar && (
+        <div className="modal-overlay" onClick={() => setModalPagar(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h3>Pagamento do Frete</h3>
+            <div className="form-grid">
+              <div className="form-group"><label>Total Frete</label><input value={formatMoney(modalPagar.total)} readOnly style={{ opacity: 0.6 }} /></div>
+              <div className="form-group"><label>Desconto</label><input type="number" step="0.01" min="0" value={pgDesconto} onChange={e => setPgDesconto(e.target.value)} /></div>
+              <div className="form-group"><label>A Pagar</label><input value={formatMoney(pgAPagar)} readOnly style={{ opacity: 0.6 }} /></div>
+              <div className="form-group"><label>Valor Pago</label><input type="number" step="0.01" min="0" value={pgValorPago} onChange={e => setPgValorPago(e.target.value)} autoFocus /></div>
+              <div className="form-group"><label>Devedor</label><input value={formatMoney(pgDevedor)} readOnly style={{ opacity: 0.6, color: pgDevedor > 0 ? 'var(--danger)' : undefined }} /></div>
+              <div className="form-group"><label>Troco</label><input value={formatMoney(pgTroco)} readOnly style={{ opacity: 0.6 }} /></div>
+              <div className="form-group"><label>Tipo Pagamento</label>
+                <select value={pgTipo} onChange={e => setPgTipo(e.target.value)}>
+                  <option>Dinheiro</option><option>Cartao</option><option>PIX</option>
+                </select></div>
+              <div className="form-group"><label>Caixa</label>
+                <select value={pgCaixa} onChange={e => setPgCaixa(e.target.value)}>
+                  <option value="">Selecione...</option>
+                  {caixas.map(c => <option key={c.id_caixa} value={c.id_caixa}>{c.nome_caixa}</option>)}
+                </select></div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setModalPagar(null)}>Cancelar</button>
+              <button className="btn-primary" onClick={handleConfirmarPagamento} disabled={salvando}>{salvando ? 'Salvando...' : 'OK'}</button>
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,33 @@ import { criarFreteComItens } from '../helpers/criarFrete.js'
 const router = Router()
 router.use(authMiddleware)
 
+// GET /api/fretes/proximo-numero
+router.get('/proximo-numero', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'SELECT COALESCE(MAX(numero_frete), 0) + 1 AS next_num FROM fretes WHERE empresa_id = $1',
+      [empresaId]
+    )
+    res.json({ numero: String(result.rows[0].next_num) })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar numero' })
+  }
+})
+
+// GET /api/fretes/:id/itens
+router.get('/:id/itens', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM frete_itens WHERE id_frete = $1 ORDER BY id_frete_item',
+      [req.params.id]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar itens' })
+  }
+})
+
 // GET /api/fretes?viagem_id=X
 router.get('/', async (req, res) => {
   try {
