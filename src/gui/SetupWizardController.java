@@ -142,8 +142,8 @@ public class SetupWizardController implements Initializable {
                 upper = "NAV-" + upper.substring(3);
             }
 
-            // Limitar a 8 chars (NAV-XXXX)
-            if (upper.length() > 8) upper = upper.substring(0, 8);
+            // Limitar a 12 chars (NAV-XXXXXXXX)
+            if (upper.length() > 12) upper = upper.substring(0, 12);
 
             if (!upper.equals(newVal)) {
                 final String formatted = upper;
@@ -153,7 +153,7 @@ public class SetupWizardController implements Initializable {
                 });
             }
         });
-        txtCodigoAtivacao.setPromptText("NAV-0000");
+        txtCodigoAtivacao.setPromptText("NAV-00000000");
         txtCodigoAtivacao.setStyle(txtCodigoAtivacao.getStyle() + "-fx-font-size: 18px; -fx-alignment: center; -fx-font-weight: bold;");
 
         updateStepView();
