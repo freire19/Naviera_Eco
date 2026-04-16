@@ -7,30 +7,22 @@ import { criarFreteComItens } from '../helpers/criarFrete.js'
 const router = Router()
 router.use(authMiddleware)
 
-// GET /api/fretes/contatos — lista todos os clientes (cad_clientes_encomenda + nomes unicos dos fretes)
+// GET /api/fretes/contatos — lista clientes de frete (tabela propria, separada de encomenda/passagem)
 router.get('/contatos', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    // Unir clientes cadastrados + remetentes/destinatarios dos fretes
-    const result = await pool.query(`
-      SELECT DISTINCT nome, id FROM (
-        SELECT nome_cliente AS nome, id_cliente AS id FROM cad_clientes_encomenda WHERE empresa_id = $1
-        UNION
-        SELECT DISTINCT remetente_nome_temp AS nome, NULL AS id FROM fretes WHERE empresa_id = $1 AND remetente_nome_temp IS NOT NULL
-        UNION
-        SELECT DISTINCT destinatario_nome_temp AS nome, NULL AS id FROM fretes WHERE empresa_id = $1 AND destinatario_nome_temp IS NOT NULL
-      ) sub WHERE nome IS NOT NULL AND nome != ''
-      ORDER BY nome
-    `, [empresaId])
-    // Mapear para formato compativel com o frontend
-    res.json(result.rows.map(r => ({ id: r.id || r.nome, nome_razao_social: r.nome })))
+    const result = await pool.query(
+      'SELECT id_cliente AS id, nome_cliente AS nome_razao_social FROM cad_clientes_frete WHERE empresa_id = $1 ORDER BY nome_cliente',
+      [empresaId]
+    )
+    res.json(result.rows)
   } catch (err) {
     console.error('[Fretes] Erro ao listar contatos:', err.message)
     res.status(500).json({ error: 'Erro ao listar contatos' })
   }
 })
 
-// POST /api/fretes/contatos — criar contato de frete (salva em cad_clientes_encomenda)
+// POST /api/fretes/contatos — criar cliente de frete (tabela cad_clientes_frete)
 router.post('/contatos', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
@@ -38,12 +30,11 @@ router.post('/contatos', async (req, res) => {
     if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
     const nomeUpper = nome.trim().toUpperCase()
     const result = await pool.query(
-      'INSERT INTO cad_clientes_encomenda (nome_cliente, empresa_id) VALUES ($1, $2) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING RETURNING *',
+      'INSERT INTO cad_clientes_frete (nome_cliente, empresa_id) VALUES ($1, $2) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING RETURNING *',
       [nomeUpper, empresaId]
     )
     if (result.rows.length > 0) return res.status(201).json({ id: result.rows[0].id_cliente, nome_razao_social: result.rows[0].nome_cliente })
-    // Ja existe
-    const existing = await pool.query('SELECT id_cliente, nome_cliente FROM cad_clientes_encomenda WHERE LOWER(nome_cliente) = LOWER($1) AND empresa_id = $2', [nomeUpper, empresaId])
+    const existing = await pool.query('SELECT id_cliente, nome_cliente FROM cad_clientes_frete WHERE LOWER(nome_cliente) = LOWER($1) AND empresa_id = $2', [nomeUpper, empresaId])
     res.json(existing.rows.length > 0 ? { id: existing.rows[0].id_cliente, nome_razao_social: existing.rows[0].nome_cliente } : { nome_razao_social: nomeUpper })
   } catch (err) {
     console.error('[Fretes] Erro ao criar contato:', err.message)
