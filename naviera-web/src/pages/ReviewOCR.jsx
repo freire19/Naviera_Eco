@@ -43,6 +43,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   const [filtro, setFiltro] = useState('revisado_operador')
   const [toast, setToast] = useState(null)
   const [expandido, setExpandido] = useState(null)
+  const [editados, setEditados] = useState({}) // { lancamento_id: { dados editados } }
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
   const [docFotoUrl, setDocFotoUrl] = useState(null)
@@ -63,8 +64,51 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
 
   useEffect(() => { carregar() }, [carregar])
 
+  // Iniciar edicao de um lancamento
+  function iniciarEdicao(lanc) {
+    const dados = typeof lanc.dados_extraidos === 'string' ? JSON.parse(lanc.dados_extraidos) : lanc.dados_extraidos
+    setEditados(prev => ({ ...prev, [lanc.id]: JSON.parse(JSON.stringify(dados)) }))
+  }
+
+  // Atualizar campo editado
+  function editarCampo(lancId, campo, valor) {
+    setEditados(prev => ({ ...prev, [lancId]: { ...prev[lancId], [campo]: valor } }))
+  }
+
+  // Atualizar item editado
+  function editarItem(lancId, idx, campo, valor) {
+    setEditados(prev => {
+      const dados = { ...prev[lancId] }
+      dados.itens = [...(dados.itens || [])]
+      dados.itens[idx] = { ...dados.itens[idx], [campo]: campo === 'quantidade' ? parseInt(valor) || 0 : campo === 'preco_unitario' ? parseFloat(valor) || 0 : valor }
+      if (campo === 'quantidade' || campo === 'preco_unitario') {
+        dados.itens[idx].subtotal = (dados.itens[idx].quantidade || 0) * (dados.itens[idx].preco_unitario || 0)
+      }
+      return { ...prev, [lancId]: dados }
+    })
+  }
+
+  // Salvar edicoes no backend antes de aprovar
+  async function salvarEdicoes(lancId) {
+    const dadosEditados = editados[lancId]
+    if (!dadosEditados) return
+    try {
+      await api.put(`/ocr/lancamentos/${lancId}`, { dados_extraidos: dadosEditados })
+      showToast('Edicoes salvas')
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro ao salvar edicoes', 'error')
+    }
+  }
+
   const aprovar = async (id, autoCadastrar = false) => {
-    if (!autoCadastrar && !confirm('Aprovar este lancamento? Um frete sera criado automaticamente.')) return
+    // Se tem edicoes pendentes, salvar antes
+    if (editados[id]) {
+      try {
+        await api.put(`/ocr/lancamentos/${id}`, { dados_extraidos: editados[id] })
+      } catch {}
+    }
+    if (!autoCadastrar && !confirm('Aprovar este lancamento? Sera criado automaticamente.')) return
     setActionLoading(id)
     try {
       const result = await api.put(`/ocr/lancamentos/${id}/aprovar`, { auto_cadastrar: autoCadastrar })
@@ -294,28 +338,52 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                         </div>
 
                         {/* Detalhes expandidos */}
-                        {isExpanded && (
+                        {isExpanded && (() => {
+                          const ed = editados[l.id]
+                          const dadosAtual = ed || dados
+                          const isEditando = !!ed
+                          const inputS = { padding: '4px 6px', fontSize: '0.78rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text)', width: '100%', boxSizing: 'border-box' }
+                          return (
                           <div style={{ marginTop: 12, textAlign: 'left' }}>
+
+                            {/* Botao editar */}
+                            {!isEditando && l.status !== 'aprovado' && (
+                              <button className="btn-sm primary" onClick={() => iniciarEdicao(l)} style={{ marginBottom: 8 }}>Editar dados</button>
+                            )}
+                            {isEditando && (
+                              <button className="btn-sm primary" onClick={() => salvarEdicoes(l.id)} style={{ marginBottom: 8, marginRight: 6 }}>Salvar edicoes</button>
+                            )}
+
+                            {/* Campos editaveis: Remetente, Destinatario, Rota, Conferente */}
+                            {isEditando && (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
+                                <div><label style={{ fontSize: '0.7rem', fontWeight: 700 }}>Remetente:</label><input style={inputS} value={dadosAtual.remetente || ''} onChange={e => editarCampo(l.id, 'remetente', e.target.value)} /></div>
+                                <div><label style={{ fontSize: '0.7rem', fontWeight: 700 }}>Destinatario:</label><input style={inputS} value={dadosAtual.destinatario || ''} onChange={e => editarCampo(l.id, 'destinatario', e.target.value)} /></div>
+                                <div><label style={{ fontSize: '0.7rem', fontWeight: 700 }}>Rota:</label><input style={inputS} value={dadosAtual.rota || ''} onChange={e => editarCampo(l.id, 'rota', e.target.value)} /></div>
+                                <div><label style={{ fontSize: '0.7rem', fontWeight: 700 }}>Conferente:</label><input style={inputS} value={dadosAtual.conferente || ''} onChange={e => editarCampo(l.id, 'conferente', e.target.value)} /></div>
+                              </div>
+                            )}
+
                             {/* Itens */}
                             <h4 style={{ marginBottom: 8 }}>Itens extraidos:</h4>
-                            {dados.itens && dados.itens.length > 0 ? (
+                            {dadosAtual.itens && dadosAtual.itens.length > 0 ? (
                               <table className="table-inner">
                                 <thead>
                                   <tr>
                                     <th>Item</th>
-                                    <th>Qtd</th>
-                                    <th>Preco Unit.</th>
-                                    <th>Subtotal</th>
+                                    <th style={{ width: 60 }}>Qtd</th>
+                                    <th style={{ width: 100 }}>Preco Unit.</th>
+                                    <th style={{ width: 100 }}>Subtotal</th>
                                     <th>Obs</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {dados.itens.map((item, idx) => (
+                                  {dadosAtual.itens.map((item, idx) => (
                                     <tr key={idx}>
-                                      <td>{item.nome_item}</td>
-                                      <td>{item.quantidade}</td>
-                                      <td>{formatMoney(item.preco_unitario)}</td>
-                                      <td>{formatMoney(item.subtotal || item.quantidade * item.preco_unitario)}</td>
+                                      <td>{isEditando ? <input style={inputS} value={item.nome_item || ''} onChange={e => editarItem(l.id, idx, 'nome_item', e.target.value)} /> : item.nome_item}</td>
+                                      <td>{isEditando ? <input type="number" style={{ ...inputS, width: 50, textAlign: 'center' }} value={item.quantidade} onChange={e => editarItem(l.id, idx, 'quantidade', e.target.value)} /> : item.quantidade}</td>
+                                      <td>{isEditando ? <input type="number" step="0.01" style={{ ...inputS, width: 80, textAlign: 'right' }} value={item.preco_unitario} onChange={e => editarItem(l.id, idx, 'preco_unitario', e.target.value)} /> : formatMoney(item.preco_unitario)}</td>
+                                      <td>{formatMoney(item.subtotal || (item.quantidade || 0) * (item.preco_unitario || 0))}</td>
                                       <td>
                                         {item.preco_diferente && (
                                           <span className="badge warning" title={`Padrao: ${formatMoney(item.preco_padrao)}`}>
@@ -426,7 +494,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                               </p>
                             )}
                           </div>
-                        )}
+                        )})()}
                       </td>
                     </tr>
                   )

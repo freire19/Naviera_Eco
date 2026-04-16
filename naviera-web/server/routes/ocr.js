@@ -398,6 +398,24 @@ router.put('/lancamentos/:id/revisar', async (req, res) => {
 })
 
 // ============================================================================
+// PUT /api/ocr/lancamentos/:id — Salvar edicoes dos dados extraidos antes de aprovar
+router.put('/lancamentos/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { dados_extraidos } = req.body
+    if (!dados_extraidos) return res.status(400).json({ error: 'dados_extraidos obrigatorio' })
+    const result = await pool.query(
+      `UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2 AND empresa_id = $3 RETURNING id`,
+      [JSON.stringify(dados_extraidos), req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[OCR] Erro ao salvar edicoes:', err.message)
+    res.status(500).json({ error: 'Erro ao salvar edicoes' })
+  }
+})
+
 // PUT /api/ocr/lancamentos/:id/aprovar — Conferente aprova → cria frete real
 // ============================================================================
 router.put('/lancamentos/:id/aprovar', async (req, res) => {
