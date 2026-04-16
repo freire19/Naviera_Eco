@@ -289,6 +289,9 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
       setModalPagar(null)
       limparForm()
       carregar()
+      // Preparar para proxima encomenda automaticamente
+      setEditando(true)
+      try { const res = await api.get('/encomendas/proximo-numero'); setNumEncomenda(res.numero || '') } catch {}
     } catch (err) {
       showToast(err.message || 'Erro ao salvar', 'error')
     } finally {

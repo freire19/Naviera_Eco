@@ -142,22 +142,50 @@ router.post('/', validate({ id_viagem: 'required|integer', destinatario: 'requir
   }
 })
 
-// PUT /api/encomendas/:id
+// PUT /api/encomendas/:id — atualizar encomenda completa com itens
 router.put('/:id', async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const { remetente, destinatario, observacoes, rota, total_volumes } = req.body
-    const result = await pool.query(`
-      UPDATE encomendas SET remetente = COALESCE($1, remetente), destinatario = COALESCE($2, destinatario),
-        observacoes = COALESCE($3, observacoes), rota = COALESCE($4, rota), total_volumes = COALESCE($5, total_volumes)
-      WHERE id_encomenda = $6 AND empresa_id = $7
+    const { remetente, destinatario, observacoes, rota, total_volumes, total_a_pagar, itens } = req.body
+
+    await client.query('BEGIN')
+    const result = await client.query(`
+      UPDATE encomendas SET remetente = $1, destinatario = $2,
+        observacoes = $3, rota = $4, total_volumes = $5, total_a_pagar = $6
+      WHERE id_encomenda = $7 AND empresa_id = $8
       RETURNING *
-    `, [remetente, destinatario, observacoes, rota, total_volumes, req.params.id, empresaId])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Encomenda nao encontrada' })
+    `, [remetente || null, destinatario || null, observacoes || null, rota || null,
+        total_volumes || 0, parseFloat(total_a_pagar) || 0, req.params.id, empresaId])
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Encomenda nao encontrada' })
+    }
+
+    // Substituir itens se fornecidos
+    if (itens && Array.isArray(itens)) {
+      await client.query('DELETE FROM encomenda_itens WHERE id_encomenda = $1', [req.params.id])
+      if (itens.length > 0) {
+        const values = []
+        const params = []
+        itens.forEach((item, i) => {
+          const off = i * 6
+          values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5}, $${off+6})`)
+          params.push(req.params.id, item.quantidade || 1, item.descricao, item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null)
+        })
+        await client.query(`INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES ${values.join(', ')}`, params)
+      }
+    }
+
+    await client.query('COMMIT')
     res.json(result.rows[0])
   } catch (err) {
+    await client.query('ROLLBACK')
     console.error('[Encomendas] Erro ao atualizar:', err.message)
     res.status(500).json({ error: 'Erro ao atualizar encomenda' })
+  } finally {
+    client.release()
   }
 })
 
