@@ -604,7 +604,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
         const nomeItem = (item.nome_item || '').trim().toUpperCase()
         if (nomeItem) {
           await client.query(
-            'INSERT INTO itens_frete_padrao (nome_item, preco_unitario_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) ON CONFLICT DO NOTHING',
+            'INSERT INTO itens_frete_padrao (nome_item, preco_unitario_padrao, preco_unitario_desconto, ativo, empresa_id) VALUES ($1, $2, $2, TRUE, $3) ON CONFLICT DO NOTHING',
             [nomeItem, item.preco_unitario || 0, empresaId]
           )
         }
