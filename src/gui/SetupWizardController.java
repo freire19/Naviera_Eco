@@ -448,7 +448,8 @@ public class SetupWizardController implements Initializable {
             "NavieraDB@2026",       // senha usada pelo instalador anterior
             "postgres",             // default comum
             "",                     // sem senha (trust auth)
-            "123456"                // comum em dev
+            "123456",               // comum em dev
+            "Guih5904@#"            // senha legada de dev
         };
 
         String url = "jdbc:postgresql://localhost:" + pgPortaLocal + "/postgres?sslmode=disable";
