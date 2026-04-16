@@ -65,21 +65,23 @@ export default function ListaFretes({ viagemAtiva }) {
                 </tr>
               </thead>
               <tbody>
-                {fretes.map(f => (
-                  <tr key={f.id_frete}>
-                    <td>{f.numero_frete}</td>
-                    <td>{f.remetente_nome_temp || '\u2014'}</td>
-                    <td>{f.destinatario_nome_temp || '\u2014'}</td>
-                    <td>{f.rota_temp || '\u2014'}</td>
-                    <td className="money">{formatMoney(f.valor_nominal)}</td>
+                {fretes.map((f, idx) => {
+                  const devedor = Math.max(0, (parseFloat(f.valor_total_itens || f.valor_frete_calculado) || 0) - (parseFloat(f.valor_pago) || 0))
+                  const status = f.status_frete || (devedor <= 0.01 ? 'PAGO' : 'PENDENTE')
+                  return (
+                  <tr key={f.id_frete} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
+                    <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{f.numero_frete}</td>
+                    <td>{(f.remetente || f.remetente_nome_temp || '—').toUpperCase()}</td>
+                    <td>{(f.destinatario || f.destinatario_nome_temp || '—').toUpperCase()}</td>
+                    <td>{f.rota || f.rota_temp || '—'}</td>
+                    <td className="money">{formatMoney(f.valor_total_itens || f.valor_frete_calculado)}</td>
                     <td className="money">{formatMoney(f.valor_pago)}</td>
-                    <td>
-                      <span className={`badge ${f.status === 'PAGO' ? 'success' : 'warning'}`}>
-                        {f.status || 'Pendente'}
-                      </span>
+                    <td style={{ fontWeight: 700, color: status === 'PAGO' ? '#059669' : '#DC2626' }}>
+                      {status}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
                 {fretes.length === 0 && (
                   <tr>
                     <td colSpan="7" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>

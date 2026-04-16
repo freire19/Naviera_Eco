@@ -67,7 +67,12 @@ router.get('/', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT id_frete, id_viagem, numero_frete, remetente, destinatario, observacoes, total_a_pagar, valor_pago, desconto, status_pagamento, forma_pagamento, local_pagamento, rota, data_lancamento, id_caixa FROM fretes WHERE empresa_id = $1'
+    let sql = `SELECT id_frete, id_viagem, numero_frete,
+      remetente_nome_temp AS remetente, destinatario_nome_temp AS destinatario,
+      observacoes, valor_total_itens, valor_frete_calculado, valor_pago, valor_devedor,
+      desconto, status_frete, tipo_pagamento, nome_caixa, rota_temp AS rota,
+      conferente_temp AS conferente, data_emissao, local_transporte, cidade_cobranca
+      FROM fretes WHERE empresa_id = $1`
     const params = [empresaId]
     if (viagem_id) {
       sql += ' AND id_viagem = $2'

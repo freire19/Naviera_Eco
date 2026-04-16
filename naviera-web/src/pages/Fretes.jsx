@@ -76,6 +76,9 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       api.get('/cadastros/caixas').then(setCaixas),
       api.get('/fretes/contatos').then(setContatos)
     ]).catch(() => {})
+    // Ja inicia pronto para lancar (sem precisar clicar Novo)
+    setEditando(true)
+    api.get('/fretes/proximo-numero').then(r => setNumFrete(r.numero || '1')).catch(() => setNumFrete('—'))
   }, [])
 
   // Fechar dropdowns ao clicar fora
@@ -252,7 +255,10 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       }
       await api.post('/fretes', payload)
       showToast('Frete salvo como PENDENTE')
+      // Preparar automaticamente para proximo frete (sem precisar clicar Novo)
       limparForm()
+      setEditando(true)
+      try { const res = await api.get('/fretes/proximo-numero'); setNumFrete(res.numero || '') } catch { setNumFrete('—') }
     } catch (err) {
       showToast(err.message || 'Erro ao salvar', 'error')
     } finally {
