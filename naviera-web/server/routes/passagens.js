@@ -6,6 +6,28 @@ import { validate } from '../middleware/validate.js'
 const router = Router()
 router.use(authMiddleware)
 
+// GET /api/passagens/passageiros — Lista todos os passageiros da empresa
+router.get('/passageiros', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      `SELECT p.*, td.nome_tipo_doc, s.nome_sexo, n.nome_nacionalidade
+       FROM passageiros p
+       LEFT JOIN aux_tipos_documento td ON p.id_tipo_doc = td.id_tipo_doc
+       LEFT JOIN aux_sexo s ON p.id_sexo = s.id_sexo
+       LEFT JOIN aux_nacionalidades n ON p.id_nacionalidade = n.id_nacionalidade
+       WHERE p.empresa_id = $1
+       ORDER BY p.nome_passageiro
+       LIMIT 500`,
+      [empresaId]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    console.error('[Passagens] Erro listar passageiros:', err.message)
+    res.status(500).json({ error: 'Erro ao listar passageiros' })
+  }
+})
+
 // GET /api/passagens/busca-passageiro?q=jon — Search passageiros by name (ILIKE)
 router.get('/busca-passageiro', async (req, res) => {
   try {
