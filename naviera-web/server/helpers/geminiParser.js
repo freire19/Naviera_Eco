@@ -1,17 +1,21 @@
+import { readFile } from 'fs/promises'
 import { fetchWithRetry } from './fetchWithRetry.js'
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent'
 
 /**
- * Usa Google Gemini AI para extrair itens estruturados do texto OCR.
- * Mais inteligente que regex — entende contexto, corrige erros de OCR,
- * e separa corretamente nome, quantidade e preco.
+ * Usa Google Gemini AI para extrair itens estruturados do texto OCR de uma nota fiscal.
+ * Quando imagePath e fornecido, usa modo multimodal (imagem + texto) para detectar:
+ * - numero_nota: numero grande escrito a caneta na nota (identificacao manual)
+ * - marca-texto: risco de marcador colorido sobre a nota = modo simplificado
+ *   (ignora itens impressos, captura apenas anotacao manuscrita como "1 CX G com diverso")
  *
  * @param {string} ocrText - Texto bruto do Google Cloud Vision
  * @param {Array} itensPadrao - Itens da tabela de precos de frete da empresa
- * @returns {{ remetente, destinatario, rota, itens[], valor_total, observacoes }}
+ * @param {string} [imagePath] - Caminho da imagem para analise multimodal (opcional)
+ * @returns {{ remetente, destinatario, rota, numero_nota, itens[], valor_total, observacoes }}
  */
-export async function geminiParseOCR(ocrText, itensPadrao = []) {
+export async function geminiParseOCR(ocrText, itensPadrao = [], imagePath = null) {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY nao configurada no .env')
 
@@ -19,9 +23,27 @@ export async function geminiParseOCR(ocrText, itensPadrao = []) {
     ? `\nTabela de precos de frete da empresa (usar estes precos quando houver match):\n${itensPadrao.map(i => `- ${i.nome_item}: R$${i.preco_unitario_padrao}`).join('\n')}\n`
     : '\nNao ha tabela de precos de frete cadastrada. Deixe preco_unitario como 0.\n'
 
-  const prompt = `Voce e um assistente especializado em logistica fluvial na Amazonia.
-Analise o texto extraido por OCR de uma nota fiscal, cupom ou caderno e extraia os PRODUTOS para lancamento de frete.
+  // Bloco extra de instrucoes quando temos a imagem (modo multimodal)
+  const instrucaoImagem = imagePath ? `
+ANALISE DA IMAGEM — OBRIGATORIO:
+A. NUMERO DA NOTA: Procure um NUMERO GRANDE escrito A MAO (caneta/pincel) na nota, geralmente
+   no canto inferior direito ou margens. Este e o numero de identificacao manual da nota (ex: "826").
+   Coloque em "numero_nota". Se nao encontrar, deixe vazio.
+B. DETECCAO DE MARCA-TEXTO: Verifique se existe um RISCO DE MARCADOR DE TEXTO (highlighter)
+   sobre a area de itens da nota. O risco pode ser de QUALQUER COR (amarelo, roxo, azul, rosa, verde).
+   E uma linha larga e semi-transparente cruzando a nota diagonalmente ou horizontalmente.
+   - Se DETECTAR marca-texto: coloque "modo_marcador": true
+     Neste modo, IGNORE TODOS os itens impressos na nota.
+     Procure APENAS a anotacao MANUSCRITA (escrita a caneta) que descreve os volumes,
+     geralmente na parte inferior (ex: "1 CX G com diverso", "2 cx media", "1 saco grande").
+     Crie UM UNICO item com essa descricao manuscrita. Quantidade e o numero escrito.
+     O remetente e destinatario da nota impressa DEVEM ser mantidos normalmente.
+   - Se NAO detectar marca-texto: coloque "modo_marcador": false e processe normalmente.
+` : ''
 
+  const prompt = `Voce e um assistente especializado em logistica fluvial na Amazonia.
+Analise ${imagePath ? 'a IMAGEM e o texto extraido por OCR' : 'o texto extraido por OCR'} de uma nota fiscal, cupom ou caderno e extraia os PRODUTOS para lancamento de frete.
+${instrucaoImagem}
 REGRAS IMPORTANTES:
 1. Extraia APENAS produtos/mercadorias. Ignore cabecalhos, CNPJs, enderecos, rodapes, chaves de acesso.
 2. O "preco_unitario" deve ser o PRECO DE FRETE (transporte), NAO o preco do produto na nota.
@@ -41,6 +63,8 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
   "remetente": "nome do estabelecimento ou remetente",
   "destinatario": "",
   "rota": "",
+  "numero_nota": "",
+  "modo_marcador": false,
   "itens": [
     {"nome_item": "Nome Correto Do Produto", "quantidade": 1, "preco_unitario": 0, "subtotal": 0}
   ],
@@ -48,8 +72,18 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
   "observacoes": "qualquer observacao relevante"
 }`
 
+  // Montar parts: texto + opcionalmente imagem
+  const parts = [{ text: prompt }]
+  if (imagePath) {
+    const imageBuffer = await readFile(imagePath)
+    const base64 = imageBuffer.toString('base64')
+    const ext = imagePath.toLowerCase().split('.').pop()
+    const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+    parts.push({ inlineData: { mimeType: mimeMap[ext] || 'image/jpeg', data: base64 } })
+  }
+
   const body = {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts }],
     generationConfig: {
       temperature: 0.1,
       maxOutputTokens: 16384
@@ -72,9 +106,9 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
 
   // Gemini 3 Flash retorna multiplas parts (thoughtSignature + text)
   // Precisamos encontrar a part que contem o JSON de resposta
-  const parts = data.candidates?.[0]?.content?.parts || []
+  const resParts = data.candidates?.[0]?.content?.parts || []
   let text = ''
-  for (const part of parts) {
+  for (const part of resParts) {
     if (part.text && part.text.includes('{')) {
       text = part.text
       break
@@ -82,7 +116,7 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
   }
   if (!text) {
     // Fallback: pegar qualquer text
-    text = parts.find(p => p.text)?.text || ''
+    text = resParts.find(p => p.text)?.text || ''
   }
 
   // Extrair JSON da resposta (pode vir com markdown ```json ... ```)
@@ -101,20 +135,25 @@ Responda APENAS com JSON valido neste formato (sem markdown, sem \`\`\`):
   }
 
   // Garantir estrutura correta
+  const modoMarcador = parsed.modo_marcador === true
   return {
     remetente: parsed.remetente || '',
     destinatario: parsed.destinatario || '',
     rota: parsed.rota || '',
+    numero_nota: parsed.numero_nota || '',
+    modo_marcador: modoMarcador,
     itens: (parsed.itens || []).map(i => ({
       nome_item: i.nome_item || '',
       quantidade: i.quantidade || 1,
       preco_unitario: i.preco_unitario || 0,
       subtotal: i.subtotal || (i.quantidade || 1) * (i.preco_unitario || 0),
-      confianca: 90,
+      confianca: modoMarcador ? 95 : 90,
       item_novo: true
     })),
     valor_total: parsed.valor_total || 0,
-    observacoes: parsed.observacoes || 'Revisado por IA (Gemini)'
+    observacoes: modoMarcador
+      ? `[MARCADOR] ${parsed.observacoes || 'Nota com marca-texto — itens simplificados'}`
+      : (parsed.observacoes || 'Revisado por IA (Gemini)')
   }
 }
 

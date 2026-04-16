@@ -188,8 +188,13 @@ router.post('/upload', uploadLimiter, upload.single('foto'), async (req, res) =>
 
       if (ocrResult.text) {
         try {
-          dados = await geminiParseOCR(ocrResult.text, padrao.rows)
-          log.info('OCR', 'Gemini parser OK', { empresa_id: empresaId, itens: dados.itens?.length || 0 })
+          // Modo multimodal: envia imagem + texto para detectar numero_nota e marca-texto
+          dados = await geminiParseOCR(ocrResult.text, padrao.rows, req.file.path)
+          log.info('OCR', 'Gemini parser OK', {
+            empresa_id: empresaId, itens: dados.itens?.length || 0,
+            numero_nota: dados.numero_nota || null,
+            modo_marcador: dados.modo_marcador || false
+          })
         } catch (geminiErr) {
           log.warn('OCR', 'Gemini falhou, usando regex', { empresa_id: empresaId, erro: geminiErr.message })
           dados = parseOcrText(ocrResult.text, padrao.rows)
@@ -337,14 +342,21 @@ router.post('/lancamentos/:id/ia-review', iaLimiter, async (req, res) => {
         dados = await geminiVisionAnalyze(fullPath, padrao.rows)
       }
     } else {
-      // Frete: Gemini text parser
+      // Frete: Gemini multimodal (imagem + texto) para detectar numero_nota e marca-texto
       if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
 
       const padrao = await pool.query(
         'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
         [empresaId]
       )
-      dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
+
+      // Tentar multimodal com imagem (detecta numero_nota + marca-texto)
+      let imgPath = null
+      if (foto_path) {
+        const fullPath = path.resolve(UPLOAD_PATH, foto_path)
+        if (existsSync(fullPath)) imgPath = fullPath
+      }
+      dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows, imgPath)
     }
 
     // Atualizar dados extraidos no banco — #DB125: filtrar por empresa_id

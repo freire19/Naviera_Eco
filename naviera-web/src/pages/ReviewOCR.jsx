@@ -320,6 +320,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
               <thead>
                 <tr>
                   <th>#</th>
+                  <th>N.Nota</th>
                   <th>Status</th>
                   <th>Remetente</th>
                   <th>Doc</th>
@@ -344,6 +345,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                   return (
                     <tr key={l.id} className={isExpanded ? 'row-expanded' : ''}>
                       <td>{l.id}</td>
+                      <td style={{ fontWeight: 700, letterSpacing: 1 }}>{dados.numero_nota || '\u2014'}</td>
                       <td>
                         <span className={`badge ${STATUS_CLASSES[l.status] || 'info'}`}>
                           {STATUS_LABELS[l.status] || l.status}
@@ -453,6 +455,23 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                     <input style={{ ...RO, width: 60, textAlign: 'center', fontWeight: 700, fontSize: '1rem' }} value={`#${l.id}`} readOnly />
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Confianca: </span>
                     <span className={`badge ${l.ocr_confianca >= 80 ? 'success' : l.ocr_confianca >= 50 ? 'warning' : 'danger'}`}>{l.ocr_confianca || 0}%</span>
+                  </div>
+                </div>
+
+                {/* ROW 0: Numero da Nota + Modo Marcador */}
+                <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12, marginBottom: 8 }}>
+                  <div>
+                    <label style={L}>N. Nota:</label>
+                    {isEditando ? (
+                      <input style={{ ...I, fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: 2 }} value={dadosAtual.numero_nota || ''} onChange={e => editarCampo(l.id, 'numero_nota', e.target.value)} placeholder="Ex: 826" />
+                    ) : (
+                      <input style={{ ...RO, fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: 2 }} value={dadosAtual.numero_nota || '\u2014'} readOnly />
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, paddingBottom: 2 }}>
+                    {dadosAtual.modo_marcador && (
+                      <span className="badge warning" style={{ fontSize: '0.78rem' }}>MARCADOR — itens simplificados</span>
+                    )}
                   </div>
                 </div>
 
