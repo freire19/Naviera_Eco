@@ -21,7 +21,7 @@ const DICA = {
   lote: 'Tire uma foto da pagina do protocolo de encomendas. A IA vai separar cada encomenda automaticamente.'
 }
 
-export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, showToast, usuario }) {
+export default function CapturaScreen({ t, onResult, showToast }) {
   const [viagens, setViagens] = useState([])
   const [viagemId, setViagemId] = useState('')
   const [tipo, setTipo] = useState('frete')
@@ -50,14 +50,6 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
   const enviar = async () => {
     if (!fotoBlob) {
       showToast('Nenhuma foto selecionada', 'error')
-      return
-    }
-
-    if (!isOnline) {
-      await onOfflineAdd(fotoBlob, viagemId || null, usuario?.empresa_id || null, tipo)
-      showToast('Foto salva na fila offline. Sera enviada quando houver internet.', 'warn')
-      setFotoBlob(null)
-      setFotoName('')
       return
     }
 
@@ -166,10 +158,8 @@ export default function CapturaScreen({ t, onResult, isOnline, onOfflineAdd, sho
         >
           {loading ? (
             <span className="pulse">{LOADING_MSG[tipo]}</span>
-          ) : isOnline ? (
-            'Enviar para analise'
           ) : (
-            'Salvar na fila offline'
+            'Enviar para analise'
           )}
         </button>
       )}

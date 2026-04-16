@@ -30,8 +30,23 @@ const uploadLimiter = rateLimit({
   keyFn: (req) => `ocr-upload:${req.user?.id || req.ip}`
 })
 
+// Rate limiter para re-analise IA (consome Gemini API paga)
+const iaLimiter = rateLimit({
+  windowMs: 60000,
+  max: 10,
+  message: 'Limite de analises IA atingido (max 10/min). Aguarde um momento.',
+  keyFn: (req) => `ocr-ia:${req.user?.id || req.ip}`
+})
+
 // Configurar multer para upload de fotos
 const UPLOAD_PATH = process.env.OCR_UPLOAD_PATH || path.resolve('uploads/ocr')
+
+/** Verifica que o caminho resolvido esta dentro de UPLOAD_PATH (previne path traversal) */
+function assertSafePath(relativePath) {
+  const full = path.resolve(UPLOAD_PATH, relativePath)
+  if (!full.startsWith(path.resolve(UPLOAD_PATH))) return null
+  return full
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -291,7 +306,7 @@ router.get('/lancamentos/:id', async (req, res) => {
 // ============================================================================
 // POST /api/ocr/lancamentos/:id/ia-review — Gemini AI reanalisa o texto OCR
 // ============================================================================
-router.post('/lancamentos/:id/ia-review', async (req, res) => {
+router.post('/lancamentos/:id/ia-review', iaLimiter, async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
 
@@ -355,6 +370,15 @@ router.put('/lancamentos/:id/revisar', async (req, res) => {
     const { dados_revisados } = req.body
     if (!dados_revisados) {
       return res.status(400).json({ error: 'dados_revisados obrigatorio' })
+    }
+
+    // Validacao de payload: prevenir JSON arbitrariamente grande
+    const jsonStr = JSON.stringify(dados_revisados)
+    if (jsonStr.length > 512_000) {
+      return res.status(400).json({ error: 'Payload muito grande (max 500KB)' })
+    }
+    if (Array.isArray(dados_revisados.itens) && dados_revisados.itens.length > 200) {
+      return res.status(400).json({ error: 'Limite de 200 itens por lancamento' })
     }
 
     const result = await pool.query(`
@@ -428,7 +452,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
 
     let resultado
 
-    if (lanc.tipo === 'encomenda' || lanc.tipo === 'lote' || tipo === 'lote') {
+    if (lanc.tipo === 'encomenda' || lanc.tipo === 'lote') {
       // ENCOMENDA: criar registro em encomendas + encomenda_itens
       const totalAPagar = dados.total_a_pagar || dados.valor_total || (dados.itens || []).reduce((s, i) => s + ((i.subtotal || i.valor_total || 0) || (i.quantidade || 1) * (i.preco_unitario || i.valor_unitario || 0)), 0)
       const totalVolumes = dados.total_volumes || (dados.itens || []).reduce((s, i) => s + (i.quantidade || 1), 0)
@@ -543,7 +567,8 @@ router.put('/lancamentos/:id/rejeitar', async (req, res) => {
 // Detecta automaticamente: se for RG/CNH/CPF extrai nome+numero do remetente
 // Se for item fisico, extrai itens normalmente
 // ============================================================================
-const DOC_KEYWORDS = /\b(registro\s*geral|identidade|habilitac|cpf|cnpj|rg[\s:.-]|cnh|cart\s*de\s*ident|orgao\s*emissor|data\s*de\s*nascimento|filiacao|naturalidade|doc\.?\s*de\s*identidade|republica\s*federativa)\b/i
+// cpf e cnpj removidos: aparecem em NFC-e e causavam falsos positivos
+const DOC_KEYWORDS = /\b(registro\s*geral|identidade|habilitac|rg[\s:.-]|cnh|cart\s*de\s*ident|orgao\s*emissor|data\s*de\s*nascimento|filiacao|naturalidade|doc\.?\s*de\s*identidade|republica\s*federativa)\b/i
 
 router.post('/lancamentos/:id/adicionar-foto', upload.single('foto'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Foto obrigatoria' })
@@ -734,8 +759,8 @@ router.get('/lancamentos/:id/doc-foto', async (req, res) => {
     const docPath = dados.doc_remetente?.foto_doc_path
     if (!docPath) return res.status(404).json({ error: 'Nenhum documento anexado' })
 
-    const fullPath = path.resolve(UPLOAD_PATH, docPath)
-    if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
+    const fullPath = assertSafePath(docPath)
+    if (!fullPath) return res.status(403).json({ error: 'Acesso negado' })
 
     // DP058: res.sendFile handles not-found via callback (removed sync existsSync)
     res.sendFile(fullPath, (err) => {
@@ -766,8 +791,8 @@ router.delete('/lancamentos/:id', async (req, res) => {
         [fotoPath, req.params.id]
       )
       if (parseInt(others.rows[0].count) === 0) {
-        const fullPath = path.resolve(UPLOAD_PATH, fotoPath)
-        if (fullPath.startsWith(path.resolve(UPLOAD_PATH))) {
+        const fullPath = assertSafePath(fotoPath)
+        if (fullPath) {
           await unlink(fullPath).catch(() => {})
         }
       }
@@ -780,55 +805,7 @@ router.delete('/lancamentos/:id', async (req, res) => {
   }
 })
 
-// ============================================================================
-// PUT /api/ocr/lancamentos/:id/reanalisar — Re-rodar Gemini AI no texto OCR
-// ============================================================================
-router.put('/lancamentos/:id/reanalisar', async (req, res) => {
-  try {
-    const empresaId = req.user.empresa_id
-    const lancResult = await pool.query(
-      'SELECT id, ocr_texto_bruto, tipo, foto_path FROM ocr_lancamentos WHERE id = $1 AND empresa_id = $2',
-      [req.params.id, empresaId]
-    )
-    if (lancResult.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado' })
-
-    const { ocr_texto_bruto, tipo, foto_path } = lancResult.rows[0]
-    let dados
-
-    if (tipo === 'encomenda' || tipo === 'lote') {
-      const padrao = await pool.query(
-        'SELECT nome_item, preco_unitario_padrao AS preco_padrao FROM itens_encomenda_padrao WHERE empresa_id = $1 AND ativo = TRUE',
-        [empresaId]
-      )
-      if (ocr_texto_bruto && ocr_texto_bruto.length >= 30) {
-        dados = await geminiParseEncomenda(ocr_texto_bruto, padrao.rows)
-      } else {
-        const fullPath = path.resolve(UPLOAD_PATH, foto_path)
-        if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada no disco' })
-        dados = await geminiVisionAnalyze(fullPath, padrao.rows)
-      }
-    } else {
-      // Frete: usar Gemini text parser
-      if (!ocr_texto_bruto) return res.status(400).json({ error: 'Sem texto OCR para analisar' })
-
-      const padrao = await pool.query(
-        'SELECT nome_item, preco_unitario_padrao, preco_unitario_desconto FROM itens_frete_padrao WHERE empresa_id = $1 AND ativo = TRUE',
-        [empresaId]
-      )
-      dados = await geminiParseOCR(ocr_texto_bruto, padrao.rows)
-    }
-
-    await pool.query(
-      'UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2 AND empresa_id = $3',
-      [JSON.stringify(dados), req.params.id, empresaId]
-    )
-
-    res.json({ dados_extraidos: dados })
-  } catch (err) {
-    log.error('OCR', 'Erro ao reanalisar', { empresa_id: req.user?.empresa_id, lancamento_id: req.params.id, erro: err.message })
-    res.status(500).json({ error: 'Erro ao reanalisar com IA' })
-  }
-})
+// reanalisar removido — consolidado em POST /lancamentos/:id/ia-review
 
 // ============================================================================
 // GET /api/ocr/lancamentos/:id/foto — Servir foto do filesystem
@@ -846,8 +823,8 @@ router.get('/lancamentos/:id/foto', async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Nao encontrado' })
 
     // DS4-043 fix: path.resolve em ambos para normalizar completamente (antes: path.join parcial)
-    const fullPath = path.resolve(UPLOAD_PATH, result.rows[0].foto_path)
-    if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
+    const fullPath = assertSafePath(result.rows[0].foto_path)
+    if (!fullPath) return res.status(403).json({ error: 'Acesso negado' })
 
     // DP058: res.sendFile handles not-found via callback (removed sync existsSync)
     res.sendFile(fullPath, (err) => {

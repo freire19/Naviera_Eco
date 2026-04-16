@@ -13,7 +13,7 @@ import ConfirmadoScreen from './screens/ConfirmadoScreen.jsx'
 import HistoricoScreen from './screens/HistoricoScreen.jsx'
 import RevisaoLoteScreen from './screens/RevisaoLoteScreen.jsx'
 
-import useOfflineQueue from './hooks/useOfflineQueue.js'
+
 
 export default function App() {
   // Auth
@@ -39,8 +39,7 @@ export default function App() {
     setToast({ message, type, key: Date.now() })
   }, [])
 
-  // Offline queue
-  const { isOnline, queueCount, syncing, syncProgress, addOffline, syncQueue } = useOfflineQueue(showToast)
+
 
   // Login
   const handleLogin = (data) => {
@@ -148,10 +147,7 @@ export default function App() {
         <CapturaScreen
           t={t}
           onResult={handleOcrResult}
-          isOnline={isOnline}
-          onOfflineAdd={addOffline}
           showToast={showToast}
-          usuario={usuario}
         />
       )
   }
@@ -161,10 +157,6 @@ export default function App() {
       <Header
         t={t}
         usuario={usuario}
-        isOnline={isOnline}
-        queueCount={queueCount}
-        syncing={syncing}
-        syncProgress={syncProgress}
         onLogout={handleLogout}
         mode={mode}
         onToggleMode={toggleMode}
@@ -174,7 +166,7 @@ export default function App() {
         {content}
       </main>
 
-      <BottomNav tab={tab} onTab={handleTab} t={t} queueCount={queueCount} />
+      <BottomNav tab={tab} onTab={handleTab} t={t} />
 
       {toast && (
         <Toast

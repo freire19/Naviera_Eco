@@ -114,7 +114,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   const reanalisar = async (id) => {
     setActionLoading(id)
     try {
-      const result = await api.put(`/ocr/lancamentos/${id}/reanalisar`, {})
+      const result = await api.post(`/ocr/lancamentos/${id}/ia-review`, {})
       showToast(`Reanalisado: ${result.dados_extraidos?.itens?.length || 0} itens encontrados`)
       carregar()
     } catch (err) {

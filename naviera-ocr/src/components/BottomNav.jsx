@@ -5,7 +5,7 @@ const TABS = [
   { key: 'historico', icon: IconClock, label: 'Historico' },
 ]
 
-export default function BottomNav({ tab, onTab, t, queueCount }) {
+export default function BottomNav({ tab, onTab, t }) {
   return (
     <nav style={{
       position: 'fixed', bottom: 0, left: 0, right: 0,
