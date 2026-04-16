@@ -222,14 +222,45 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     setShowItemList(false)
   }
 
-  // SALVAR
+  // SALVAR — grava direto como PENDENTE (pagamento sera feito depois no Financeiro)
   async function handleSalvar() {
     if (!destinatario.trim()) { showToast('Informe o destinatario', 'error'); return }
-    // Abrir modal pagamento
-    setModalPagar({ total: totalItens })
-    setPgDesconto(''); setPgValorPago(''); setPgTipo('Dinheiro'); setPgCaixa('')
+    setSalvando(true)
+    try {
+      const rota = rotas.find(r => String(r.id_rota) === idRota)
+      const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : ''
+      const payload = {
+        id_viagem: viagemAtiva.id_viagem,
+        remetente_nome_temp: remetente.trim().toUpperCase(),
+        destinatario_nome_temp: destinatario.trim().toUpperCase(),
+        rota_temp: rotaNome,
+        conferente_temp: conferente,
+        observacoes: observacoes.trim(),
+        local_transporte: localTransporte,
+        cidade_cobranca: cidadeCobranca,
+        num_notafiscal: notaFiscal ? numNota : null,
+        valor_notafiscal: notaFiscal ? parseFloat(valorNota) || 0 : 0,
+        peso_notafiscal: notaFiscal ? parseFloat(pesoNota) || 0 : 0,
+        valor_total_itens: totalItens || 0,
+        desconto: 0,
+        valor_pago: 0,
+        troco: 0,
+        tipo_pagamento: null,
+        nome_caixa: null,
+        status_frete: 'PENDENTE',
+        itens: itens.map(i => ({ nome_item: i.descricao, quantidade: i.quantidade, preco_unitario: i.valor_unitario, subtotal_item: i.subtotal }))
+      }
+      await api.post('/fretes', payload)
+      showToast('Frete salvo como PENDENTE')
+      limparForm()
+    } catch (err) {
+      showToast(err.message || 'Erro ao salvar', 'error')
+    } finally {
+      setSalvando(false)
+    }
   }
 
+  // Pagamento (chamado separadamente, nao no SALVAR)
   async function handleConfirmarPagamento() {
     const vDesc = parseFloat(pgDesconto) || 0
     const vPago = parseFloat(pgValorPago) || 0
