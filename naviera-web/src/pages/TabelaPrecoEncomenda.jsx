@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { printContent } from '../utils/print.js'
 
 function formatMoney(val) {
   return 'R$ ' + Number(val || 0).toFixed(2).replace('.', ',')
@@ -81,6 +82,55 @@ export default function TabelaPrecoEncomenda() {
     }
   }
 
+  async function handleImprimir() {
+    let emp = {}
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/cadastros/empresa', { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) emp = await res.json()
+    } catch {}
+
+    const rows = filtrados.map((item, idx) => `
+      <tr style="background:${idx % 2 === 0 ? '#fff' : '#f5f7fa'}; border-bottom:1px solid #ddd;">
+        <td style="padding:4px 8px;">${(item.nome_item || '').toUpperCase()}</td>
+        <td style="padding:4px 8px; text-align:center;">${item.unidade_medida || 'UN'}</td>
+        <td style="padding:4px 8px; text-align:right;">${formatMoney(item.preco_padrao || item.preco_unitario_padrao)}</td>
+      </tr>
+    `).join('')
+
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Tabela de Precos</title>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:Arial,sans-serif; padding:15mm; color:#111; }
+      @page { size:A4; margin:12mm; }
+      table { width:100%; border-collapse:collapse; }
+      th { background:#059669; color:#fff; padding:6px 8px; text-align:left; font-size:11px; }
+      td { font-size:11px; }
+    </style></head><body>
+      <div style="text-align:center; margin-bottom:12px;">
+        <div style="font-size:16px; font-weight:700;">${emp.nome_embarcacao ? 'F/B ' + emp.nome_embarcacao : emp.companhia || 'NAVIERA'}</div>
+        <div style="font-size:9px; color:#555;">CNPJ: ${emp.cnpj || '—'}</div>
+        <div style="font-size:9px; color:#555;">${emp.endereco || ''}</div>
+        <h2 style="font-size:14px; margin-top:10px;">Tabela de Precos de Encomenda</h2>
+        <hr style="border:none; border-top:2px solid #059669; margin:8px 0;">
+      </div>
+      <table>
+        <thead><tr>
+          <th>Descricao</th>
+          <th style="text-align:center; width:60px;">Un.</th>
+          <th style="text-align:right; width:100px;">Preco Padrao (R$)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:12px; font-size:10px; color:#888;">
+        Total: ${filtrados.length} itens | Impresso em: ${new Date().toLocaleString('pt-BR')}
+      </div>
+      <script>window.onload = function() { window.print(); }</script>
+    </body></html>`
+
+    printContent(html, 'Tabela de Precos')
+  }
+
   // Filtrar pela busca
   const filtrados = itens.filter(i =>
     !busca.trim() || (i.nome_item || '').toLowerCase().includes(busca.toLowerCase())
@@ -100,7 +150,7 @@ export default function TabelaPrecoEncomenda() {
           <button className="btn-sm" onClick={handleNovo}>Adicionar</button>
           <button className="btn-sm" onClick={() => { if (selecionado) handleSelectRow(selecionado) }}>Editar</button>
           <button className="btn-sm danger" onClick={handleExcluir}>Excluir</button>
-          <button className="btn-sm primary" onClick={() => window.print()}>Imprimir Tabela</button>
+          <button className="btn-sm primary" onClick={handleImprimir}>Imprimir Tabela</button>
         </div>
       </div>
 
