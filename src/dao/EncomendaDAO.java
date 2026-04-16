@@ -140,8 +140,8 @@ public class EncomendaDAO {
         String sql = "UPDATE encomendas SET remetente=?, destinatario=?, observacoes=?, total_volumes=?, total_a_pagar=?, valor_pago=?, status_pagamento=?, forma_pagamento=?, local_pagamento=?, rota=?, numero_encomenda=?, nome_recebedor=?, doc_recebedor=?, entregue=? WHERE id_encomenda=? AND empresa_id=?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, e.getRemetente());
-            stmt.setString(2, e.getDestinatario());
+            stmt.setString(1, e.getRemetente() != null ? e.getRemetente().trim().toUpperCase() : null);
+            stmt.setString(2, e.getDestinatario() != null ? e.getDestinatario().trim().toUpperCase() : null);
             stmt.setString(3, e.getObservacoes());
             stmt.setInt(4, e.getTotalVolumes());
             stmt.setBigDecimal(5, e.getTotalAPagar());
@@ -161,6 +161,37 @@ public class EncomendaDAO {
         } catch (SQLException ex) { AppLogger.warn("EncomendaDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); return false; }
     }
     
+    /**
+     * Substitui todos os itens de uma encomenda (delete + re-insert em transacao).
+     * Alinhado com o web BFF que faz full replacement no PUT.
+     */
+    public boolean substituirItens(Long idEncomenda, java.util.List<model.EncomendaItem> itens) {
+        String sqlDel = "DELETE FROM encomenda_itens WHERE id_encomenda = ?";
+        String sqlIns = "INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = ConexaoBD.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement del = conn.prepareStatement(sqlDel)) { del.setLong(1, idEncomenda); del.executeUpdate(); }
+                if (itens != null && !itens.isEmpty()) {
+                    try (PreparedStatement ins = conn.prepareStatement(sqlIns)) {
+                        for (model.EncomendaItem item : itens) {
+                            ins.setLong(1, idEncomenda);
+                            ins.setInt(2, item.getQuantidade());
+                            ins.setString(3, item.getDescricao() != null ? item.getDescricao().trim().toUpperCase() : null);
+                            ins.setBigDecimal(4, item.getValorUnitario());
+                            ins.setBigDecimal(5, item.getValorTotal());
+                            ins.setString(6, item.getLocalArmazenamento());
+                            ins.addBatch();
+                        }
+                        ins.executeBatch();
+                    }
+                }
+                conn.commit();
+                return true;
+            } catch (SQLException e) { conn.rollback(); throw e; }
+        } catch (SQLException e) { AppLogger.warn("EncomendaDAO", "Erro ao substituir itens: " + e.getMessage()); return false; }
+    }
+
     public boolean atualizarFinanceiro(Long idEncomenda, java.math.BigDecimal valorPago, String status) {
         String sql = "UPDATE encomendas SET valor_pago = ?, status_pagamento = ? WHERE id_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
@@ -236,16 +267,20 @@ public class EncomendaDAO {
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) {
-            // Fallback se sequence não existir ainda (rodar script 005)
-            AppLogger.warn("EncomendaDAO", "Sequence seq_numero_encomenda não encontrada. Usando fallback MAX+1. Execute o script 005.");
-            // DL023: filtrar apenas registros numericos para evitar CAST crash
-            String fallback = "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) FROM encomendas WHERE id_viagem = ? AND rota = ? AND numero_encomenda ~ '^[0-9]+$'";
-            try (Connection conn = ConexaoBD.getConnection();
-                 PreparedStatement stmt2 = conn.prepareStatement(fallback)) {
-                stmt2.setLong(1, idViagem);
-                stmt2.setString(2, nomeRota);
-                try (ResultSet rs = stmt2.executeQuery()) {
-                    if (rs.next()) return rs.getInt(1) + 1;
+            // Fallback com advisory lock (alinhado com web BFF)
+            AppLogger.warn("EncomendaDAO", "Sequence seq_numero_encomenda não encontrada. Usando fallback MAX+1.");
+            String fallback = "SELECT COALESCE(MAX(CASE WHEN numero_encomenda ~ '^[0-9]+$' THEN numero_encomenda::INTEGER END), 0) + 1 FROM encomendas WHERE empresa_id = ?";
+            try (Connection conn = ConexaoBD.getConnection()) {
+                // Advisory lock por empresa para evitar race condition
+                try (PreparedStatement lock = conn.prepareStatement("SELECT pg_advisory_xact_lock(?)")) {
+                    lock.setInt(1, DAOUtils.empresaId());
+                    lock.execute();
+                }
+                try (PreparedStatement stmt2 = conn.prepareStatement(fallback)) {
+                    stmt2.setInt(1, DAOUtils.empresaId());
+                    try (ResultSet rs = stmt2.executeQuery()) {
+                        if (rs.next()) return rs.getInt(1);
+                    }
                 }
             } catch (SQLException ex) { AppLogger.warn("EncomendaDAO", "Erro: " + ex.getClass().getSimpleName() + ": " + ex.getMessage()); }
         }

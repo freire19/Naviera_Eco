@@ -21,7 +21,7 @@ public class EncomendaItemDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, item.getIdEncomenda());
             stmt.setInt(2, item.getQuantidade());
-            stmt.setString(3, item.getDescricao());
+            stmt.setString(3, item.getDescricao() != null ? item.getDescricao().trim().toUpperCase() : null);
             stmt.setBigDecimal(4, item.getValorUnitario());
             stmt.setBigDecimal(5, item.getValorTotal());
             stmt.setString(6, item.getLocalArmazenamento());
