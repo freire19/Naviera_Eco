@@ -6,7 +6,11 @@ function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
 function fmtDate(d) {
-  return d ? new Date(d).toLocaleDateString('pt-BR') : '\u2014'
+  if (!d) return '\u2014'
+  // Se ja vem formatado DD/MM/YYYY, retorna direto
+  if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d
+  const dt = new Date(d)
+  return isNaN(dt) ? String(d) : dt.toLocaleDateString('pt-BR')
 }
 
 export default function RelatorioFretes({ viagemAtiva }) {
@@ -164,7 +168,7 @@ export default function RelatorioFretes({ viagemAtiva }) {
   function printGeralA4(filtroTipo = 'tudo') {
     // Filtrar financeiro conforme tipo
     let fretesGeral = [...financeiro]
-    if (filtroTipo === 'pendentes') fretesGeral = fretesGeral.filter(f => !f.entregue)
+    if (filtroTipo === 'pendentes') fretesGeral = fretesGeral.filter(f => Math.max(0, (parseFloat(f.valor_total_itens) || 0) - (parseFloat(f.valor_pago) || 0)) > 0.01)
     if (filtroTipo === 'falta_pagar') fretesGeral = fretesGeral.filter(f => Math.max(0, (parseFloat(f.valor_total_itens) || 0) - (parseFloat(f.valor_pago) || 0)) > 0.01)
 
     const totGeral = fretesGeral.reduce((s, f) => s + (parseFloat(f.valor_total_itens) || 0), 0)
@@ -340,7 +344,7 @@ export default function RelatorioFretes({ viagemAtiva }) {
             <option value="">Selecione</option>
             {viagens.map(v => (
               <option key={v.id_viagem} value={v.id_viagem}>
-                {v.numero_viagem || v.id_viagem} - {fmtDate(v.data_viagem)} ({v.descricao || ''})
+                {v.id_viagem} - {fmtDate(v.data_viagem)} ({v.nome_rota || v.descricao || ''}){v.ativa ? ' (ATIVA)' : ''}
               </option>
             ))}
           </select>

@@ -80,7 +80,7 @@ router.get('/relatorio/financeiro', async (req, res) => {
     if (!viagem_id) return res.status(400).json({ error: 'viagem_id obrigatorio' })
     const empresaId = req.user.empresa_id
     let sql = `SELECT f.numero_frete, f.valor_total_itens, f.valor_pago, f.valor_devedor,
-      f.remetente_nome_temp AS remetente, f.destinatario_nome_temp AS destinatario, f.entregue
+      f.remetente_nome_temp AS remetente, f.destinatario_nome_temp AS destinatario
       FROM fretes f WHERE f.id_viagem = $1 AND f.empresa_id = $2`
     const params = [viagem_id, empresaId]
     if (cliente) { sql += ` AND f.destinatario_nome_temp = $${params.length + 1}`; params.push(cliente) }
