@@ -331,7 +331,7 @@ export default function Passagens({ viagemAtiva, onNavigate }) {
       </div>
 
       {/* FORM — Passageiro (grid 6 colunas) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '5fr 1fr 1fr 1fr 1.5fr 0.7fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
+      <div className="passagem-grid-passageiro" style={{ display: 'grid', gridTemplateColumns: '5fr 1fr 1fr 1fr 1.5fr 0.7fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
         <div>
           <label style={L}>Passageiro (Nome Completo) *</label>
           <Autocomplete
@@ -380,7 +380,7 @@ export default function Passagens({ viagemAtiva, onNavigate }) {
       </div>
 
       {/* FORM — Viagem (grid 7 colunas) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.3fr 1.2fr 1fr 1fr 1fr 0.6fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
+      <div className="passagem-grid-viagem" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.3fr 1.2fr 1fr 1fr 1fr 0.6fr', gap: '6px 10px', marginBottom: 8, padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
         <div>
           <label style={L}>Viagem Selecionada</label>
           <input style={{ ...RO, fontWeight: 600, fontSize: '0.78rem' }} value={vDescViagem} readOnly tabIndex={-1} />

@@ -960,19 +960,31 @@ table tr.clickable { cursor: pointer; }
 
 /* === Responsividade === */
 
-/* Tablet (<1024px) — sidebar menor */
+/* === Mobile nav (escondida em desktop, visivel em mobile) === */
+.mobile-nav { display: none; }
+
+/* Tablet (<1024px) — sidebar menor, forms ajustam */
 @media (max-width: 1024px) {
   .sidebar { width: 200px; }
   .main-content { margin-left: 200px; }
-  .nav-item { font-size: 0.78rem; padding: 7px 10px; }
-  .nav-section-title { font-size: 0.6rem; }
+  .nav-item { font-size: 0.75rem; padding: 5px 10px 5px 18px; }
+  .nav-section-title { font-size: 0.72rem; padding: 8px 10px; }
+
+  /* Passagens: grids mais flexiveis */
+  .page [style*="gridTemplateColumns"] {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+  }
+
+  /* Encomendas: 2 paineis empilham */
+  .page > .card > div[style*="display: flex"][style*="gap: 16px"] {
+    flex-direction: column !important;
+  }
+  .page > .card > div[style*="display: flex"][style*="gap: 16px"] > div[style*="width: 420px"] {
+    width: 100% !important;
+  }
 }
 
-/* === Mobile nav (escondida em desktop, visivel em mobile) === */
-.mobile-nav { display: none; }
-/* FAB OCR — renderizado via portal no JS, sem CSS aqui */
-
-/* Mobile (<800px) — sidebar colapsa, layout vertical */
+/* Mobile (<800px) — sidebar esconde, layout vertical */
 @media (max-width: 800px) {
   .app-layout { flex-direction: column; }
 
@@ -980,20 +992,20 @@ table tr.clickable { cursor: pointer; }
     position: relative;
     width: 100%;
     min-height: auto;
-    max-height: 60px;
+    max-height: 48px;
     overflow: hidden;
     flex-direction: row;
     align-items: center;
     padding: 0 12px;
   }
 
-  .sidebar-header { padding: 12px 8px; border-bottom: none; }
-  .sidebar-header h2 { font-size: 1rem; }
+  .sidebar-header { padding: 10px 8px; border-bottom: none; }
+  .sidebar-header h2 { font-size: 0.9rem; }
   .sidebar-header .tagline { display: none; }
   .sidebar-nav { display: none; }
   .sidebar-footer { display: none; }
 
-  .main-content { margin-left: 0; }
+  .main-content { margin-left: 0 !important; }
 
   /* Mobile nav bar */
   .mobile-nav {
@@ -1001,8 +1013,8 @@ table tr.clickable { cursor: pointer; }
     overflow-x: auto;
     gap: 2px;
     padding: 6px 8px;
-    background: var(--card-bg);
-    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
   }
   .mobile-nav button {
     flex-shrink: 0;
@@ -1010,7 +1022,7 @@ table tr.clickable { cursor: pointer; }
     background: none;
     padding: 6px 12px;
     border-radius: 8px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-family: 'Sora', sans-serif;
     color: var(--text-muted);
     cursor: pointer;
@@ -1022,17 +1034,44 @@ table tr.clickable { cursor: pointer; }
     font-weight: 600;
   }
 
+  .page { padding: 8px; padding-bottom: 80px; }
 
-  .page { padding: 16px 12px; padding-bottom: 80px; }
+  .topbar { padding: 0 8px; gap: 6px; height: 44px; }
+  .topbar .breadcrumb { font-size: 0.7rem; }
+  .topbar .viagem-selector { font-size: 0.7rem; }
+  .topbar .viagem-selector select { font-size: 0.7rem; max-width: 200px; }
 
-  .topbar { padding: 0 12px; gap: 8px; }
-  .topbar .breadcrumb { font-size: 0.75rem; }
+  .card { padding: 10px; }
+  .card-header { flex-direction: column; gap: 6px; align-items: flex-start; }
 
-  .dash-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .stat-card .stat-value { font-size: 1.2rem; }
+  /* Tabelas responsivas */
+  .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { font-size: 0.7rem; min-width: 600px; }
+  table th, table td { padding: 6px 4px; }
 
-  .quick-actions { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .quick-action { padding: 10px 12px; font-size: 0.78rem; }
+  /* Grids empilham */
+  .dash-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card .stat-value { font-size: 1rem; }
+  .quick-actions { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .quick-action { padding: 8px 10px; font-size: 0.72rem; }
+
+  /* Forms: 4-col → 2-col */
+  .cadastro-form-4col {
+    grid-template-columns: auto 1fr !important;
+  }
+  .cadastro-form-4col .span-3 { grid-column: 2 / -1; }
+
+  /* Modais menores */
+  .modal { width: 95%; padding: 16px; max-height: 90vh; }
+  .form-grid { grid-template-columns: 1fr; }
+
+  /* Sidebar toggle esconde em mobile */
+  div[style*="position: fixed"][style*="zIndex: 101"] { display: none !important; }
+
+  /* Barra de abas: scroll horizontal */
+  div[style*="overflowX: auto"][style*="minHeight: 32"] {
+    font-size: 0.7rem;
+  }
 
   table { font-size: 0.75rem; }
   table th, table td { padding: 8px 6px; }
@@ -1050,4 +1089,39 @@ table tr.clickable { cursor: pointer; }
   .dash-grid { grid-template-columns: 1fr; }
   .quick-actions { grid-template-columns: 1fr; }
   .stat-card .stat-value { font-size: 1rem; }
+
+  /* Cadastro forms: 1 coluna */
+  .cadastro-inline-form { max-width: 100%; }
+  .cadastro-form-4col { grid-template-columns: 1fr !important; }
+  .cadastro-form-4col label { text-align: left; }
+  .cadastro-form-4col .full-row { grid-column: 1; grid-template-columns: 1fr; }
+
+  .cadastro-buttons { flex-wrap: wrap; }
+  .cadastro-buttons button { flex: 1; min-width: 80px; }
+
+  /* Tabs scroll */
+  .tab-nav { overflow-x: auto; }
+  .tab-nav button { padding: 6px 10px; font-size: 0.72rem; }
+
+  /* Toolbar passagens/encomendas: wrap */
+  .page [style*="display: flex"][style*="gap: 6px"] { flex-wrap: wrap !important; }
+}
+
+/* === Passagens/Encomendas grids responsivos === */
+@media (max-width: 900px) {
+  .passagem-grid-passageiro {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .passagem-grid-viagem {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .passagem-grid-passageiro > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 600px) {
+  .passagem-grid-passageiro,
+  .passagem-grid-viagem {
+    grid-template-columns: 1fr !important;
+  }
 }
