@@ -19,6 +19,10 @@ public class AppLogger {
 
     private AppLogger() {}
 
+    public static void debug(String tag, String msg) {
+        System.out.println(format("DEBUG", tag, msg));
+    }
+
     public static void info(String tag, String msg) {
         System.out.println(format("INFO", tag, msg));
     }

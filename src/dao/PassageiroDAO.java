@@ -29,7 +29,7 @@ public class PassageiroDAO {
     public List<Passageiro> listarTodos() {
         List<Passageiro> passageiros = new ArrayList<>();
         // DP038: pre-carregar caches auxiliares para evitar N+1 no cold-start
-        try { auxDAO.preCarregarCachesPassageiro(); } catch (Exception e) { /* cache opcional */ }
+        try { auxDAO.preCarregarCachesPassagem(); } catch (Exception e) { /* cache opcional */ }
         String sql = "SELECT id_passageiro, nome_passageiro, numero_documento, id_tipo_doc, data_nascimento, id_sexo, id_nacionalidade FROM passageiros WHERE empresa_id = ? ORDER BY nome_passageiro";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
