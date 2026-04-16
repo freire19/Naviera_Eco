@@ -67,18 +67,19 @@ router.get('/', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = `SELECT id_frete, id_viagem, numero_frete,
-      remetente_nome_temp AS remetente, destinatario_nome_temp AS destinatario,
-      observacoes, valor_total_itens, valor_frete_calculado, valor_pago, valor_devedor,
-      desconto, status_frete, tipo_pagamento, nome_caixa, rota_temp AS rota,
-      conferente_temp AS conferente, data_emissao, local_transporte, cidade_cobranca
-      FROM fretes WHERE empresa_id = $1`
+    let sql = `SELECT f.id_frete, f.id_viagem, f.numero_frete,
+      f.remetente_nome_temp AS remetente, f.destinatario_nome_temp AS destinatario,
+      f.observacoes, f.valor_total_itens, f.valor_frete_calculado, f.valor_pago, f.valor_devedor,
+      f.desconto, f.status_frete, f.tipo_pagamento, f.nome_caixa, f.rota_temp AS rota,
+      f.conferente_temp AS conferente, f.data_emissao, f.local_transporte, f.cidade_cobranca,
+      COALESCE((SELECT SUM(fi.quantidade) FROM frete_itens fi WHERE fi.id_frete = f.id_frete), 0) AS total_volumes
+      FROM fretes f WHERE f.empresa_id = $1`
     const params = [empresaId]
     if (viagem_id) {
-      sql += ' AND id_viagem = $2'
+      sql += ' AND f.id_viagem = $2'
       params.push(viagem_id)
     }
-    sql += ' ORDER BY id_frete DESC'
+    sql += ' ORDER BY f.id_frete DESC'
     // DP052: LIMIT para evitar datasets ilimitados
     const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
     const offset = parseInt(req.query.offset) || 0

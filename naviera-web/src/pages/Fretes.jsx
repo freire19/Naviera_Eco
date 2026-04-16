@@ -76,9 +76,38 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       api.get('/cadastros/caixas').then(setCaixas),
       api.get('/fretes/contatos').then(setContatos)
     ]).catch(() => {})
-    // Ja inicia pronto para lancar (sem precisar clicar Novo)
-    setEditando(true)
-    api.get('/fretes/proximo-numero').then(r => setNumFrete(r.numero || '1')).catch(() => setNumFrete('—'))
+    // Verificar se veio frete para editar (duplo-clique da lista)
+    const raw = sessionStorage.getItem('frete_editar')
+    if (raw) {
+      sessionStorage.removeItem('frete_editar')
+      try {
+        const f = JSON.parse(raw)
+        setSelecionado(f)
+        setEditando(true)
+        setNumFrete(f.numero_frete || '')
+        setRemetente(f.remetente || f.remetente_nome_temp || '')
+        setDestinatario(f.destinatario || f.destinatario_nome_temp || '')
+        setObservacoes(f.observacoes || '')
+        setConferente(f.conferente || f.conferente_temp || '')
+        setLocalTransporte(f.local_transporte || '')
+        setCidadeCobranca(f.cidade_cobranca || '')
+        // Carregar itens
+        api.get(`/fretes/${f.id_frete}/itens`).then(data => {
+          if (Array.isArray(data)) {
+            setItens(data.map(i => ({
+              quantidade: i.quantidade || 1,
+              descricao: i.nome_item_ou_id_produto || '',
+              valor_unitario: parseFloat(i.preco_unitario) || 0,
+              subtotal: parseFloat(i.subtotal_item) || 0
+            })))
+          }
+        }).catch(() => {})
+      } catch {}
+    } else {
+      // Ja inicia pronto para lancar (sem precisar clicar Novo)
+      setEditando(true)
+      api.get('/fretes/proximo-numero').then(r => setNumFrete(r.numero || '1')).catch(() => setNumFrete('—'))
+    }
   }, [])
 
   // Fechar dropdowns ao clicar fora

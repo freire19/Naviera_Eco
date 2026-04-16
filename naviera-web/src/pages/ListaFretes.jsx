@@ -98,7 +98,14 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
                   const pago = parseFloat(f.valor_pago) || 0
                   const devedor = Math.max(0, valor - pago)
                   return (
-                    <tr key={f.id_frete} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}>
+                    <tr key={f.id_frete} className="clickable" style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)' }}
+                        onDoubleClick={() => {
+                          if (onNavigate) {
+                            sessionStorage.setItem('frete_editar', JSON.stringify(f))
+                            onNavigate('lancar-frete')
+                          }
+                        }}
+                        title="Duplo-clique para abrir/editar">
                       <td style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem' }}>{f.numero_frete}</td>
                       <td>{(f.remetente || '—').toUpperCase()}</td>
                       <td>{(f.destinatario || '—').toUpperCase()}</td>
