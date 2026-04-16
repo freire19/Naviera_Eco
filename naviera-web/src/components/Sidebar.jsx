@@ -14,7 +14,8 @@ const NAV = [
       { key: 'vender-passagem', icon: '\uD83C\uDFAB', label: 'Vender Passagem' },
       { key: 'listar-passageiros', icon: '\uD83D\uDCCB', label: 'Lista Passageiros' },
       { key: 'relatorio-passagens', icon: '\uD83D\uDCCA', label: 'Relatorio' },
-      { key: 'cadastro-tarifa', icon: '\uD83C\uDFF7', label: 'Tarifas' }
+      { key: 'cadastro-tarifa', icon: '\uD83C\uDFF7', label: 'Tarifas' },
+      { key: 'cadastro-passageiro', icon: '\uD83D\uDC64', label: 'Passageiros' }
     ]
   },
   {
@@ -24,7 +25,7 @@ const NAV = [
       { key: 'listar-encomendas', icon: '\uD83D\uDCCB', label: 'Listar Encomendas' },
       { key: 'relatorio-encomendas', icon: '\uD83D\uDCCA', label: 'Relatorio' },
       { key: 'tabela-preco-encomenda', icon: '\uD83C\uDFF7', label: 'Tabela de Precos' },
-      { key: 'cadastro-produto', icon: '\uD83D\uDC64', label: 'Clientes' }
+      { key: 'cadastro-produto', icon: '\uD83D\uDC64', label: 'Clientes Encomenda' }
     ]
   },
   {
@@ -34,7 +35,7 @@ const NAV = [
       { key: 'listar-fretes', icon: '\uD83D\uDCCB', label: 'Lista Fretes' },
       { key: 'relatorio-fretes', icon: '\uD83D\uDCCA', label: 'Relatorio' },
       { key: 'tabela-preco-frete', icon: '\uD83C\uDFF7', label: 'Tabela Precos' },
-      { key: 'cadastro-contato-frete', icon: '\uD83D\uDC64', label: 'Contatos' }
+      { key: 'cadastro-contato-frete', icon: '\uD83D\uDC64', label: 'Clientes Frete' }
     ]
   },
   {

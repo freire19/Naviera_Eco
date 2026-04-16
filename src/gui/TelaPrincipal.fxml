@@ -61,6 +61,7 @@
                         <MenuItem fx:id="menuListaFretes" onAction="#handleListaFrete" text="Listar Fretes" />
                         <MenuItem fx:id="menuRelFretes" onAction="#handleRelatorioFrete" text="Relatório" />
                         <MenuItem fx:id="menuTabelaPrecoFrete" onAction="#handleTabelaPrecoFrete" text="Tabela de Preços" />
+                        <MenuItem fx:id="menuClientesFrete" onAction="#handleClientesFrete" text="Clientes" />
                     </items>
                 </MenuButton>
 
@@ -76,6 +77,7 @@
                         <MenuItem fx:id="menuVenderPassagem" onAction="#handleVenderPassagem" text="Vender Passagem" />
                         <MenuItem fx:id="menuListaPassagens" onAction="#handleListaPassagensNovo" text="Listar Passageiros" />
                         <MenuItem fx:id="menuRelPassagens" onAction="#handleRelatorioPassagem" text="Relatório" />
+                        <MenuItem fx:id="menuPassageiros" onAction="#handleCadastroPassageiros" text="Passageiros" />
                     </items>
                 </MenuButton>
 

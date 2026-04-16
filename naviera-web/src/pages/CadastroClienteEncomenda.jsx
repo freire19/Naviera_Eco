@@ -1,151 +1,98 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
 
-const FORM_INICIAL = {
-  nome_cliente: '',
-  telefone: '',
-  endereco: ''
-}
-
-export default function CadastroClienteEncomenda({ viagemAtiva, onNavigate }) {
+export default function CadastroClienteEncomenda() {
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(false)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [editando, setEditando] = useState(null)
-  const [form, setForm] = useState(FORM_INICIAL)
+  const [selecionado, setSelecionado] = useState(null)
+  const [nome, setNome] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState(null)
 
   function showToast(msg, type = 'success') {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
+    setToast({ msg, type }); setTimeout(() => setToast(null), 3500)
   }
 
   const carregar = useCallback(() => {
     setLoading(true)
     api.get('/cadastros/clientes-encomenda')
       .then(setClientes)
-      .catch(() => showToast('Erro ao carregar clientes', 'error'))
+      .catch(() => showToast('Erro ao carregar', 'error'))
       .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => { carregar() }, [carregar])
 
-  function abrirCriar() {
-    setEditando(null)
-    setForm(FORM_INICIAL)
-    setModalAberto(true)
+  function handleSelect(item) {
+    setSelecionado(item)
+    setNome(item.nome_cliente || '')
   }
 
-  function abrirEditar(item) {
-    setEditando(item)
-    setForm({
-      nome_cliente: item.nome_cliente || '',
-      telefone: item.telefone || '',
-      endereco: item.endereco || ''
-    })
-    setModalAberto(true)
-  }
+  function handleNovo() { setSelecionado(null); setNome('') }
 
-  function fecharModal() {
-    setModalAberto(false)
-    setEditando(null)
-    setForm(FORM_INICIAL)
-  }
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSalvar(e) {
-    e.preventDefault()
-    if (!form.nome_cliente.trim()) { showToast('Informe o nome do cliente', 'error'); return }
+  async function handleSalvar() {
+    if (!nome.trim()) { showToast('Informe o nome', 'error'); return }
     setSalvando(true)
     try {
-      if (editando) {
-        await api.put(`/cadastros/clientes-encomenda/${editando.id_cliente_encomenda}`, form)
-        showToast('Cliente atualizado com sucesso')
+      if (selecionado) {
+        await api.put(`/cadastros/clientes-encomenda/${selecionado.id_cliente}`, { nome_cliente: nome.trim().toUpperCase() })
+        showToast('Cliente atualizado')
       } else {
-        await api.post('/cadastros/clientes-encomenda', form)
-        showToast('Cliente criado com sucesso')
+        await api.post('/cadastros/clientes-encomenda', { nome_cliente: nome.trim().toUpperCase() })
+        showToast('Cliente salvo')
       }
-      fecharModal()
-      carregar()
-    } catch (err) {
-      showToast(err.message || 'Erro ao salvar cliente', 'error')
-    } finally {
-      setSalvando(false)
-    }
+      handleNovo(); carregar()
+    } catch (err) { showToast(err.message || 'Erro', 'error') }
+    finally { setSalvando(false) }
   }
+
+  async function handleExcluir() {
+    if (!selecionado) return
+    if (!window.confirm(`Excluir "${selecionado.nome_cliente}"?`)) return
+    try {
+      await api.delete(`/cadastros/clientes-encomenda/${selecionado.id_cliente}`)
+      showToast('Excluido'); handleNovo(); carregar()
+    } catch (err) { showToast(err.message || 'Erro', 'error') }
+  }
+
+  const I = { padding: '10px 14px', fontSize: '0.9rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
 
   return (
     <div className="card">
-      <div className="card-header">
-        <h2>Cadastro de Clientes de Encomenda</h2>
-        <div className="toolbar">
-          <button className="btn-primary" onClick={abrirCriar}>+ Novo Cliente</button>
+      <h2 style={{ textAlign: 'center', marginBottom: 16 }}>Cadastro de Clientes (Encomendas)</h2>
+
+      <div style={{ display: 'flex', gap: 24 }}>
+        {/* LISTA ESQUERDA */}
+        <div style={{ flex: 1, maxHeight: 500, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
+          {loading ? <div style={{ padding: 20, color: 'var(--text-muted)' }}>Carregando...</div> :
+          clientes.map((c, idx) => (
+            <div key={c.id_cliente}
+              onClick={() => handleSelect(c)}
+              style={{
+                padding: '10px 14px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.02em',
+                background: selecionado?.id_cliente === c.id_cliente ? 'var(--primary)' : idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
+                color: selecionado?.id_cliente === c.id_cliente ? '#fff' : 'var(--text)',
+                borderBottom: '1px solid var(--border)'
+              }}>
+              {c.nome_cliente}
+            </div>
+          ))}
+          {clientes.length === 0 && <div style={{ padding: 20, color: 'var(--text-muted)', textAlign: 'center' }}>Nenhum cliente</div>}
         </div>
-      </div>
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Telefone</th>
-              <th>Endereco</th>
-              <th>Acoes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="4">Carregando...</td></tr>
-            ) : clientes.length === 0 ? (
-              <tr><td colSpan="4">Nenhum cliente cadastrado</td></tr>
-            ) : clientes.map(c => (
-              <tr key={c.id_cliente_encomenda}>
-                <td>{c.nome_cliente || '-'}</td>
-                <td>{c.telefone || '-'}</td>
-                <td>{c.endereco || '-'}</td>
-                <td>
-                  <button className="btn-sm primary" onClick={() => abrirEditar(c)}>Editar</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        {/* FORM DIREITA */}
+        <div style={{ width: 300, flexShrink: 0 }}>
+          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Nome do Cliente:</label>
+          <input style={I} value={nome} onChange={e => setNome(e.target.value)} placeholder="" />
 
-      {modalAberto && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editando ? 'Editar Cliente' : 'Novo Cliente'}</h3>
-            <form onSubmit={handleSalvar}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Nome do Cliente</label>
-                  <input type="text" name="nome_cliente" value={form.nome_cliente} onChange={handleChange} />
-                </div>
-                <div className="form-group">
-                  <label>Telefone</label>
-                  <input type="text" name="telefone" value={form.telefone} onChange={handleChange} />
-                </div>
-                <div className="form-group full-width">
-                  <label>Endereco</label>
-                  <input type="text" name="endereco" value={form.endereco} onChange={handleChange} />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={fecharModal}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            </form>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={handleNovo}>Novo</button>
+            <button className="btn-primary" style={{ flex: 1, padding: '10px' }} onClick={handleSalvar} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</button>
+            <button className="btn-sm danger" style={{ flex: 1, padding: '10px' }} onClick={handleExcluir}>Excluir</button>
           </div>
         </div>
-      )}
+      </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>

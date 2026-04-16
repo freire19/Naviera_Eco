@@ -23,15 +23,12 @@ export default function CadastroContatoFrete() {
 
   useEffect(() => { carregar() }, [carregar])
 
-  function handleSelectRow(item) {
+  function handleSelect(item) {
     setSelecionado(item)
     setNome(item.nome_razao_social || '')
   }
 
-  function handleNovo() {
-    setSelecionado(null)
-    setNome('')
-  }
+  function handleNovo() { setSelecionado(null); setNome('') }
 
   async function handleSalvar() {
     if (!nome.trim()) { showToast('Informe o nome', 'error'); return }
@@ -39,46 +36,49 @@ export default function CadastroContatoFrete() {
     try {
       await api.post('/fretes/contatos', { nome: nome.trim().toUpperCase() })
       showToast('Contato salvo')
-      handleNovo()
-      carregar()
-    } catch (err) {
-      showToast(err.message || 'Erro', 'error')
-    } finally {
-      setSalvando(false)
-    }
+      handleNovo(); carregar()
+    } catch (err) { showToast(err.message || 'Erro', 'error') }
+    finally { setSalvando(false) }
   }
+
+  const I = { padding: '10px 14px', fontSize: '0.9rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
 
   return (
     <div className="card">
-      <h2 style={{ marginBottom: 16 }}>Cadastro de Contatos (Frete)</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: 16 }}>Cadastro de Clientes (Frete)</h2>
 
-      <div className="cadastro-inline-form">
-        <label>ID:</label>
-        <input type="text" value={selecionado?.id || 'Automatico'} readOnly />
-        <label>Nome / Razao Social:</label>
-        <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do contato..." />
+      <div style={{ display: 'flex', gap: 24 }}>
+        {/* LISTA ESQUERDA */}
+        <div style={{ flex: 1, maxHeight: 500, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
+          {loading ? <div style={{ padding: 20, color: 'var(--text-muted)' }}>Carregando...</div> :
+          contatos.map((c, idx) => (
+            <div key={c.id}
+              onClick={() => handleSelect(c)}
+              style={{
+                padding: '10px 14px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.02em',
+                background: selecionado?.id === c.id ? 'var(--primary)' : idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
+                color: selecionado?.id === c.id ? '#fff' : 'var(--text)',
+                borderBottom: '1px solid var(--border)'
+              }}>
+              {c.nome_razao_social}
+            </div>
+          ))}
+          {contatos.length === 0 && <div style={{ padding: 20, color: 'var(--text-muted)', textAlign: 'center' }}>Nenhum contato</div>}
+        </div>
+
+        {/* FORM DIREITA */}
+        <div style={{ width: 300, flexShrink: 0 }}>
+          <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Nome do Cliente:</label>
+          <input style={I} value={nome} onChange={e => setNome(e.target.value)} placeholder="" />
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={handleNovo}>Novo</button>
+            <button className="btn-primary" style={{ flex: 1, padding: '10px' }} onClick={handleSalvar} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</button>
+          </div>
+        </div>
       </div>
 
-      <div className="cadastro-buttons">
-        <button onClick={handleNovo}>Novo</button>
-        <button onClick={handleSalvar} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</button>
-      </div>
-
-      <div className="table-container" style={{ marginTop: 8 }}>
-        <table>
-          <thead><tr><th style={{ width: 60 }}>ID</th><th>Nome / Razao Social</th></tr></thead>
-          <tbody>
-            {loading ? <tr><td colSpan="2">Carregando...</td></tr>
-            : contatos.length === 0 ? <tr><td colSpan="2" style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>Nenhum contato cadastrado</td></tr>
-            : contatos.map(c => (
-              <tr key={c.id} className={`clickable ${selecionado?.id === c.id ? 'selected' : ''}`} onClick={() => handleSelectRow(c)}>
-                <td>{c.id}</td>
-                <td>{c.nome_razao_social}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>
   )

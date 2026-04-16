@@ -33,6 +33,7 @@ const CadastroConferente = lazy(() => import('../pages/CadastroConferente.jsx'))
 const CadastroCaixa = lazy(() => import('../pages/CadastroCaixa.jsx'))
 const CadastroClienteEncomenda = lazy(() => import('../pages/CadastroClienteEncomenda.jsx'))
 const CadastroContatoFrete = lazy(() => import('../pages/CadastroContatoFrete.jsx'))
+const CadastroPassageiro = lazy(() => import('../pages/CadastroPassageiro.jsx'))
 const AdminEmpresas = lazy(() => import('../pages/AdminEmpresas.jsx'))
 const AdminMetricas = lazy(() => import('../pages/AdminMetricas.jsx'))
 const DocumentosAdmin = lazy(() => import('../pages/DocumentosAdmin.jsx'))
@@ -71,7 +72,8 @@ const PAGES = {
   'cadastro-conferente': { component: CadastroConferente, label: 'Conferentes', section: 'cadastros' },
   'cadastro-caixa': { component: CadastroCaixa, label: 'Caixas', section: 'cadastros' },
   'cadastro-produto': { component: CadastroClienteEncomenda, label: 'Clientes Encomenda', section: 'cadastros' },
-  'cadastro-contato-frete': { component: CadastroContatoFrete, label: 'Contatos Frete', section: 'cadastros' },
+  'cadastro-contato-frete': { component: CadastroContatoFrete, label: 'Contatos Frete', section: 'fretes' },
+  'cadastro-passageiro': { component: CadastroPassageiro, label: 'Passageiros', section: 'passagens' },
   'cadastro-item': { component: CadastroItem, label: 'Itens (Frete/Encomenda)', section: 'cadastros' },
   'auxiliares': { component: Auxiliares, label: 'Tabelas Auxiliares', section: 'cadastros' },
   'gestao-funcionarios': { component: GestaoFuncionarios, label: 'Gestao Funcionarios', section: 'cadastros' },
