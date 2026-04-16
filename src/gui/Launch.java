@@ -32,7 +32,7 @@ public class Launch extends Application {
      * Verifica se db.properties existe e tem os campos minimos preenchidos.
      */
     private boolean precisaSetup() {
-        File dbProps = new File("db.properties");
+        File dbProps = dao.ConexaoBD.resolverDbProperties();
         if (!dbProps.exists()) return true;
 
         try {

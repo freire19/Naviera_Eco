@@ -30,14 +30,44 @@ public class ConexaoBD {
     // #001: Semaphore limita total de conexoes abertas (pool + em uso)
     private static final Semaphore semaphore;
 
+    /**
+     * Resolve o caminho do db.properties procurando em ordem:
+     * 1. Diretorio atual (dev/Eclipse)
+     * 2. LOCALAPPDATA/Naviera/ (Windows instalado via .msi)
+     * 3. ~/.naviera/ (Linux instalado via .deb)
+     */
+    public static java.io.File resolverDbProperties() {
+        // 1. Diretorio atual
+        java.io.File local = new java.io.File("db.properties");
+        if (local.exists()) return local;
+
+        // 2. Windows: %LOCALAPPDATA%\Naviera\
+        String localAppData = System.getenv("LOCALAPPDATA");
+        if (localAppData != null) {
+            java.io.File win = new java.io.File(localAppData + "/Naviera/db.properties");
+            if (win.exists()) return win;
+        }
+
+        // 3. Linux/Mac: ~/.naviera/
+        String home = System.getProperty("user.home");
+        if (home != null) {
+            java.io.File unix = new java.io.File(home + "/.naviera/db.properties");
+            if (unix.exists()) return unix;
+        }
+
+        return local; // fallback — vai falhar mas com mensagem clara
+    }
+
     static {
         Properties props = new Properties();
-        // Carrega db.properties — obrigatorio (sem fallback de senha hardcoded)
-        try (InputStream is = new FileInputStream("db.properties")) {
+        // Carrega db.properties — procura em multiplos locais
+        java.io.File dbPropsFile = resolverDbProperties();
+        try (InputStream is = new FileInputStream(dbPropsFile)) {
             props.load(is);
         } catch (Exception e) {
             throw new RuntimeException(
-                "FATAL: db.properties nao encontrado. Copie db.properties.example para db.properties e preencha suas credenciais.", e);
+                "FATAL: db.properties nao encontrado em: " + dbPropsFile.getAbsolutePath() +
+                ". Execute o wizard de configuracao ou copie db.properties.example.", e);
         }
         String url = props.getProperty("db.url");
         String usuario = props.getProperty("db.usuario");

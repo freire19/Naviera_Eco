@@ -779,6 +779,40 @@ public class SetupWizardController implements Initializable {
     // Salvar configuracoes
     // ========================================================================
 
+    /**
+     * Resolve o diretorio de configuracao gravavel.
+     * Tenta diretorio atual primeiro (dev), depois LOCALAPPDATA/Naviera (Windows)
+     * ou ~/.naviera (Linux).
+     */
+    private Path resolverDiretorioConfig() {
+        // 1. Diretorio atual (dev) — se conseguir escrever
+        Path local = Path.of(".");
+        try {
+            Path teste = local.resolve(".naviera_write_test");
+            Files.writeString(teste, "test");
+            Files.deleteIfExists(teste);
+            return local;
+        } catch (Exception ignored) {}
+
+        // 2. Windows: %LOCALAPPDATA%\Naviera\
+        String localAppData = System.getenv("LOCALAPPDATA");
+        if (localAppData != null) {
+            Path win = Path.of(localAppData, "Naviera");
+            try { Files.createDirectories(win); return win; }
+            catch (Exception ignored) {}
+        }
+
+        // 3. Linux/Mac: ~/.naviera/
+        String home = System.getProperty("user.home");
+        if (home != null) {
+            Path unix = Path.of(home, ".naviera");
+            try { Files.createDirectories(unix); return unix; }
+            catch (Exception ignored) {}
+        }
+
+        return local;
+    }
+
     private void salvarDbProperties(String senhaPg) throws IOException {
         String jdbcUrl = "jdbc:postgresql://localhost:" + pgPortaLocal + "/naviera_eco?sslmode=disable";
 
@@ -793,7 +827,9 @@ public class SetupWizardController implements Initializable {
         sb.append("# Versao\n");
         sb.append("app.versao=1.0.0\n");
 
-        Files.writeString(Path.of("db.properties"), sb.toString(), StandardCharsets.UTF_8);
+        Path configDir = resolverDiretorioConfig();
+        Files.writeString(configDir.resolve("db.properties"), sb.toString(), StandardCharsets.UTF_8);
+        log("db.properties salvo em: " + configDir.resolve("db.properties").toAbsolutePath());
     }
 
     private void salvarSyncConfig() throws IOException {
@@ -808,7 +844,8 @@ public class SetupWizardController implements Initializable {
         sc.append("sync.interval.minutos=5\n");
         sc.append("sync.ultima=\n");
 
-        Files.writeString(Path.of("sync_config.properties"), sc.toString(), StandardCharsets.UTF_8);
+        Path configDir = resolverDiretorioConfig();
+        Files.writeString(configDir.resolve("sync_config.properties"), sc.toString(), StandardCharsets.UTF_8);
     }
 
     // ========================================================================
