@@ -164,7 +164,7 @@ router.get('/itens-encomenda', async (req, res, next) => {
 router.get('/itens-frete', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
-    const result = await pool.query('SELECT * FROM itens_frete_padrao WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome_item', [empresaId])
+    const result = await pool.query('SELECT *, id_item_frete AS id, preco_unitario_padrao AS preco_padrao FROM itens_frete_padrao WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome_item', [empresaId])
     res.json(result.rows)
   } catch (err) { next(err) }
 })
@@ -387,11 +387,11 @@ router.delete('/funcionarios/:id', async (req, res, next) => {
 router.post('/itens-frete', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
-    const { nome_item, preco_padrao } = req.body
+    const { nome_item, preco_padrao, preco_desconto } = req.body
     if (!nome_item) return res.status(400).json({ error: 'nome_item obrigatorio' })
     const result = await pool.query(
-      'INSERT INTO itens_frete_padrao (nome_item, preco_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) RETURNING *',
-      [nome_item, parseFloat(preco_padrao) || 0, empresaId]
+      'INSERT INTO itens_frete_padrao (nome_item, preco_unitario_padrao, preco_unitario_desconto, ativo, empresa_id) VALUES ($1, $2, $3, TRUE, $4) RETURNING *, preco_unitario_padrao AS preco_padrao, preco_unitario_desconto',
+      [nome_item, parseFloat(preco_padrao) || 0, parseFloat(preco_desconto) || 0, empresaId]
     )
     res.status(201).json(result.rows[0])
   } catch (err) { next(err) }
@@ -400,10 +400,16 @@ router.post('/itens-frete', async (req, res, next) => {
 router.put('/itens-frete/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
-    const { nome_item, preco_padrao } = req.body
+    const { nome_item, preco_padrao, preco_desconto } = req.body
     const result = await pool.query(
-      'UPDATE itens_frete_padrao SET nome_item = COALESCE($1, nome_item), preco_padrao = COALESCE($2, preco_padrao) WHERE id = $3 AND empresa_id = $4 RETURNING *',
-      [nome_item, preco_padrao != null ? parseFloat(preco_padrao) : null, req.params.id, empresaId]
+      `UPDATE itens_frete_padrao SET nome_item = COALESCE($1, nome_item),
+        preco_unitario_padrao = COALESCE($2, preco_unitario_padrao),
+        preco_unitario_desconto = COALESCE($3, preco_unitario_desconto)
+       WHERE id_item_frete = $4 AND empresa_id = $5
+       RETURNING *, preco_unitario_padrao AS preco_padrao`,
+      [nome_item, preco_padrao != null ? parseFloat(preco_padrao) : null,
+       preco_desconto != null ? parseFloat(preco_desconto) : null,
+       req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item frete nao encontrado' })
     res.json(result.rows[0])
@@ -414,7 +420,7 @@ router.delete('/itens-frete/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
-      'UPDATE itens_frete_padrao SET ativo = FALSE WHERE id = $1 AND empresa_id = $2 RETURNING *',
+      'UPDATE itens_frete_padrao SET ativo = FALSE WHERE id_item_frete = $1 AND empresa_id = $2 RETURNING *',
       [req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item frete nao encontrado' })

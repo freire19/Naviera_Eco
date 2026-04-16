@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { printContent } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -8,158 +9,154 @@ function formatMoney(val) {
 export default function TabelaPrecoFrete() {
   const [itens, setItens] = useState([])
   const [loading, setLoading] = useState(false)
-  const [toast, setToast] = useState(null)
+  const [selecionado, setSelecionado] = useState(null)
+  const [nome, setNome] = useState('')
+  const [precoNormal, setPrecoNormal] = useState('')
+  const [precoDesconto, setPrecoDesconto] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [toast, setToast] = useState(null)
 
-  // Modal create/edit
-  const [showModal, setShowModal] = useState(false)
-  const [editando, setEditando] = useState(null) // null = novo, object = editando
-  const [form, setForm] = useState({ nome_item: '', preco_padrao: '' })
+  function showToast(msg, type = 'success') {
+    setToast({ msg, type }); setTimeout(() => setToast(null), 3500)
+  }
 
-  const mostrarToast = useCallback((msg, tipo = 'success') => {
-    setToast({ msg, tipo })
-    setTimeout(() => setToast(null), 3500)
-  }, [])
-
-  const carregarItens = useCallback(() => {
+  const carregar = useCallback(() => {
     setLoading(true)
     api.get('/cadastros/itens-frete')
       .then(data => setItens(Array.isArray(data) ? data : []))
-      .catch(() => { setItens([]); mostrarToast('Erro ao carregar itens', 'error') })
+      .catch(() => showToast('Erro ao carregar', 'error'))
       .finally(() => setLoading(false))
-  }, [mostrarToast])
+  }, [])
 
-  useEffect(() => { carregarItens() }, [carregarItens])
+  useEffect(() => { carregar() }, [carregar])
 
-  function abrirNovo() {
-    setEditando(null)
-    setForm({ nome_item: '', preco_padrao: '' })
-    setShowModal(true)
+  function handleSelect(item) {
+    setSelecionado(item)
+    setNome(item.nome_item || '')
+    setPrecoNormal(item.preco_padrao || item.preco_unitario_padrao || '')
+    setPrecoDesconto(item.preco_unitario_desconto || '')
   }
 
-  function abrirEditar(item) {
-    setEditando(item)
-    setForm({ nome_item: item.nome_item || '', preco_padrao: item.preco_padrao || '' })
-    setShowModal(true)
+  function handleNovo() {
+    setSelecionado(null); setNome(''); setPrecoNormal(''); setPrecoDesconto('')
   }
 
-  function fecharModal() {
-    setShowModal(false)
-    setEditando(null)
-  }
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSalvar(e) {
-    e.preventDefault()
-    if (!form.nome_item.trim()) return mostrarToast('Preencha o nome do item.', 'error')
-
+  async function handleSalvar() {
+    if (!nome.trim()) { showToast('Informe a descricao', 'error'); return }
     setSalvando(true)
     try {
-      const payload = {
-        nome_item: form.nome_item.trim(),
-        preco_padrao: parseFloat(form.preco_padrao) || 0
-      }
-      if (editando) {
-        await api.put(`/cadastros/itens-frete/${editando.id}`, payload)
-        mostrarToast('Item atualizado com sucesso!')
+      if (selecionado) {
+        await api.put(`/cadastros/itens-frete/${selecionado.id || selecionado.id_item_frete}`, {
+          nome_item: nome.trim().toUpperCase(), preco_padrao: parseFloat(precoNormal) || 0, preco_desconto: parseFloat(precoDesconto) || 0
+        })
+        showToast('Item atualizado')
       } else {
-        await api.post('/cadastros/itens-frete', payload)
-        mostrarToast('Item criado com sucesso!')
+        await api.post('/cadastros/itens-frete', {
+          nome_item: nome.trim().toUpperCase(), preco_padrao: parseFloat(precoNormal) || 0, preco_desconto: parseFloat(precoDesconto) || 0
+        })
+        showToast('Item salvo')
       }
-      fecharModal()
-      carregarItens()
-    } catch (err) {
-      mostrarToast(err?.message || 'Erro ao salvar item.', 'error')
-    } finally {
-      setSalvando(false)
-    }
+      handleNovo(); carregar()
+    } catch (err) { showToast(err.message || 'Erro', 'error') }
+    finally { setSalvando(false) }
   }
 
-  async function handleDesativar(item) {
-    if (!confirm(`Desativar o item "${item.nome_item}"?`)) return
-    setSalvando(true)
+  async function handleExcluir() {
+    if (!selecionado) return
+    if (!window.confirm(`Excluir "${selecionado.nome_item}"?`)) return
     try {
-      await api.delete(`/cadastros/itens-frete/${item.id}`)
-      mostrarToast('Item desativado com sucesso!')
-      carregarItens()
-    } catch (err) {
-      mostrarToast(err?.message || 'Erro ao desativar item.', 'error')
-    } finally {
-      setSalvando(false)
-    }
+      await api.delete(`/cadastros/itens-frete/${selecionado.id || selecionado.id_item_frete}`)
+      showToast('Item excluido'); handleNovo(); carregar()
+    } catch (err) { showToast(err.message || 'Erro', 'error') }
   }
+
+  async function handleImprimir() {
+    let emp = {}
+    try { const token = localStorage.getItem('token'); const res = await fetch('/api/cadastros/empresa', { headers: { Authorization: `Bearer ${token}` } }); if (res.ok) emp = await res.json() } catch {}
+    const rows = itens.map((item, idx) => `<tr style="background:${idx % 2 === 0 ? '#fff' : '#f5f7fa'};">
+      <td style="padding:5px 8px; border-bottom:1px solid #ddd;">${(item.nome_item || '').toUpperCase()}</td>
+      <td style="padding:5px 8px; border-bottom:1px solid #ddd; text-align:right;">${formatMoney(item.preco_padrao || item.preco_unitario_padrao)}</td>
+      <td style="padding:5px 8px; border-bottom:1px solid #ddd; text-align:right;">${formatMoney(item.preco_unitario_desconto)}</td>
+    </tr>`).join('')
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tabela Precos Frete</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:15mm;color:#111}@page{size:A4;margin:12mm}table{width:100%;border-collapse:collapse}th{background:#059669;color:#fff;padding:6px 8px;text-align:left;font-size:11px}</style></head><body>
+    <div style="text-align:center;margin-bottom:12px;"><div style="font-size:16px;font-weight:700;">${emp.nome_embarcacao ? 'F/B ' + emp.nome_embarcacao : 'NAVIERA'}</div><div style="font-size:9px;color:#555;">CNPJ: ${emp.cnpj || '—'} | ${emp.endereco || ''}</div><h2 style="font-size:14px;margin-top:10px;">Tabela de Precos de Frete</h2><hr style="border:none;border-top:2px solid #059669;margin:8px 0;"></div>
+    <table><thead><tr><th>Descricao / Item</th><th style="text-align:right;width:120px;">Preco Normal</th><th style="text-align:right;width:120px;">Preco Desconto</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="margin-top:12px;font-size:10px;color:#888;">Total: ${itens.length} itens | ${new Date().toLocaleString('pt-BR')}</div>
+    <script>window.onload=function(){window.print()}</script></body></html>`
+    printContent(html, 'Tabela Precos Frete')
+  }
+
+  const I = { padding: '10px 14px', fontSize: '0.9rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
+  const L = { fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 3 }
 
   return (
-    <div>
-      {toast && <div className={`toast ${toast.tipo}`}>{toast.msg}</div>}
+    <div className="card">
+      <h2 style={{ marginBottom: 16 }}>Gerenciamento de Fretes</h2>
 
-      <div className="card">
-        <div className="card-header">
-          <h3>Tabela de Precos - Frete</h3>
-          <div className="toolbar">
-            <button className="btn-primary" onClick={abrirNovo}>+ Novo Item</button>
+      {/* FORM — Adicionar / Editar */}
+      <div style={{ borderTop: '2px solid var(--primary)', padding: '12px 0', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontWeight: 700 }}>Adicionar / Editar Item</span>
+          <span style={{ color: 'var(--primary)', fontSize: '0.82rem', fontStyle: 'italic' }}>
+            {selecionado ? 'Modo: Edicao' : 'Modo: Insercao de Novo Item'}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12, alignItems: 'end' }}>
+          <div>
+            <label style={L}>Descricao do Item:</label>
+            <input style={I} value={nome} onChange={e => setNome(e.target.value)} />
+          </div>
+          <div>
+            <label style={L}>Preco Normal (R$):</label>
+            <input type="number" step="0.01" min="0" style={{ ...I, width: 140, textAlign: 'right', fontFamily: 'Space Mono, monospace', border: '1px solid var(--primary)' }}
+              value={precoNormal} onChange={e => setPrecoNormal(e.target.value)} />
+          </div>
+          <div>
+            <label style={L}>Preco c/ Desc. (R$):</label>
+            <input type="number" step="0.01" min="0" style={{ ...I, width: 140, textAlign: 'right', fontFamily: 'Space Mono, monospace' }}
+              value={precoDesconto} onChange={e => setPrecoDesconto(e.target.value)} />
           </div>
         </div>
 
-        <div className="table-container">
-          {loading ? (
-            <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>Carregando...</p>
-          ) : itens.length === 0 ? (
-            <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>Nenhum item cadastrado.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Nome do Item</th>
-                  <th>Preco Padrao</th>
-                  <th>Acoes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {itens.map((item, idx) => (
-                  <tr key={item.id || idx}>
-                    <td>{item.nome_item}</td>
-                    <td className="money">{formatMoney(item.preco_padrao)}</td>
-                    <td style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button className="btn-sm" onClick={() => abrirEditar(item)}>Editar</button>
-                      <button className="btn-sm danger" onClick={() => handleDesativar(item)}>Desativar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'center' }}>
+          <button className="btn-secondary" style={{ padding: '10px 24px' }} onClick={handleNovo}>Novo (+)</button>
+          <button className="btn-primary" style={{ width: 'auto', padding: '10px 24px' }} onClick={handleSalvar} disabled={salvando}>{salvando ? 'Salvando...' : 'SALVAR'}</button>
+          <button className="btn-sm danger" style={{ padding: '10px 24px' }} onClick={handleExcluir}>Excluir</button>
         </div>
       </div>
 
-      {/* Modal Create/Edit */}
-      {showModal && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editando ? 'Editar Item Frete' : 'Novo Item Frete'}</h3>
-            <form onSubmit={handleSalvar}>
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Nome do Item *</label>
-                  <input type="text" name="nome_item" value={form.nome_item} onChange={handleChange} placeholder="Ex: Carga geral, Veiculo..." autoFocus />
-                </div>
-                <div className="form-group">
-                  <label>Preco Padrao (R$)</label>
-                  <input type="number" name="preco_padrao" value={form.preco_padrao} onChange={handleChange} placeholder="0.00" min="0" step="0.01" />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={fecharModal} disabled={salvando}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* TABELA */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontWeight: 700 }}>Itens Cadastrados no Sistema:</span>
+        <button className="btn-sm primary" onClick={handleImprimir}>Imprimir Tabela</button>
+      </div>
+
+      <div className="table-container">
+        <table>
+          <thead><tr>
+            <th>Descricao / Item</th>
+            <th style={{ width: 130, textAlign: 'right' }}>Preco Normal</th>
+            <th style={{ width: 130, textAlign: 'right' }}>Preco Desconto</th>
+          </tr></thead>
+          <tbody>
+            {loading ? <tr><td colSpan="3">Carregando...</td></tr>
+            : itens.length === 0 ? <tr><td colSpan="3" style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>Nenhum item</td></tr>
+            : itens.map((item, idx) => (
+              <tr key={item.id || item.id_item_frete || idx}
+                  className={`clickable ${(selecionado?.id || selecionado?.id_item_frete) === (item.id || item.id_item_frete) ? 'selected' : ''}`}
+                  onClick={() => handleSelect(item)}>
+                <td>{item.nome_item}</td>
+                <td className="money" style={{ textAlign: 'right' }}>{formatMoney(item.preco_padrao || item.preco_unitario_padrao)}</td>
+                <td className="money" style={{ textAlign: 'right' }}>{formatMoney(item.preco_unitario_desconto)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>
   )
 }

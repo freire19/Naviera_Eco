@@ -52,6 +52,11 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
   const remDropdownRef = useRef(null)
   const destDropdownRef = useRef(null)
 
+  // Modal salvar item novo
+  const [modalNovoItem, setModalNovoItem] = useState(null)
+  const [novoItemPrecoNormal, setNovoItemPrecoNormal] = useState('')
+  const [novoItemPrecoDesc, setNovoItemPrecoDesc] = useState('')
+
   // Pagamento modal
   const [modalPagar, setModalPagar] = useState(null)
   const [pgDesconto, setPgDesconto] = useState('')
@@ -165,20 +170,33 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     // Verificar se item existe no catalogo
     const descLower = novoItem.descricao.trim().toLowerCase()
     const itemExiste = itensPadrao.some(ip => (ip.nome_item || '').toLowerCase() === descLower)
+
+    // Adicionar item na lista
+    setItens(prev => [...prev, { ...novoItem, subtotal: parseFloat(novoItem.subtotal) || 0, valor_unitario: parseFloat(novoItem.valor_unitario) || 0, quantidade: parseInt(novoItem.quantidade) || 1 }])
+
+    // Se nao existe, abrir modal para salvar com precos
     if (!itemExiste) {
-      const salvar = window.confirm(`Item "${novoItem.descricao.trim()}" nao encontrado no catalogo.\n\nDeseja salvar com:\n- Preco Normal: R$ ${Number(novoItem.valor_unitario || 0).toFixed(2)}\n- Preco Desconto: (informe depois no cadastro)\n\npara futuras consultas?`)
-      if (salvar) {
-        try {
-          await api.post('/cadastros/itens-frete', { nome_item: novoItem.descricao.trim().toUpperCase(), preco_padrao: parseFloat(novoItem.valor_unitario) || 0 })
-          const novos = await api.get('/cadastros/itens-frete')
-          setItensPadrao(novos)
-          showToast(`Item "${novoItem.descricao.trim()}" salvo no catalogo`)
-        } catch {}
-      }
+      setModalNovoItem({ nome: novoItem.descricao.trim().toUpperCase() })
+      setNovoItemPrecoNormal(String(novoItem.valor_unitario || ''))
+      setNovoItemPrecoDesc('')
     }
 
-    setItens(prev => [...prev, { ...novoItem, subtotal: parseFloat(novoItem.subtotal) || 0, valor_unitario: parseFloat(novoItem.valor_unitario) || 0, quantidade: parseInt(novoItem.quantidade) || 1 }])
     setNovoItem({ ...ITEM_VAZIO })
+  }
+
+  async function handleSalvarNovoItem() {
+    if (!modalNovoItem) return
+    try {
+      await api.post('/cadastros/itens-frete', {
+        nome_item: modalNovoItem.nome,
+        preco_padrao: parseFloat(novoItemPrecoNormal) || 0,
+        preco_desconto: parseFloat(novoItemPrecoDesc) || 0
+      })
+      const novos = await api.get('/cadastros/itens-frete')
+      setItensPadrao(novos)
+      showToast(`Item "${modalNovoItem.nome}" salvo no catalogo`)
+    } catch {}
+    setModalNovoItem(null)
   }
 
   function handleSelectItemPadrao(ip) {
@@ -418,6 +436,75 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+      {/* MODAL CADASTRAR NOVO ITEM */}
+      {modalNovoItem && (
+        <div className="modal-overlay" onClick={() => setModalNovoItem(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
+            <h3>Cadastrar Novo Item</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
+              Item <strong>"{modalNovoItem.nome}"</strong> nao esta cadastrado.
+            </p>
+
+            <div style={{ borderTop: '2px solid var(--primary)', padding: '12px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontWeight: 700 }}>Adicionar / Editar Item</span>
+                <span style={{ color: 'var(--primary)', fontSize: '0.82rem', fontStyle: 'italic' }}>Modo: Insercao de Novo Item</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12, alignItems: 'end' }}>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, display: 'block', marginBottom: 3 }}>Descricao do Item:</label>
+                  <input style={{ padding: '10px 14px', fontSize: '0.9rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', width: '100%', boxSizing: 'border-box' }}
+                    value={modalNovoItem.nome} onChange={e => setModalNovoItem({ ...modalNovoItem, nome: e.target.value.toUpperCase() })} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, display: 'block', marginBottom: 3 }}>Preco Normal (R$):</label>
+                  <input type="number" step="0.01" min="0" style={{ padding: '10px 14px', fontSize: '0.9rem', background: 'var(--bg-soft)', border: '1px solid var(--primary)', borderRadius: 6, color: 'var(--text)', width: 130, textAlign: 'right', fontFamily: 'Space Mono, monospace' }}
+                    value={novoItemPrecoNormal} onChange={e => setNovoItemPrecoNormal(e.target.value)} autoFocus />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, display: 'block', marginBottom: 3 }}>Preco c/ Desc. (R$):</label>
+                  <input type="number" step="0.01" min="0" style={{ padding: '10px 14px', fontSize: '0.9rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', width: 130, textAlign: 'right', fontFamily: 'Space Mono, monospace' }}
+                    value={novoItemPrecoDesc} onChange={e => setNovoItemPrecoDesc(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: 12 }}>
+              <button className="btn-secondary" onClick={() => setModalNovoItem(null)}>Cancelar</button>
+              <button className="btn-primary" style={{ width: 'auto', padding: '10px 24px' }} onClick={handleSalvarNovoItem}>SALVAR</button>
+            </div>
+
+            {/* Mini tabela dos itens ja cadastrados */}
+            {itensPadrao.length > 0 && (
+              <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.82rem' }}>Itens Cadastrados no Sistema:</span>
+                </div>
+                <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                  <table style={{ width: '100%' }}>
+                    <thead><tr>
+                      <th>Descricao / Item</th>
+                      <th style={{ width: 110, textAlign: 'right' }}>Preco Normal</th>
+                      <th style={{ width: 110, textAlign: 'right' }}>Preco Desconto</th>
+                    </tr></thead>
+                    <tbody>
+                      {itensPadrao.map((ip, idx) => (
+                        <tr key={ip.id || idx}>
+                          <td>{ip.nome_item}</td>
+                          <td className="money" style={{ textAlign: 'right' }}>{formatMoney(ip.preco_padrao || ip.preco_unitario_padrao)}</td>
+                          <td className="money" style={{ textAlign: 'right' }}>{formatMoney(ip.preco_unitario_desconto)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* MODAL PAGAMENTO */}
       {modalPagar && (
