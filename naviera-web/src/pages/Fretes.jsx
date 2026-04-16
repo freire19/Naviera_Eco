@@ -109,8 +109,42 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     setNovoItem(updated)
   }
 
-  function handleAdicionarItem() {
+  // Verificar e salvar cliente novo
+  async function verificarSalvarCliente(nome) {
+    if (!nome || !nome.trim()) return
+    const nomeLower = nome.trim().toLowerCase()
+    const existe = clientes.some(c => (c.nome_cliente || '').toLowerCase() === nomeLower)
+    if (!existe) {
+      const salvar = window.confirm(`Cliente "${nome.trim()}" nao encontrado.\n\nDeseja salvar para futuras consultas?`)
+      if (salvar) {
+        try {
+          await api.post('/cadastros/clientes-encomenda', { nome_cliente: nome.trim().toUpperCase() })
+          const novos = await api.get('/cadastros/clientes-encomenda')
+          setClientes(novos)
+          showToast(`Cliente "${nome.trim()}" salvo`)
+        } catch {}
+      }
+    }
+  }
+
+  async function handleAdicionarItem() {
     if (!novoItem.descricao.trim()) { showToast('Informe o item', 'error'); return }
+
+    // Verificar se item existe no catalogo
+    const descLower = novoItem.descricao.trim().toLowerCase()
+    const itemExiste = itensPadrao.some(ip => (ip.nome_item || '').toLowerCase() === descLower)
+    if (!itemExiste) {
+      const salvar = window.confirm(`Item "${novoItem.descricao.trim()}" nao encontrado no catalogo.\n\nDeseja salvar com:\n- Preco Normal: R$ ${Number(novoItem.valor_unitario || 0).toFixed(2)}\n- Preco Desconto: (informe depois no cadastro)\n\npara futuras consultas?`)
+      if (salvar) {
+        try {
+          await api.post('/cadastros/itens-frete', { nome_item: novoItem.descricao.trim().toUpperCase(), preco_padrao: parseFloat(novoItem.valor_unitario) || 0 })
+          const novos = await api.get('/cadastros/itens-frete')
+          setItensPadrao(novos)
+          showToast(`Item "${novoItem.descricao.trim()}" salvo no catalogo`)
+        } catch {}
+      }
+    }
+
     setItens(prev => [...prev, { ...novoItem, subtotal: parseFloat(novoItem.subtotal) || 0, valor_unitario: parseFloat(novoItem.valor_unitario) || 0, quantidade: parseInt(novoItem.quantidade) || 1 }])
     setNovoItem({ ...ITEM_VAZIO })
   }
@@ -199,11 +233,13 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
         <div>
           <label style={L}>Remetente:</label>
-          <input style={I} value={remetente} onChange={e => setRemetente(e.target.value)} placeholder="Selecione ou Digite..." />
+          <input list="clientes-rem" style={I} value={remetente} onChange={e => setRemetente(e.target.value)} onBlur={() => verificarSalvarCliente(remetente)} placeholder="Selecione ou Digite..." />
+          <datalist id="clientes-rem">{clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente} />)}</datalist>
         </div>
         <div>
           <label style={L}>Destinatario:</label>
-          <input style={I} value={destinatario} onChange={e => setDestinatario(e.target.value)} placeholder="Selecione ou Digite..." />
+          <input list="clientes-dest" style={I} value={destinatario} onChange={e => setDestinatario(e.target.value)} onBlur={() => verificarSalvarCliente(destinatario)} placeholder="Selecione ou Digite..." />
+          <datalist id="clientes-dest">{clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente} />)}</datalist>
         </div>
       </div>
 
@@ -271,11 +307,16 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
             return <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
               {filtered.map((ip, idx) => {
                 const preco = Number(precoTipo === 'normal' ? (ip.preco_padrao || ip.preco_unitario_padrao || 0) : (ip.preco_unitario_desconto || ip.preco_padrao || 0))
+                const precoNormal = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
+                const precoDesc = Number(ip.preco_unitario_desconto || 0)
                 return <div key={ip.id || idx} onMouseDown={() => handleSelectItemPadrao(ip)} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', cursor: 'pointer', fontSize: '0.82rem', background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
                   onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}>
                   <span style={{ fontWeight: 600 }}>{ip.nome_item}</span>
-                  <span style={{ fontFamily: 'Space Mono, monospace' }}>R$ {preco.toFixed(2)}</span>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.78rem' }}>
+                    R$ {precoNormal.toFixed(2)}
+                    {precoDesc > 0 && <span style={{ opacity: 0.6, marginLeft: 8 }}>Desc: R$ {precoDesc.toFixed(2)}</span>}
+                  </span>
                 </div>
               })}
             </div>
