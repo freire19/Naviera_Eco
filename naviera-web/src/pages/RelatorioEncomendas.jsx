@@ -6,7 +6,7 @@ function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
 
-export default function RelatorioEncomendas({ viagemAtiva, onNavigate }) {
+export default function RelatorioEncomendas({ viagemAtiva, onNavigate, onClose }) {
   const [viagens, setViagens] = useState([])
   const [rotas, setRotas] = useState([])
   const [filtroViagem, setFiltroViagem] = useState(viagemAtiva?.id_viagem || '')
@@ -259,7 +259,7 @@ export default function RelatorioEncomendas({ viagemAtiva, onNavigate }) {
       </div>
 
       <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-        {onNavigate && <button className="btn-secondary" style={{ padding: '12px 28px' }} onClick={() => onNavigate('nova-encomenda')}>SAIR</button>}
+        <button className="btn-secondary" style={{ padding: '12px 28px' }} onClick={() => onClose ? onClose() : onNavigate && onNavigate('nova-encomenda')}>SAIR</button>
         <button className="btn-primary" style={{ width: 'auto', padding: '12px 32px', fontSize: '0.95rem' }} onClick={handleClickGerar} disabled={gerando}>
           {gerando ? 'Gerando...' : 'GERAR RELATORIO'}
         </button>

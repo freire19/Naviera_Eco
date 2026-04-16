@@ -16,7 +16,7 @@ function formatDate(val) {
   } catch { return '—' }
 }
 
-export default function RelatorioPassagens({ viagemAtiva, onNavigate }) {
+export default function RelatorioPassagens({ viagemAtiva, onNavigate, onClose }) {
   const [passagens, setPassagens] = useState([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(null)
@@ -272,12 +272,10 @@ export default function RelatorioPassagens({ viagemAtiva, onNavigate }) {
                   }}>
             Imprimir Relatorio
           </button>
-          {onNavigate && (
-            <button className="btn-secondary" style={{ width: '100%' }}
-                    onClick={() => onNavigate('vender-passagem')}>
-              SAIR (ESC)
-            </button>
-          )}
+          <button className="btn-secondary" style={{ width: '100%' }}
+                  onClick={() => onClose ? onClose() : onNavigate && onNavigate('vender-passagem')}>
+            SAIR (ESC)
+          </button>
         </div>
       </div>
     </div>

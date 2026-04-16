@@ -5,7 +5,7 @@ function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
 
-export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
+export default function ListaEncomendas({ viagemAtiva, onNavigate, onClose }) {
   const [encomendas, setEncomendas] = useState([])
   const [loading, setLoading] = useState(false)
   const [filtrosVisiveis, setFiltrosVisiveis] = useState(true)
@@ -215,7 +215,7 @@ export default function ListaEncomendas({ viagemAtiva, onNavigate }) {
 
           <button className="btn-primary" style={{ marginBottom: 8 }} onClick={() => {}}>IMPRIMIR LISTA</button>
           <button className="btn-secondary" style={{ width: '100%', marginBottom: 8 }} onClick={() => { setFiltroPagamento(''); setFiltroEntrega(''); setFiltroCliente(''); setFiltroNumero(''); setFiltroRota(''); setFiltroItem('') }}>Limpar Filtros</button>
-          {onNavigate && <button className="btn-secondary" style={{ width: '100%' }} onClick={() => onNavigate('nova-encomenda')}>FECHAR</button>}
+          <button className="btn-secondary" style={{ width: '100%' }} onClick={() => onClose ? onClose() : onNavigate && onNavigate('nova-encomenda')}>FECHAR</button>
         </div>
       </div>
       )}

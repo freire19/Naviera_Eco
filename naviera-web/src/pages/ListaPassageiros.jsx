@@ -26,7 +26,7 @@ function calcIdade(dataNasc) {
   } catch { return '' }
 }
 
-export default function ListaPassageiros({ viagemAtiva, onNavigate }) {
+export default function ListaPassageiros({ viagemAtiva, onNavigate, onClose }) {
   const [passagens, setPassagens] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -104,12 +104,10 @@ export default function ListaPassageiros({ viagemAtiva, onNavigate }) {
                 onClick={() => printListaPassageiros(passagens, viagemAtiva)}>
           Imprimir Lista
         </button>
-        {onNavigate && (
-          <button className="btn-secondary" style={{ padding: '10px 24px' }}
-                  onClick={() => onNavigate('vender-passagem')}>
-            Sair
-          </button>
-        )}
+        <button className="btn-secondary" style={{ padding: '10px 24px' }}
+                onClick={() => onClose ? onClose() : onNavigate && onNavigate('vender-passagem')}>
+          Sair
+        </button>
       </div>
     </div>
   )

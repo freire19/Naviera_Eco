@@ -19,7 +19,7 @@ function formatDate(val) {
 
 const ITEM_VAZIO = { quantidade: 1, descricao: '', valor_unitario: '', valor_total: '', local_armazenamento: '' }
 
-export default function Encomendas({ viagemAtiva, onNavigate }) {
+export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
   const [encomendas, setEncomendas] = useState([])
   const [loading, setLoading] = useState(false)
   const [selecionada, setSelecionada] = useState(null)
@@ -611,7 +611,7 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
           <button className="btn-sm danger" onClick={handleExcluir}>Excluir</button>
           <button className="btn-sm primary" onClick={() => { if (selecionada) printReciboEncomenda(selecionada, viagemAtiva) }}>Imprimir</button>
           <button className="btn-sm primary" onClick={handleEntregar} style={{ background: '#0369A1' }}>Entregar</button>
-          <button className="btn-sm" onClick={() => limparForm()}>Sair (Esc)</button>
+          <button className="btn-sm" onClick={() => onClose ? onClose() : limparForm()}>Sair (Esc)</button>
         </div>
       </div>
 

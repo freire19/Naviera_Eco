@@ -121,6 +121,28 @@ export default function Layout() {
     setTabs(newTabs)
   }
 
+  // Fechar aba ativa (para botoes Sair/ESC das paginas)
+  function closeActiveTab() {
+    closeTab(activeTab)
+  }
+
+  // ESC global: fecha aba ativa (se nao for Inicio e nao tiver modal aberto)
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        // Se tem modal aberto, deixa o modal tratar
+        if (document.querySelector('.modal-overlay')) return
+        // Se nao e Inicio, fecha a aba
+        const tab = tabs.find(t => t.id === activeTab)
+        if (tab && tab.page !== 'inicio') {
+          closeTab(activeTab)
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [activeTab, tabs])
+
   const activeTabObj = tabs.find(t => t.id === activeTab) || tabs[0]
   const activePageConfig = PAGES[activeTabObj?.page] || PAGES.inicio
 
@@ -201,6 +223,7 @@ export default function Layout() {
                   <PageComponent
                     viagemAtiva={viagemAtiva}
                     onNavigate={navigateTo}
+                    onClose={closeActiveTab}
                   />
                 </Suspense>
               </div>
