@@ -199,6 +199,23 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     setModalNovoItem(null)
   }
 
+  // Quando trocar Normal/Desc, atualizar precos de todos os itens ja adicionados
+  function atualizarPrecosItens(tipo) {
+    setItens(prev => prev.map(item => {
+      const catalogo = itensPadrao.find(ip => (ip.nome_item || '').toLowerCase() === (item.descricao || '').toLowerCase())
+      if (!catalogo) return item
+      const novoPreco = tipo === 'normal'
+        ? Number(catalogo.preco_padrao || catalogo.preco_unitario_padrao || 0)
+        : Number(catalogo.preco_unitario_desconto || catalogo.preco_padrao || catalogo.preco_unitario_padrao || 0)
+      return { ...item, valor_unitario: novoPreco, subtotal: ((parseInt(item.quantidade) || 1) * novoPreco).toFixed(2) }
+    }))
+  }
+
+  function handleTrocarPrecoTipo(tipo) {
+    setPrecoTipo(tipo)
+    atualizarPrecosItens(tipo)
+  }
+
   function handleSelectItemPadrao(ip) {
     const preco = precoTipo === 'normal' ? (ip.preco_padrao || ip.preco_unitario_padrao || 0) : (ip.preco_unitario_desconto || ip.preco_padrao || 0)
     setNovoItem(prev => ({ ...prev, descricao: ip.nome_item, valor_unitario: preco, subtotal: ((parseInt(prev.quantidade) || 1) * parseFloat(preco)).toFixed(2) }))
@@ -334,8 +351,8 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
             <label style={{ ...L, marginBottom: 0 }}>Observacoes:</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>
               <label style={L}>Preco:</label>
-              <label><input type="radio" checked={precoTipo === 'normal'} onChange={() => setPrecoTipo('normal')} /> Normal</label>
-              <label><input type="radio" checked={precoTipo === 'desconto'} onChange={() => setPrecoTipo('desconto')} /> Desc.</label>
+              <label><input type="radio" checked={precoTipo === 'normal'} onChange={() => handleTrocarPrecoTipo('normal')} /> Normal</label>
+              <label><input type="radio" checked={precoTipo === 'desconto'} onChange={() => handleTrocarPrecoTipo('desconto')} /> Desc.</label>
             </div>
           </div>
           <textarea style={{ ...I, minHeight: 60, resize: 'vertical' }} value={observacoes} onChange={e => setObservacoes(e.target.value)} />
@@ -355,16 +372,11 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
             return <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
               {filtered.map((ip, idx) => {
                 const preco = Number(precoTipo === 'normal' ? (ip.preco_padrao || ip.preco_unitario_padrao || 0) : (ip.preco_unitario_desconto || ip.preco_padrao || 0))
-                const precoNormal = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
-                const precoDesc = Number(ip.preco_unitario_desconto || 0)
                 return <div key={ip.id || idx} onMouseDown={() => handleSelectItemPadrao(ip)} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', cursor: 'pointer', fontSize: '0.82rem', background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
                   onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}>
                   <span style={{ fontWeight: 600 }}>{ip.nome_item}</span>
-                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.78rem' }}>
-                    R$ {precoNormal.toFixed(2)}
-                    {precoDesc > 0 && <span style={{ opacity: 0.6, marginLeft: 8 }}>Desc: R$ {precoDesc.toFixed(2)}</span>}
-                  </span>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.78rem' }}>R$ {preco.toFixed(2)}</span>
                 </div>
               })}
             </div>
