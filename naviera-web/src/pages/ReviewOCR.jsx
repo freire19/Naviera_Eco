@@ -45,6 +45,8 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   const [expandido, setExpandido] = useState(null)
   const [editados, setEditados] = useState({}) // { lancamento_id: { dados editados } }
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
+  const [rotas, setRotas] = useState([])
+  const [conferentes, setConferentes] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
   const [docFotoUrl, setDocFotoUrl] = useState(null)
 
@@ -63,6 +65,12 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   }, [filtro])
 
   useEffect(() => { carregar() }, [carregar])
+
+  // Carregar rotas e conferentes para os selects
+  useEffect(() => {
+    api.get('/rotas').then(setRotas).catch(() => {})
+    api.get('/cadastros/conferentes').then(setConferentes).catch(() => {})
+  }, [])
 
   // ESC para fechar tela de detalhes
   useEffect(() => {
@@ -443,7 +451,10 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                   <div>
                     <label style={L}>Rota:</label>
                     {isEditando ? (
-                      <input style={I} value={dadosAtual.rota || ''} onChange={e => editarCampo(l.id, 'rota', e.target.value)} placeholder="Ex: Manaus - Tefe" />
+                      <select style={I} value={dadosAtual.rota || ''} onChange={e => editarCampo(l.id, 'rota', e.target.value)}>
+                        <option value="">Selecione a rota</option>
+                        {rotas.map(r => <option key={r.id_rota} value={`${r.origem} - ${r.destino}`}>{r.origem} - {r.destino}</option>)}
+                      </select>
                     ) : (
                       <input style={RO} value={dadosAtual.rota || '\u2014'} readOnly />
                     )}
@@ -451,7 +462,10 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                   <div>
                     <label style={L}>Conferente:</label>
                     {isEditando ? (
-                      <input style={I} value={dadosAtual.conferente || ''} onChange={e => editarCampo(l.id, 'conferente', e.target.value)} placeholder="Nome do conferente" />
+                      <select style={I} value={dadosAtual.conferente || ''} onChange={e => editarCampo(l.id, 'conferente', e.target.value)}>
+                        <option value="">Selecione o conferente</option>
+                        {conferentes.map(c => <option key={c.id_conferente} value={c.nome_conferente || c.nome}>{c.nome_conferente || c.nome}</option>)}
+                      </select>
                     ) : (
                       <input style={RO} value={dadosAtual.conferente || '\u2014'} readOnly />
                     )}

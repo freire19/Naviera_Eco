@@ -537,6 +537,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
         remetente_nome_temp: dados.remetente || null,
         destinatario_nome_temp: dados.destinatario || null,
         rota_temp: dados.rota || null,
+        conferente_temp: dados.conferente || null,
         observacoes: `[OCR #${lanc.id}] ${dados.observacoes || ''}`.trim(),
         valor_total_itens,
         desconto: 0,
