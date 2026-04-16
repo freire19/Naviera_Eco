@@ -1,14 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
-import { PieChart } from '../components/Charts.jsx'
+import { printContent } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
+function fmtDate(d) {
+  return d ? new Date(d).toLocaleDateString('pt-BR') : '\u2014'
+}
 
 export default function RelatorioFretes({ viagemAtiva }) {
-  const [resumo, setResumo] = useState(null)
-  const [fretes, setFretes] = useState([])
+  const [viagens, setViagens] = useState([])
+  const [viagemId, setViagemId] = useState('')
+  const [rotas, setRotas] = useState([])
+  const [rotaSel, setRotaSel] = useState('')
+  const [clientes, setClientes] = useState([])
+  const [clienteSel, setClienteSel] = useState('')
+  const [devedores, setDevedores] = useState([])
+  const [devedorSel, setDevedorSel] = useState('')
+
+  const [itensRelatorio, setItensRelatorio] = useState([])
+  const [financeiro, setFinanceiro] = useState([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(null)
 
@@ -17,125 +29,472 @@ export default function RelatorioFretes({ viagemAtiva }) {
     setTimeout(() => setToast(null), 3500)
   }
 
-  const carregar = useCallback(() => {
-    if (!viagemAtiva) return
-    setLoading(true)
-    Promise.all([
-      api.get(`/fretes/resumo?viagem_id=${viagemAtiva.id_viagem}`),
-      api.get(`/fretes?viagem_id=${viagemAtiva.id_viagem}`)
-    ])
-      .then(([r, f]) => {
-        setResumo(r)
-        setFretes(f)
-      })
-      .catch(() => showToast('Erro ao carregar relatorio de fretes', 'error'))
-      .finally(() => setLoading(false))
+  // Carregar viagens e rotas
+  useEffect(() => {
+    api.get('/viagens').then(setViagens).catch(() => {})
+    api.get('/rotas').then(setRotas).catch(() => {})
+  }, [])
+
+  // Auto-selecionar viagem ativa
+  useEffect(() => {
+    if (viagemAtiva && !viagemId) setViagemId(String(viagemAtiva.id_viagem))
   }, [viagemAtiva])
 
+  // Carregar clientes e devedores quando muda viagem
   useEffect(() => {
-    carregar()
-  }, [carregar])
+    if (!viagemId) { setClientes([]); setDevedores([]); return }
+    api.get(`/fretes?viagem_id=${viagemId}`).then(fretes => {
+      const nomes = [...new Set(fretes.map(f => f.destinatario || f.destinatario_nome_temp).filter(Boolean))].sort()
+      setClientes(nomes)
+      const devs = [...new Set(fretes.filter(f => (f.valor_devedor || 0) > 0.01).map(f => f.destinatario || f.destinatario_nome_temp).filter(Boolean))].sort()
+      setDevedores(devs)
+    }).catch(() => {})
+    setClienteSel('')
+    setDevedorSel('')
+  }, [viagemId])
 
-  if (!viagemAtiva) {
-    return (
-      <div className="placeholder-page">
-        <div className="ph-icon">{'\uD83D\uDCCA'}</div>
-        <h2>Relatorio de Fretes</h2>
-        <p>Selecione uma viagem para ver o relatorio.</p>
-      </div>
-    )
+  // Quando seleciona devedor, auto-preencher cliente
+  useEffect(() => {
+    if (devedorSel) setClienteSel(devedorSel)
+  }, [devedorSel])
+
+  // Carregar dados do relatorio
+  const carregar = useCallback(() => {
+    if (!viagemId) return
+    setLoading(true)
+    const params = new URLSearchParams({ viagem_id: viagemId })
+    if (clienteSel) params.append('cliente', clienteSel)
+    if (rotaSel) params.append('rota', rotaSel)
+
+    Promise.all([
+      api.get(`/fretes/relatorio/itens?${params}`),
+      api.get(`/fretes/relatorio/financeiro?${params}`)
+    ]).then(([itens, fin]) => {
+      setItensRelatorio(Array.isArray(itens) ? itens : [])
+      setFinanceiro(Array.isArray(fin) ? fin : [])
+    }).catch(() => showToast('Erro ao carregar relatorio', 'error'))
+      .finally(() => setLoading(false))
+  }, [viagemId, clienteSel, rotaSel])
+
+  useEffect(() => { carregar() }, [carregar])
+
+  // Totais
+  const totalItens = itensRelatorio.reduce((s, i) => s + (parseFloat(i.total_item) || 0), 0)
+  const totalFinanceiro = financeiro.reduce((s, f) => s + (parseFloat(f.valor_total_itens) || 0), 0)
+  const totalPago = financeiro.reduce((s, f) => s + (parseFloat(f.valor_pago) || 0), 0)
+  const totalDevedor = Math.max(0, totalFinanceiro - totalPago)
+
+  // Viagem selecionada
+  const viagemSel = viagens.find(v => String(v.id_viagem) === viagemId)
+
+  // ====== IMPRESSAO ======
+  const baseStyle = `
+    body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #333; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+    th { background: #047857; color: white; padding: 6px 8px; text-align: left; font-size: 11px; }
+    td { padding: 5px 8px; border-bottom: 1px solid #ddd; font-size: 11px; }
+    .money { text-align: right; font-family: 'Courier New', monospace; }
+    .header { text-align: center; margin-bottom: 12px; }
+    .header h2 { margin: 0; color: #047857; font-size: 16px; }
+    .header p { margin: 2px 0; font-size: 11px; color: #666; }
+    .summary { margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px; }
+    .summary div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
+    .bold { font-weight: 700; }
+    .green { color: #059669; }
+    .red { color: #DC2626; }
+    .signature { margin-top: 30px; border-top: 1px solid #333; width: 200px; text-align: center; font-size: 10px; padding-top: 4px; }
+    @media print { body { margin: 0; } }
+  `
+
+  function printRelatorio() {
+    if (!clienteSel) { showToast('Selecione um cliente', 'error'); return }
+    const fretesCliente = financeiro
+    const itensCliente = itensRelatorio
+    const volumes = itensCliente.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
+    const html = `<!DOCTYPE html><html><head><title>Recibo de Frete</title><style>${baseStyle}
+      body { width: 270px; font-family: 'Courier New', monospace; font-size: 10px; }
+      th, td { font-size: 9px; padding: 3px 4px; }
+      th { background: #333; }
+    </style></head><body>
+      <div class="header"><h2>RECIBO DE FRETE</h2></div>
+      <div><strong>Dest:</strong> ${clienteSel}</div>
+      <div><strong>Viagem:</strong> ${fmtDate(viagemSel?.data_viagem)}</div>
+      <div><strong>Rota:</strong> ${rotaSel || 'Todas'}</div>
+      <hr/>
+      <table><thead><tr><th>QTD</th><th>DESCRICAO</th></tr></thead>
+      <tbody>${itensCliente.map(i => `<tr><td>${i.quantidade}</td><td>${i.item}</td></tr>`).join('')}</tbody></table>
+      <div class="bold" style="margin-top:8px">VOLUMES: ${volumes}</div>
+      <hr/><div class="signature">Assinatura</div>
+      <div style="text-align:center;font-size:8px;margin-top:8px">${new Date().toLocaleString('pt-BR')}</div>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    printContent(html, 'Recibo de Frete')
   }
 
-  // PieChart data: pago vs devedor
-  const pagos = fretes.filter(f => f.status === 'PAGO').length
-  const pendentes = fretes.filter(f => f.status !== 'PAGO').length
-  const pieData = [
-    { label: 'Pago', value: pagos, color: '#4ADE80' },
-    { label: 'Devedor', value: pendentes, color: '#EF4444' }
-  ]
+  function printCobranca() {
+    if (!clienteSel) { showToast('Selecione um cliente', 'error'); return }
+    const volumes = itensRelatorio.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
+    const status = totalDevedor <= 0.01 ? 'QUITADO' : 'PENDENTE'
+    const html = `<!DOCTYPE html><html><head><title>Cobranca Frete</title><style>${baseStyle}
+      body { width: 270px; font-family: 'Courier New', monospace; font-size: 10px; }
+      th, td { font-size: 9px; padding: 3px 4px; }
+      th { background: #333; }
+    </style></head><body>
+      <div class="header"><h2>COBRANCA DE FRETE</h2></div>
+      <div><strong>Dest:</strong> ${clienteSel}</div>
+      <div><strong>Viagem:</strong> ${fmtDate(viagemSel?.data_viagem)}</div>
+      <div><strong>Rota:</strong> ${rotaSel || 'Todas'}</div>
+      <hr/>
+      <table><thead><tr><th>QTD</th><th>DESC</th><th>V.UN</th><th>TOTAL</th></tr></thead>
+      <tbody>${itensRelatorio.map(i => `<tr><td>${i.quantidade}</td><td>${i.item}</td><td class="money">${formatMoney(i.preco_unitario)}</td><td class="money">${formatMoney(i.total_item)}</td></tr>`).join('')}</tbody></table>
+      <div class="bold">VOLUMES: ${volumes}</div>
+      <hr/>
+      <div class="summary">
+        <div><span>TOTAL:</span><span class="bold">${formatMoney(totalFinanceiro)}</span></div>
+        <div><span>PAGO:</span><span class="bold green">${formatMoney(totalPago)}</span></div>
+        <div><span>STATUS:</span><span class="bold ${status === 'QUITADO' ? 'green' : 'red'}">${status}</span></div>
+      </div>
+      <hr/><div class="signature">Assinatura</div>
+      <div style="text-align:center;font-size:8px;margin-top:8px">${new Date().toLocaleString('pt-BR')}</div>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    printContent(html, 'Cobranca de Frete')
+  }
+
+  function printGeralA4(filtroTipo = 'tudo') {
+    // Filtrar financeiro conforme tipo
+    let fretesGeral = [...financeiro]
+    if (filtroTipo === 'pendentes') fretesGeral = fretesGeral.filter(f => !f.entregue)
+    if (filtroTipo === 'falta_pagar') fretesGeral = fretesGeral.filter(f => Math.max(0, (parseFloat(f.valor_total_itens) || 0) - (parseFloat(f.valor_pago) || 0)) > 0.01)
+
+    const totGeral = fretesGeral.reduce((s, f) => s + (parseFloat(f.valor_total_itens) || 0), 0)
+    const totPago = fretesGeral.reduce((s, f) => s + (parseFloat(f.valor_pago) || 0), 0)
+    const totDevedor = Math.max(0, totGeral - totPago)
+
+    // Agrupar itens por frete
+    const itensPorFrete = {}
+    itensRelatorio.forEach(i => {
+      if (!itensPorFrete[i.numero_frete]) itensPorFrete[i.numero_frete] = []
+      itensPorFrete[i.numero_frete].push(i)
+    })
+
+    let fretesHtml = ''
+    for (const fr of fretesGeral) {
+      const devedor = Math.max(0, (parseFloat(fr.valor_total_itens) || 0) - (parseFloat(fr.valor_pago) || 0))
+      const statusBadge = devedor <= 0.01
+        ? '<span style="background:#4ADE80;color:#000;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700">PAGO</span>'
+        : '<span style="background:#F59E0B;color:#000;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700">FALTA PAGAR</span>'
+      const itens = itensPorFrete[fr.numero_frete] || []
+
+      fretesHtml += `
+        <div style="background:#047857;color:white;padding:8px 12px;border-radius:6px 6px 0 0;margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+          <div><strong style="font-size:14px">Frete #${fr.numero_frete}</strong> &nbsp; <span>${fr.remetente || ''}</span> &rarr; <span>${fr.destinatario || ''}</span></div>
+          ${statusBadge}
+        </div>
+        <table style="margin:0"><thead><tr><th style="width:8%">QTD</th><th style="width:52%">DESCRICAO</th><th style="width:20%">VL UNIT</th><th style="width:20%">VL TOTAL</th></tr></thead>
+        <tbody>${itens.map(i => `<tr><td>${i.quantidade}</td><td>${i.item}</td><td class="money">${formatMoney(i.preco_unitario)}</td><td class="money">${formatMoney(i.total_item)}</td></tr>`).join('')}
+        ${itens.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:#999">Sem itens</td></tr>' : ''}
+        </tbody></table>
+        <div style="background:#f5f5f5;padding:6px 12px;display:flex;justify-content:space-between;border-radius:0 0 6px 6px;font-size:11px;margin-bottom:4px">
+          <div style="border-top:1px solid #333;width:150px;text-align:center;font-size:9px;padding-top:3px">Assinatura</div>
+          <div style="text-align:right">
+            <span>Total: <strong>${formatMoney(fr.valor_total_itens)}</strong></span>
+            ${(parseFloat(fr.valor_pago) || 0) > 0.01 ? ` &nbsp; <span class="green">Pago: <strong>${formatMoney(fr.valor_pago)}</strong></span>` : ''}
+            ${devedor > 0.01 ? ` &nbsp; <span class="red">A Pagar: <strong>${formatMoney(devedor)}</strong></span>` : ''}
+          </div>
+        </div>`
+    }
+
+    const titulo = 'RELATORIO GERAL DE FRETES'
+    const html = `<!DOCTYPE html><html><head><title>${titulo}</title><style>${baseStyle}
+      @page { size: A4 portrait; margin: 15mm; }
+      body { font-size: 11px; }
+    </style></head><body>
+      <div class="header">
+        <h2 style="font-size:18px">${titulo}</h2>
+        <p>Viagem: ${viagemSel?.descricao || viagemId} | Rota: ${rotaSel || 'Todas'} | ${clienteSel ? 'Cliente: ' + clienteSel : 'Todos os clientes'}</p>
+        <p>Filtro: ${filtroTipo === 'tudo' ? 'Todos' : filtroTipo === 'pendentes' ? 'So Pendentes' : 'Falta Pagar'}</p>
+      </div>
+      ${fretesHtml}
+      <div style="margin-top:20px;padding:12px;border:2px solid #047857;border-radius:6px">
+        <h3 style="margin:0 0 8px;color:#047857">RESUMO FINANCEIRO GERAL</h3>
+        <div style="display:flex;justify-content:space-between;font-size:13px">
+          <div><strong>TOTAL LANCADO:</strong> <span style="color:#047857;font-weight:700">${formatMoney(totGeral)}</span></div>
+          <div><strong>TOTAL RECEBIDO:</strong> <span class="green bold">${formatMoney(totPago)}</span></div>
+          <div><strong>TOTAL A RECEBER:</strong> <span class="${totDevedor > 0.01 ? 'red' : ''} bold">${formatMoney(totDevedor)}</span></div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:9px;margin-top:12px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    printContent(html, titulo)
+  }
+
+  function printResumido() {
+    if (!clienteSel) { showToast('Selecione um cliente', 'error'); return }
+    // Agrupar itens por remetente
+    const porRemetente = {}
+    itensRelatorio.forEach(i => {
+      const rem = i.remetente || 'SEM REMETENTE'
+      if (!porRemetente[rem]) porRemetente[rem] = []
+      porRemetente[rem].push(i)
+    })
+    const volumes = itensRelatorio.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
+    const status = totalDevedor <= 0.01 ? 'QUITADO' : 'PENDENTE'
+
+    let body = ''
+    for (const [rem, itens] of Object.entries(porRemetente)) {
+      const sub = itens.reduce((s, i) => s + (parseFloat(i.total_item) || 0), 0)
+      const vol = itens.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
+      body += `<div style="background:#e0e0e0;padding:4px 8px;font-weight:700;margin-top:8px">${rem}</div>`
+      body += itens.map(i => `<div style="padding:2px 8px;font-size:9px">&nbsp; ${i.quantidade}x ${i.item} <span style="float:right">${formatMoney(i.total_item)}</span></div>`).join('')
+      body += `<div style="padding:2px 8px;font-size:9px;font-weight:700">&nbsp; Subtotal: ${formatMoney(sub)} (${vol} vol)</div><hr style="margin:4px 0"/>`
+    }
+
+    const html = `<!DOCTYPE html><html><head><title>Resumido</title><style>${baseStyle}
+      body { width: 270px; font-family: 'Courier New', monospace; font-size: 10px; }
+    </style></head><body>
+      <div class="header"><h2 style="font-size:13px">RESUMIDO DE FRETE</h2></div>
+      <div><strong>Dest:</strong> ${clienteSel}</div>
+      <div><strong>Viagem:</strong> ${fmtDate(viagemSel?.data_viagem)}</div>
+      <hr/>${body}
+      <div class="bold" style="margin-top:6px">VOLUMES: ${volumes}</div>
+      <div class="summary">
+        <div><span>TOTAL:</span><span class="bold">${formatMoney(totalFinanceiro)}</span></div>
+        <div><span>PAGO:</span><span class="bold green">${formatMoney(totalPago)}</span></div>
+        <div><span>STATUS:</span><span class="bold ${status === 'QUITADO' ? 'green' : 'red'}">${status}</span></div>
+      </div>
+      <hr/><div class="signature">Assinatura</div>
+      <div style="text-align:center;font-size:8px;margin-top:8px">${new Date().toLocaleString('pt-BR')}</div>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    printContent(html, 'Resumido de Frete')
+  }
+
+  function printConfereViagem() {
+    printGeralA4('tudo')
+  }
+
+  function printExtrato() {
+    if (!clienteSel) { showToast('Selecione um cliente', 'error'); return }
+    const status = totalDevedor <= 0.01 ? 'QUITADO' : 'PENDENTE'
+    const html = `<!DOCTYPE html><html><head><title>Extrato</title><style>${baseStyle}
+      body { width: 270px; font-family: 'Courier New', monospace; font-size: 10px; }
+      th, td { font-size: 9px; padding: 3px 4px; }
+      th { background: #333; }
+    </style></head><body>
+      <div class="header"><h2 style="font-size:13px">EXTRATO DE FRETES</h2></div>
+      <div><strong>CLIENTE:</strong> ${clienteSel}</div>
+      <div><strong>VIAGEM:</strong> ${fmtDate(viagemSel?.data_viagem)}</div>
+      <hr/>
+      <table><thead><tr><th>FRETE</th><th>TOTAL</th><th>PAGO</th><th>SALDO</th></tr></thead>
+      <tbody>${financeiro.map(f => {
+        const dev = Math.max(0, (parseFloat(f.valor_total_itens) || 0) - (parseFloat(f.valor_pago) || 0))
+        return `<tr><td>${f.numero_frete}</td><td class="money">${formatMoney(f.valor_total_itens)}</td><td class="money">${formatMoney(f.valor_pago)}</td><td class="money">${formatMoney(dev)}</td></tr>`
+      }).join('')}</tbody></table>
+      <div class="summary">
+        <div><span>TOTAL:</span><span class="bold">${formatMoney(totalFinanceiro)}</span></div>
+        <div><span>PAGO:</span><span class="bold green">${formatMoney(totalPago)}</span></div>
+        <div><span>STATUS:</span><span class="bold ${status === 'QUITADO' ? 'green' : 'red'}">${status}</span></div>
+      </div>
+      <hr/><div class="signature">Assinatura</div>
+      <div style="text-align:center;font-size:8px;margin-top:8px">${new Date().toLocaleString('pt-BR')}</div>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    printContent(html, 'Extrato de Fretes')
+  }
+
+  // ====== DIALOG GERAL A4 ======
+  const [showGeralDialog, setShowGeralDialog] = useState(false)
+
+  // ====== STYLES ======
+  const S = {
+    container: { display: 'flex', gap: 16, minHeight: 'calc(100vh - 120px)' },
+    sidebar: { width: 240, flexShrink: 0, background: 'var(--bg-card)', borderRadius: 8, padding: 14, border: '1px solid var(--border)' },
+    main: { flex: 1, minWidth: 0 },
+    label: { fontSize: '0.75rem', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 3, marginTop: 10 },
+    select: { width: '100%', padding: '7px 8px', fontSize: '0.8rem', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 600, cursor: 'pointer' },
+    selectAlt: { width: '100%', padding: '7px 8px', fontSize: '0.8rem', background: 'var(--bg-soft)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4 },
+    btn: { width: '100%', padding: '8px 12px', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 },
+  }
+
+  if (!viagemAtiva && !viagemId) {
+    return <div className="placeholder-page"><div className="ph-icon">📊</div><h2>Relatorio de Fretes</h2><p>Selecione uma viagem.</p></div>
+  }
 
   return (
     <div>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
 
-      {loading ? (
-        <p style={{ color: 'var(--text-muted)', padding: 20 }}>Carregando...</p>
-      ) : (
-        <>
-          {resumo && (
-            <div className="dash-grid">
-              <div className="stat-card primary">
-                <span className="stat-label">Total Fretes</span>
-                <span className="stat-value">{resumo.total_fretes ?? resumo.total ?? 0}</span>
+      <h2 style={{ textAlign: 'center', color: 'var(--primary)', margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 700 }}>
+        CENTRAL DE RELATORIOS DE FRETES
+      </h2>
+
+      <div style={S.container}>
+        {/* SIDEBAR FILTROS */}
+        <div style={S.sidebar}>
+          <h4 style={{ margin: '0 0 4px', fontSize: '0.85rem' }}>FILTROS</h4>
+
+          <label style={S.label}>Viagem:</label>
+          <select style={S.select} value={viagemId} onChange={e => setViagemId(e.target.value)}>
+            <option value="">Selecione</option>
+            {viagens.map(v => (
+              <option key={v.id_viagem} value={v.id_viagem}>
+                {v.numero_viagem || v.id_viagem} - {fmtDate(v.data_viagem)} ({v.descricao || ''})
+              </option>
+            ))}
+          </select>
+
+          <label style={S.label}>Rota:</label>
+          <select style={S.select} value={rotaSel} onChange={e => setRotaSel(e.target.value)}>
+            <option value="">Todas as Rotas</option>
+            {rotas.map(r => (
+              <option key={r.id_rota} value={`${r.origem} - ${r.destino}`}>{r.origem} - {r.destino}</option>
+            ))}
+          </select>
+
+          <label style={S.label}>Cliente (Destinatario):</label>
+          <select style={S.select} value={clienteSel} onChange={e => setClienteSel(e.target.value)}>
+            <option value="">Todos os Clientes</option>
+            {clientes.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <label style={S.label}>Devedores da Viagem:</label>
+          <select style={S.select} value={devedorSel} onChange={e => setDevedorSel(e.target.value)}>
+            <option value="">Todos</option>
+            {devedores.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+
+          <h4 style={{ margin: '18px 0 4px', fontSize: '0.85rem' }}>OPCOES DE IMPRESSAO</h4>
+
+          <button style={{ ...S.btn, background: '#047857', color: '#fff' }} onClick={printRelatorio}>
+            Relatorio
+          </button>
+          <button style={{ ...S.btn, background: '#047857', color: '#fff' }} onClick={printCobranca}>
+            Cobranca
+          </button>
+          <button style={{ ...S.btn, background: '#047857', color: '#fff' }} onClick={() => setShowGeralDialog(true)}>
+            Geral (A4)
+          </button>
+          <button style={{ ...S.btn, background: '#047857', color: '#fff' }} onClick={printResumido}>
+            Resumido
+          </button>
+          <button style={{ ...S.btn, background: '#047857', color: '#fff' }} onClick={printConfereViagem}>
+            Confere Viagem
+          </button>
+          <button style={{ ...S.btn, background: '#047857', color: '#fff' }} onClick={printExtrato}>
+            Extrato
+          </button>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div style={S.main}>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Carregando...</div>
+          ) : (
+            <>
+              {/* TABELA FRETES DO CLIENTE */}
+              <div className="card" style={{ marginBottom: 12, padding: 0 }}>
+                <h3 style={{ padding: '10px 14px', margin: 0, fontSize: '0.9rem', borderBottom: '1px solid var(--border)' }}>
+                  FRETES {clienteSel ? `DO CLIENTE: ${clienteSel}` : 'DA VIAGEM'}
+                </h3>
+                <div className="table-container" style={{ maxHeight: 350, overflow: 'auto' }}>
+                  <table>
+                    <thead><tr>
+                      <th style={{ width: 80 }}>Cod. Frete</th>
+                      <th style={{ width: 90 }}>Viagem</th>
+                      <th>Remetente</th>
+                      <th>Item</th>
+                      <th style={{ width: 60 }}>Quant.</th>
+                      <th style={{ width: 90 }}>Preco</th>
+                      <th style={{ width: 100 }}>Total</th>
+                    </tr></thead>
+                    <tbody>
+                      {itensRelatorio.length === 0 ? (
+                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>Nenhum registro</td></tr>
+                      ) : itensRelatorio.map((i, idx) => (
+                        <tr key={idx}>
+                          <td>{i.numero_frete}</td>
+                          <td>{fmtDate(i.data_viagem)}</td>
+                          <td>{i.remetente || '\u2014'}</td>
+                          <td>{i.item || '\u2014'}</td>
+                          <td style={{ textAlign: 'center' }}>{i.quantidade}</td>
+                          <td className="money">{formatMoney(i.preco_unitario)}</td>
+                          <td className="money" style={{ fontWeight: 700 }}>{formatMoney(i.total_item)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {itensRelatorio.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 14px', borderTop: '2px solid var(--primary)' }}>
+                    <span style={{ fontSize: '0.85rem' }}>Total Fretes por item: </span>
+                    <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)', fontFamily: 'Space Mono, monospace', marginLeft: 8 }}>{formatMoney(totalItens)}</span>
+                  </div>
+                )}
               </div>
-              <div className="stat-card success">
-                <span className="stat-label">Valor Total</span>
-                <span className="stat-value money">{formatMoney(resumo.valor_total)}</span>
+
+              {/* SITUACAO FINANCEIRA */}
+              <div className="card" style={{ padding: 0 }}>
+                <h3 style={{ padding: '10px 14px', margin: 0, fontSize: '0.9rem', borderBottom: '1px solid var(--border)' }}>
+                  SITUACAO FINANCEIRA:
+                </h3>
+                <div className="table-container">
+                  <table>
+                    <thead><tr>
+                      <th style={{ width: 120 }}>Total</th>
+                      <th style={{ width: 120 }}>Baixado</th>
+                      <th style={{ width: 120 }}>Devedor</th>
+                      <th style={{ width: 100 }}>N° Frete</th>
+                    </tr></thead>
+                    <tbody>
+                      {financeiro.length === 0 ? (
+                        <tr><td colSpan={4} style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>Nenhum registro</td></tr>
+                      ) : financeiro.map((f, idx) => {
+                        const dev = Math.max(0, (parseFloat(f.valor_total_itens) || 0) - (parseFloat(f.valor_pago) || 0))
+                        return (
+                          <tr key={idx}>
+                            <td className="money">{formatMoney(f.valor_total_itens)}</td>
+                            <td className="money">{formatMoney(f.valor_pago)}</td>
+                            <td className="money" style={{ color: dev > 0.01 ? '#DC2626' : 'inherit', fontWeight: dev > 0.01 ? 700 : 400 }}>{formatMoney(dev)}</td>
+                            <td>{f.numero_frete}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {financeiro.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderTop: '2px solid var(--primary)', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.82rem' }}>
+                      <span>Total: <strong>{formatMoney(totalFinanceiro)}</strong></span>
+                      <span style={{ marginLeft: 16, color: '#059669' }}>Pago: <strong>{formatMoney(totalPago)}</strong></span>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: '1.1rem', color: totalDevedor > 0.01 ? '#DC2626' : '#059669', fontFamily: 'Space Mono, monospace' }}>
+                      Em Aberto: {formatMoney(totalDevedor)}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="stat-card info">
-                <span className="stat-label">Valor Pago</span>
-                <span className="stat-value money">{formatMoney(resumo.valor_pago)}</span>
-              </div>
-            </div>
+            </>
           )}
+        </div>
+      </div>
 
-          {/* Chart */}
-          {fretes.length > 0 && (
-            <div className="dash-grid" style={{ marginTop: '1.5rem' }}>
-              <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
-                <h4 style={{ marginBottom: '0.75rem', color: 'var(--text-primary)' }}>Status Pagamento</h4>
-                <PieChart data={pieData} size={180} />
-              </div>
-            </div>
-          )}
-
-          <div className="card" style={{ marginTop: '1.5rem' }}>
-            <div className="card-header">
-              <h3>Fretes — {viagemAtiva.descricao || `Viagem #${viagemAtiva.id_viagem}`}</h3>
-              <span className="badge info">{fretes.length} registros</span>
-            </div>
-
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Numero</th>
-                    <th>Remetente</th>
-                    <th>Destinatario</th>
-                    <th>Rota</th>
-                    <th>Valor Nominal</th>
-                    <th>Valor Pago</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fretes.map(f => (
-                    <tr key={f.id_frete}>
-                      <td>{f.numero_frete}</td>
-                      <td>{f.remetente_nome_temp || '\u2014'}</td>
-                      <td>{f.destinatario_nome_temp || '\u2014'}</td>
-                      <td>{f.rota_temp || '\u2014'}</td>
-                      <td className="money">{formatMoney(f.valor_nominal)}</td>
-                      <td className="money">{formatMoney(f.valor_pago)}</td>
-                      <td>
-                        <span className={`badge ${f.status === 'PAGO' ? 'success' : 'warning'}`}>
-                          {f.status || 'Pendente'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {fretes.length === 0 && (
-                    <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>
-                        Nenhum frete nesta viagem
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+      {/* DIALOG GERAL A4 */}
+      {showGeralDialog && (
+        <div className="modal-overlay" onClick={() => setShowGeralDialog(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 350 }}>
+            <h3>Relatorio Geral A4</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>Selecione o filtro:</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button className="btn-sm primary" style={{ padding: 10 }} onClick={() => { setShowGeralDialog(false); printGeralA4('tudo') }}>Tudo</button>
+              <button className="btn-sm primary" style={{ padding: 10 }} onClick={() => { setShowGeralDialog(false); printGeralA4('pendentes') }}>So Pendentes</button>
+              <button className="btn-sm primary" style={{ padding: 10 }} onClick={() => { setShowGeralDialog(false); printGeralA4('falta_pagar') }}>Falta Pagar</button>
+              <button className="btn-sm" style={{ padding: 10 }} onClick={() => setShowGeralDialog(false)}>Cancelar</button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

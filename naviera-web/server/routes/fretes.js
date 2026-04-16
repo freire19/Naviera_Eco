@@ -49,6 +49,50 @@ router.get('/proximo-numero', async (req, res) => {
   }
 })
 
+// GET /api/fretes/relatorio/itens — Itens detalhados para relatorio
+router.get('/relatorio/itens', async (req, res) => {
+  try {
+    const { viagem_id, cliente, rota } = req.query
+    if (!viagem_id) return res.status(400).json({ error: 'viagem_id obrigatorio' })
+    const empresaId = req.user.empresa_id
+    let sql = `SELECT f.numero_frete, v.data_viagem, f.remetente_nome_temp AS remetente,
+      fi.nome_item_ou_id_produto AS item, fi.quantidade, fi.preco_unitario,
+      (fi.quantidade * fi.preco_unitario) AS total_item
+      FROM fretes f
+      JOIN frete_itens fi ON f.id_frete = fi.id_frete
+      LEFT JOIN viagens v ON f.id_viagem = v.id_viagem
+      WHERE f.id_viagem = $1 AND f.empresa_id = $2`
+    const params = [viagem_id, empresaId]
+    if (cliente) { sql += ` AND f.destinatario_nome_temp = $${params.length + 1}`; params.push(cliente) }
+    if (rota) { sql += ` AND f.rota_temp = $${params.length + 1}`; params.push(rota) }
+    sql += ' ORDER BY f.numero_frete, fi.nome_item_ou_id_produto'
+    const result = await pool.query(sql, params)
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar itens relatorio' })
+  }
+})
+
+// GET /api/fretes/relatorio/financeiro — Situacao financeira por frete
+router.get('/relatorio/financeiro', async (req, res) => {
+  try {
+    const { viagem_id, cliente, rota } = req.query
+    if (!viagem_id) return res.status(400).json({ error: 'viagem_id obrigatorio' })
+    const empresaId = req.user.empresa_id
+    let sql = `SELECT f.numero_frete, f.valor_total_itens, f.valor_pago, f.valor_devedor,
+      f.remetente_nome_temp AS remetente, f.destinatario_nome_temp AS destinatario, f.entregue
+      FROM fretes f WHERE f.id_viagem = $1 AND f.empresa_id = $2`
+    const params = [viagem_id, empresaId]
+    if (cliente) { sql += ` AND f.destinatario_nome_temp = $${params.length + 1}`; params.push(cliente) }
+    if (rota) { sql += ` AND f.rota_temp = $${params.length + 1}`; params.push(rota) }
+    sql += ' ORDER BY f.numero_frete'
+    const result = await pool.query(sql, params)
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar financeiro relatorio' })
+  }
+})
+
 // GET /api/fretes/:id/itens
 router.get('/:id/itens', async (req, res) => {
   try {
