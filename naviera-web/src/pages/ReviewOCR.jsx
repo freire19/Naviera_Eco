@@ -2,6 +2,34 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../App.jsx'
 
+// Similaridade entre duas strings (0 a 1) — baseada em bigramas
+function similarity(a, b) {
+  if (!a || !b) return 0
+  a = a.toLowerCase().trim()
+  b = b.toLowerCase().trim()
+  if (a === b) return 1
+  if (a.length < 2 || b.length < 2) return 0
+  const bigrams = (s) => { const set = new Map(); for (let i = 0; i < s.length - 1; i++) { const bg = s.substring(i, i + 2); set.set(bg, (set.get(bg) || 0) + 1) } return set }
+  const bg1 = bigrams(a), bg2 = bigrams(b)
+  let matches = 0
+  for (const [bg, count] of bg1) matches += Math.min(count, bg2.get(bg) || 0)
+  return (2 * matches) / (a.length - 1 + b.length - 1)
+}
+
+// Busca o melhor match no catalogo (retorna null se nao achar similar)
+function findCatalogoMatch(nomeItem, catalogo) {
+  if (!nomeItem || !catalogo.length) return null
+  let best = null, bestScore = 0
+  const nome = nomeItem.toLowerCase().trim()
+  for (const cat of catalogo) {
+    const catNome = (cat.nome_item || '').toLowerCase().trim()
+    if (catNome === nome) return null // exato = ja cadastrado, sem sugestao
+    const score = similarity(nome, catNome)
+    if (score > bestScore) { bestScore = score; best = cat }
+  }
+  return bestScore >= 0.45 ? { ...best, score: bestScore } : null
+}
+
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
@@ -49,6 +77,7 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
   const [conferentes, setConferentes] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
   const [docFotoUrl, setDocFotoUrl] = useState(null)
+  const [itensCatalogo, setItensCatalogo] = useState([])
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
@@ -66,10 +95,11 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
 
   useEffect(() => { carregar() }, [carregar])
 
-  // Carregar rotas e conferentes para os selects
+  // Carregar rotas, conferentes e catalogo de itens
   useEffect(() => {
     api.get('/rotas').then(setRotas).catch(() => {})
     api.get('/cadastros/conferentes').then(setConferentes).catch(() => {})
+    api.get('/cadastros/itens-frete').then(data => setItensCatalogo(Array.isArray(data) ? data : [])).catch(() => {})
   }, [])
 
   // ESC para fechar tela de detalhes
@@ -552,7 +582,10 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                       <tbody>
                         {(!dadosAtual.itens || dadosAtual.itens.length === 0) ? (
                           <tr><td colSpan={isEditando ? 6 : 5} style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>Nenhum item extraido</td></tr>
-                        ) : dadosAtual.itens.map((item, idx) => (
+                        ) : dadosAtual.itens.map((item, idx) => {
+                          const match = itensCatalogo.length ? findCatalogoMatch(item.nome_item, itensCatalogo) : null
+                          const exactMatch = itensCatalogo.some(c => (c.nome_item || '').toLowerCase().trim() === (item.nome_item || '').toLowerCase().trim())
+                          return (
                           <tr key={idx}>
                             <td style={{ textAlign: 'center' }}>
                               {isEditando ? (
@@ -563,10 +596,34 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                             </td>
                             <td>
                               {isEditando ? (
-                                <input value={item.nome_item || ''} style={{ width: '100%', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit' }}
-                                  onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'transparent'}
-                                  onChange={e => editarItem(l.id, idx, 'nome_item', e.target.value)} />
-                              ) : (item.nome_item || '\u2014')}
+                                <div>
+                                  <input value={item.nome_item || ''} style={{ width: '100%', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontSize: 'inherit' }}
+                                    onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'transparent'}
+                                    onChange={e => editarItem(l.id, idx, 'nome_item', e.target.value)} />
+                                  {match && (
+                                    <div style={{ marginTop: 2 }}>
+                                      <span
+                                        onClick={() => { editarItem(l.id, idx, 'nome_item', match.nome_item); editarItem(l.id, idx, 'preco_unitario', match.preco_unitario_padrao || match.preco_padrao || item.preco_unitario) }}
+                                        style={{ fontSize: '0.68rem', color: '#d97706', cursor: 'pointer', background: 'rgba(217,119,6,0.1)', padding: '1px 6px', borderRadius: 3, border: '1px solid rgba(217,119,6,0.3)' }}
+                                        title={`Similaridade: ${Math.round(match.score * 100)}% — Clique para usar este nome`}
+                                      >
+                                        Similar: <strong>{match.nome_item}</strong> ({formatMoney(match.preco_unitario_padrao || match.preco_padrao)}) — usar?
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div>
+                                  {item.nome_item || '\u2014'}
+                                  {match && (
+                                    <div style={{ marginTop: 1 }}>
+                                      <span style={{ fontSize: '0.65rem', color: '#d97706' }} title={`Similaridade: ${Math.round(match.score * 100)}%`}>
+                                        Similar a: {match.nome_item}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </td>
                             <td className="money">
                               {isEditando ? (
@@ -577,14 +634,16 @@ export default function ReviewOCR({ viagemAtiva, onNavigate }) {
                             </td>
                             <td className="money" style={{ fontWeight: 700 }}>{formatMoney(item.subtotal || (item.quantidade || 0) * (item.preco_unitario || 0))}</td>
                             <td>
+                              {exactMatch && <span className="badge success" style={{ fontSize: '0.68rem' }}>OK</span>}
+                              {!exactMatch && !match && item.nome_item && <span className="badge info" style={{ fontSize: '0.68rem' }}>NOVO</span>}
                               {item.preco_diferente && <span className="badge warning" title={`Padrao: ${formatMoney(item.preco_padrao)}`} style={{ fontSize: '0.68rem' }}>Difere</span>}
-                              {item.item_novo && <span className="badge info" style={{ fontSize: '0.68rem' }}>Novo</span>}
                             </td>
                             {isEditando && (
                               <td><button className="btn-sm danger" onClick={() => removerItem(l.id, idx)} style={{ padding: '2px 6px' }}>x</button></td>
                             )}
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
