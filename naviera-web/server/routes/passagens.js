@@ -171,7 +171,7 @@ router.post('/', validate({ id_viagem: 'required|integer', valor_total: 'require
         const novo = await client.query(
           `INSERT INTO passageiros (nome_passageiro, numero_documento, data_nascimento, id_tipo_doc, id_sexo, id_nacionalidade, empresa_id)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_passageiro`,
-          [nome_passageiro.trim(), documento || null, data_nascimento || null,
+          [nome_passageiro.trim().toUpperCase(), documento || null, data_nascimento || null,
            id_tipo_doc ? parseInt(id_tipo_doc) : null, id_sexo ? parseInt(id_sexo) : null,
            id_nacionalidade ? parseInt(id_nacionalidade) : null, empresaId]
         )

@@ -65,7 +65,7 @@ export async function criarFreteComItens(client, empresaId, payload) {
     VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
     RETURNING *
   `, [
-    nextIdFrete, numFrete, id_viagem, remetente_nome_temp || null, destinatario_nome_temp || null,
+    nextIdFrete, numFrete, id_viagem, (remetente_nome_temp || '').toUpperCase() || null, (destinatario_nome_temp || '').toUpperCase() || null,
     rota_temp || null, conferente_temp || null, observacoes || null,
     vItens, vDesconto, vCalculado, vPago, vDevedor,
     tipo_pagamento || null, nome_caixa || null,
@@ -85,7 +85,7 @@ export async function criarFreteComItens(client, empresaId, payload) {
       values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5})`)
       params.push(
         freteId,
-        item.nome_item || item.nome_item_ou_id_produto || null,
+        (item.nome_item || item.nome_item_ou_id_produto || '').toUpperCase() || null,
         item.quantidade || 1,
         item.preco_unitario || item.valor_unitario || 0,
         item.subtotal_item || item.subtotal || item.valor_total || 0

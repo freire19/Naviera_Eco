@@ -517,7 +517,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
     for (const c of clientesFaltantes) {
       await client.query(
         'INSERT INTO cad_clientes_encomenda (nome_cliente, empresa_id) VALUES ($1, $2) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING',
-        [c.nome, empresaId]
+        [(c.nome || '').toUpperCase(), empresaId]
       )
     }
 
@@ -542,7 +542,7 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
         VALUES ($1,$2,$3,$4,$5,$6,$7,0,0,'PENDENTE',NULL,FALSE,$8,CURRENT_DATE,$9)
         RETURNING *
       `, [
-        lanc.id_viagem, numEncomenda, dados.remetente || null, dados.destinatario || null,
+        lanc.id_viagem, numEncomenda, (dados.remetente || '').toUpperCase() || null, (dados.destinatario || '').toUpperCase() || null,
         `[OCR #${lanc.id}] ${dados.observacoes || ''}`.trim(),
         totalVolumes, totalAPagar, dados.rota || null, empresaId
       ])

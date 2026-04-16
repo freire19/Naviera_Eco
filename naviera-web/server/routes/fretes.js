@@ -157,7 +157,7 @@ router.put('/:id', async (req, res) => {
         valor_devedor = GREATEST(0, $6 - COALESCE(valor_pago, 0))
       WHERE id_frete = $12 AND empresa_id = $13
       RETURNING *
-    `, [remetente_nome_temp || null, destinatario_nome_temp || null,
+    `, [(remetente_nome_temp || '').toUpperCase() || null, (destinatario_nome_temp || '').toUpperCase() || null,
         rota_temp || null, conferente_temp || null, observacoes || null,
         vItens, local_transporte || null, cidade_cobranca || null,
         num_notafiscal || null, parseFloat(valor_notafiscal) || 0, parseFloat(peso_notafiscal) || 0,
@@ -177,7 +177,7 @@ router.put('/:id', async (req, res) => {
         itens.forEach((item, i) => {
           const off = i * 5
           values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5})`)
-          params.push(req.params.id, item.nome_item || item.descricao || null, item.quantidade || 1, item.preco_unitario || item.valor_unitario || 0, item.subtotal_item || item.subtotal || 0)
+          params.push(req.params.id, (item.nome_item || item.descricao || '').toUpperCase() || null, item.quantidade || 1, item.preco_unitario || item.valor_unitario || 0, item.subtotal_item || item.subtotal || 0)
         })
         await client.query(`INSERT INTO frete_itens (id_frete, nome_item_ou_id_produto, quantidade, preco_unitario, subtotal_item) VALUES ${values.join(', ')}`, params)
       }

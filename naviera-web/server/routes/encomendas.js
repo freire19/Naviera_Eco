@@ -110,7 +110,7 @@ router.post('/', validate({ id_viagem: 'required|integer', destinatario: 'requir
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,FALSE,$12,CURRENT_DATE,$13,$14,$15)
       RETURNING *
     `, [
-      id_viagem, numEncomenda, remetente, destinatario, observacoes || null,
+      id_viagem, numEncomenda, (remetente || '').toUpperCase() || null, (destinatario || '').toUpperCase() || null, observacoes || null,
       total_volumes || 0, vPagar, vPago, vDesconto, status,
       forma_pagamento || null, rota || null, local_pagamento || null, id_caixa ? parseInt(id_caixa) : null, empresaId
     ])
@@ -123,7 +123,7 @@ router.post('/', validate({ id_viagem: 'required|integer', destinatario: 'requir
       itens.forEach((item, i) => {
         const off = i * 6
         values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5}, $${off+6})`)
-        params.push(encomendaId, item.quantidade || 1, item.descricao, item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null)
+        params.push(encomendaId, item.quantidade || 1, (item.descricao || '').toUpperCase(), item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null)
       })
       await client.query(
         `INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES ${values.join(', ')}`,
@@ -155,7 +155,7 @@ router.put('/:id', async (req, res) => {
         observacoes = $3, rota = $4, total_volumes = $5, total_a_pagar = $6
       WHERE id_encomenda = $7 AND empresa_id = $8
       RETURNING *
-    `, [remetente || null, destinatario || null, observacoes || null, rota || null,
+    `, [(remetente || '').toUpperCase() || null, (destinatario || '').toUpperCase() || null, observacoes || null, rota || null,
         total_volumes || 0, parseFloat(total_a_pagar) || 0, req.params.id, empresaId])
 
     if (result.rows.length === 0) {
@@ -172,7 +172,7 @@ router.put('/:id', async (req, res) => {
         itens.forEach((item, i) => {
           const off = i * 6
           values.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5}, $${off+6})`)
-          params.push(req.params.id, item.quantidade || 1, item.descricao, item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null)
+          params.push(req.params.id, item.quantidade || 1, (item.descricao || '').toUpperCase(), item.valor_unitario || 0, item.valor_total || 0, item.local_armazenamento || null)
         })
         await client.query(`INSERT INTO encomenda_itens (id_encomenda, quantidade, descricao, valor_unitario, valor_total, local_armazenamento) VALUES ${values.join(', ')}`, params)
       }

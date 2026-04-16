@@ -391,7 +391,7 @@ router.post('/itens-frete', async (req, res, next) => {
     if (!nome_item) return res.status(400).json({ error: 'nome_item obrigatorio' })
     const result = await pool.query(
       'INSERT INTO itens_frete_padrao (nome_item, preco_unitario_padrao, preco_unitario_desconto, ativo, empresa_id) VALUES ($1, $2, $3, TRUE, $4) RETURNING *, preco_unitario_padrao AS preco_padrao, preco_unitario_desconto',
-      [nome_item, parseFloat(preco_padrao) || 0, parseFloat(preco_desconto) || 0, empresaId]
+      [(nome_item || '').toUpperCase(), parseFloat(preco_padrao) || 0, parseFloat(preco_desconto) || 0, empresaId]
     )
     res.status(201).json(result.rows[0])
   } catch (err) { next(err) }
@@ -407,7 +407,7 @@ router.put('/itens-frete/:id', async (req, res, next) => {
         preco_unitario_desconto = COALESCE($3, preco_unitario_desconto)
        WHERE id_item_frete = $4 AND empresa_id = $5
        RETURNING *, preco_unitario_padrao AS preco_padrao`,
-      [nome_item, preco_padrao != null ? parseFloat(preco_padrao) : null,
+      [nome_item ? nome_item.toUpperCase() : null, preco_padrao != null ? parseFloat(preco_padrao) : null,
        preco_desconto != null ? parseFloat(preco_desconto) : null,
        req.params.id, empresaId]
     )
@@ -436,7 +436,7 @@ router.post('/itens-encomenda', async (req, res, next) => {
     if (!nome_item) return res.status(400).json({ error: 'nome_item obrigatorio' })
     const result = await pool.query(
       'INSERT INTO itens_encomenda_padrao (nome_item, preco_unitario_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) RETURNING *, preco_unitario_padrao AS preco_padrao',
-      [nome_item, parseFloat(preco_padrao) || 0, empresaId]
+      [(nome_item || '').toUpperCase(), parseFloat(preco_padrao) || 0, empresaId]
     )
     res.status(201).json(result.rows[0])
   } catch (err) { next(err) }
@@ -448,7 +448,7 @@ router.put('/itens-encomenda/:id', async (req, res, next) => {
     const { nome_item, preco_padrao } = req.body
     const result = await pool.query(
       'UPDATE itens_encomenda_padrao SET nome_item = COALESCE($1, nome_item), preco_unitario_padrao = COALESCE($2, preco_unitario_padrao) WHERE id_item_encomenda = $3 AND empresa_id = $4 RETURNING *, preco_unitario_padrao AS preco_padrao',
-      [nome_item, preco_padrao != null ? parseFloat(preco_padrao) : null, req.params.id, empresaId]
+      [nome_item ? nome_item.toUpperCase() : null, preco_padrao != null ? parseFloat(preco_padrao) : null, req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Item encomenda nao encontrado' })
     res.json(result.rows[0])

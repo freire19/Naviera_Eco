@@ -276,7 +276,7 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     setSalvando(true)
     try {
       const rota = rotas.find(r => String(r.id_rota) === idRota)
-      const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : ''
+      const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : (selecionado?.rota_temp || selecionado?.rota || '')
       const payload = {
         id_viagem: viagemAtiva.id_viagem,
         remetente_nome_temp: remetente.trim().toUpperCase(),
@@ -323,7 +323,7 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     setSalvando(true)
     try {
       const rota = rotas.find(r => String(r.id_rota) === idRota)
-      const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : ''
+      const rotaNome = rota ? `${rota.origem} - ${rota.destino}` : (selecionado?.rota_temp || selecionado?.rota || '')
       const payload = {
         id_viagem: viagemAtiva.id_viagem,
         remetente_nome_temp: remetente.trim().toUpperCase(),
