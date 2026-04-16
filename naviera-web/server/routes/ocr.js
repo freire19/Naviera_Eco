@@ -484,6 +484,17 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
         `, [encId, item.quantidade || 1, item.nome_item || item.descricao || '', item.preco_unitario || item.valor_unitario || 0, item.subtotal || item.valor_total || (item.quantidade || 1) * (item.preco_unitario || item.valor_unitario || 0)])
       }
 
+      // Salvar itens novos no catalogo de encomendas
+      for (const item of (dados.itens || [])) {
+        const nomeItem = (item.nome_item || item.descricao || '').trim().toUpperCase()
+        if (nomeItem) {
+          await client.query(
+            'INSERT INTO itens_encomenda_padrao (nome_item, preco_unitario_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) ON CONFLICT DO NOTHING',
+            [nomeItem, item.preco_unitario || item.valor_unitario || 0, empresaId]
+          )
+        }
+      }
+
       await client.query(`
         UPDATE ocr_lancamentos SET status = 'aprovado', id_encomenda = $1,
           id_usuario_revisou = $2, nome_usuario_revisou = $3, data_revisao = CURRENT_TIMESTAMP
@@ -515,6 +526,17 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
       }
 
       const frete = await criarFreteComItens(client, empresaId, fretePayload)
+
+      // Salvar itens novos no catalogo de fretes
+      for (const item of (dados.itens || [])) {
+        const nomeItem = (item.nome_item || '').trim().toUpperCase()
+        if (nomeItem) {
+          await client.query(
+            'INSERT INTO itens_frete_padrao (nome_item, preco_unitario_padrao, ativo, empresa_id) VALUES ($1, $2, TRUE, $3) ON CONFLICT DO NOTHING',
+            [nomeItem, item.preco_unitario || 0, empresaId]
+          )
+        }
+      }
 
       await client.query(`
         UPDATE ocr_lancamentos SET status = 'aprovado', id_frete = $1,
