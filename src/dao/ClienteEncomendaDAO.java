@@ -44,7 +44,7 @@ public class ClienteEncomendaDAO {
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
-            stmt.setString(1, cliente.getNomeCliente());
+            stmt.setString(1, cliente.getNomeCliente() != null ? cliente.getNomeCliente().trim().toUpperCase() : null);
             stmt.setInt(2, empresaId());
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -94,7 +94,7 @@ public class ClienteEncomendaDAO {
         String sql = "UPDATE cad_clientes_encomenda SET nome_cliente = ? WHERE id_cliente = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, cliente.getNomeCliente());
+            stmt.setString(1, cliente.getNomeCliente() != null ? cliente.getNomeCliente().trim().toUpperCase() : null);
             stmt.setLong(2, cliente.getIdCliente());
             stmt.setInt(3, empresaId());
             return stmt.executeUpdate() > 0;

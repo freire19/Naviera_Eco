@@ -36,8 +36,8 @@ public class EncomendaDAO {
                 try (PreparedStatement stmt = conn.prepareStatement(sqlEnc, PreparedStatement.RETURN_GENERATED_KEYS)) {
                     stmt.setLong(1, encomenda.getIdViagem());
                     stmt.setString(2, encomenda.getNumeroEncomenda());
-                    stmt.setString(3, encomenda.getRemetente());
-                    stmt.setString(4, encomenda.getDestinatario());
+                    stmt.setString(3, encomenda.getRemetente() != null ? encomenda.getRemetente().trim().toUpperCase() : null);
+                    stmt.setString(4, encomenda.getDestinatario() != null ? encomenda.getDestinatario().trim().toUpperCase() : null);
                     stmt.setString(5, encomenda.getObservacoes());
                     stmt.setInt(6, encomenda.getTotalVolumes());
                     stmt.setBigDecimal(7, encomenda.getTotalAPagar());
@@ -67,7 +67,7 @@ public class EncomendaDAO {
                         for (model.EncomendaItem item : itens) {
                             stmtItem.setLong(1, encomenda.getId());
                             stmtItem.setInt(2, item.getQuantidade());
-                            stmtItem.setString(3, item.getDescricao());
+                            stmtItem.setString(3, item.getDescricao() != null ? item.getDescricao().trim().toUpperCase() : null);
                             stmtItem.setBigDecimal(4, item.getValorUnitario());
                             stmtItem.setBigDecimal(5, item.getValorTotal());
                             stmtItem.setString(6, item.getLocalArmazenamento());

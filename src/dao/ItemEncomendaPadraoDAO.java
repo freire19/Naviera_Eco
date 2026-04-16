@@ -58,6 +58,7 @@ public class ItemEncomendaPadraoDAO {
     }
     
     public boolean inserir(ItemEncomendaPadrao item) {
+        if (item.getNomeItem() != null) item.setNomeItem(item.getNomeItem().trim().toUpperCase());
         String sql = "INSERT INTO itens_encomenda_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, permite_valor_declarado, ativo, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id_item_encomenda";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -81,6 +82,7 @@ public class ItemEncomendaPadraoDAO {
     }
 
     public boolean atualizar(ItemEncomendaPadrao item) {
+        if (item.getNomeItem() != null) item.setNomeItem(item.getNomeItem().trim().toUpperCase());
         String sql = "UPDATE itens_encomenda_padrao SET nome_item = ?, descricao = ?, unidade_medida = ?, preco_unitario_padrao = ?, permite_valor_declarado = ?, ativo = ? WHERE id_item_encomenda = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

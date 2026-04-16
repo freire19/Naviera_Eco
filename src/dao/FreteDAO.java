@@ -95,8 +95,8 @@ public class FreteDAO {
             pst.setDate(i++, Date.valueOf(LocalDate.now()));
             pst.setDate(i++, data.dataSaida != null ? Date.valueOf(data.dataSaida) : null);
             pst.setString(i++, data.localTransporte);
-            pst.setString(i++, data.remetente);
-            pst.setString(i++, data.destinatario);
+            pst.setString(i++, data.remetente != null ? data.remetente.trim().toUpperCase() : null);
+            pst.setString(i++, data.destinatario != null ? data.destinatario.trim().toUpperCase() : null);
             pst.setString(i++, data.rota);
             pst.setString(i++, data.conferente);
             pst.setString(i++, data.cidadeCobranca);
@@ -143,8 +143,8 @@ public class FreteDAO {
             pst.setDate(i++, Date.valueOf(LocalDate.now()));
             pst.setDate(i++, data.dataSaida != null ? Date.valueOf(data.dataSaida) : null);
             pst.setString(i++, data.localTransporte);
-            pst.setString(i++, data.remetente);
-            pst.setString(i++, data.destinatario);
+            pst.setString(i++, data.remetente != null ? data.remetente.trim().toUpperCase() : null);
+            pst.setString(i++, data.destinatario != null ? data.destinatario.trim().toUpperCase() : null);
             pst.setString(i++, data.rota);
             pst.setString(i++, data.conferente);
             pst.setString(i++, data.cidadeCobranca);
@@ -184,7 +184,7 @@ public class FreteDAO {
         try (PreparedStatement pst = conn.prepareStatement(sqlItem)) {
             for (FreteItemData it : itens) {
                 pst.setLong(1, idFrete);
-                pst.setString(2, it.nomeItem);
+                pst.setString(2, it.nomeItem != null ? it.nomeItem.trim().toUpperCase() : null);
                 pst.setInt(3, it.quantidade);
                 pst.setBigDecimal(4, it.precoUnitario);
                 pst.setBigDecimal(5, it.subtotal);
@@ -222,13 +222,15 @@ public class FreteDAO {
      */
     public List<String> listarContatos() {
         List<String> contatos = new ArrayList<>();
-        String sql = "SELECT nome_razao_social FROM contatos ORDER BY nome_razao_social";
+        String sql = "SELECT nome_cliente FROM cad_clientes_frete WHERE empresa_id = ? ORDER BY nome_cliente";
         try (Connection c = ConexaoBD.getConnection();
-             Statement s = c.createStatement();
-             ResultSet r = s.executeQuery(sql)) {
-            while (r.next()) {
-                String nome = r.getString(1);
-                if (nome != null) contatos.add(nome);
+             PreparedStatement s = c.prepareStatement(sql)) {
+            s.setInt(1, DAOUtils.empresaId());
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    String nome = r.getString(1);
+                    if (nome != null) contatos.add(nome);
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("FreteDAO", "Erro ao listar contatos: " + e.getMessage());
@@ -237,14 +239,15 @@ public class FreteDAO {
     }
 
     /**
-     * Insere um novo contato e retorna o nome em uppercase.
+     * Insere um novo contato de frete (cad_clientes_frete) e retorna o nome em uppercase.
      */
     public String inserirContato(String nome) throws SQLException {
-        String nomeUpper = nome.toUpperCase();
-        String sql = "INSERT INTO contatos (nome_razao_social) VALUES (?)";
+        String nomeUpper = nome.trim().toUpperCase();
+        String sql = "INSERT INTO cad_clientes_frete (nome_cliente, empresa_id) VALUES (?, ?) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement pst = conn.prepareStatement(sql)) {
             pst.setString(1, nomeUpper);
+            pst.setInt(2, DAOUtils.empresaId());
             pst.executeUpdate();
         }
         return nomeUpper;

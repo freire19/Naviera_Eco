@@ -15,6 +15,19 @@ public class ItemFreteDAO {
 
     // Método para inserir um novo ItemFrete
     public boolean inserir(ItemFrete item) {
+        // Uppercase no nome do item
+        if (item.getNomeItem() != null) item.setNomeItem(item.getNomeItem().trim().toUpperCase());
+        // Regra desconto: estiva (3.80) → 3.60, fardaria (4.50) → 4.30
+        if (item.getPrecoUnitarioDesconto() == null || item.getPrecoUnitarioDesconto().compareTo(java.math.BigDecimal.ZERO) == 0) {
+            if (item.getPrecoUnitarioPadrao() != null) {
+                double p = item.getPrecoUnitarioPadrao().doubleValue();
+                if (p == 3.80 || p == 4.50) {
+                    item.setPrecoUnitarioDesconto(item.getPrecoUnitarioPadrao().subtract(new java.math.BigDecimal("0.20")));
+                } else {
+                    item.setPrecoUnitarioDesconto(item.getPrecoUnitarioPadrao());
+                }
+            }
+        }
         String sql = "INSERT INTO itens_frete_padrao (nome_item, descricao, unidade_medida, preco_unitario_padrao, preco_unitario_desconto, ativo, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -43,6 +56,7 @@ public class ItemFreteDAO {
 
     // Método para atualizar um ItemFrete existente
     public boolean atualizar(ItemFrete item) {
+        if (item.getNomeItem() != null) item.setNomeItem(item.getNomeItem().trim().toUpperCase());
         String sql = "UPDATE itens_frete_padrao SET nome_item = ?, descricao = ?, unidade_medida = ?, preco_unitario_padrao = ?, preco_unitario_desconto = ?, ativo = ? WHERE id_item_frete = ? AND empresa_id = ?";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

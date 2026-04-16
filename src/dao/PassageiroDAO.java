@@ -64,7 +64,7 @@ public class PassageiroDAO {
 
             // Usa campo auxDAO (instanciado uma unica vez)
 
-            stmt.setString(1, passageiro.getNome());
+            stmt.setString(1, passageiro.getNome() != null ? passageiro.getNome().trim().toUpperCase() : null);
             stmt.setString(2, passageiro.getNumeroDoc());
             // CORREÇÃO: Removido o parâmetro "conn" da chamada
             stmt.setObject(3, auxDAO.obterIdAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", passageiro.getTipoDoc()));
@@ -95,7 +95,7 @@ public class PassageiroDAO {
 
             // Usa campo auxDAO (instanciado uma unica vez)
 
-            stmt.setString(1, passageiro.getNome());
+            stmt.setString(1, passageiro.getNome() != null ? passageiro.getNome().trim().toUpperCase() : null);
             stmt.setString(2, passageiro.getNumeroDoc());
             // CORREÇÃO: Removido o parâmetro "conn" da chamada
             stmt.setObject(3, auxDAO.obterIdAuxiliar("aux_tipos_documento", "nome_tipo_doc", "id_tipo_doc", passageiro.getTipoDoc()));
