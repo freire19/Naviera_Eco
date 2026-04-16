@@ -69,9 +69,12 @@ router.get('/', async (req, res) => {
     const empresaId = req.user.empresa_id
     let sql = `SELECT f.id_frete, f.id_viagem, f.numero_frete,
       f.remetente_nome_temp AS remetente, f.destinatario_nome_temp AS destinatario,
+      f.remetente_nome_temp, f.destinatario_nome_temp, f.rota_temp, f.conferente_temp,
       f.observacoes, f.valor_total_itens, f.valor_frete_calculado, f.valor_pago, f.valor_devedor,
-      f.desconto, f.status_frete, f.tipo_pagamento, f.nome_caixa, f.rota_temp AS rota,
-      f.conferente_temp AS conferente, f.data_emissao, f.local_transporte, f.cidade_cobranca,
+      f.desconto, f.status_frete, f.tipo_pagamento, f.nome_caixa,
+      f.rota_temp AS rota, f.conferente_temp AS conferente,
+      f.data_emissao, f.local_transporte, f.cidade_cobranca,
+      f.num_notafiscal, f.valor_notafiscal, f.peso_notafiscal,
       COALESCE((SELECT SUM(fi.quantidade) FROM frete_itens fi WHERE fi.id_frete = f.id_frete), 0) AS total_volumes
       FROM fretes f WHERE f.empresa_id = $1`
     const params = [empresaId]

@@ -91,6 +91,13 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
         setConferente(f.conferente || f.conferente_temp || '')
         setLocalTransporte(f.local_transporte || '')
         setCidadeCobranca(f.cidade_cobranca || '')
+        // Nota fiscal
+        if (f.num_notafiscal) {
+          setNotaFiscal(true)
+          setNumNota(f.num_notafiscal || '')
+          setValorNota(f.valor_notafiscal || '')
+          setPesoNota(f.peso_notafiscal || '')
+        }
         // Carregar itens
         api.get(`/fretes/${f.id_frete}/itens`).then(data => {
           if (Array.isArray(data)) {
@@ -109,6 +116,15 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       api.get('/fretes/proximo-numero').then(r => setNumFrete(r.numero || '1')).catch(() => setNumFrete('—'))
     }
   }, [])
+
+  // Resolver idRota quando rotas carregam e ha frete selecionado com rota_temp
+  useEffect(() => {
+    if (!rotas.length || !selecionado) return
+    const rotaTexto = (selecionado.rota_temp || selecionado.rota || '').toLowerCase().trim()
+    if (!rotaTexto || idRota) return
+    const match = rotas.find(r => `${r.origem} - ${r.destino}`.toLowerCase() === rotaTexto)
+    if (match) setIdRota(String(match.id_rota))
+  }, [rotas, selecionado])
 
   // Fechar dropdowns ao clicar fora
   useEffect(() => {
