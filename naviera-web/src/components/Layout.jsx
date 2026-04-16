@@ -89,6 +89,7 @@ export default function Layout() {
   const [activeTab, setActiveTab] = useState('inicio')
   const [viagens, setViagens] = useState([])
   const [viagemAtiva, setViagemAtiva] = useState(null)
+  const [sidebarVisible, setSidebarVisible] = useState(true)
 
   useEffect(() => {
     api.get('/viagens').then(setViagens).catch(() => {})
@@ -125,8 +126,19 @@ export default function Layout() {
 
   return (
     <div className="app-layout">
-      <Sidebar currentPage={activeTabObj?.page} onNavigate={navigateTo} pages={PAGES} />
-      <div className="main-content">
+      {sidebarVisible && <Sidebar currentPage={activeTabObj?.page} onNavigate={navigateTo} pages={PAGES} />}
+      {/* Botao toggle sidebar */}
+      <div onClick={() => setSidebarVisible(prev => !prev)}
+        style={{
+          position: 'fixed', left: sidebarVisible ? 240 : 0, top: '50%', transform: 'translateY(-50%)',
+          zIndex: 101, cursor: 'pointer', background: 'var(--sidebar-bg)', border: '1px solid var(--border)',
+          borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '8px 4px',
+          color: 'var(--primary)', fontSize: '0.8rem', transition: 'left 0.2s'
+        }}
+        title={sidebarVisible ? 'Ocultar menu' : 'Mostrar menu'}>
+        {sidebarVisible ? '◀' : '▶'}
+      </div>
+      <div className="main-content" style={sidebarVisible ? {} : { marginLeft: 0 }}>
         <TopBar
           label={activePageConfig.label}
           viagens={viagens}

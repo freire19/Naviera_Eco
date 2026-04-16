@@ -346,12 +346,31 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
     )
   }
 
+  // Atalho ESC para limpar/sair
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        if (modalPagar) { setModalPagar(null); return }
+        limparForm()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [modalPagar])
+
   const I = { padding: '7px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', fontFamily: 'Sora, sans-serif', width: '100%', boxSizing: 'border-box' }
   const L = { fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 3, display: 'block' }
   const RO = { ...I, opacity: 0.6, cursor: 'default' }
 
   const vData = formatDate(viagemAtiva.data_viagem)
   const vCheg = formatDate(viagemAtiva.data_chegada)
+
+  // Info de pagamento da encomenda selecionada
+  const selValor = parseFloat(selecionada?.total_a_pagar) || 0
+  const selPago = parseFloat(selecionada?.valor_pago) || 0
+  const selDevedor = Math.max(0, selValor - (parseFloat(selecionada?.desconto) || 0) - selPago)
+  const selStatus = selecionada ? (selDevedor <= 0.01 ? 'PAGO' : 'FALTA PAGAR') : ''
+  const selEntrega = selecionada ? (selecionada.entregue ? 'ENTREGUE' : 'PENDENTE') : ''
 
   // Pagamento calculos
   const pgTotal = (parseFloat(pgDinheiro) || 0) + (parseFloat(pgPix) || 0) + (parseFloat(pgCartao) || 0)
@@ -547,6 +566,26 @@ export default function Encomendas({ viagemAtiva, onNavigate }) {
           </div>
         </div>
       </div>
+
+      {/* BANNER STATUS ao editar encomenda existente */}
+      {selecionada && (
+        <div style={{
+          display: 'flex', gap: 16, alignItems: 'center', padding: '8px 12px', marginBottom: 8,
+          borderRadius: 6, border: `2px solid ${selDevedor <= 0.01 ? '#059669' : '#DC2626'}`,
+          background: selDevedor <= 0.01 ? 'rgba(5,150,105,0.08)' : 'rgba(220,38,38,0.08)'
+        }}>
+          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Encomenda #{selecionada.numero_encomenda}</span>
+          <span>Total: <strong>{formatMoney(selValor)}</strong></span>
+          <span>Pago: <strong style={{ color: '#059669' }}>{formatMoney(selPago)}</strong></span>
+          {selDevedor > 0 && <span>Falta: <strong style={{ color: '#DC2626' }}>{formatMoney(selDevedor)}</strong></span>}
+          <span style={{ fontWeight: 700, fontSize: '0.85rem', padding: '2px 10px', borderRadius: 4, color: '#fff', background: selDevedor <= 0.01 ? '#059669' : '#DC2626' }}>
+            {selStatus}
+          </span>
+          <span style={{ fontWeight: 700, fontSize: '0.85rem', padding: '2px 10px', borderRadius: 4, color: '#fff', background: selecionada.entregue ? '#059669' : '#F59E0B' }}>
+            {selEntrega}
+          </span>
+        </div>
+      )}
 
       {/* TOTAIS + BOTOES */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
