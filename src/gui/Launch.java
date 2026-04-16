@@ -32,7 +32,7 @@ public class Launch extends Application {
      * Verifica se db.properties existe e tem os campos minimos preenchidos.
      */
     private boolean precisaSetup() {
-        File dbProps = dao.ConexaoBD.resolverDbProperties();
+        File dbProps = resolverDbProperties();
         if (!dbProps.exists()) return true;
 
         try {
@@ -53,6 +53,28 @@ public class Launch extends Application {
         } catch (Exception e) {
             return true;
         }
+    }
+
+    /**
+     * Procura db.properties em multiplos locais (sem carregar ConexaoBD).
+     */
+    private static File resolverDbProperties() {
+        File local = new File("db.properties");
+        if (local.exists()) return local;
+
+        String localAppData = System.getenv("LOCALAPPDATA");
+        if (localAppData != null) {
+            File win = new File(localAppData + "/Naviera/db.properties");
+            if (win.exists()) return win;
+        }
+
+        String home = System.getProperty("user.home");
+        if (home != null) {
+            File unix = new File(home + "/.naviera/db.properties");
+            if (unix.exists()) return unix;
+        }
+
+        return local;
     }
 
     private void abrirSetupWizard(Stage stage) {
