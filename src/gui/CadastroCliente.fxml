@@ -1,51 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="gui.CadastroClienteController"
-            prefWidth="600.0" prefHeight="400.0"
+            prefWidth="820.0" prefHeight="520.0"
             styleClass="root-financeiro">
 
-    <VBox spacing="10.0" alignment="TOP_LEFT" styleClass="content-panel" style="-fx-padding: 20;">
-        
-        <Label text="Cadastro de Cliente" styleClass="title-main-screen" />
+    <VBox spacing="10.0" alignment="TOP_LEFT" styleClass="content-panel" style="-fx-padding: 16;"
+          AnchorPane.topAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0" AnchorPane.bottomAnchor="0">
 
-        <HBox spacing="10.0">
-            <Label text="Razão Social:" minWidth="100.0" styleClass="label-bold"/>
-            <TextField fx:id="txtRazaoSocial"
-                       promptText="Nome ou Razão Social" prefWidth="200.0"/>
-        </HBox>
+        <Label text="Cadastro de Clientes (Frete)" styleClass="title-main-screen" />
 
-        <HBox spacing="10.0">
-            <Label text="CNPJ:" minWidth="100.0" styleClass="label-bold"/>
-            <TextField fx:id="txtCnpj"
-                       promptText="CPF ou CNPJ" prefWidth="200.0"/>
-        </HBox>
+        <HBox spacing="12.0" VBox.vgrow="ALWAYS">
+            <!-- LISTA ESQUERDA -->
+            <VBox spacing="6.0" prefWidth="280.0" minWidth="240.0">
+                <TextField fx:id="txtBusca" promptText="Buscar cliente..." />
+                <ListView fx:id="listaClientes" VBox.vgrow="ALWAYS" />
+                <Label fx:id="lblContagem" text="0 clientes" style="-fx-text-fill: #888; -fx-font-size: 11;" />
+            </VBox>
 
-        <HBox spacing="10.0">
-            <Label text="Endereço:" minWidth="100.0" styleClass="label-bold"/>
-            <TextField fx:id="txtEndereco"
-                       promptText="Endereço completo" prefWidth="300.0"/>
-        </HBox>
+            <!-- FORMULARIO DIREITA -->
+            <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                <GridPane hgap="10.0" vgap="6.0">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="50.0" />
+                        <ColumnConstraints percentWidth="50.0" />
+                    </columnConstraints>
 
-        <HBox spacing="10.0">
-            <Label text="Telefone:" minWidth="100.0" styleClass="label-bold"/>
-            <TextField fx:id="txtTelefone"
-                       promptText="Telefone" prefWidth="150.0"/>
-        </HBox>
+                    <Label text="Nome do Cliente: *" styleClass="label-bold" GridPane.columnIndex="0" GridPane.rowIndex="0" GridPane.columnSpan="2" />
+                    <TextField fx:id="txtNomeCliente" promptText="Nome ou fantasia" GridPane.columnIndex="0" GridPane.rowIndex="1" GridPane.columnSpan="2" />
 
-        <HBox spacing="10.0" alignment="CENTER_RIGHT">
-            <Button fx:id="btnSalvar" text="Salvar" styleClass="button-success"/>
-            <Button fx:id="btnEditar" text="Editar" disable="true" />
-            <Button fx:id="btnFechar" text="Fechar" styleClass="button-cancel"/>
+                    <Label text="Razao Social:" styleClass="label-bold" GridPane.columnIndex="0" GridPane.rowIndex="2" GridPane.columnSpan="2" />
+                    <TextField fx:id="txtRazaoSocial" promptText="Razao social completa" GridPane.columnIndex="0" GridPane.rowIndex="3" GridPane.columnSpan="2" />
+
+                    <Label text="CPF ou CNPJ:" styleClass="label-bold" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+                    <Label text="Inscricao Estadual:" styleClass="label-bold" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                    <TextField fx:id="txtCpfCnpj" promptText="000.000.000-00" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+                    <TextField fx:id="txtInscricaoEstadual" promptText="Inscricao estadual" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+
+                    <Label text="Endereco:" styleClass="label-bold" GridPane.columnIndex="0" GridPane.rowIndex="6" GridPane.columnSpan="2" />
+                    <TextField fx:id="txtEndereco" promptText="Rua, numero, bairro, cidade - UF" GridPane.columnIndex="0" GridPane.rowIndex="7" GridPane.columnSpan="2" />
+
+                    <Label text="Email:" styleClass="label-bold" GridPane.columnIndex="0" GridPane.rowIndex="8" />
+                    <Label text="Telefone:" styleClass="label-bold" GridPane.columnIndex="1" GridPane.rowIndex="8" />
+                    <TextField fx:id="txtEmail" promptText="email@exemplo.com" GridPane.columnIndex="0" GridPane.rowIndex="9" />
+                    <TextField fx:id="txtTelefone" promptText="(00) 00000-0000" GridPane.columnIndex="1" GridPane.rowIndex="9" />
+                </GridPane>
+
+                <Region VBox.vgrow="ALWAYS" />
+
+                <HBox spacing="8.0" alignment="CENTER_RIGHT">
+                    <Button fx:id="btnNovo" text="Novo" styleClass="button-success" />
+                    <Button fx:id="btnSalvar" text="Salvar" styleClass="button-success" style="-fx-font-weight: bold;" />
+                    <Button fx:id="btnExcluir" text="Excluir" styleClass="button-cancel" />
+                    <Button fx:id="btnFechar" text="Fechar" />
+                </HBox>
+            </VBox>
         </HBox>
     </VBox>
 

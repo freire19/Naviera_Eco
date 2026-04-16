@@ -1,123 +1,212 @@
 package gui;
 
+import dao.ClienteFreteDAO;
+import gui.util.AlertHelper;
 import gui.util.PermissaoService;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.stage.Stage;
-
-import javax.swing.JOptionPane;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import model.ClienteFrete;
 import util.AppLogger;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Controlador da tela CadastroCliente.fxml
+ * Cadastro de Clientes de Frete — tabela cad_clientes_frete (separada de encomenda/passagem)
  */
 public class CadastroClienteController {
 
-    @FXML
-    public TextField txtRazaoSocial;
+    @FXML private TextField txtBusca;
+    @FXML private ListView<ClienteFrete> listaClientes;
+    @FXML private Label lblContagem;
+    @FXML private TextField txtNomeCliente;
+    @FXML private TextField txtRazaoSocial;
+    @FXML private TextField txtCpfCnpj;
+    @FXML private TextField txtInscricaoEstadual;
+    @FXML private TextField txtEndereco;
+    @FXML private TextField txtEmail;
+    @FXML private TextField txtTelefone;
+    @FXML private Button btnNovo;
+    @FXML private Button btnSalvar;
+    @FXML private Button btnExcluir;
+    @FXML private Button btnFechar;
 
-    @FXML
-    private TextField txtCnpj;
-
-    @FXML
-    private TextField txtEndereco;
-
-    @FXML
-    private TextField txtTelefone;
-
-    @FXML
-    private Button btnSalvar;
-
-    @FXML
-    private Button btnEditar;
-
-    @FXML
-    private Button btnFechar;
-
-    // Se precisar guardar um ID para edição, use aqui
-    private int clienteId = -1;
+    private final ClienteFreteDAO dao = new ClienteFreteDAO();
+    private final ObservableList<ClienteFrete> todosClientes = FXCollections.observableArrayList();
+    private ClienteFrete selecionado = null;
 
     @FXML
     private void initialize() {
-        if (!PermissaoService.isOperacional()) { PermissaoService.exigirOperacional("Cadastro de Cliente"); return; }
-        // Botão Salvar
-        btnSalvar.setOnAction(e -> {
-            salvarClienteNoBanco();
-        });
+        if (!PermissaoService.isOperacional()) {
+            PermissaoService.exigirOperacional("Cadastro de Cliente Frete");
+            return;
+        }
 
-        // Botão Fechar
-        btnFechar.setOnAction(e -> {
-            fecharJanela();
-        });
-
-        // Botão Editar (exemplo; depende da sua lógica de edição)
-        btnEditar.setOnAction(e -> {
-            habilitarEdicao(true);
-        });
-    }
-
-    public void carregarDadosCliente(int id, String razaoSocial, String cnpj, String endereco, String telefone) {
-        this.clienteId = id;
-        txtRazaoSocial.setText(razaoSocial);
-        txtCnpj.setText(cnpj);
-        txtEndereco.setText(endereco);
-        txtTelefone.setText(telefone);
-
-        btnEditar.setDisable(false); // habilita botão Editar
-    }
-
-    private void salvarClienteNoBanco() {
-        // Usa ConexaoBD centralizado (sem senha hardcoded)
-        String sqlInsert = "INSERT INTO clientes (nome, cpf_cnpj, endereco, telefone) "
-                         + "VALUES (?, ?, ?, ?)";
-
-        String sqlUpdate = "UPDATE clientes SET nome=?, cpf_cnpj=?, endereco=?, telefone=? "
-                         + "WHERE id=?";
-
-        try (Connection conn = dao.ConexaoBD.getConnection()) {
-
-            if (clienteId == -1) {
-                // Novo registro
-                try (PreparedStatement stmt = conn.prepareStatement(sqlInsert)) {
-                    stmt.setString(1, txtRazaoSocial.getText());
-                    stmt.setString(2, txtCnpj.getText());
-                    stmt.setString(3, txtEndereco.getText());
-                    stmt.setString(4, txtTelefone.getText());
-                    stmt.executeUpdate();
-                    JOptionPane.showMessageDialog(null, "Cliente cadastrado com sucesso!");
-                }
-            } else {
-                // Atualização de registro existente
-                try (PreparedStatement stmt = conn.prepareStatement(sqlUpdate)) {
-                    stmt.setString(1, txtRazaoSocial.getText());
-                    stmt.setString(2, txtCnpj.getText());
-                    stmt.setString(3, txtEndereco.getText());
-                    stmt.setString(4, txtTelefone.getText());
-                    stmt.setInt(5, clienteId);
-                    stmt.executeUpdate();
-                    JOptionPane.showMessageDialog(null, "Cliente atualizado com sucesso!");
+        // Configurar ListView
+        listaClientes.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(ClienteFrete item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    String txt = item.getNomeCliente();
+                    if (item.getCpfCnpj() != null && !item.getCpfCnpj().isEmpty()) {
+                        txt += "  |  " + item.getCpfCnpj();
+                    }
+                    if (item.getTelefone() != null && !item.getTelefone().isEmpty()) {
+                        txt += "  |  " + item.getTelefone();
+                    }
+                    setText(txt);
                 }
             }
-            fecharJanela();
-        } catch (SQLException e) {
-            AppLogger.error("CadastroClienteController", e.getMessage(), e);
-            JOptionPane.showMessageDialog(null, "Erro ao salvar cliente: " + e.getMessage());
+        });
+
+        // Selecao na lista
+        listaClientes.getSelectionModel().selectedItemProperty().addListener((obs, old, novo) -> {
+            if (novo != null) {
+                selecionado = novo;
+                preencherForm(novo);
+            }
+        });
+
+        // Busca
+        txtBusca.textProperty().addListener((obs, old, novo) -> filtrar(novo));
+
+        // Botoes
+        btnNovo.setOnAction(e -> limparForm());
+        btnSalvar.setOnAction(e -> salvar());
+        btnExcluir.setOnAction(e -> excluir());
+        btnFechar.setOnAction(e -> fechar());
+
+        // Carregar dados
+        carregarDados();
+    }
+
+    private void carregarDados() {
+        new Thread(() -> {
+            try {
+                List<ClienteFrete> lista = dao.listarTodos();
+                Platform.runLater(() -> {
+                    todosClientes.setAll(lista);
+                    listaClientes.setItems(todosClientes);
+                    lblContagem.setText(lista.size() + " clientes");
+                });
+            } catch (Exception e) {
+                AppLogger.warn("CadastroClienteController", "Erro ao carregar: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void filtrar(String busca) {
+        if (busca == null || busca.trim().isEmpty()) {
+            listaClientes.setItems(todosClientes);
+            lblContagem.setText(todosClientes.size() + " clientes");
+            return;
+        }
+        String q = busca.toLowerCase().trim();
+        List<ClienteFrete> filtrados = todosClientes.stream()
+                .filter(c -> (c.getNomeCliente() != null && c.getNomeCliente().toLowerCase().contains(q))
+                        || (c.getCpfCnpj() != null && c.getCpfCnpj().contains(q)))
+                .collect(Collectors.toList());
+        listaClientes.setItems(FXCollections.observableArrayList(filtrados));
+        lblContagem.setText(filtrados.size() + " clientes");
+    }
+
+    private void preencherForm(ClienteFrete c) {
+        txtNomeCliente.setText(c.getNomeCliente() != null ? c.getNomeCliente() : "");
+        txtRazaoSocial.setText(c.getRazaoSocial() != null ? c.getRazaoSocial() : "");
+        txtCpfCnpj.setText(c.getCpfCnpj() != null ? c.getCpfCnpj() : "");
+        txtInscricaoEstadual.setText(c.getInscricaoEstadual() != null ? c.getInscricaoEstadual() : "");
+        txtEndereco.setText(c.getEndereco() != null ? c.getEndereco() : "");
+        txtEmail.setText(c.getEmail() != null ? c.getEmail() : "");
+        txtTelefone.setText(c.getTelefone() != null ? c.getTelefone() : "");
+    }
+
+    private void limparForm() {
+        selecionado = null;
+        listaClientes.getSelectionModel().clearSelection();
+        txtNomeCliente.clear();
+        txtRazaoSocial.clear();
+        txtCpfCnpj.clear();
+        txtInscricaoEstadual.clear();
+        txtEndereco.clear();
+        txtEmail.clear();
+        txtTelefone.clear();
+        txtNomeCliente.requestFocus();
+    }
+
+    private ClienteFrete montarDoForm() {
+        ClienteFrete c = new ClienteFrete();
+        if (selecionado != null) c.setIdCliente(selecionado.getIdCliente());
+        c.setNomeCliente(txtNomeCliente.getText().trim());
+        c.setRazaoSocial(txtRazaoSocial.getText().trim());
+        c.setCpfCnpj(txtCpfCnpj.getText().trim());
+        c.setInscricaoEstadual(txtInscricaoEstadual.getText().trim());
+        c.setEndereco(txtEndereco.getText().trim());
+        c.setEmail(txtEmail.getText().trim());
+        c.setTelefone(txtTelefone.getText().trim());
+        return c;
+    }
+
+    private void salvar() {
+        String nome = txtNomeCliente.getText().trim();
+        if (nome.isEmpty()) {
+            AlertHelper.showWarning("Informe o nome do cliente.");
+            return;
+        }
+
+        ClienteFrete c = montarDoForm();
+
+        if (selecionado != null && selecionado.getIdCliente() != null) {
+            // Atualizar
+            boolean ok = dao.atualizar(c);
+            if (ok) {
+                AlertHelper.showInfo("Cliente atualizado com sucesso!");
+                carregarDados();
+                limparForm();
+            } else {
+                AlertHelper.showWarning("Erro ao atualizar cliente.");
+            }
+        } else {
+            // Novo
+            ClienteFrete salvo = dao.salvar(c);
+            if (salvo != null) {
+                AlertHelper.showInfo("Cliente cadastrado com sucesso!");
+                carregarDados();
+                limparForm();
+            } else {
+                AlertHelper.showWarning("Erro ao cadastrar. Verifique se o nome ja existe.");
+            }
         }
     }
 
-    private void habilitarEdicao(boolean habilitar) {
-        txtRazaoSocial.setDisable(!habilitar);
-        txtCnpj.setDisable(!habilitar);
-        txtEndereco.setDisable(!habilitar);
-        txtTelefone.setDisable(!habilitar);
+    private void excluir() {
+        if (selecionado == null || selecionado.getIdCliente() == null) {
+            AlertHelper.showWarning("Selecione um cliente para excluir.");
+            return;
+        }
+
+        boolean confirma = AlertHelper.showConfirmation(
+                "Excluir cliente \"" + selecionado.getNomeCliente() + "\"?\nEsta acao nao pode ser desfeita.");
+        if (!confirma) return;
+
+        boolean ok = dao.excluir(selecionado.getIdCliente());
+        if (ok) {
+            AlertHelper.showInfo("Cliente excluido.");
+            carregarDados();
+            limparForm();
+        } else {
+            AlertHelper.showWarning("Erro ao excluir cliente.");
+        }
     }
 
-    private void fecharJanela() {
+    private void fechar() {
         Stage stage = (Stage) btnFechar.getScene().getWindow();
         stage.close();
     }
