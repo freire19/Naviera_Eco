@@ -203,6 +203,7 @@ jobs:
           VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
         run: |
           sudo apt-get install -y sshpass
+          sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no root@72.62.166.247 "mkdir -p /var/www/naviera-site/downloads"
           sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no installers/*.deb root@72.62.166.247:/var/www/naviera-site/downloads/naviera-desktop.deb
           sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no installers/*.msi root@72.62.166.247:/var/www/naviera-site/downloads/naviera-desktop.msi
           echo "Deployed to VPS!"
