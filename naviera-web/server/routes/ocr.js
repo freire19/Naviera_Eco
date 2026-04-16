@@ -600,12 +600,15 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
       const frete = await criarFreteComItens(client, empresaId, fretePayload)
 
       // Salvar itens novos no catalogo de fretes
+      // Regra desconto: estiva (3.80) e fardaria (4.50) tem R$0.20 de desconto, demais = preco normal
       for (const item of (dados.itens || [])) {
         const nomeItem = (item.nome_item || '').trim().toUpperCase()
         if (nomeItem) {
+          const preco = parseFloat(item.preco_unitario) || 0
+          const precoDesc = (preco === 3.80 || preco === 4.50) ? preco - 0.20 : preco
           await client.query(
-            'INSERT INTO itens_frete_padrao (nome_item, preco_unitario_padrao, preco_unitario_desconto, ativo, empresa_id) VALUES ($1, $2, $2, TRUE, $3) ON CONFLICT DO NOTHING',
-            [nomeItem, item.preco_unitario || 0, empresaId]
+            'INSERT INTO itens_frete_padrao (nome_item, preco_unitario_padrao, preco_unitario_desconto, ativo, empresa_id) VALUES ($1, $2, $3, TRUE, $4) ON CONFLICT DO NOTHING',
+            [nomeItem, preco, precoDesc, empresaId]
           )
         }
       }
