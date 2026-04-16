@@ -399,14 +399,20 @@ router.put('/lancamentos/:id/revisar', async (req, res) => {
 
 // ============================================================================
 // PUT /api/ocr/lancamentos/:id — Salvar edicoes dos dados extraidos antes de aprovar
+// Atualiza AMBOS dados_extraidos e dados_revisados para que o aprovar use os dados corrigidos
 router.put('/lancamentos/:id', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { dados_extraidos } = req.body
     if (!dados_extraidos) return res.status(400).json({ error: 'dados_extraidos obrigatorio' })
+    const jsonStr = JSON.stringify(dados_extraidos)
     const result = await pool.query(
-      `UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2 AND empresa_id = $3 RETURNING id`,
-      [JSON.stringify(dados_extraidos), req.params.id, empresaId]
+      `UPDATE ocr_lancamentos
+       SET dados_extraidos = $1, dados_revisados = $1,
+           status = CASE WHEN status = 'pendente' THEN 'revisado_operador' ELSE status END
+       WHERE id = $2 AND empresa_id = $3 AND status IN ('pendente', 'revisado_operador')
+       RETURNING id`,
+      [jsonStr, req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Lancamento nao encontrado' })
     res.json({ ok: true })
