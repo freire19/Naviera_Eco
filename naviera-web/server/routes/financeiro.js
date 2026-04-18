@@ -203,14 +203,14 @@ router.get('/encomendas', async (req, res) => {
     const empresaId = req.user.empresa_id
     let sql = `
       SELECT id_encomenda, numero_encomenda, remetente, destinatario,
-             total_a_pagar, valor_pago, status_pagamento, data_emissao, entregue
+             total_a_pagar, valor_pago, status_pagamento, data_lancamento, entregue
       FROM encomendas
       WHERE id_viagem = $1 AND empresa_id = $2
     `
     const params = [viagem_id, empresaId]
-    if (data_inicio) { params.push(data_inicio); sql += ` AND data_emissao >= $${params.length}` }
-    if (data_fim) { params.push(data_fim); sql += ` AND data_emissao <= $${params.length}` }
-    sql += ' ORDER BY data_emissao DESC LIMIT 1000'
+    if (data_inicio) { params.push(data_inicio); sql += ` AND data_lancamento >= $${params.length}` }
+    if (data_fim) { params.push(data_fim); sql += ` AND data_lancamento <= $${params.length}` }
+    sql += ' ORDER BY numero_encomenda DESC LIMIT 1000'
     const result = await pool.query(sql, params)
     res.json(result.rows)
   } catch (err) {
@@ -225,8 +225,8 @@ router.get('/fretes', async (req, res) => {
     if (!viagem_id) return res.json([])
     const empresaId = req.user.empresa_id
     let sql = `
-      SELECT id_frete, numero_frete, remetente_nome_temp, destinatario_nome_temp,
-             valor_nominal, valor_pago, status, data_emissao
+      SELECT id_frete, numero_frete, remetente_nome_temp AS remetente, destinatario_nome_temp AS destinatario,
+             valor_total_itens, valor_frete_calculado, valor_pago, valor_devedor, status_frete, data_emissao
       FROM fretes
       WHERE id_viagem = $1 AND empresa_id = $2
     `
