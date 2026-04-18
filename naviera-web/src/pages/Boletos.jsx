@@ -6,13 +6,43 @@ function todayISO(){return new Date().toISOString().split('T')[0]}
 function addMonths(ds,m){const d=new Date(ds);d.setMonth(d.getMonth()+m);return d.toISOString().split('T')[0]}
 export default function Boletos({viagemAtiva,onNavigate,onClose}){
 const[boletos,setBoletos]=useState([]);const[categorias,setCategorias]=useState([]);const[loading,setLoading]=useState(false);const[toast,setToast]=useState(null);const[sel,setSel]=useState(null);const[filtroData,setFiltroData]=useState('');const[salvando,setSalvando]=useState(false);const[desc,setDesc]=useState('');const[catSel,setCatSel]=useState('');const[valor,setValor]=useState('');const[parcelas,setParcelas]=useState(1);const[dataVenc,setDataVenc]=useState(addMonths(todayISO(),1));const[obs,setObs]=useState('');const[modalBaixa,setModalBaixa]=useState(null);const[formaPag,setFormaPag]=useState('BOLETO')
+// Estado do modal de edicao
+const[modalEditar,setModalEditar]=useState(null)
+const[editForm,setEditForm]=useState({descricao:'',valor_total:'',data_vencimento:'',observacoes:''})
 function showToast(m,t='success'){setToast({msg:m,type:t});setTimeout(()=>setToast(null),3500)}
 useEffect(()=>{api.get('/financeiro/categorias').then(d=>setCategorias(Array.isArray(d)?d:[])).catch(()=>{})},[])
 const carregar=useCallback(()=>{setLoading(true);let url='/financeiro/boletos?';if(viagemAtiva)url+=`viagem_id=${viagemAtiva.id_viagem}&`;if(filtroData)url+=`data_vencimento=${filtroData}`;api.get(url).then(d=>setBoletos(Array.isArray(d)?d:[])).catch(()=>showToast('Erro','error')).finally(()=>setLoading(false))},[viagemAtiva,filtroData])
 useEffect(()=>{carregar()},[carregar])
 async function gerar(){if(!desc.trim()){showToast('Informe descricao','error');return}if(!valor||parseFloat(valor)<=0){showToast('Informe valor','error');return}if(!viagemAtiva){showToast('Selecione viagem','error');return}setSalvando(true);try{let idCat=null;if(catSel){const c=categorias.find(x=>x.nome===catSel);idCat=c?c.id:null}const vt=parseFloat(valor),qp=parseInt(parcelas)||1,vp=Math.round((vt/qp)*100)/100;for(let i=0;i<qp;i++){await api.post('/financeiro/saida',{id_viagem:viagemAtiva.id_viagem,descricao:qp>1?`${desc.trim().toUpperCase()} (${i+1}/${qp})`:desc.trim().toUpperCase(),valor_total:vp,valor_pago:0,data_vencimento:addMonths(dataVenc,i),id_categoria:idCat,forma_pagamento:'BOLETO',status:'PENDENTE',numero_parcela:i+1,total_parcelas:qp,observacoes:obs.trim()||null})}showToast(`${qp} boleto(s) gerado(s)!`);setDesc('');setValor('');setParcelas(1);setObs('');carregar()}catch(e){showToast(e.message||'Erro','error')}finally{setSalvando(false)}}
-async function pagar(){if(!modalBaixa)return;setSalvando(true);try{await api.post(`/financeiro/saida/${modalBaixa.id}/baixa`,{forma_pagamento:formaPag});showToast('Pago!');setModalBaixa(null);carregar()}catch(e){showToast(e.message||'Erro','error')}finally{setSalvando(false)}}
+async function pagar(){if(!modalBaixa)return;setSalvando(true);try{await api.put(`/financeiro/boleto/${modalBaixa.id}/baixa`,{forma_pagamento:formaPag});showToast('Pago!');setModalBaixa(null);carregar()}catch(e){showToast(e.message||'Erro','error')}finally{setSalvando(false)}}
 async function excluir(){if(!sel){showToast('Selecione','error');return}if(!confirm(`Excluir "${sel.descricao}"?`))return;try{await api.delete(`/financeiro/saida/${sel.id}`,{motivo:'Exclusao boletos'});showToast('Excluido');setSel(null);carregar()}catch(e){showToast(e.message||'Erro','error')}}
+function abrirEditar(b){
+  if(!b){showToast('Selecione um boleto','error');return}
+  setModalEditar(b)
+  setEditForm({
+    descricao:b.descricao||'',
+    valor_total:b.valor_total||'',
+    data_vencimento:b.data_vencimento?String(b.data_vencimento).slice(0,10):'',
+    observacoes:b.observacoes||''
+  })
+}
+async function salvarEdicao(){
+  if(!modalEditar)return
+  if(!editForm.descricao.trim()){showToast('Informe descricao','error');return}
+  setSalvando(true)
+  try{
+    await api.put(`/financeiro/saida/${modalEditar.id}`,{
+      descricao:editForm.descricao.toUpperCase(),
+      valor_total:parseFloat(editForm.valor_total)||modalEditar.valor_total,
+      data_vencimento:editForm.data_vencimento||null,
+      observacoes:editForm.observacoes||null
+    })
+    showToast('Boleto atualizado!')
+    setModalEditar(null)
+    setSel(null)
+    carregar()
+  }catch(e){showToast(e.message||'Erro ao salvar','error')}finally{setSalvando(false)}
+}
 const I={padding:'7px 10px',fontSize:'0.82rem',background:'var(--bg-soft)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',width:'100%',boxSizing:'border-box'}
 const L={fontSize:'0.72rem',fontWeight:700,color:'var(--text)',display:'block',marginBottom:3,marginTop:10}
 return(<div>{toast&&<div className={`toast ${toast.type}`}>{toast.msg}</div>}<div style={{display:'flex',gap:12}}>
@@ -34,10 +64,29 @@ return(<div>{toast&&<div className={`toast ${toast.type}`}>{toast.msg}</div>}<di
 <div style={{overflow:'auto',maxHeight:'calc(100vh - 250px)'}}>
 <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}><colgroup><col style={{width:'12%'}}/><col style={{width:'35%'}}/><col style={{width:'12%'}}/><col style={{width:'18%'}}/><col style={{width:'12%'}}/></colgroup>
 <thead><tr style={{background:'#047857',color:'#fff',position:'sticky',top:0}}><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'left'}}>Vencimento</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'left'}}>Descricao</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'center'}}>Parcela</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'right'}}>Valor</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'center'}}>Status</th></tr></thead>
-<tbody>{loading?<tr><td colSpan={5} style={{padding:30,textAlign:'center'}}>Carregando...</td></tr>:boletos.length===0?<tr><td colSpan={5} style={{padding:40,textAlign:'center',color:'var(--text-muted)'}}>Nao ha conteudo na tabela</td></tr>:boletos.map((b,i)=>{const isSel=sel?.id===b.id;const z=i%2===0?'rgba(4,120,87,0.06)':'transparent';const C={padding:'5px 10px',fontSize:'0.8rem',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:0};return(<tr key={b.id} style={{background:isSel?'rgba(4,120,87,0.25)':z,cursor:'pointer'}} onClick={()=>setSel(b)} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background='rgba(4,120,87,0.15)'}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=z}}><td style={C}>{fmtDate(b.data_vencimento)}</td><td style={C} title={b.descricao}>{b.descricao||'\u2014'}</td><td style={{...C,textAlign:'center'}}>{b.numero_parcela&&b.total_parcelas?`${b.numero_parcela}/${b.total_parcelas}`:'\u2014'}</td><td style={{...C,textAlign:'right',fontFamily:'Space Mono,monospace',fontWeight:700}}>{formatMoney(b.valor_total)}</td><td style={{...C,textAlign:'center'}}><span className={`badge ${b.status==='PAGO'?'success':b.status==='VENCIDO'?'danger':'warning'}`} style={{fontSize:'0.68rem'}}>{b.status||'PENDENTE'}</span></td></tr>)})}</tbody></table></div>
+<tbody>{loading?<tr><td colSpan={5} style={{padding:30,textAlign:'center'}}>Carregando...</td></tr>:boletos.length===0?<tr><td colSpan={5} style={{padding:40,textAlign:'center',color:'var(--text-muted)'}}>Nao ha conteudo na tabela</td></tr>:boletos.map((b,i)=>{const isSel=sel?.id===b.id;const z=i%2===0?'rgba(4,120,87,0.06)':'transparent';const C={padding:'5px 10px',fontSize:'0.8rem',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:0};return(<tr key={b.id} style={{background:isSel?'rgba(4,120,87,0.25)':z,cursor:'pointer'}} onClick={()=>setSel(b)} onDoubleClick={()=>abrirEditar(b)} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background='rgba(4,120,87,0.15)'}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=z}}><td style={C}>{fmtDate(b.data_vencimento)}</td><td style={C} title={b.descricao}>{b.descricao||'\u2014'}</td><td style={{...C,textAlign:'center'}}>{b.numero_parcela&&b.total_parcelas?`${b.numero_parcela}/${b.total_parcelas}`:'\u2014'}</td><td style={{...C,textAlign:'right',fontFamily:'Space Mono,monospace',fontWeight:700}}>{formatMoney(b.valor_total)}</td><td style={{...C,textAlign:'center'}}><span className={`badge ${b.status==='PAGO'?'success':b.status==='VENCIDO'?'danger':'warning'}`} style={{fontSize:'0.68rem'}}>{b.status||'PENDENTE'}</span></td></tr>)})}</tbody></table></div>
 <div style={{display:'flex',gap:10,justifyContent:'flex-end',padding:'10px 14px',borderTop:'1px solid var(--border)'}}>
 <button style={{padding:'8px 20px',background:'#047857',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.82rem',opacity:sel&&sel.status!=='PAGO'?1:0.5}} onClick={()=>{if(sel&&sel.status!=='PAGO'){setModalBaixa(sel);setFormaPag('BOLETO')}}} disabled={!sel||sel?.status==='PAGO'}>PAGAR SELECIONADO</button>
+<button style={{padding:'8px 20px',background:'#B45309',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.82rem',opacity:sel?1:0.5}} onClick={()=>abrirEditar(sel)} disabled={!sel}>EDITAR</button>
 <button style={{padding:'8px 20px',background:'#DC2626',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.82rem',opacity:sel?1:0.5}} onClick={excluir} disabled={!sel}>EXCLUIR</button>
 <button style={{padding:'8px 20px',background:'#7BA393',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.82rem'}} onClick={()=>onClose?onClose():onNavigate&&onNavigate('financeiro-saida')}>SAIR</button>
 </div></div></div></div>
-{modalBaixa&&(<div className="modal-overlay" onClick={()=>setModalBaixa(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:380}}><h3>Pagar Boleto</h3><p style={{marginBottom:8}}>{modalBaixa.descricao} — {formatMoney(modalBaixa.valor_total)}</p><label style={L}>Forma de Pagamento:</label><select style={I} value={formaPag} onChange={e=>setFormaPag(e.target.value)}><option>BOLETO</option><option>PIX</option><option>TRANSFERENCIA</option><option>DINHEIRO</option><option>CARTAO</option></select><div style={{display:'flex',gap:8,marginTop:14,justifyContent:'flex-end'}}><button className="btn-sm" onClick={()=>setModalBaixa(null)}>Cancelar</button><button style={{padding:'6px 16px',background:'#059669',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer'}} onClick={pagar} disabled={salvando}>{salvando?'...':'Confirmar'}</button></div></div></div>)}</div>)}
+{/* Modal Pagar */}
+{modalBaixa&&(<div className="modal-overlay" onClick={()=>setModalBaixa(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:380}}><h3>Pagar Boleto</h3><p style={{marginBottom:8}}>{modalBaixa.descricao} — {formatMoney(modalBaixa.valor_total)}</p><label style={L}>Forma de Pagamento:</label><select style={I} value={formaPag} onChange={e=>setFormaPag(e.target.value)}><option>BOLETO</option><option>PIX</option><option>TRANSFERENCIA</option><option>DINHEIRO</option><option>CARTAO</option></select><div style={{display:'flex',gap:8,marginTop:14,justifyContent:'flex-end'}}><button className="btn-sm" onClick={()=>setModalBaixa(null)}>Cancelar</button><button style={{padding:'6px 16px',background:'#059669',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer'}} onClick={pagar} disabled={salvando}>{salvando?'...':'Confirmar'}</button></div></div></div>)}
+{/* Modal Editar */}
+{modalEditar&&(<div className="modal-overlay" onClick={()=>setModalEditar(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:460}}>
+<h3 style={{margin:'0 0 12px'}}>Editar Boleto</h3>
+<label style={L}>Descricao</label>
+<input style={I} value={editForm.descricao} onChange={e=>setEditForm(p=>({...p,descricao:e.target.value}))}/>
+<div style={{display:'flex',gap:10}}>
+<div style={{flex:1}}><label style={L}>Valor (R$)</label><input style={{...I,background:'#FEF3C7',fontWeight:700}} type="number" step="0.01" value={editForm.valor_total} onChange={e=>setEditForm(p=>({...p,valor_total:e.target.value}))}/></div>
+<div style={{flex:1}}><label style={L}>Data Vencimento</label><input style={I} type="date" value={editForm.data_vencimento} onChange={e=>setEditForm(p=>({...p,data_vencimento:e.target.value}))}/></div>
+</div>
+<label style={L}>Observacoes</label>
+<textarea style={{...I,minHeight:50,resize:'vertical'}} value={editForm.observacoes} onChange={e=>setEditForm(p=>({...p,observacoes:e.target.value}))}/>
+<div style={{display:'flex',gap:8,marginTop:14,justifyContent:'flex-end'}}>
+<button className="btn-sm" onClick={()=>setModalEditar(null)}>Cancelar</button>
+<button style={{padding:'6px 16px',background:'#059669',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer'}} onClick={salvarEdicao} disabled={salvando}>{salvando?'Salvando...':'SALVAR'}</button>
+</div>
+</div></div>)}
+</div>)}

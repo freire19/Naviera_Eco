@@ -229,8 +229,15 @@ router.post('/recebimento/onboarding', async (req, res) => {
 router.get('/funcionarios', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
+    const incluirInativos = req.query.incluir_inativos === 'true'
+    const where = incluirInativos
+      ? 'WHERE empresa_id = $1'
+      : 'WHERE ativo = TRUE AND empresa_id = $1'
     const result = await pool.query(
-      'SELECT * FROM funcionarios WHERE ativo = TRUE AND empresa_id = $1 ORDER BY nome',
+      `SELECT id, nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao,
+              data_nascimento, data_inicio_calculo, recebe_decimo_terceiro, is_clt,
+              valor_inss, descontar_inss, ativo
+       FROM funcionarios ${where} ORDER BY nome`,
       [empresaId]
     )
     res.json(result.rows)
@@ -427,13 +434,16 @@ router.delete('/tarifas/:id', async (req, res, next) => {
 router.post('/funcionarios', validate({ nome: 'required|string|min:2' }), async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
-    const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro } = req.body
+    const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento,
+            is_clt, recebe_decimo_terceiro, valor_inss, descontar_inss } = req.body
     const result = await pool.query(`
-      INSERT INTO funcionarios (nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro, ativo, empresa_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE, $13) RETURNING *
+      INSERT INTO funcionarios (nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao,
+        data_nascimento, is_clt, recebe_decimo_terceiro, valor_inss, descontar_inss, ativo, empresa_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, TRUE, $15) RETURNING *
     `, [nome, cpf || null, rg || null, ctps || null, telefone || null, endereco || null, cargo || null,
         parseFloat(salario) || 0, data_admissao || null, data_nascimento || null,
-        is_clt || false, recebe_decimo_terceiro || false, empresaId])
+        is_clt || false, recebe_decimo_terceiro || false,
+        parseFloat(valor_inss) || 0, descontar_inss || false, empresaId])
     res.status(201).json(result.rows[0])
   } catch (err) {
     console.error('[Cadastros] Erro ao criar funcionario:', err.message)
@@ -444,20 +454,316 @@ router.post('/funcionarios', validate({ nome: 'required|string|min:2' }), async 
 router.put('/funcionarios/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
-    const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento, is_clt, recebe_decimo_terceiro } = req.body
+    const { nome, cpf, rg, ctps, telefone, endereco, cargo, salario, data_admissao, data_nascimento,
+            is_clt, recebe_decimo_terceiro, valor_inss, descontar_inss, data_inicio_calculo } = req.body
     const result = await pool.query(`
       UPDATE funcionarios SET nome = $1, cpf = $2, rg = $3, ctps = $4, telefone = $5, endereco = $6,
-        cargo = $7, salario = $8, data_admissao = $9, data_nascimento = $10, is_clt = $11, recebe_decimo_terceiro = $12
-      WHERE id = $13 AND empresa_id = $14 RETURNING *
+        cargo = $7, salario = $8, data_admissao = $9, data_nascimento = $10, is_clt = $11,
+        recebe_decimo_terceiro = $12, valor_inss = $13, descontar_inss = $14, data_inicio_calculo = $15
+      WHERE id = $16 AND empresa_id = $17 RETURNING *
     `, [nome, cpf || null, rg || null, ctps || null, telefone || null, endereco || null, cargo || null,
         parseFloat(salario) || 0, data_admissao || null, data_nascimento || null,
-        is_clt || false, recebe_decimo_terceiro || false, req.params.id, empresaId])
+        is_clt || false, recebe_decimo_terceiro || false,
+        parseFloat(valor_inss) || 0, descontar_inss || false, data_inicio_calculo || null,
+        req.params.id, empresaId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
     res.json(result.rows[0])
   } catch (err) { next(err) }
 })
 
 router.delete('/funcionarios/:id', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query(
+      'UPDATE funcionarios SET ativo = FALSE WHERE id = $1 AND empresa_id = $2 RETURNING *',
+      [req.params.id, empresaId]
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
+    res.json({ ok: true })
+  } catch (err) { next(err) }
+})
+
+// --- Helper: calculo financeiro do funcionario (reutilizado por /financeiro e /fechar-mes) ---
+function calcDiasComerciais(dataInicio) {
+  const hoje = new Date()
+  const inicio = new Date(dataInicio)
+  if (inicio > hoje) return { dias: 0, hoje, inicio }
+  let dI = Math.min(inicio.getUTCDate(), 30)
+  let dF = Math.min(hoje.getUTCDate(), 30)
+  const mI = inicio.getUTCMonth() + 1
+  const mF = hoje.getUTCMonth() + 1
+  if (mI === 2 && dI >= 28) dI = 30
+  if (mF === 2 && dF >= 28) dF = 30
+  let dias = (hoje.getUTCFullYear() - inicio.getUTCFullYear()) * 360
+           + (mF - mI) * 30 + (dF - dI) + 1
+  if (dias > 30) dias = 30
+  if (dias < 0) dias = 0
+  return { dias, hoje, inicio }
+}
+
+async function calcFinanceiroFuncionario(pool, idFunc, empresaId, f) {
+  const dataInicio = f.data_inicio_calculo || f.data_admissao
+  if (!dataInicio) return { dias_trabalhados: 0, acumulado: 0, pago: 0, descontos_rh: 0, saldo: 0 }
+
+  const { dias, hoje, inicio } = calcDiasComerciais(dataInicio)
+  if (inicio > hoje) return { dias_trabalhados: 0, acumulado: 0, pago: 0, descontos_rh: 0, saldo: 0, data_inicio: dataInicio }
+
+  const salario = parseFloat(f.salario) || 0
+  const salarioDiario = salario / 30
+  const acumulado = Math.round(dias * salarioDiario * 100) / 100
+
+  // 5 queries independentes em paralelo
+  const [pgRes, rhRes, lgRes, inssRH, inssLeg] = await Promise.all([
+    pool.query(
+      `SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas
+       WHERE funcionario_id = $1 AND empresa_id = $2 AND is_excluido = false AND data_pagamento >= $3
+       AND (forma_pagamento IS NULL OR (forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO'))`,
+      [idFunc, empresaId, dataInicio]),
+    pool.query(
+      `SELECT COALESCE(SUM(valor), 0) as total FROM eventos_rh
+       WHERE funcionario_id = $1 AND empresa_id = $2 AND data_referencia >= $3`,
+      [idFunc, empresaId, dataInicio]),
+    pool.query(
+      `SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas
+       WHERE funcionario_id = $1 AND empresa_id = $2 AND data_pagamento >= $3
+       AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')`,
+      [idFunc, empresaId, dataInicio]),
+    pool.query(
+      `SELECT COUNT(*) as cnt FROM eventos_rh WHERE funcionario_id = $1 AND empresa_id = $2 AND data_referencia >= $3 AND tipo = 'INSS'`,
+      [idFunc, empresaId, dataInicio]),
+    pool.query(
+      `SELECT COUNT(*) as cnt FROM financeiro_saidas WHERE funcionario_id = $1 AND UPPER(descricao) LIKE '%ENCARGOS%'
+       AND empresa_id = $2 AND data_pagamento >= $3 AND forma_pagamento = 'DESCONTO'`,
+      [idFunc, empresaId, dataInicio])
+  ])
+
+  const pago = parseFloat(pgRes.rows[0].total) || 0
+  const descontosRH = parseFloat(rhRes.rows[0].total) || 0
+  const descontosLegado = parseFloat(lgRes.rows[0].total) || 0
+  const inssJaLancado = parseInt(inssRH.rows[0].cnt) > 0 || parseInt(inssLeg.rows[0].cnt) > 0
+  let descontoInssAuto = 0
+  if (!inssJaLancado && f.descontar_inss && parseFloat(f.valor_inss) > 0) {
+    descontoInssAuto = parseFloat(f.valor_inss)
+  }
+  const saldo = Math.round((acumulado - pago - descontosRH - descontosLegado - descontoInssAuto) * 100) / 100
+
+  // 13o provisao
+  let provisao13 = 0
+  if (f.recebe_decimo_terceiro && f.data_admissao) {
+    const anoAtual = hoje.getFullYear()
+    const inicioAno = new Date(anoAtual, 0, 1)
+    const base = new Date(f.data_admissao) > inicioAno ? new Date(f.data_admissao) : inicioAno
+    let meses = (hoje.getFullYear() - base.getFullYear()) * 12 + (hoje.getMonth() - base.getMonth()) + 1
+    if (meses > 12) meses = 12
+    if (meses < 0) meses = 0
+    provisao13 = Math.round((salario / 12) * meses * 100) / 100
+  }
+
+  const isCicloAtual = inicio.getUTCMonth() === hoje.getUTCMonth() && inicio.getUTCFullYear() === hoje.getUTCFullYear()
+
+  return {
+    dias_trabalhados: dias, valor_diaria: Math.round(salarioDiario * 100) / 100,
+    acumulado, pago, descontos_rh: descontosRH + descontosLegado,
+    desconto_inss_auto: descontoInssAuto, inss_ja_lancado: inssJaLancado,
+    saldo, provisao_13: provisao13, data_inicio: dataInicio, ciclo_atual: isCicloAtual
+  }
+}
+
+async function getViagemAtivaCategoriaRH(pool, empresaId) {
+  const [vRes, cRes] = await Promise.all([
+    pool.query(`SELECT id_viagem FROM viagens WHERE empresa_id = $1 AND is_atual = true LIMIT 1`, [empresaId]),
+    pool.query(`SELECT id FROM categorias_despesa WHERE empresa_id = $1 AND UPPER(nome) LIKE '%FUNCIONARIO%' LIMIT 1`, [empresaId])
+  ])
+  return {
+    viagemId: vRes.rows.length > 0 ? vRes.rows[0].id_viagem : 1,
+    categoriaId: cRes.rows.length > 0 ? cRes.rows[0].id : 1
+  }
+}
+
+// --- Funcionarios: Financeiro (summary) ---
+router.get('/funcionarios/:id/financeiro', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const idFunc = req.params.id
+    const fRes = await pool.query('SELECT * FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
+    res.json(await calcFinanceiroFuncionario(pool, idFunc, empresaId, fRes.rows[0]))
+  } catch (err) { next(err) }
+})
+
+// --- Funcionarios: Historico mensal ---
+router.get('/funcionarios/:id/historico', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const idFunc = req.params.id
+    const mes = parseInt(req.query.mes) || (new Date().getMonth() + 1)
+    const ano = parseInt(req.query.ano) || new Date().getFullYear()
+
+    const result = await pool.query(`
+      SELECT data_pagamento AS data, descricao, valor_pago AS valor, forma_pagamento, 'FIN' AS origem
+      FROM financeiro_saidas
+      WHERE funcionario_id = $1 AND empresa_id = $2
+      AND ((forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false)
+      AND EXTRACT(MONTH FROM data_pagamento) = $3 AND EXTRACT(YEAR FROM data_pagamento) = $4
+      UNION ALL
+      SELECT data_evento AS data, descricao, valor, NULL AS forma_pagamento, 'RH' AS origem
+      FROM eventos_rh
+      WHERE funcionario_id = $5 AND empresa_id = $6
+      AND EXTRACT(MONTH FROM data_evento) = $7 AND EXTRACT(YEAR FROM data_evento) = $8
+      ORDER BY data
+    `, [idFunc, empresaId, mes, ano, idFunc, empresaId, mes, ano])
+
+    const historico = result.rows.map(r => {
+      let tipo
+      if (r.origem === 'RH') {
+        tipo = 'DESCONTO'
+      } else {
+        tipo = (r.forma_pagamento === 'DESCONTO' || r.forma_pagamento === 'RETIDO') ? 'DESCONTO' : 'DINHEIRO'
+      }
+      return { data: r.data, descricao: r.descricao, valor: parseFloat(r.valor), tipo }
+    })
+
+    res.json(historico)
+  } catch (err) { next(err) }
+})
+
+// --- Funcionarios: Lancar pagamento ---
+router.post('/funcionarios/:id/pagamento', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const idFunc = req.params.id
+    const { descricao, valor } = req.body
+    if (!descricao || !valor) return res.status(400).json({ error: 'descricao e valor obrigatorios' })
+
+    const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId)
+
+    const hoje = new Date().toISOString().split('T')[0]
+    await pool.query(`
+      INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento,
+        status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, empresa_id)
+      VALUES ($1, $2, $3, $4, $5, 'PAGO', 'DINHEIRO', $6, $7, $8, false, $9)
+    `, [descricao.toUpperCase(), parseFloat(valor), parseFloat(valor), hoje, hoje,
+        categoriaId, viagemId, idFunc, empresaId])
+
+    res.json({ ok: true })
+  } catch (err) { next(err) }
+})
+
+// --- Funcionarios: Registrar falta ---
+router.post('/funcionarios/:id/falta', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const idFunc = req.params.id
+    const { data_falta } = req.body
+    const dataFalta = data_falta || new Date().toISOString().split('T')[0]
+
+    // verificar duplicata
+    const dup = await pool.query(
+      `SELECT COUNT(*) as cnt FROM eventos_rh WHERE funcionario_id = $1 AND empresa_id = $2 AND data_referencia = $3 AND tipo = 'FALTA'`,
+      [idFunc, empresaId, dataFalta]
+    )
+    if (parseInt(dup.rows[0].cnt) > 0) return res.status(400).json({ error: 'Ja existe falta registrada para esta data' })
+
+    const fRes = await pool.query('SELECT salario, nome, data_inicio_calculo FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
+    const salario = parseFloat(fRes.rows[0].salario) || 0
+    const nome = fRes.rows[0].nome
+    const valorDesconto = Math.round((salario / 30) * 100) / 100
+    const descricao = `FALTA - ${nome.toUpperCase()} - ${dataFalta}`
+    const dataRef = fRes.rows[0].data_inicio_calculo || dataFalta
+
+    await pool.query(
+      `INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia, empresa_id)
+       VALUES ($1, 'FALTA', $2, $3, $4, $5, $6)`,
+      [idFunc, descricao, valorDesconto, dataFalta, dataRef, empresaId]
+    )
+
+    res.json({ ok: true, valor: valorDesconto })
+  } catch (err) { next(err) }
+})
+
+// --- Funcionarios: Lancar desconto manual ---
+router.post('/funcionarios/:id/desconto', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const idFunc = req.params.id
+    const { descricao, valor } = req.body
+    if (!descricao || !valor) return res.status(400).json({ error: 'descricao e valor obrigatorios' })
+
+    const fRes = await pool.query('SELECT data_inicio_calculo FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
+    const dataRef = fRes.rows[0].data_inicio_calculo || new Date().toISOString().split('T')[0]
+    const hoje = new Date().toISOString().split('T')[0]
+
+    await pool.query(
+      `INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia, empresa_id)
+       VALUES ($1, 'DESCONTO_MANUAL', $2, $3, $4, $5, $6)`,
+      [idFunc, ('DESC. ' + descricao).toUpperCase(), parseFloat(valor), hoje, dataRef, empresaId]
+    )
+
+    res.json({ ok: true })
+  } catch (err) { next(err) }
+})
+
+// --- Funcionarios: Fechar mes ---
+router.post('/funcionarios/:id/fechar-mes', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const idFunc = req.params.id
+
+    const fRes = await pool.query('SELECT * FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
+    const f = fRes.rows[0]
+
+    const dataInicio = f.data_inicio_calculo || f.data_admissao
+    if (!dataInicio) return res.status(400).json({ error: 'Funcionario sem data de admissao' })
+
+    const financeiro = await calcFinanceiroFuncionario(pool, idFunc, empresaId, f)
+    const saldoParaPagar = financeiro.saldo
+    const hoje = new Date()
+    const hojeISO = hoje.toISOString().split('T')[0]
+
+    // gravar INSS se necessario
+    const descontoInss = financeiro.desconto_inss_auto || 0
+    if (descontoInss > 0) {
+      await pool.query(
+        `INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia, empresa_id)
+         VALUES ($1, 'INSS', 'DESC. ENCARGOS (INSS/FOLHA)', $2, $3, $4, $5)`,
+        [idFunc, descontoInss, hojeISO, dataInicio, empresaId]
+      )
+    }
+
+    // pagar saldo restante
+    if (saldoParaPagar > 0) {
+      const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId)
+      const desc = `FECHAMENTO MENSAL ${(f.nome || '').toUpperCase()}`
+      await pool.query(`
+        INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento,
+          status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, empresa_id)
+        VALUES ($1, $2, $3, $4, $5, 'PAGO', 'DINHEIRO', $6, $7, $8, false, $9)
+      `, [desc, saldoParaPagar, saldoParaPagar, hojeISO, hojeISO, categoriaId, viagemId, idFunc, empresaId])
+    }
+
+    // atualizar data_inicio_calculo
+    let novaData
+    if (hoje.getUTCDate() >= 28) {
+      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1, 1))
+    } else {
+      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1))
+    }
+    const novaDataISO = novaData.toISOString().split('T')[0]
+
+    await pool.query(
+      'UPDATE funcionarios SET data_inicio_calculo = $1 WHERE id = $2 AND empresa_id = $3',
+      [novaDataISO, idFunc, empresaId]
+    )
+
+    res.json({ ok: true, saldo_pago: saldoParaPagar, nova_data_inicio: novaDataISO, inss_gravado: descontoInss })
+  } catch (err) { next(err) }
+})
+
+// --- Funcionarios: Demitir ---
+router.post('/funcionarios/:id/demitir', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(

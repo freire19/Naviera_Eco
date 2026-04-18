@@ -316,6 +316,31 @@ router.delete('/saida/:id', async (req, res) => {
   }
 })
 
+// PUT /api/financeiro/saida/:id (editar boleto/saida)
+router.put('/saida/:id', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { descricao, valor_total, data_vencimento, observacoes, id_categoria } = req.body
+    const result = await pool.query(`
+      UPDATE financeiro_saidas SET
+        descricao = COALESCE($1, descricao),
+        valor_total = COALESCE($2, valor_total),
+        data_vencimento = COALESCE($3, data_vencimento),
+        observacoes = COALESCE($4, observacoes),
+        id_categoria = COALESCE($5, id_categoria)
+      WHERE id = $6 AND empresa_id = $7 AND (is_excluido = FALSE OR is_excluido IS NULL)
+      RETURNING *
+    `, [descricao || null, valor_total != null ? parseFloat(valor_total) : null,
+        data_vencimento || null, observacoes !== undefined ? observacoes : null,
+        id_categoria || null, req.params.id, empresaId])
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Saida nao encontrada' })
+    res.json(result.rows[0])
+  } catch (err) {
+    console.error('[Financeiro] Erro ao editar saida:', err.message)
+    res.status(500).json({ error: 'Erro ao editar saida' })
+  }
+})
+
 // ============================================================
 // BOLETOS
 // ============================================================
