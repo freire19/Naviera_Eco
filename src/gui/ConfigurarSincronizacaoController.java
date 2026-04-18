@@ -137,8 +137,15 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
         bg.start();
     }
     
+    private static final java.util.Set<String> TABELAS_SYNC_PERMITIDAS = java.util.Set.of(
+        "passageiros", "passagens", "viagens", "encomendas", "fretes"
+    );
+
     // DR212: try-with-resources para evitar leak de PreparedStatement/ResultSet
     private int contarPendentes(Connection conn, String tabela) {
+        if (!TABELAS_SYNC_PERMITIDAS.contains(tabela)) {
+            return 0;
+        }
         String sql = "SELECT COUNT(*) FROM " + tabela + " WHERE sincronizado = FALSE AND (excluido = FALSE OR excluido IS NULL) AND empresa_id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, dao.DAOUtils.empresaId());

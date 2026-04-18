@@ -467,9 +467,10 @@ public class RelatorioEncomendaGeralController implements Initializable {
         List<model.PrecoItem> itens = new ArrayList<>();
 
         // BUSCANDO DADOS DA TABELA CORRETA
-        String sql = "SELECT nome_item, unidade_medida, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item"; 
-        
+        String sql = "SELECT nome_item, unidade_medida, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = ? ORDER BY nome_item";
+
         try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, dao.DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
                 while(rs.next()) {
                     String nome = rs.getString("nome_item");
@@ -479,7 +480,8 @@ public class RelatorioEncomendaGeralController implements Initializable {
                 }
             }
         } catch (Exception e) {
-            try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_item, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item")) {
+            try (Connection conn = ConexaoBD.getConnection(); PreparedStatement stmt = conn.prepareStatement("SELECT nome_item, preco_unitario_padrao FROM itens_encomenda_padrao WHERE empresa_id = ? ORDER BY nome_item")) {
+                stmt.setInt(1, dao.DAOUtils.empresaId());
                 try (ResultSet rs = stmt.executeQuery()) {
                     while(rs.next()) itens.add(new model.PrecoItem(rs.getString("nome_item"), "UN", rs.getBigDecimal("preco_unitario_padrao")));
                 }
