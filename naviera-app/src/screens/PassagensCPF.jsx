@@ -18,6 +18,7 @@ export default function PassagensCPF({ t, authHeaders }) {
   const [selEmb, setSelEmb] = useState(null);
   const [compra, setCompra] = useState(null);
   const [tipoSel, setTipoSel] = useState(null);
+  const [formaPag, setFormaPag] = useState("PIX");
   const [comprando, setComprando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [erro, setErro] = useState("");
@@ -33,7 +34,7 @@ export default function PassagensCPF({ t, authHeaders }) {
     if (!tipoSel) { setErro("Selecione o tipo de passagem."); return; }
     setErro(""); setComprando(true);
     try {
-      const res = await authFetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: "PIX" }) });
+      const res = await authFetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: formaPag }) });
       const data = await res.json();
       if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
       setResultado(data); rm();
@@ -54,15 +55,16 @@ export default function PassagensCPF({ t, authHeaders }) {
     <Cd t={t} style={{ padding: 16, width: "100%", textAlign: "center" }}>
       <div style={{ fontSize: 12, color: t.txMuted }}>Bilhete</div>
       <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri, marginTop: 4 }}>{resultado.numeroBilhete}</div>
-      <div style={{ fontSize: 14, fontWeight: 600, marginTop: 12 }}>{money(resultado.valorTotal)}</div>
-      <div style={{ padding: "6px 12px", borderRadius: 8, background: t.warnBg, color: t.warnTx, fontSize: 11, marginTop: 8, display: "inline-block" }}>Aguardando confirmacao do operador</div>
-      <div style={{ fontSize: 11, color: t.txMuted, marginTop: 8, lineHeight: 1.5 }}>O operador recebera a notificacao e confirmara o pagamento. Apos confirmacao, seu bilhete digital ficara ativo.</div>
+      {Number(resultado.descontoApp) > 0 && <div style={{ fontSize: 11, color: t.ok, marginTop: 8 }}>Desconto PIX: - {money(resultado.descontoApp)}</div>}
+      <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>{money(resultado.valorAPagar ?? resultado.valorTotal)}</div>
+      <div style={{ padding: "6px 12px", borderRadius: 8, background: t.warnBg, color: t.warnTx, fontSize: 11, marginTop: 8, display: "inline-block" }}>{resultado.formaPagamento === "BARCO" ? "Pagamento no embarque" : "Aguardando confirmacao do operador"}</div>
+      <div style={{ fontSize: 11, color: t.txMuted, marginTop: 8, lineHeight: 1.5 }}>{resultado.mensagem || "Apos confirmacao, seu bilhete digital ficara ativo."}</div>
     </Cd>
     <button onClick={() => {
       setSelBilhete({ numero_bilhete: resultado.numeroBilhete, valor_total: resultado.valorTotal, status_passagem: resultado.status, embarcacao: compra?.embarcacao, origem: compra?.origem, destino: compra?.destino, data_viagem: compra?.dataViagem, totp_secret: resultado.numeroBilhete });
-      setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null);
+      setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); setFormaPag("PIX");
     }} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: t.priGrad, color: "#fff", fontSize: 14 }}>Ver bilhete digital</button>
-    <button onClick={() => { setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${t.border}`, background: "transparent", color: t.txMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Voltar para passagens</button>
+    <button onClick={() => { setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); setFormaPag("PIX"); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${t.border}`, background: "transparent", color: t.txMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Voltar para passagens</button>
   </div>;
 
   // Tela de compra
@@ -89,8 +91,37 @@ export default function PassagensCPF({ t, authHeaders }) {
         </div>
       </Cd>;
     }) : <Cd t={t} style={{ padding: 14, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma tarifa disponivel para esta rota.</div></Cd>}
+    {tipoSel && (() => {
+      const tarifa = tarifasDaViagem.find(x => x.tipo_passageiro_id === tipoSel);
+      const valorTotal = tarifa ? Math.max(0, (Number(tarifa.valor_transporte) || 0) + (Number(tarifa.valor_alimentacao) || 0) - (Number(tarifa.valor_desconto) || 0)) : 0;
+      const desconto10 = formaPag === "PIX" ? valorTotal * 0.10 : 0;
+      const aPagar = valorTotal - desconto10;
+      const opts = [
+        { v: "PIX", t: "PIX", s: "10% de desconto" },
+        { v: "CARTAO", t: "Cartao", s: "Sem desconto" },
+        { v: "BARCO", t: "Pagar no barco", s: "Sem desconto, confirma no embarque" },
+      ];
+      return <>
+        <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Forma de pagamento</div>
+        {opts.map(o => {
+          const sel = formaPag === o.v;
+          return <Cd key={o.v} t={t} style={{ padding: 12, cursor: "pointer", border: `2px solid ${sel ? t.pri : t.border}`, background: sel ? t.accent : t.card }} onClick={() => setFormaPag(o.v)}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div><div style={{ fontSize: 14, fontWeight: 600 }}>{o.t}</div>
+                <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>{o.s}</div></div>
+              {o.v === "PIX" && <div style={{ fontSize: 11, fontWeight: 700, color: t.ok, background: t.okBg, padding: "3px 8px", borderRadius: 8 }}>-10%</div>}
+            </div>
+          </Cd>;
+        })}
+        <Cd t={t} style={{ padding: 12, background: t.soft, border: `1px dashed ${t.border}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted }}><span>Subtotal</span><span>{money(valorTotal)}</span></div>
+          {desconto10 > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.ok, marginTop: 4 }}><span>Desconto PIX (10%)</span><span>- {money(desconto10)}</span></div>}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.border}` }}><span>Total</span><span style={{ color: t.pri }}>{money(aPagar)}</span></div>
+        </Cd>
+      </>;
+    })()}
     {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{erro}</div>}
-    {tarifasDaViagem.length > 0 && <button onClick={confirmarCompra} disabled={comprando || !tipoSel} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: comprando || !tipoSel ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14, opacity: !tipoSel ? 0.5 : 1 }}>{comprando ? "Processando..." : "Confirmar e pagar via PIX"}</button>}
+    {tarifasDaViagem.length > 0 && <button onClick={confirmarCompra} disabled={comprando || !tipoSel} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: comprando || !tipoSel ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14, opacity: !tipoSel ? 0.5 : 1 }}>{comprando ? "Processando..." : formaPag === "BARCO" ? "Reservar para pagar no barco" : `Confirmar e pagar via ${formaPag === "PIX" ? "PIX" : "cartao"}`}</button>}
   </div>;
 
   // Tela de viagens de uma embarcacao

@@ -94,27 +94,40 @@ public class PassagemService {
         // Gerar numero bilhete
         String numBilhete = "APP-" + String.format("%06d", System.currentTimeMillis() % 1000000);
 
-        // Status: PIX = PENDENTE_CONFIRMACAO (operador confirma depois), outros = PENDENTE
-        String status = "PENDENTE_CONFIRMACAO";
-        var valorPago = "PIX".equals(req.formaPagamento()) ? total : BigDecimal.ZERO;
+        // Forma de pagamento: PIX aplica 10% desconto; CARTAO e BARCO sem desconto.
+        String forma = req.formaPagamento() != null ? req.formaPagamento() : "PIX";
+        BigDecimal descontoApp = "PIX".equals(forma)
+            ? total.multiply(new BigDecimal("0.10")).setScale(2, java.math.RoundingMode.HALF_UP)
+            : BigDecimal.ZERO;
+        BigDecimal valorAPagar = total.subtract(descontoApp);
+
+        // BARCO: pagamento presencial, permanece PENDENTE ate operador bater caixa.
+        // PIX/CARTAO: PENDENTE_CONFIRMACAO ate operador ou PSP confirmar.
+        String status = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
+
         jdbc.update("""
             INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao,
                 id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao,
                 valor_desconto_tarifa, valor_total, valor_a_pagar, valor_pago,
-                status_passagem, origem_emissao, id_cliente_app, observacoes, empresa_id)
-            VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'APP', ?, ?, ?)
+                status_passagem, origem_emissao, id_cliente_app, observacoes, empresa_id,
+                forma_pagamento_app, desconto_app)
+            VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'APP', ?, ?, ?, ?, ?)
             """,
             numBilhete, idPassageiro, req.idViagem(), idRota, req.idTipoPassagem(),
-            transporte, alimentacao, desconto, total, total, valorPago, status,
-            clienteId, "Compra via App - " + req.formaPagamento(), empresaId);
+            transporte, alimentacao, desconto, total, valorAPagar, status,
+            clienteId, "Compra via App - " + forma, empresaId, forma, descontoApp);
 
-        return Map.of(
-            "numeroBilhete", numBilhete,
-            "valorTotal", total,
-            "formaPagamento", req.formaPagamento(),
-            "status", status,
-            "mensagem", "Passagem emitida! Aguardando confirmacao de pagamento pelo operador."
-        );
+        Map<String, Object> resp = new java.util.HashMap<>();
+        resp.put("numeroBilhete", numBilhete);
+        resp.put("valorTotal", total);
+        resp.put("descontoApp", descontoApp);
+        resp.put("valorAPagar", valorAPagar);
+        resp.put("formaPagamento", forma);
+        resp.put("status", status);
+        resp.put("mensagem", "BARCO".equals(forma)
+            ? "Passagem reservada! Pague diretamente no embarque."
+            : "Passagem emitida! Aguardando confirmacao de pagamento.");
+        return resp;
     }
 
     // TODO DM069: Return typed DTO (e.g. EmbarqueConsultaDTO) instead of Map<String, Object>

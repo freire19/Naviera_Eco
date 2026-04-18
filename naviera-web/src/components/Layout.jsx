@@ -28,6 +28,7 @@ const CadastroUsuario = lazy(() => import('../pages/CadastroUsuario.jsx'))
 const CadastroRota = lazy(() => import('../pages/CadastroRota.jsx'))
 const CadastroTarifa = lazy(() => import('../pages/CadastroTarifa.jsx'))
 const CadastroEmpresa = lazy(() => import('../pages/CadastroEmpresa.jsx'))
+const CadastroRecebimento = lazy(() => import('../pages/CadastroRecebimento.jsx'))
 const CadastroEmbarcacao = lazy(() => import('../pages/CadastroEmbarcacao.jsx'))
 const CadastroConferente = lazy(() => import('../pages/CadastroConferente.jsx'))
 const CadastroCaixa = lazy(() => import('../pages/CadastroCaixa.jsx'))
@@ -68,6 +69,7 @@ const PAGES = {
   'cadastro-rota': { component: CadastroRota, label: 'Rotas', section: 'cadastros' },
   'cadastro-tarifa': { component: CadastroTarifa, label: 'Tarifas', section: 'cadastros' },
   'cadastro-empresa': { component: CadastroEmpresa, label: 'Empresa', section: 'cadastros' },
+  'cadastro-recebimento': { component: CadastroRecebimento, label: 'Recebimento (PIX/Conta)', section: 'cadastros' },
   'cadastro-embarcacao': { component: CadastroEmbarcacao, label: 'Embarcacoes', section: 'cadastros' },
   'cadastro-conferente': { component: CadastroConferente, label: 'Conferentes', section: 'cadastros' },
   'cadastro-caixa': { component: CadastroCaixa, label: 'Caixas', section: 'cadastros' },

@@ -1,10 +1,15 @@
 package com.naviera.api.service;
 
+import com.naviera.api.config.ApiException;
 import com.naviera.api.dto.EncomendaDTO;
 import com.naviera.api.model.ClienteApp;
 import com.naviera.api.repository.ClienteAppRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -87,5 +92,79 @@ public class EncomendaService {
 
         String termo = "%" + cliente.getNome() + "%";
         return jdbc.queryForList(sql, termo, termo);
+    }
+
+    /**
+     * Cliente CPF paga uma encomenda destinada a ele.
+     * Regras:
+     *  - PIX aplica 10% desconto; CARTAO e BARCO sem desconto.
+     *  - BARCO mantem status PENDENTE (paga presencial na chegada).
+     *  - PIX/CARTAO vao para PENDENTE_CONFIRMACAO ate operador/PSP confirmar.
+     * Valida que o cliente logado e destinatario (por id_cliente_app_destinatario
+     * quando existir, ou por match de nome como fallback legado).
+     */
+    @Transactional
+    public Map<String, Object> pagar(Long clienteId, Long idEncomenda, String formaPagamento) {
+        ClienteApp cliente = clienteRepo.findById(clienteId)
+            .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
+
+        String forma = formaPagamento != null ? formaPagamento : "PIX";
+
+        var rows = jdbc.queryForList(
+            "SELECT id_encomenda, total_a_pagar, desconto, valor_pago, status_pagamento, " +
+            "destinatario, id_cliente_app_destinatario, empresa_id " +
+            "FROM encomendas WHERE id_encomenda = ?",
+            idEncomenda);
+        if (rows.isEmpty()) throw ApiException.notFound("Encomenda nao encontrada");
+        var enc = rows.get(0);
+
+        Long donoFk = enc.get("id_cliente_app_destinatario") != null
+            ? ((Number) enc.get("id_cliente_app_destinatario")).longValue() : null;
+        if (donoFk != null) {
+            if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Encomenda nao pertence a este cliente");
+        } else {
+            String destinatario = (String) enc.get("destinatario");
+            if (destinatario == null || !destinatario.toUpperCase().contains(cliente.getNome().toUpperCase())) {
+                throw ApiException.forbidden("Encomenda nao pertence a este cliente");
+            }
+        }
+
+        String statusAtual = (String) enc.get("status_pagamento");
+        if ("PAGO".equalsIgnoreCase(statusAtual)) throw ApiException.conflict("Encomenda ja esta paga");
+        if ("PENDENTE_CONFIRMACAO".equalsIgnoreCase(statusAtual))
+            throw ApiException.conflict("Pagamento ja enviado, aguardando confirmacao");
+
+        BigDecimal total = (BigDecimal) enc.get("total_a_pagar");
+        if (total == null) total = BigDecimal.ZERO;
+        BigDecimal descontoBase = (BigDecimal) enc.get("desconto");
+        if (descontoBase == null) descontoBase = BigDecimal.ZERO;
+        BigDecimal valorPago = (BigDecimal) enc.get("valor_pago");
+        if (valorPago == null) valorPago = BigDecimal.ZERO;
+
+        BigDecimal saldo = total.subtract(descontoBase).subtract(valorPago).max(BigDecimal.ZERO);
+        BigDecimal descontoApp = "PIX".equals(forma)
+            ? saldo.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP)
+            : BigDecimal.ZERO;
+        BigDecimal valorAPagar = saldo.subtract(descontoApp);
+
+        String novoStatus = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
+
+        jdbc.update(
+            "UPDATE encomendas SET forma_pagamento_app = ?, desconto_app = ?, " +
+            "status_pagamento = ?, forma_pagamento = ?, id_cliente_app_destinatario = COALESCE(id_cliente_app_destinatario, ?) " +
+            "WHERE id_encomenda = ?",
+            forma, descontoApp, novoStatus, forma, clienteId, idEncomenda);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("idEncomenda", idEncomenda);
+        resp.put("saldoOriginal", saldo);
+        resp.put("descontoApp", descontoApp);
+        resp.put("valorAPagar", valorAPagar);
+        resp.put("formaPagamento", forma);
+        resp.put("status", novoStatus);
+        resp.put("mensagem", "BARCO".equals(forma)
+            ? "Reservado para pagamento no embarque."
+            : "Pagamento enviado. Aguardando confirmacao.");
+        return resp;
     }
 }

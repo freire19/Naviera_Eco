@@ -139,6 +139,57 @@ router.put('/empresa', async (req, res, next) => {
   }
 })
 
+// --- Dados de recebimento (conta bancaria / PIX da empresa) ---
+// Usados para creditar pagamentos do app (passagens e encomendas) direto na empresa dona da viagem/encomenda.
+router.get('/recebimento', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const r = await pool.query(
+      `SELECT chave_pix, tipo_chave_pix, titular_conta, cpf_cnpj_recebedor,
+              banco, agencia, conta_numero, conta_tipo, psp_provider, psp_subconta_id
+       FROM empresas WHERE id = $1`,
+      [empresaId]
+    )
+    res.json(r.rows[0] || {})
+  } catch (err) { next(err) }
+})
+
+router.put('/recebimento', async (req, res, next) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const {
+      chave_pix, tipo_chave_pix, titular_conta, cpf_cnpj_recebedor,
+      banco, agencia, conta_numero, conta_tipo, psp_provider, psp_subconta_id
+    } = req.body
+
+    const tiposChave = ['CPF','CNPJ','EMAIL','TELEFONE','ALEATORIA']
+    if (tipo_chave_pix && !tiposChave.includes(tipo_chave_pix)) {
+      return res.status(400).json({ error: 'tipo_chave_pix invalido' })
+    }
+    const tiposConta = ['CORRENTE','POUPANCA']
+    if (conta_tipo && !tiposConta.includes(conta_tipo)) {
+      return res.status(400).json({ error: 'conta_tipo invalido' })
+    }
+
+    const r = await pool.query(
+      `UPDATE empresas SET
+         chave_pix = $1, tipo_chave_pix = $2, titular_conta = $3, cpf_cnpj_recebedor = $4,
+         banco = $5, agencia = $6, conta_numero = $7, conta_tipo = $8,
+         psp_provider = $9, psp_subconta_id = $10
+       WHERE id = $11
+       RETURNING chave_pix, tipo_chave_pix, titular_conta, cpf_cnpj_recebedor,
+                 banco, agencia, conta_numero, conta_tipo, psp_provider, psp_subconta_id`,
+      [chave_pix || null, tipo_chave_pix || null, titular_conta || null, cpf_cnpj_recebedor || null,
+       banco || null, agencia || null, conta_numero || null, conta_tipo || null,
+       psp_provider || null, psp_subconta_id || null, empresaId]
+    )
+    res.json(r.rows[0])
+  } catch (err) {
+    console.error('[Cadastros] Erro ao atualizar recebimento:', err.message)
+    next(err)
+  }
+})
+
 // --- Funcionarios (list) ---
 router.get('/funcionarios', async (req, res, next) => {
   try {
