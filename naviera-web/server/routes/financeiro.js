@@ -477,4 +477,81 @@ router.put('/boleto/:id/baixa', async (req, res) => {
   }
 })
 
+// POST /api/financeiro/validar-admin — valida senha de administrador/gerente
+router.post('/validar-admin', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { senha } = req.body
+    if (!senha) return res.status(400).json({ error: 'Senha obrigatoria' })
+    // Buscar admins/gerentes da empresa
+    const result = await pool.query(
+      "SELECT id, nome, senha FROM usuarios WHERE empresa_id = $1 AND (LOWER(funcao) IN ('administrador', 'admin', 'gerente')) AND (excluido = FALSE OR excluido IS NULL)",
+      [empresaId]
+    )
+    // Verificar senha com bcrypt
+    const bcrypt = await import('bcryptjs').catch(() => import('bcrypt'))
+    for (const user of result.rows) {
+      if (user.senha && await bcrypt.default.compare(senha, user.senha)) {
+        return res.json({ valido: true, autorizador: user.nome })
+      }
+    }
+    res.json({ valido: false })
+  } catch (err) {
+    console.error('[Financeiro] Erro validar admin:', err.message)
+    res.status(500).json({ error: 'Erro ao validar' })
+  }
+})
+
+// POST /api/financeiro/estornar — estorna pagamento com auditoria
+router.post('/estornar', async (req, res) => {
+  const client = await pool.connect()
+  try {
+    const empresaId = req.user.empresa_id
+    const { tipo, id, motivo, autorizador } = req.body
+    if (!tipo || !id || !motivo || !autorizador) return res.status(400).json({ error: 'Campos obrigatorios: tipo, id, motivo, autorizador' })
+
+    await client.query('BEGIN')
+
+    let descricaoItem = ''
+    if (tipo === 'passagem') {
+      const r = await client.query('SELECT numero_bilhete, valor_pago, valor_total FROM passagens WHERE id_passagem = $1 AND empresa_id = $2', [id, empresaId])
+      if (r.rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Passagem nao encontrada' }) }
+      const p = r.rows[0]
+      descricaoItem = `Passagem #${p.numero_bilhete} | Pago: R$${p.valor_pago} | Total: R$${p.valor_total}`
+      await client.query('UPDATE passagens SET valor_pago = 0, valor_devedor = valor_total, status_passagem = $1, valor_pagamento_dinheiro = 0, valor_pagamento_pix = 0, valor_pagamento_cartao = 0 WHERE id_passagem = $2 AND empresa_id = $3', ['PENDENTE', id, empresaId])
+    } else if (tipo === 'encomenda') {
+      const r = await client.query('SELECT numero_encomenda, valor_pago, total_a_pagar FROM encomendas WHERE id_encomenda = $1 AND empresa_id = $2', [id, empresaId])
+      if (r.rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Encomenda nao encontrada' }) }
+      const e = r.rows[0]
+      descricaoItem = `Encomenda #${e.numero_encomenda} | Pago: R$${e.valor_pago} | Total: R$${e.total_a_pagar}`
+      await client.query('UPDATE encomendas SET valor_pago = 0, status_pagamento = $1, forma_pagamento = NULL WHERE id_encomenda = $2 AND empresa_id = $3', ['PENDENTE', id, empresaId])
+    } else if (tipo === 'frete') {
+      const r = await client.query('SELECT numero_frete, valor_pago, valor_total_itens FROM fretes WHERE id_frete = $1 AND empresa_id = $2', [id, empresaId])
+      if (r.rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Frete nao encontrado' }) }
+      const f = r.rows[0]
+      descricaoItem = `Frete #${f.numero_frete} | Pago: R$${f.valor_pago} | Total: R$${f.valor_total_itens}`
+      await client.query('UPDATE fretes SET valor_pago = 0, valor_devedor = valor_frete_calculado, tipo_pagamento = NULL, status_frete = NULL WHERE id_frete = $1 AND empresa_id = $2', [id, empresaId])
+    } else {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Tipo invalido' })
+    }
+
+    // Registrar auditoria
+    await client.query(
+      `INSERT INTO auditoria_financeiro (acao, tipo_operacao, usuario, usuario_solicitante, motivo, detalhe_valor, empresa_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      ['ESTORNO_PAGAMENTO', `ESTORNO_${tipo.toUpperCase()}`, `${req.user.login} / ${autorizador}`, req.user.login, motivo, descricaoItem, empresaId]
+    )
+
+    await client.query('COMMIT')
+    res.json({ ok: true, descricao: descricaoItem })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error('[Financeiro] Erro estorno:', err.message)
+    res.status(500).json({ error: 'Erro ao estornar' })
+  } finally {
+    client.release()
+  }
+})
+
 export default router

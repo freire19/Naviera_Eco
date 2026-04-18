@@ -19,6 +19,13 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
   const [salvando, setSalvando] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState('pendente')
 
+  // Estorno
+  const [modalEstorno, setModalEstorno] = useState(null)
+  const [senhaAdmin, setSenhaAdmin] = useState('')
+  const [motivoEstorno, setMotivoEstorno] = useState('')
+  const [estornando, setEstornando] = useState(false)
+  const [erroSenha, setErroSenha] = useState('')
+
   function showToast(msg, type = 'success') { setToast({ msg, type }); setTimeout(() => setToast(null), 3500) }
 
   const config = {
@@ -118,6 +125,32 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
     }
   }
 
+  // Estornar pagamento
+  async function estornar() {
+    if (!modalEstorno) return
+    if (!motivoEstorno.trim()) { setErroSenha('Informe o motivo do estorno'); return }
+    if (!senhaAdmin.trim()) { setErroSenha('Informe a senha do administrador'); return }
+    setEstornando(true); setErroSenha('')
+    try {
+      // 1. Validar senha admin
+      const auth = await api.post('/financeiro/validar-admin', { senha: senhaAdmin })
+      if (!auth.valido) { setErroSenha('Senha de administrador invalida'); setEstornando(false); return }
+      // 2. Executar estorno
+      const tipoMap = { passagens: 'passagem', encomendas: 'encomenda', fretes: 'frete' }
+      await api.post('/financeiro/estornar', {
+        tipo: tipoMap[tipo],
+        id: modalEstorno[cfg.idKey],
+        motivo: motivoEstorno.trim(),
+        autorizador: auth.autorizador
+      })
+      showToast(`Estorno realizado! Autorizado por: ${auth.autorizador}`)
+      setModalEstorno(null); setSenhaAdmin(''); setMotivoEstorno('')
+      carregar()
+    } catch (err) {
+      setErroSenha(err.message || 'Erro ao estornar')
+    } finally { setEstornando(false) }
+  }
+
   const I = { padding: '8px 10px', fontSize: '0.82rem', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text)', width: '100%', boxSizing: 'border-box' }
   const L = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 3, marginTop: 8 }
 
@@ -178,12 +211,20 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
                       <span className={`badge ${isPago ? 'success' : 'warning'}`}>{isPago ? 'PAGO' : 'PENDENTE'}</span>
                     </td>
                     <td style={{ padding: '5px 10px', textAlign: 'center' }}>
-                      {!isPago && (
-                        <button style={{ padding: '4px 12px', background: '#059669', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.72rem' }}
-                          onClick={() => { setModalPagar(r); setValorPagar(String(devedor.toFixed(2))); setFormaPagto('DINHEIRO') }}>
-                          Dar Baixa
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                        {!isPago && (
+                          <button style={{ padding: '3px 10px', background: '#059669', color: '#fff', border: 'none', borderRadius: 3, fontWeight: 700, cursor: 'pointer', fontSize: '0.68rem' }}
+                            onClick={() => { setModalPagar(r); setValorPagar(String(devedor.toFixed(2))); setFormaPagto('DINHEIRO') }}>
+                            Dar Baixa
+                          </button>
+                        )}
+                        {isPago && (
+                          <button style={{ padding: '3px 10px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: 3, fontWeight: 700, cursor: 'pointer', fontSize: '0.68rem' }}
+                            onClick={() => { setModalEstorno(r); setSenhaAdmin(''); setMotivoEstorno(''); setErroSenha('') }}>
+                            Estornar
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -231,6 +272,36 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
               <button className="btn-sm" onClick={() => setModalPagar(null)}>Cancelar</button>
               <button style={{ padding: '8px 24px', background: '#059669', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' }}
                 onClick={darBaixa} disabled={salvando}>{salvando ? 'Processando...' : 'Confirmar Pagamento'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ESTORNO */}
+      {modalEstorno && (
+        <div className="modal-overlay" onClick={() => setModalEstorno(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+            <h3 style={{ color: '#DC2626' }}>Estornar Pagamento</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 8 }}>
+              #{modalEstorno[cfg.numKey]} — {modalEstorno[cfg.nomeKey]}
+              {cfg.nome2Key && modalEstorno[cfg.nome2Key] ? ` → ${modalEstorno[cfg.nome2Key]}` : ''}
+            </p>
+            <div style={{ padding: '8px 12px', background: 'rgba(220,53,69,0.08)', border: '1px solid #DC2626', borderRadius: 6, marginBottom: 12, fontSize: '0.85rem' }}>
+              <strong>Valor pago que sera estornado: {formatMoney(modalEstorno[cfg.pagoKey])}</strong>
+            </div>
+
+            <label style={L}>Motivo do estorno: *</label>
+            <textarea style={{ ...I, minHeight: 60 }} placeholder="Descreva o motivo do estorno..." value={motivoEstorno} onChange={e => setMotivoEstorno(e.target.value)} />
+
+            <label style={L}>Senha do Administrador: *</label>
+            <input style={I} type="password" placeholder="Digite a senha do admin/gerente" value={senhaAdmin} onChange={e => { setSenhaAdmin(e.target.value); setErroSenha('') }} />
+
+            {erroSenha && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '6px 0 0' }}>{erroSenha}</p>}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+              <button className="btn-sm" onClick={() => setModalEstorno(null)}>Cancelar</button>
+              <button style={{ padding: '8px 20px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' }}
+                onClick={estornar} disabled={estornando}>{estornando ? 'Processando...' : 'Confirmar Estorno'}</button>
             </div>
           </div>
         </div>
