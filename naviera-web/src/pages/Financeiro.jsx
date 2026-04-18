@@ -210,13 +210,13 @@ export default function Financeiro({ viagemAtiva, onNavigate }) {
             <h4 style={{ margin: '0 0 4px', fontSize: '0.85rem', textAlign: 'center' }}>Acesso Rapido</h4>
             <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>Ver lista detalhada:</p>
 
-            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('listar-encomendas')}>
+            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('financeiro-encomendas')}>
               📦 ENCOMENDAS
             </button>
-            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('listar-passageiros')}>
+            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('financeiro-passagens')}>
               🎫 PASSAGENS
             </button>
-            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('listar-fretes')}>
+            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('financeiro-fretes')}>
               🚚 FRETES
             </button>
             <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('balanco-viagem')}>
