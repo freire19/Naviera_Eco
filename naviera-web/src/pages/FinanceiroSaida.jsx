@@ -241,6 +241,11 @@ export default function FinanceiroSaida({ viagemAtiva, onNavigate, onClose }) {
             <p style={{ fontSize: '0.72rem', color: '#757575', margin: '0 0 4px' }}>Lancamento Complexo:</p>
             <button style={{ width: '100%', padding: '8px', background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }}
               onClick={() => onNavigate && onNavigate('boletos')}>BOLETOS / A PRAZO</button>
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '10px 0 8px' }} />
+            <p style={{ fontSize: '0.72rem', color: '#757575', margin: '0 0 4px' }}>Recursos Humanos:</p>
+            <button style={{ width: '100%', padding: '8px', background: '#059669', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }}
+              onClick={() => onNavigate && onNavigate('gestao-funcionarios')}>GESTAO DE FUNCIONARIOS</button>
           </div>
         </div>
 
