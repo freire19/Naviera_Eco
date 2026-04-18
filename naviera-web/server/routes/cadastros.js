@@ -190,6 +190,41 @@ router.put('/recebimento', async (req, res, next) => {
   }
 })
 
+// --- PSP onboarding (proxy para Spring API) ---
+// BFF repassa JWT do usuario; Spring API (:8081) consolida logica e chama Asaas.
+const SPRING_API_BASE = process.env.SPRING_API_BASE || 'http://localhost:8081/api'
+
+router.get('/recebimento/psp/status', async (req, res) => {
+  try {
+    const upstream = await fetch(`${SPRING_API_BASE}/psp/status`, {
+      headers: { Authorization: req.headers.authorization }
+    })
+    const body = await upstream.text()
+    res.status(upstream.status).type('application/json').send(body)
+  } catch (err) {
+    console.error('[Cadastros] Erro proxy /psp/status:', err.message)
+    res.status(502).json({ error: 'Backend PSP indisponivel' })
+  }
+})
+
+router.post('/recebimento/onboarding', async (req, res) => {
+  try {
+    const upstream = await fetch(`${SPRING_API_BASE}/psp/onboarding`, {
+      method: 'POST',
+      headers: {
+        Authorization: req.headers.authorization,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(req.body || {})
+    })
+    const body = await upstream.text()
+    res.status(upstream.status).type('application/json').send(body)
+  } catch (err) {
+    console.error('[Cadastros] Erro proxy /psp/onboarding:', err.message)
+    res.status(502).json({ error: 'Backend PSP indisponivel' })
+  }
+})
+
 // --- Funcionarios (list) ---
 router.get('/funcionarios', async (req, res, next) => {
   try {
