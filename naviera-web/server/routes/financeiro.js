@@ -31,13 +31,14 @@ router.get('/saidas', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT id, id_viagem, descricao, valor_total, valor_pago, data_vencimento, data_pagamento, status, forma_pagamento, id_categoria, is_excluido, motivo_exclusao, funcionario_id, numero_parcela, total_parcelas, observacoes FROM financeiro_saidas WHERE (is_excluido = FALSE OR is_excluido IS NULL) AND empresa_id = $1'
+    const { viagem_id, categoria, forma_pagto, data_especifica } = req.query
+    let sql = `SELECT s.id, s.id_viagem, s.descricao, s.valor_total, s.valor_pago, s.data_vencimento, s.data_pagamento, s.status, s.forma_pagamento, s.id_categoria, s.is_excluido, s.motivo_exclusao, s.funcionario_id, s.numero_parcela, s.total_parcelas, s.observacoes, COALESCE(c.nome, '') AS categoria_nome FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE (s.is_excluido = FALSE OR s.is_excluido IS NULL) AND s.empresa_id = $1`
     const params = [empresaId]
-    if (viagem_id) {
-      sql += ' AND id_viagem = $2'
-      params.push(viagem_id)
-    }
-    sql += ' ORDER BY data_vencimento DESC'
+    if (viagem_id) { sql += ` AND s.id_viagem = $${params.length + 1}`; params.push(viagem_id) }
+    if (categoria && categoria !== 'Todas') { sql += ` AND c.nome = $${params.length + 1}`; params.push(categoria) }
+    if (forma_pagto && forma_pagto !== 'Todas') { sql += ` AND s.forma_pagamento = $${params.length + 1}`; params.push(forma_pagto) }
+    if (data_especifica) { sql += ` AND s.data_vencimento = $${params.length + 1}`; params.push(data_especifica) }
+    sql += ' ORDER BY s.data_vencimento DESC'
     // DP052: LIMIT para evitar datasets ilimitados
     const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
     const offset = parseInt(req.query.offset) || 0
@@ -242,6 +243,35 @@ router.get('/fretes', async (req, res) => {
 })
 
 // POST /api/financeiro/saida
+// GET /api/financeiro/categorias — listar categorias de despesa
+router.get('/categorias', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query('SELECT id, nome FROM categorias_despesa WHERE empresa_id = $1 ORDER BY nome', [empresaId])
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar categorias' })
+  }
+})
+
+// POST /api/financeiro/categorias — criar nova categoria
+router.post('/categorias', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { nome } = req.body
+    if (!nome) return res.status(400).json({ error: 'nome obrigatorio' })
+    const result = await pool.query(
+      'INSERT INTO categorias_despesa (nome, empresa_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING *',
+      [nome.trim().toUpperCase(), empresaId]
+    )
+    if (result.rows.length > 0) return res.status(201).json(result.rows[0])
+    const existing = await pool.query('SELECT * FROM categorias_despesa WHERE LOWER(nome) = LOWER($1) AND empresa_id = $2', [nome.trim(), empresaId])
+    res.json(existing.rows[0] || {})
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar categoria' })
+  }
+})
+
 router.post('/saida', validate({ descricao: 'required|string', valor_total: 'required|number' }), async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
