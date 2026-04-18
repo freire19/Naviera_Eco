@@ -1,330 +1,43 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
-
-function formatMoney(val) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '--'
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('pt-BR')
-}
-
-const STATUS_OPTIONS = ['TODOS', 'PENDENTE', 'PAGO']
-
-export default function Boletos({ viagemAtiva }) {
-  const [boletos, setBoletos] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [filtroStatus, setFiltroStatus] = useState('PENDENTE')
-  const [toast, setToast] = useState(null)
-
-  // Modal novo boleto
-  const [showNovo, setShowNovo] = useState(false)
-  const [salvando, setSalvando] = useState(false)
-  const [formNovo, setFormNovo] = useState({
-    descricao: '', valor_total: '', data_vencimento: '',
-    id_categoria: '', observacoes: ''
-  })
-
-  // Modal parcelas
-  const [showParcelas, setShowParcelas] = useState(false)
-  const [formParcelas, setFormParcelas] = useState({
-    descricao_base: '', valor_total: '', parcelas: 2,
-    data_primeira_vencimento: '', intervalo_dias: 30, id_categoria: ''
-  })
-
-  // Modal baixa
-  const [showBaixa, setShowBaixa] = useState(null)
-  const [formaPagBaixa, setFormaPagBaixa] = useState('BOLETO')
-
-  const mostrarToast = useCallback((msg, tipo = 'success') => {
-    setToast({ msg, tipo })
-    setTimeout(() => setToast(null), 3500)
-  }, [])
-
-  const carregarBoletos = useCallback(() => {
-    setLoading(true)
-    let url = '/financeiro/boletos?'
-    if (viagemAtiva) url += `viagem_id=${viagemAtiva.id_viagem}&`
-    if (filtroStatus !== 'TODOS') url += `status=${filtroStatus}`
-    api.get(url)
-      .then(data => setBoletos(Array.isArray(data) ? data : []))
-      .catch(() => { setBoletos([]); mostrarToast('Erro ao carregar boletos', 'error') })
-      .finally(() => setLoading(false))
-  }, [viagemAtiva, filtroStatus, mostrarToast])
-
-  useEffect(() => { carregarBoletos() }, [carregarBoletos])
-
-  // Summary
-  const totalPendente = boletos.filter(b => b.status === 'PENDENTE').reduce((s, b) => s + parseFloat(b.valor_total || 0), 0)
-  const totalPago = boletos.filter(b => b.status === 'PAGO').reduce((s, b) => s + parseFloat(b.valor_total || 0), 0)
-
-  // Handlers novo boleto
-  function handleChangeNovo(e) {
-    const { name, value } = e.target
-    setFormNovo(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSalvarNovo(e) {
-    e.preventDefault()
-    if (!formNovo.descricao.trim()) return mostrarToast('Preencha a descricao.', 'error')
-    if (!formNovo.valor_total || Number(formNovo.valor_total) <= 0) return mostrarToast('Informe um valor valido.', 'error')
-    if (!formNovo.data_vencimento) return mostrarToast('Informe a data de vencimento.', 'error')
-
-    setSalvando(true)
-    try {
-      await api.post('/financeiro/boleto', {
-        descricao: formNovo.descricao.trim(),
-        valor_total: parseFloat(formNovo.valor_total),
-        data_vencimento: formNovo.data_vencimento,
-        id_categoria: formNovo.id_categoria || null,
-        id_viagem: viagemAtiva?.id_viagem || null,
-        observacoes: formNovo.observacoes.trim() || null
-      })
-      mostrarToast('Boleto criado com sucesso!')
-      setShowNovo(false)
-      setFormNovo({ descricao: '', valor_total: '', data_vencimento: '', id_categoria: '', observacoes: '' })
-      carregarBoletos()
-    } catch (err) {
-      mostrarToast(err?.message || 'Erro ao criar boleto.', 'error')
-    } finally {
-      setSalvando(false)
-    }
-  }
-
-  // Handlers parcelas
-  function handleChangeParcelas(e) {
-    const { name, value } = e.target
-    setFormParcelas(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleSalvarParcelas(e) {
-    e.preventDefault()
-    if (!formParcelas.descricao_base.trim()) return mostrarToast('Preencha a descricao base.', 'error')
-    if (!formParcelas.valor_total || Number(formParcelas.valor_total) <= 0) return mostrarToast('Informe o valor total.', 'error')
-    if (!formParcelas.parcelas || Number(formParcelas.parcelas) < 1) return mostrarToast('Informe o numero de parcelas.', 'error')
-    if (!formParcelas.data_primeira_vencimento) return mostrarToast('Informe a data do primeiro vencimento.', 'error')
-
-    setSalvando(true)
-    try {
-      await api.post('/financeiro/boleto/batch', {
-        descricao_base: formParcelas.descricao_base.trim(),
-        valor_total: parseFloat(formParcelas.valor_total),
-        parcelas: parseInt(formParcelas.parcelas),
-        data_primeira_vencimento: formParcelas.data_primeira_vencimento,
-        intervalo_dias: parseInt(formParcelas.intervalo_dias) || 30,
-        id_categoria: formParcelas.id_categoria || null,
-        id_viagem: viagemAtiva?.id_viagem || null
-      })
-      mostrarToast(`${formParcelas.parcelas} boletos criados com sucesso!`)
-      setShowParcelas(false)
-      setFormParcelas({ descricao_base: '', valor_total: '', parcelas: 2, data_primeira_vencimento: '', intervalo_dias: 30, id_categoria: '' })
-      carregarBoletos()
-    } catch (err) {
-      mostrarToast(err?.message || 'Erro ao gerar parcelas.', 'error')
-    } finally {
-      setSalvando(false)
-    }
-  }
-
-  // Handler baixa
-  async function handleConfirmarBaixa() {
-    if (!showBaixa) return
-    setSalvando(true)
-    try {
-      await api.put(`/financeiro/boleto/${showBaixa.id}/baixa`, {
-        forma_pagamento: formaPagBaixa
-      })
-      mostrarToast('Baixa realizada com sucesso!')
-      setShowBaixa(null)
-      carregarBoletos()
-    } catch (err) {
-      mostrarToast(err?.message || 'Erro ao dar baixa.', 'error')
-    } finally {
-      setSalvando(false)
-    }
-  }
-
-  return (
-    <div>
-      {toast && <div className={`toast ${toast.tipo}`}>{toast.msg}</div>}
-
-      {/* Summary Cards */}
-      <div className="dash-grid">
-        <div className="stat-card warning">
-          <span className="stat-label">Total Pendente</span>
-          <span className="stat-value money">{formatMoney(totalPendente)}</span>
-        </div>
-        <div className="stat-card success">
-          <span className="stat-label">Total Pago</span>
-          <span className="stat-value money positive">{formatMoney(totalPago)}</span>
-        </div>
-        <div className="stat-card info">
-          <span className="stat-label">Qtd. Boletos</span>
-          <span className="stat-value">{boletos.length}</span>
-        </div>
-      </div>
-
-      {/* Filters & Actions */}
-      <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div className="card-header">
-          <h3>Boletos</h3>
-          <div className="toolbar" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ padding: '0.4rem 0.8rem' }}>
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <button className="btn-primary" onClick={() => setShowNovo(true)}>+ Novo Boleto</button>
-            <button className="btn-secondary" onClick={() => setShowParcelas(true)}>Gerar Parcelas</button>
-          </div>
-        </div>
-
-        <div className="table-container">
-          {loading ? (
-            <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>Carregando...</p>
-          ) : boletos.length === 0 ? (
-            <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>Nenhum boleto encontrado.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Vencimento</th>
-                  <th>Descricao</th>
-                  <th>Parcela</th>
-                  <th>Valor</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {boletos.map((b, idx) => (
-                  <tr key={b.id || idx}>
-                    <td>{formatDate(b.data_vencimento)}</td>
-                    <td>{b.descricao}</td>
-                    <td>{b.numero_parcela && b.total_parcelas ? `${b.numero_parcela}/${b.total_parcelas}` : '--'}</td>
-                    <td className="money">{formatMoney(b.valor_total)}</td>
-                    <td>
-                      <span className={`badge ${b.status === 'PAGO' ? 'success' : 'warning'}`}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td>
-                      {b.status === 'PENDENTE' && (
-                        <button className="btn-sm success" onClick={() => { setShowBaixa(b); setFormaPagBaixa('BOLETO') }}>
-                          Dar Baixa
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-
-      {/* Modal Novo Boleto */}
-      {showNovo && (
-        <div className="modal-overlay" onClick={() => setShowNovo(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Novo Boleto</h3>
-            <form onSubmit={handleSalvarNovo}>
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Descricao *</label>
-                  <input type="text" name="descricao" value={formNovo.descricao} onChange={handleChangeNovo} placeholder="Ex: Aluguel, Fornecedor..." autoFocus />
-                </div>
-                <div className="form-group">
-                  <label>Valor (R$) *</label>
-                  <input type="number" name="valor_total" value={formNovo.valor_total} onChange={handleChangeNovo} placeholder="0.00" min="0.01" step="0.01" />
-                </div>
-                <div className="form-group">
-                  <label>Data Vencimento *</label>
-                  <input type="date" name="data_vencimento" value={formNovo.data_vencimento} onChange={handleChangeNovo} />
-                </div>
-                <div className="form-group full-width">
-                  <label>Observacoes</label>
-                  <textarea name="observacoes" value={formNovo.observacoes} onChange={handleChangeNovo} rows={3} placeholder="Observacoes adicionais..." />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowNovo(false)} disabled={salvando}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Gerar Parcelas */}
-      {showParcelas && (
-        <div className="modal-overlay" onClick={() => setShowParcelas(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Gerar Parcelas (Boletos)</h3>
-            <form onSubmit={handleSalvarParcelas}>
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Descricao Base *</label>
-                  <input type="text" name="descricao_base" value={formParcelas.descricao_base} onChange={handleChangeParcelas} placeholder="Ex: Financiamento Motor" autoFocus />
-                </div>
-                <div className="form-group">
-                  <label>Valor Total (R$) *</label>
-                  <input type="number" name="valor_total" value={formParcelas.valor_total} onChange={handleChangeParcelas} placeholder="0.00" min="0.01" step="0.01" />
-                </div>
-                <div className="form-group">
-                  <label>Numero de Parcelas *</label>
-                  <input type="number" name="parcelas" value={formParcelas.parcelas} onChange={handleChangeParcelas} min="1" max="120" />
-                </div>
-                <div className="form-group">
-                  <label>Data 1o Vencimento *</label>
-                  <input type="date" name="data_primeira_vencimento" value={formParcelas.data_primeira_vencimento} onChange={handleChangeParcelas} />
-                </div>
-                <div className="form-group">
-                  <label>Intervalo (dias)</label>
-                  <input type="number" name="intervalo_dias" value={formParcelas.intervalo_dias} onChange={handleChangeParcelas} min="1" max="365" />
-                </div>
-              </div>
-              {formParcelas.valor_total && formParcelas.parcelas > 0 && (
-                <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                  Valor por parcela: {formatMoney(parseFloat(formParcelas.valor_total) / parseInt(formParcelas.parcelas))}
-                </p>
-              )}
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowParcelas(false)} disabled={salvando}>Cancelar</button>
-                <button type="submit" className="btn-primary" disabled={salvando}>{salvando ? 'Gerando...' : 'Gerar Parcelas'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Dar Baixa */}
-      {showBaixa && (
-        <div className="modal-overlay" onClick={() => setShowBaixa(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Dar Baixa no Boleto</h3>
-            <p>
-              Confirmar pagamento de <strong>{showBaixa.descricao}</strong> no valor de <strong>{formatMoney(showBaixa.valor_total)}</strong>?
-            </p>
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label>Forma de Pagamento</label>
-              <select value={formaPagBaixa} onChange={e => setFormaPagBaixa(e.target.value)}>
-                <option value="BOLETO">Boleto</option>
-                <option value="PIX">PIX</option>
-                <option value="TRANSFERENCIA">Transferencia</option>
-                <option value="DINHEIRO">Dinheiro</option>
-                <option value="CARTAO">Cartao</option>
-              </select>
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={() => setShowBaixa(null)} disabled={salvando}>Cancelar</button>
-              <button type="button" className="btn-primary" onClick={handleConfirmarBaixa} disabled={salvando}>
-                {salvando ? 'Processando...' : 'Confirmar Baixa'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+function formatMoney(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)}
+function fmtDate(d){if(!d)return'\u2014';if(typeof d==='string'&&/^\d{2}\/\d{2}\/\d{4}$/.test(d))return d;const s=String(d).includes('T')?d.substring(0,10):d;try{const p=s.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s}catch{return s}}
+function todayISO(){return new Date().toISOString().split('T')[0]}
+function addMonths(ds,m){const d=new Date(ds);d.setMonth(d.getMonth()+m);return d.toISOString().split('T')[0]}
+export default function Boletos({viagemAtiva,onNavigate,onClose}){
+const[boletos,setBoletos]=useState([]);const[categorias,setCategorias]=useState([]);const[loading,setLoading]=useState(false);const[toast,setToast]=useState(null);const[sel,setSel]=useState(null);const[filtroData,setFiltroData]=useState('');const[salvando,setSalvando]=useState(false);const[desc,setDesc]=useState('');const[catSel,setCatSel]=useState('');const[valor,setValor]=useState('');const[parcelas,setParcelas]=useState(1);const[dataVenc,setDataVenc]=useState(addMonths(todayISO(),1));const[obs,setObs]=useState('');const[modalBaixa,setModalBaixa]=useState(null);const[formaPag,setFormaPag]=useState('BOLETO')
+function showToast(m,t='success'){setToast({msg:m,type:t});setTimeout(()=>setToast(null),3500)}
+useEffect(()=>{api.get('/financeiro/categorias').then(d=>setCategorias(Array.isArray(d)?d:[])).catch(()=>{})},[])
+const carregar=useCallback(()=>{setLoading(true);let url='/financeiro/boletos?';if(viagemAtiva)url+=`viagem_id=${viagemAtiva.id_viagem}&`;if(filtroData)url+=`data_vencimento=${filtroData}`;api.get(url).then(d=>setBoletos(Array.isArray(d)?d:[])).catch(()=>showToast('Erro','error')).finally(()=>setLoading(false))},[viagemAtiva,filtroData])
+useEffect(()=>{carregar()},[carregar])
+async function gerar(){if(!desc.trim()){showToast('Informe descricao','error');return}if(!valor||parseFloat(valor)<=0){showToast('Informe valor','error');return}if(!viagemAtiva){showToast('Selecione viagem','error');return}setSalvando(true);try{let idCat=null;if(catSel){const c=categorias.find(x=>x.nome===catSel);idCat=c?c.id:null}const vt=parseFloat(valor),qp=parseInt(parcelas)||1,vp=Math.round((vt/qp)*100)/100;for(let i=0;i<qp;i++){await api.post('/financeiro/saida',{id_viagem:viagemAtiva.id_viagem,descricao:qp>1?`${desc.trim().toUpperCase()} (${i+1}/${qp})`:desc.trim().toUpperCase(),valor_total:vp,valor_pago:0,data_vencimento:addMonths(dataVenc,i),id_categoria:idCat,forma_pagamento:'BOLETO',status:'PENDENTE',numero_parcela:i+1,total_parcelas:qp,observacoes:obs.trim()||null})}showToast(`${qp} boleto(s) gerado(s)!`);setDesc('');setValor('');setParcelas(1);setObs('');carregar()}catch(e){showToast(e.message||'Erro','error')}finally{setSalvando(false)}}
+async function pagar(){if(!modalBaixa)return;setSalvando(true);try{await api.post(`/financeiro/saida/${modalBaixa.id}/baixa`,{forma_pagamento:formaPag});showToast('Pago!');setModalBaixa(null);carregar()}catch(e){showToast(e.message||'Erro','error')}finally{setSalvando(false)}}
+async function excluir(){if(!sel){showToast('Selecione','error');return}if(!confirm(`Excluir "${sel.descricao}"?`))return;try{await api.delete(`/financeiro/saida/${sel.id}`,{motivo:'Exclusao boletos'});showToast('Excluido');setSel(null);carregar()}catch(e){showToast(e.message||'Erro','error')}}
+const I={padding:'7px 10px',fontSize:'0.82rem',background:'var(--bg-soft)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text)',width:'100%',boxSizing:'border-box'}
+const L={fontSize:'0.72rem',fontWeight:700,color:'var(--text)',display:'block',marginBottom:3,marginTop:10}
+return(<div>{toast&&<div className={`toast ${toast.type}`}>{toast.msg}</div>}<div style={{display:'flex',gap:12}}>
+<div style={{width:300,flexShrink:0}}><div className="card" style={{padding:14}}>
+<h3 style={{margin:'0 0 2px',fontSize:'0.95rem'}}>NOVO LANCAMENTO (A PRAZO)</h3><hr style={{border:'none',borderTop:'1px solid var(--border)',margin:'8px 0'}}/>
+<label style={L}>Descricao / Fornecedor</label><input style={I} placeholder="Ex: Compra Pecas" value={desc} onChange={e=>setDesc(e.target.value)}/>
+<label style={L}>Categoria</label><select style={I} value={catSel} onChange={e=>setCatSel(e.target.value)}><option value="">Digite para buscar...</option>{categorias.map(c=><option key={c.id} value={c.nome}>{c.nome}</option>)}</select>
+<label style={L}>Valor Total (R$)</label><input style={{...I,background:'#FEF3C7',fontWeight:700}} type="number" step="0.01" placeholder="0,00" value={valor} onChange={e=>setValor(e.target.value)}/>
+<label style={L}>Parcelamento (Quantidade)</label><input style={I} type="number" min="1" max="48" value={parcelas} onChange={e=>setParcelas(e.target.value)}/>
+<label style={L}>Datas de Vencimento:</label><input style={I} type="date" value={dataVenc} onChange={e=>setDataVenc(e.target.value)}/>
+<label style={L}>Observacoes</label><textarea style={{...I,minHeight:60,resize:'vertical'}} value={obs} onChange={e=>setObs(e.target.value)}/>
+<button style={{width:'100%',padding:'10px',marginTop:14,background:'#047857',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.9rem'}} onClick={gerar} disabled={salvando}>{salvando?'Gerando...':'GERAR BOLETOS'}</button>
+</div></div>
+<div style={{flex:1,minWidth:0}}><div className="card" style={{padding:0}}>
+<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
+<h3 style={{margin:0,fontSize:'0.95rem'}}>CONTROLE DE BOLETOS / PARCELAS</h3>
+<div style={{display:'flex',gap:8,alignItems:'center'}}><span style={{fontSize:'0.78rem',fontWeight:700}}>Filtrar Vencimento:</span><input type="date" style={{...I,width:'auto',background:'#e0f5ef'}} value={filtroData} onChange={e=>setFiltroData(e.target.value)}/><button style={{padding:'5px 14px',background:'#047857',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer'}} onClick={carregar}>OK</button><button style={{padding:'5px 14px',background:'#DC2626',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer'}} onClick={()=>setFiltroData('')}>X</button></div>
+</div>
+<div style={{overflow:'auto',maxHeight:'calc(100vh - 250px)'}}>
+<table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}><colgroup><col style={{width:'12%'}}/><col style={{width:'35%'}}/><col style={{width:'12%'}}/><col style={{width:'18%'}}/><col style={{width:'12%'}}/></colgroup>
+<thead><tr style={{background:'#047857',color:'#fff',position:'sticky',top:0}}><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'left'}}>Vencimento</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'left'}}>Descricao</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'center'}}>Parcela</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'right'}}>Valor</th><th style={{padding:'6px 10px',fontSize:'0.72rem',textAlign:'center'}}>Status</th></tr></thead>
+<tbody>{loading?<tr><td colSpan={5} style={{padding:30,textAlign:'center'}}>Carregando...</td></tr>:boletos.length===0?<tr><td colSpan={5} style={{padding:40,textAlign:'center',color:'var(--text-muted)'}}>Nao ha conteudo na tabela</td></tr>:boletos.map((b,i)=>{const isSel=sel?.id===b.id;const z=i%2===0?'rgba(4,120,87,0.06)':'transparent';const C={padding:'5px 10px',fontSize:'0.8rem',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:0};return(<tr key={b.id} style={{background:isSel?'rgba(4,120,87,0.25)':z,cursor:'pointer'}} onClick={()=>setSel(b)} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background='rgba(4,120,87,0.15)'}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=z}}><td style={C}>{fmtDate(b.data_vencimento)}</td><td style={C} title={b.descricao}>{b.descricao||'\u2014'}</td><td style={{...C,textAlign:'center'}}>{b.numero_parcela&&b.total_parcelas?`${b.numero_parcela}/${b.total_parcelas}`:'\u2014'}</td><td style={{...C,textAlign:'right',fontFamily:'Space Mono,monospace',fontWeight:700}}>{formatMoney(b.valor_total)}</td><td style={{...C,textAlign:'center'}}><span className={`badge ${b.status==='PAGO'?'success':b.status==='VENCIDO'?'danger':'warning'}`} style={{fontSize:'0.68rem'}}>{b.status||'PENDENTE'}</span></td></tr>)})}</tbody></table></div>
+<div style={{display:'flex',gap:10,justifyContent:'flex-end',padding:'10px 14px',borderTop:'1px solid var(--border)'}}>
+<button style={{padding:'8px 20px',background:'#047857',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.82rem',opacity:sel&&sel.status!=='PAGO'?1:0.5}} onClick={()=>{if(sel&&sel.status!=='PAGO'){setModalBaixa(sel);setFormaPag('BOLETO')}}} disabled={!sel||sel?.status==='PAGO'}>PAGAR SELECIONADO</button>
+<button style={{padding:'8px 20px',background:'#DC2626',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.82rem',opacity:sel?1:0.5}} onClick={excluir} disabled={!sel}>EXCLUIR</button>
+<button style={{padding:'8px 20px',background:'#7BA393',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer',fontSize:'0.82rem'}} onClick={()=>onClose?onClose():onNavigate&&onNavigate('financeiro-saida')}>SAIR</button>
+</div></div></div></div>
+{modalBaixa&&(<div className="modal-overlay" onClick={()=>setModalBaixa(null)}><div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:380}}><h3>Pagar Boleto</h3><p style={{marginBottom:8}}>{modalBaixa.descricao} — {formatMoney(modalBaixa.valor_total)}</p><label style={L}>Forma de Pagamento:</label><select style={I} value={formaPag} onChange={e=>setFormaPag(e.target.value)}><option>BOLETO</option><option>PIX</option><option>TRANSFERENCIA</option><option>DINHEIRO</option><option>CARTAO</option></select><div style={{display:'flex',gap:8,marginTop:14,justifyContent:'flex-end'}}><button className="btn-sm" onClick={()=>setModalBaixa(null)}>Cancelar</button><button style={{padding:'6px 16px',background:'#059669',color:'#fff',border:'none',borderRadius:4,fontWeight:700,cursor:'pointer'}} onClick={pagar} disabled={salvando}>{salvando?'...':'Confirmar'}</button></div></div></div>)}</div>)}
