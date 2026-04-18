@@ -111,8 +111,8 @@ public class Launch extends Application {
             stage.setResizable(false);
             stage.show();
 
-            // Verificar atualizacao em background (silencioso se offline)
-            gui.util.VersaoChecker.verificarAtualizacao();
+            // Check de versao e feito apos login (TelaPrincipalController.initialize)
+            // para que o badge apareca na TopBar ao inves de modal em cima da tela de login.
         } catch (Exception e) {
             AppLogger.error("Launch", "Erro ao abrir Login: " + e.getMessage(), e);
         }

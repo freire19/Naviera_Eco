@@ -2,9 +2,15 @@ package gui.util;
 
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.stage.Window;
 
 import util.AppLogger;
 
@@ -16,15 +22,19 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.function.Consumer;
 
 /**
  * Verifica se ha nova versao do sistema disponivel no servidor.
  * Usa o endpoint GET /api/public/versao/check?plataforma=desktop&versaoAtual=X.Y.Z
  *
+ * Uso:
+ *   VersaoChecker.verificarAtualizacao(info -> mostrarBadgeNaTopBar(info));
+ *
  * Comportamento:
- * - Versao nova disponivel: mostra Alert com changelog e link de download
- * - Atualizacao obrigatoria: mostra Alert WARNING que bloqueia ate o usuario confirmar
- * - Servidor inacessivel: segue silenciosamente (app funciona offline)
+ * - Se ha versao nova: invoca callback com VersaoInfo (na FX thread)
+ * - Se esta atualizado ou servidor inacessivel: nao invoca nada (silencioso)
+ * - UI de notificacao e responsabilidade do chamador — ver {@link #mostrarPopupAtualizacao}
  */
 public class VersaoChecker {
 
@@ -34,14 +44,33 @@ public class VersaoChecker {
     private static final String CONFIG_FILE = "sync_config.properties";
     private static final int CONNECT_TIMEOUT = 5_000;
     private static final int READ_TIMEOUT = 5_000;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private VersaoChecker() {} // Utility class
 
+    /** Dados retornados pelo check de versao (quando ha atualizacao disponivel). */
+    public static class VersaoInfo {
+        public final String versaoAtual;
+        public final String versaoNova;
+        public final String changelog;
+        public final String urlDownload;
+        public final boolean obrigatoria;
+
+        public VersaoInfo(String versaoAtual, String versaoNova, String changelog,
+                          String urlDownload, boolean obrigatoria) {
+            this.versaoAtual = versaoAtual;
+            this.versaoNova = versaoNova;
+            this.changelog = changelog;
+            this.urlDownload = urlDownload;
+            this.obrigatoria = obrigatoria;
+        }
+    }
+
     /**
      * Verifica atualizacao em background thread (daemon).
-     * Seguro para chamar de qualquer lugar — nao bloqueia FX thread.
+     * Callback e invocado na FX thread apenas se houver versao nova.
      */
-    public static void verificarAtualizacao() {
+    public static void verificarAtualizacao(Consumer<VersaoInfo> onUpdateAvailable) {
         Thread t = new Thread(() -> {
             try {
                 String serverUrl = lerServerUrl();
@@ -64,7 +93,10 @@ public class VersaoChecker {
                 String response = lerResposta(conn);
                 conn.disconnect();
 
-                processarResposta(response);
+                VersaoInfo info = parseResposta(response);
+                if (info != null && onUpdateAvailable != null) {
+                    Platform.runLater(() -> onUpdateAvailable.accept(info));
+                }
 
             } catch (Exception e) {
                 // Silencioso — app funciona offline
@@ -104,113 +136,145 @@ public class VersaoChecker {
         }
     }
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    // ── Processamento da resposta ──
-
-    private static void processarResposta(String json) {
+    private static VersaoInfo parseResposta(String json) {
         try {
             JsonNode root = MAPPER.readTree(json);
-
             boolean atualizado = root.path("atualizado").asBoolean(false);
-            if (atualizado) return; // Ja esta na versao mais recente
+            if (atualizado) return null;
 
-            boolean obrigatoria = root.path("obrigatoria").asBoolean(false);
-            String versaoNova = textOrNull(root, "versaoNova");
-            String changelog = textOrNull(root, "changelog");
-            String urlDownload = textOrNull(root, "urlDownload");
-
-            Platform.runLater(() -> mostrarDialogoAtualizacao(versaoNova, changelog, urlDownload, obrigatoria));
+            return new VersaoInfo(
+                VERSAO_ATUAL,
+                textOrNull(root, "versaoNova"),
+                textOrNull(root, "changelog"),
+                textOrNull(root, "urlDownload"),
+                root.path("obrigatoria").asBoolean(false)
+            );
         } catch (Exception e) {
             AppLogger.warn(TAG, "Erro ao processar resposta de versao: " + e.getMessage());
+            return null;
         }
     }
 
-    /**
-     * Extrai valor texto de um campo do JSON, retornando null se ausente ou nulo.
-     */
     private static String textOrNull(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return (value != null && !value.isNull()) ? value.asText() : null;
     }
 
-    // ── UI ──
+    // ── UI: popup nao-modal estilo VS Code ──
 
-    private static void mostrarDialogoAtualizacao(String versaoNova, String changelog,
-                                                    String urlDownload, boolean obrigatoria) {
-        Alert alert = new Alert(obrigatoria ? AlertType.WARNING : AlertType.INFORMATION);
-        alert.setTitle("Atualizacao do Sistema");
-        alert.setHeaderText(obrigatoria
-                ? "Atualizacao Obrigatoria - v" + versaoNova
-                : "Nova Versao Disponivel - v" + versaoNova);
-
-        // Corpo do dialogo com changelog e link
-        VBox content = new VBox(8);
-        content.setPadding(new Insets(8));
-
-        // Versao atual vs nova
-        Label lblVersoes = new Label("Versao atual: " + VERSAO_ATUAL + "  →  Nova: " + versaoNova);
-        lblVersoes.setStyle("-fx-font-weight: bold;");
-        content.getChildren().add(lblVersoes);
-
-        // Changelog (se disponivel)
-        if (changelog != null && !changelog.isBlank()) {
-            Label lblChangelog = new Label("Novidades:");
-            lblChangelog.setStyle("-fx-font-weight: bold; -fx-padding: 8 0 0 0;");
-            content.getChildren().add(lblChangelog);
-
-            TextArea txtChangelog = new TextArea(changelog);
-            txtChangelog.setEditable(false);
-            txtChangelog.setWrapText(true);
-            txtChangelog.setPrefRowCount(6);
-            txtChangelog.setMaxWidth(Double.MAX_VALUE);
-            content.getChildren().add(txtChangelog);
+    /**
+     * Abre popup nao-modal com detalhes da atualizacao, posicionado proximo ao botao de origem.
+     * Para atualizacao obrigatoria, popup fica modal e app fecha se usuario nao baixar.
+     */
+    public static void mostrarPopupAtualizacao(VersaoInfo info, Window owner) {
+        Stage popup = new Stage();
+        popup.initStyle(StageStyle.UTILITY);
+        popup.setTitle("Atualizacao Disponivel");
+        if (info.obrigatoria && owner != null) {
+            popup.initModality(Modality.APPLICATION_MODAL);
+            popup.initOwner(owner);
+        } else if (owner != null) {
+            popup.initOwner(owner);
         }
 
-        // Link de download (se disponivel)
-        if (urlDownload != null && !urlDownload.isBlank()) {
-            Hyperlink link = new Hyperlink("Baixar atualizacao: " + urlDownload);
-            link.setOnAction(e -> {
-                try {
-                    java.awt.Desktop.getDesktop().browse(new java.net.URI(urlDownload));
-                } catch (Exception ex) {
-                    AppLogger.warn(TAG, "Erro ao abrir link de download: " + ex.getMessage());
-                }
-            });
-            content.getChildren().add(link);
+        // Cabecalho
+        Label titulo = new Label(info.obrigatoria
+            ? "Atualizacao Obrigatoria"
+            : "Nova Versao Disponivel");
+        titulo.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        Label subtitulo = new Label("Naviera Desktop");
+        subtitulo.setStyle("-fx-text-fill: #888;");
+
+        Label versoes = new Label("Versao atual: " + info.versaoAtual
+            + "    →    Nova: " + info.versaoNova);
+        versoes.setStyle("-fx-padding: 8 0 4 0;");
+
+        VBox header = new VBox(2, titulo, subtitulo, versoes);
+
+        // Changelog
+        VBox body = new VBox(4);
+        if (info.changelog != null && !info.changelog.isBlank()) {
+            Label lblCh = new Label("Novidades:");
+            lblCh.setStyle("-fx-font-weight: bold;");
+            TextArea txtCh = new TextArea(info.changelog);
+            txtCh.setEditable(false);
+            txtCh.setWrapText(true);
+            txtCh.setPrefRowCount(6);
+            txtCh.setMaxWidth(Double.MAX_VALUE);
+            body.getChildren().addAll(lblCh, txtCh);
         }
 
-        if (obrigatoria) {
-            Label lblAviso = new Label("Esta atualizacao e obrigatoria. O sistema pode nao funcionar corretamente sem ela.");
-            lblAviso.setStyle("-fx-text-fill: #cc0000; -fx-font-weight: bold; -fx-wrap-text: true;");
-            lblAviso.setWrapText(true);
-            content.getChildren().add(lblAviso);
+        if (info.obrigatoria) {
+            Label aviso = new Label("Esta atualizacao e obrigatoria. O sistema pode nao funcionar corretamente sem ela.");
+            aviso.setStyle("-fx-text-fill: #cc0000; -fx-font-weight: bold;");
+            aviso.setWrapText(true);
+            body.getChildren().add(aviso);
         }
 
-        alert.getDialogPane().setContent(content);
-        alert.getDialogPane().setPrefWidth(480);
+        // Botoes
+        Button btnNotas = new Button("Notas da Versao");
+        btnNotas.setDisable(info.changelog == null || info.changelog.isBlank());
+        btnNotas.setOnAction(e -> {
+            Alert notas = new Alert(Alert.AlertType.INFORMATION);
+            notas.setTitle("Notas da Versao " + info.versaoNova);
+            notas.setHeaderText(null);
+            TextArea ta = new TextArea(info.changelog != null ? info.changelog : "");
+            ta.setEditable(false);
+            ta.setWrapText(true);
+            ta.setPrefRowCount(12);
+            notas.getDialogPane().setContent(ta);
+            notas.getDialogPane().setPrefWidth(520);
+            notas.showAndWait();
+        });
 
-        if (obrigatoria) {
-            // Botoes: Baixar (fecha alert) e Sair (fecha app)
-            alert.getButtonTypes().clear();
-            ButtonType btnBaixar = new ButtonType("Baixar Atualizacao", ButtonBar.ButtonData.OK_DONE);
-            ButtonType btnSair = new ButtonType("Sair do Sistema", ButtonBar.ButtonData.CANCEL_CLOSE);
-            alert.getButtonTypes().addAll(btnBaixar, btnSair);
-
-            alert.showAndWait().ifPresent(response -> {
-                if (response == btnBaixar && urlDownload != null && !urlDownload.isBlank()) {
-                    try {
-                        java.awt.Desktop.getDesktop().browse(new java.net.URI(urlDownload));
-                    } catch (Exception ex) {
-                        AppLogger.warn(TAG, "Erro ao abrir link de download: " + ex.getMessage());
-                    }
-                }
-                // Atualizacao obrigatoria: fecha o app
+        Button btnDownload = new Button("Baixar");
+        btnDownload.setDefaultButton(true);
+        btnDownload.setStyle("-fx-background-color: #0e639c; -fx-text-fill: white;");
+        btnDownload.setDisable(info.urlDownload == null || info.urlDownload.isBlank());
+        btnDownload.setOnAction(e -> {
+            abrirLinkDownload(info.urlDownload);
+            if (info.obrigatoria) {
+                popup.close();
                 Platform.exit();
                 System.exit(0);
-            });
-        } else {
-            alert.showAndWait();
+            } else {
+                popup.close();
+            }
+        });
+
+        Button btnDepois = new Button(info.obrigatoria ? "Sair do Sistema" : "Depois");
+        btnDepois.setOnAction(e -> {
+            if (info.obrigatoria) {
+                popup.close();
+                Platform.exit();
+                System.exit(0);
+            } else {
+                popup.close();
+            }
+        });
+
+        HBox acoes = new HBox(8, btnNotas, new javafx.scene.layout.Region(), btnDepois, btnDownload);
+        HBox.setHgrow(acoes.getChildren().get(1), javafx.scene.layout.Priority.ALWAYS);
+        acoes.setAlignment(Pos.CENTER_LEFT);
+        acoes.setPadding(new Insets(8, 0, 0, 0));
+
+        VBox root = new VBox(8, header, body, acoes);
+        root.setPadding(new Insets(16));
+        root.setStyle("-fx-background-color: white;");
+
+        Scene scene = new Scene(root, 480, 360);
+        popup.setScene(scene);
+        popup.setResizable(false);
+        popup.show();
+    }
+
+    private static void abrirLinkDownload(String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+        } catch (Exception ex) {
+            AppLogger.warn(TAG, "Erro ao abrir link de download: " + ex.getMessage());
         }
     }
 }

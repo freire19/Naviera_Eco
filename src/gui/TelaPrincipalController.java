@@ -78,9 +78,13 @@ public class TelaPrincipalController implements Initializable {
     
     // Menu Superior
     @FXML private HBox hboxMenuSuperior;
-    
+
     // Botão de Modo Escuro
     @FXML private ToggleButton btnModoNoturno;
+
+    // Badge de atualizacao disponivel (estilo VS Code)
+    @FXML private Button btnAtualizar;
+    private VersaoChecker.VersaoInfo versaoInfoPendente;
     
     // Calendário
     @FXML private Label lblMesAnoCalendario;
@@ -170,7 +174,31 @@ public class TelaPrincipalController implements Initializable {
         t.start();
 
         // Check de versao em background (nao bloqueia startup)
-        VersaoChecker.verificarAtualizacao();
+        // Mostra badge "Atualizar" na TopBar quando ha nova versao (estilo VS Code)
+        VersaoChecker.verificarAtualizacao(info -> {
+            versaoInfoPendente = info;
+            if (btnAtualizar != null) {
+                btnAtualizar.setVisible(true);
+                btnAtualizar.setManaged(true);
+                if (info.obrigatoria) {
+                    btnAtualizar.setText("Atualizacao Obrigatoria");
+                    btnAtualizar.setStyle("-fx-background-color: #cc0000; -fx-text-fill: white; -fx-font-weight: bold;");
+                    // Update obrigatorio: abre popup automaticamente
+                    handleAbrirAtualizacao(null);
+                } else {
+                    btnAtualizar.setText("Atualizar \u2022 v" + info.versaoNova);
+                    btnAtualizar.setStyle("-fx-background-color: #0e639c; -fx-text-fill: white;");
+                }
+            }
+        });
+    }
+
+    @FXML
+    private void handleAbrirAtualizacao(ActionEvent event) {
+        if (versaoInfoPendente == null) return;
+        javafx.stage.Window owner = (rootPane != null && rootPane.getScene() != null)
+            ? rootPane.getScene().getWindow() : null;
+        VersaoChecker.mostrarPopupAtualizacao(versaoInfoPendente, owner);
     }
 
     // ================================================================================
