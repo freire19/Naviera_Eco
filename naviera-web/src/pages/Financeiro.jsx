@@ -80,9 +80,7 @@ export default function Financeiro({ viagemAtiva, onNavigate }) {
     sideBtn: { width: '100%', padding: '12px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-card)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)', marginBottom: 8, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
   }
 
-  if (!viagemAtiva && !viagemId) {
-    return <div className="placeholder-page"><div className="ph-icon">💰</div><h2>Lancar Entrada Financeira</h2><p>Selecione uma viagem.</p></div>
-  }
+  // Sem guarda — funciona com "TODAS AS VIAGENS" mesmo sem viagem selecionada
 
   return (
     <div>
