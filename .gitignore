@@ -59,3 +59,7 @@ uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# PM2 ecosystem (contains production secrets)
+ecosystem.config.cjs
+ecosystem.config.js

@@ -60,22 +60,22 @@ export default function BalancoViagem({ viagemAtiva }) {
         <p style={{ color: 'var(--text-muted)', padding: 20 }}>Carregando...</p>
       ) : balanco ? (
         <>
-          {/* Receitas por tipo */}
+          {/* Receitas por tipo — lancado */}
           <div className="dash-grid" style={{ marginTop: '1.5rem' }}>
             <div className="stat-card primary">
-              <span className="stat-label">Passagens</span>
+              <span className="stat-label">PASSAGENS</span>
               <span className="stat-value money">{formatMoney(balanco.receitas?.passagens)}</span>
-              <span className="stat-sub">Receita de passagens</span>
+              <span className="stat-sub">Recebido: {formatMoney(balanco.recebido?.passagens)}</span>
             </div>
             <div className="stat-card info">
-              <span className="stat-label">Encomendas</span>
+              <span className="stat-label">ENCOMENDAS</span>
               <span className="stat-value money">{formatMoney(balanco.receitas?.encomendas)}</span>
-              <span className="stat-sub">Receita de encomendas</span>
+              <span className="stat-sub">Recebido: {formatMoney(balanco.recebido?.encomendas)}</span>
             </div>
             <div className="stat-card warning">
-              <span className="stat-label">Fretes</span>
+              <span className="stat-label">FRETES</span>
               <span className="stat-value money">{formatMoney(balanco.receitas?.fretes)}</span>
-              <span className="stat-sub">Receita de fretes</span>
+              <span className="stat-sub">Recebido: {formatMoney(balanco.recebido?.fretes)}</span>
             </div>
           </div>
 

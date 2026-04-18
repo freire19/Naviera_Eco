@@ -57,26 +57,32 @@ router.get('/balanco', async (req, res) => {
 
     const empresaId = req.user.empresa_id
     const [passagens, encomendas, fretes, saidas] = await Promise.all([
-      pool.query('SELECT COALESCE(SUM(valor_pago), 0) AS total FROM passagens WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
-      pool.query('SELECT COALESCE(SUM(valor_pago), 0) AS total FROM encomendas WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
-      pool.query('SELECT COALESCE(SUM(valor_pago), 0) AS total FROM fretes WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
+      pool.query('SELECT COALESCE(SUM(valor_total), 0) AS lancado, COALESCE(SUM(valor_pago), 0) AS recebido FROM passagens WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
+      pool.query('SELECT COALESCE(SUM(total_a_pagar), 0) AS lancado, COALESCE(SUM(valor_pago), 0) AS recebido FROM encomendas WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
+      pool.query('SELECT COALESCE(SUM(valor_frete_calculado), 0) AS lancado, COALESCE(SUM(valor_pago), 0) AS recebido FROM fretes WHERE id_viagem = $1 AND empresa_id = $2', [viagem_id, empresaId]),
       pool.query('SELECT COALESCE(SUM(valor_total), 0) AS total FROM financeiro_saidas WHERE id_viagem = $1 AND (is_excluido = FALSE OR is_excluido IS NULL) AND empresa_id = $2', [viagem_id, empresaId])
     ])
 
     const receitas = {
-      passagens: Number(passagens.rows[0].total) || 0,
-      encomendas: Number(encomendas.rows[0].total) || 0,
-      fretes: Number(fretes.rows[0].total) || 0
+      passagens: Number(passagens.rows[0].lancado) || 0,
+      encomendas: Number(encomendas.rows[0].lancado) || 0,
+      fretes: Number(fretes.rows[0].lancado) || 0
     }
-    // Aritmetica em centavos para evitar erros IEEE 754
+    const recebido = {
+      passagens: Number(passagens.rows[0].recebido) || 0,
+      encomendas: Number(encomendas.rows[0].recebido) || 0,
+      fretes: Number(fretes.rows[0].recebido) || 0
+    }
     const totalReceitas = Math.round((receitas.passagens + receitas.encomendas + receitas.fretes) * 100) / 100
-    // #DB131: apply same rounding to totalDespesas and saldo
+    const totalRecebido = Math.round((recebido.passagens + recebido.encomendas + recebido.fretes) * 100) / 100
     const totalDespesas = Math.round((Number(saidas.rows[0].total) || 0) * 100) / 100
     const saldo = Math.round((totalReceitas - totalDespesas) * 100) / 100
 
     res.json({
       receitas,
+      recebido,
       totalReceitas,
+      totalRecebido,
       totalDespesas,
       saldo
     })
