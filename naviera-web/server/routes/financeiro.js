@@ -99,18 +99,20 @@ router.get('/dashboard', async (req, res) => {
 
     let sql = `
       SELECT 'ENCOMENDA' AS origem, e.total_a_pagar AS total, e.valor_pago AS pago,
-             COALESCE(e.forma_pagamento, 'PENDENTE') AS pgto, COALESCE(e.caixa, '') AS usuario
-      FROM encomendas e WHERE e.empresa_id = $1 ${viagem_id ? 'AND e.id_viagem = $2' : ''}
+             COALESCE(e.forma_pagamento, 'PENDENTE') AS pgto, COALESCE(ue.nome, '') AS usuario
+      FROM encomendas e
+      LEFT JOIN usuarios ue ON e.id_caixa = ue.id
+      WHERE e.empresa_id = $1 ${viagem_id ? 'AND e.id_viagem = $2' : ''}
       UNION ALL
       SELECT 'FRETE' AS origem, f.valor_frete_calculado AS total, f.valor_pago AS pago,
              COALESCE(f.tipo_pagamento, 'PENDENTE') AS pgto, COALESCE(f.nome_caixa, '') AS usuario
       FROM fretes f WHERE f.empresa_id = $1 ${viagem_id ? 'AND f.id_viagem = $2' : ''}
       UNION ALL
       SELECT 'PASSAGEM' AS origem, p.valor_total AS total, p.valor_pago AS pago,
-             COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') AS pgto, COALESCE(u.nome, 'SISTEMA') AS usuario
+             COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') AS pgto, COALESCE(up.nome, 'SISTEMA') AS usuario
       FROM passagens p
       LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento
-      LEFT JOIN usuarios u ON p.id_usuario_emissor = u.id
+      LEFT JOIN usuarios up ON p.id_usuario_emissor = up.id
       WHERE p.empresa_id = $1 ${viagem_id ? 'AND p.id_viagem = $2' : ''}
     `
     const params = viagem_id ? [empresaId, viagem_id] : [empresaId]

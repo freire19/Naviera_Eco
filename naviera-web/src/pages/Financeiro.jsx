@@ -213,7 +213,7 @@ export default function Financeiro({ viagemAtiva, onNavigate }) {
             <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('listar-encomendas')}>
               📦 ENCOMENDAS
             </button>
-            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('lista-passageiros')}>
+            <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('listar-passageiros')}>
               🎫 PASSAGENS
             </button>
             <button style={S.sideBtn} onClick={() => onNavigate && onNavigate('listar-fretes')}>
