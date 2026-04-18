@@ -29,7 +29,6 @@ router.get('/entradas', async (req, res) => {
 // GET /api/financeiro/saidas?viagem_id=X
 router.get('/saidas', async (req, res) => {
   try {
-    const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
     const { viagem_id, categoria, forma_pagto, data_especifica } = req.query
     let sql = `SELECT s.id, s.id_viagem, s.descricao, s.valor_total, s.valor_pago, s.data_vencimento, s.data_pagamento, s.status, s.forma_pagamento, s.id_categoria, s.is_excluido, s.motivo_exclusao, s.funcionario_id, s.numero_parcela, s.total_parcelas, s.observacoes, COALESCE(c.nome, '') AS categoria_nome FROM financeiro_saidas s LEFT JOIN categorias_despesa c ON s.id_categoria = c.id WHERE (s.is_excluido = FALSE OR s.is_excluido IS NULL) AND s.empresa_id = $1`
