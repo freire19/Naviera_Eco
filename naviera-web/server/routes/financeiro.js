@@ -91,6 +91,84 @@ router.get('/balanco', async (req, res) => {
   }
 })
 
+// GET /api/financeiro/dashboard — UNION de passagens+encomendas+fretes com filtros (igual desktop)
+router.get('/dashboard', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const { viagem_id, categoria, forma_pagto, caixa } = req.query
+
+    let sql = `
+      SELECT 'ENCOMENDA' AS origem, e.total_a_pagar AS total, e.valor_pago AS pago,
+             COALESCE(e.forma_pagamento, 'PENDENTE') AS pgto, COALESCE(e.caixa, '') AS usuario
+      FROM encomendas e WHERE e.empresa_id = $1 ${viagem_id ? 'AND e.id_viagem = $2' : ''}
+      UNION ALL
+      SELECT 'FRETE' AS origem, f.valor_frete_calculado AS total, f.valor_pago AS pago,
+             COALESCE(f.tipo_pagamento, 'PENDENTE') AS pgto, COALESCE(f.nome_caixa, '') AS usuario
+      FROM fretes f WHERE f.empresa_id = $1 ${viagem_id ? 'AND f.id_viagem = $2' : ''}
+      UNION ALL
+      SELECT 'PASSAGEM' AS origem, p.valor_total AS total, p.valor_pago AS pago,
+             COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') AS pgto, COALESCE(u.nome, 'SISTEMA') AS usuario
+      FROM passagens p
+      LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento
+      LEFT JOIN usuarios u ON p.id_usuario_emissor = u.id
+      WHERE p.empresa_id = $1 ${viagem_id ? 'AND p.id_viagem = $2' : ''}
+    `
+    const params = viagem_id ? [empresaId, viagem_id] : [empresaId]
+    const result = await pool.query(sql, params)
+
+    // Filtrar em JS (como o desktop faz)
+    let rows = result.rows
+    if (categoria && categoria !== 'Todas') rows = rows.filter(r => r.origem === categoria.toUpperCase())
+    if (forma_pagto && forma_pagto !== 'Todas') rows = rows.filter(r => (r.pgto || '').toUpperCase().includes(forma_pagto.toUpperCase()))
+    if (caixa && caixa !== 'Todos') rows = rows.filter(r => (r.usuario || '').toUpperCase() === caixa.toUpperCase())
+
+    // Agregar
+    let totalGeral = 0, totalRecebido = 0
+    let somaPassagem = 0, somaEncomenda = 0, somaFrete = 0
+    let somaDinheiro = 0, somaPix = 0, somaCartao = 0
+
+    for (const r of rows) {
+      const t = parseFloat(r.total) || 0
+      const p = parseFloat(r.pago) || 0
+      totalGeral += t
+      totalRecebido += p
+      if (r.origem === 'PASSAGEM') somaPassagem += t
+      if (r.origem === 'ENCOMENDA') somaEncomenda += t
+      if (r.origem === 'FRETE') somaFrete += t
+      // Formas de pagamento (so do recebido)
+      if (p > 0) {
+        const pgto = (r.pgto || '').toUpperCase()
+        if (pgto.includes('PIX')) somaPix += p
+        else if (pgto.includes('CART') || pgto.includes('CREDITO') || pgto.includes('DEBITO')) somaCartao += p
+        else somaDinheiro += p
+      }
+    }
+
+    res.json({
+      totalGeral: Math.round(totalGeral * 100) / 100,
+      totalRecebido: Math.round(totalRecebido * 100) / 100,
+      pendente: Math.round((totalGeral - totalRecebido) * 100) / 100,
+      categorias: { passagens: Math.round(somaPassagem * 100) / 100, encomendas: Math.round(somaEncomenda * 100) / 100, fretes: Math.round(somaFrete * 100) / 100 },
+      formasPagamento: { dinheiro: Math.round(somaDinheiro * 100) / 100, pix: Math.round(somaPix * 100) / 100, cartao: Math.round(somaCartao * 100) / 100 },
+      registros: rows.length
+    })
+  } catch (err) {
+    console.error('[Financeiro] Erro dashboard:', err.message)
+    res.status(500).json({ error: 'Erro ao calcular dashboard' })
+  }
+})
+
+// GET /api/financeiro/caixas — lista usuarios/caixas
+router.get('/caixas', async (req, res) => {
+  try {
+    const empresaId = req.user.empresa_id
+    const result = await pool.query('SELECT DISTINCT nome FROM usuarios WHERE empresa_id = $1 ORDER BY nome', [empresaId])
+    res.json(result.rows.map(r => r.nome))
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao listar caixas' })
+  }
+})
+
 // GET /api/financeiro/passagens?viagem_id=X&data_inicio=...&data_fim=...
 router.get('/passagens', async (req, res) => {
   try {
