@@ -60,6 +60,7 @@ export default function Autocomplete({
   value,
   onChange,
   onSelect,
+  onBlur,
   suggestions,
   loading,
   placeholder = 'Digite para buscar...',
@@ -152,6 +153,7 @@ export default function Autocomplete({
         onChange={handleChange}
         onFocus={handleFocus}
         onKeyDown={handleKeyDown}
+        onBlur={onBlur ? () => setTimeout(() => onBlur(value), 200) : undefined}
         placeholder={placeholder}
         required
         autoComplete="off"

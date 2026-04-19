@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 import { printNotaFrete, printEtiquetaFrete } from '../utils/print.js'
+import Autocomplete from '../components/Autocomplete.jsx'
+
+function filtrarContatos(contatos, termo) {
+  const t = (termo || '').trim().toLowerCase()
+  if (!t) return []
+  return contatos.filter(c => (c.nome_razao_social || '').toLowerCase().includes(t)).slice(0, 10)
+}
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -47,10 +54,6 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
   const [itensPadrao, setItensPadrao] = useState([])
   const [caixas, setCaixas] = useState([])
   const [contatos, setContatos] = useState([])
-  const [showRemList, setShowRemList] = useState(false)
-  const [showDestList, setShowDestList] = useState(false)
-  const remDropdownRef = useRef(null)
-  const destDropdownRef = useRef(null)
 
   // Modal novo contato (cliente frete)
   const [modalNovoContato, setModalNovoContato] = useState(null)
@@ -135,16 +138,14 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     if (match) setIdRota(String(match.id_rota))
   }, [rotas, selecionado])
 
-  // Fechar dropdowns ao clicar fora
+  // Fechar dropdowns ao clicar fora (remetente/destinatario agora usam Autocomplete com fechamento proprio)
   useEffect(() => {
     const handler = (e) => {
       if (showItemList && itemDropdownRef.current && !itemDropdownRef.current.contains(e.target)) setShowItemList(false)
-      if (showRemList && remDropdownRef.current && !remDropdownRef.current.contains(e.target)) setShowRemList(false)
-      if (showDestList && destDropdownRef.current && !destDropdownRef.current.contains(e.target)) setShowDestList(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showItemList, showRemList, showDestList])
+  }, [showItemList])
 
   // ESC
   useEffect(() => {
@@ -208,32 +209,6 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     } catch (err) {
       showToast(err.message || 'Erro ao salvar', 'error')
     }
-  }
-
-  // Renderizar dropdown de contatos
-  function renderContatoDropdown(valor, setValor, show, setShow, ref, id) {
-    const q = (valor || '').toLowerCase()
-    const filtered = contatos.filter(c => !q || (c.nome_razao_social || '').toLowerCase().includes(q))
-    return (
-      <div style={{ position: 'relative' }} ref={ref}>
-        <input style={I} value={valor} onChange={e => { setValor(e.target.value); setShow(true) }}
-          onFocus={() => setShow(true)} onBlur={() => setTimeout(() => verificarSalvarContato(valor), 300)}
-          placeholder="Selecione ou Digite..." />
-        {show && filtered.length > 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
-            {filtered.map((c, idx) => (
-              <div key={c.id || idx} onMouseDown={() => { setValor(c.nome_razao_social); setShow(false) }}
-                style={{ padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem', background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
-                onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}>
-                <div style={{ fontWeight: 600 }}>{c.nome_razao_social}</div>
-                {(c.cpf_cnpj || c.telefone) && <div style={{ fontSize: '0.68rem', opacity: 0.7 }}>{c.cpf_cnpj || ''}{c.cpf_cnpj && c.telefone ? ' | ' : ''}{c.telefone || ''}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
   }
 
   async function handleAdicionarItem() {
@@ -411,11 +386,47 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
         <div>
           <label style={L}>Remetente:</label>
-          {renderContatoDropdown(remetente, setRemetente, showRemList, setShowRemList, remDropdownRef, 'rem')}
+          <Autocomplete
+            value={remetente}
+            onChange={v => setRemetente(v)}
+            onSelect={c => setRemetente(c.nome_razao_social)}
+            onBlur={v => verificarSalvarContato(v)}
+            suggestions={filtrarContatos(contatos, remetente)}
+            placeholder="Digite o nome do remetente..."
+            emptyMessage="Nenhum contato encontrado. Sera cadastrado como novo."
+            renderItem={c => (
+              <>
+                <div style={{ fontWeight: 600 }}>{c.nome_razao_social}</div>
+                {(c.cpf_cnpj || c.telefone) && (
+                  <div style={{ fontSize: '0.68rem', opacity: 0.7 }}>
+                    {c.cpf_cnpj || ''}{c.cpf_cnpj && c.telefone ? ' | ' : ''}{c.telefone || ''}
+                  </div>
+                )}
+              </>
+            )}
+          />
         </div>
         <div>
           <label style={L}>Destinatario:</label>
-          {renderContatoDropdown(destinatario, setDestinatario, showDestList, setShowDestList, destDropdownRef, 'dest')}
+          <Autocomplete
+            value={destinatario}
+            onChange={v => setDestinatario(v)}
+            onSelect={c => setDestinatario(c.nome_razao_social)}
+            onBlur={v => verificarSalvarContato(v)}
+            suggestions={filtrarContatos(contatos, destinatario)}
+            placeholder="Digite o nome do destinatario..."
+            emptyMessage="Nenhum contato encontrado. Sera cadastrado como novo."
+            renderItem={c => (
+              <>
+                <div style={{ fontWeight: 600 }}>{c.nome_razao_social}</div>
+                {(c.cpf_cnpj || c.telefone) && (
+                  <div style={{ fontSize: '0.68rem', opacity: 0.7 }}>
+                    {c.cpf_cnpj || ''}{c.cpf_cnpj && c.telefone ? ' | ' : ''}{c.telefone || ''}
+                  </div>
+                )}
+              </>
+            )}
+          />
         </div>
       </div>
 
