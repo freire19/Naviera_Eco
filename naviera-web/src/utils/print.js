@@ -596,6 +596,8 @@ export async function printEtiquetaFrete(frete, formato = 'a4') {
   const rota = h(frete.nome_rota || frete.rota_temp || '\u2014')
   const remetente = h(frete.nome_remetente || frete.remetente_nome_temp || '\u2014')
   const dataViagem = h(fmtDataEtiqueta(frete.data_viagem_fmt || frete.data_viagem))
+  const dataChegada = h(fmtDataEtiqueta(frete.data_chegada))
+  const periodo = dataViagem && dataChegada ? `${dataViagem} \u2013 ${dataChegada}` : (dataViagem || '')
   const numNota = frete.num_notafiscal || frete.numero_nota_fiscal || ''
   const valorNota = parseFloat(frete.valor_notafiscal || 0) || 0
   const pesoNota = parseFloat(frete.peso_notafiscal || 0) || 0
@@ -610,19 +612,22 @@ export async function printEtiquetaFrete(frete, formato = 'a4') {
     etiquetas.push(`
       <div class="etiqueta">
         <div class="barco">${nomeBarco}</div>
+        <div class="periodo">${periodo || '\u2014'}</div>
         <div class="body">
           <div class="info">
-            <div class="meta">${dataViagem || '\u2014'} \u00B7 Vol <b>${i}/${totalVolumes}</b></div>
-            <div class="destinatario">${destinatario}</div>
             <div class="rota">${rota}</div>
-            <div class="remetente">De: ${remetente}</div>
+            <div class="linha"><span class="lbl">DESTINATARIO:</span> <span class="val dest">${destinatario}</span></div>
+            <div class="linha"><span class="lbl">REMETENTE:</span> <span class="val">${remetente}</span></div>
             ${notaBloc}
-            <div class="barcode-wrap">${barcodeSvg}</div>
           </div>
           <div class="numero-grande">
             <div class="label">FRETE</div>
             <div class="valor">${h(numeroFrete || '-')}</div>
           </div>
+        </div>
+        <div class="rodape">
+          <div class="barcode-wrap">${barcodeSvg}</div>
+          <div class="vol-tag">Vol ${i}/${totalVolumes}</div>
         </div>
       </div>
     `)
@@ -655,25 +660,28 @@ export async function printEtiquetaFrete(frete, formato = 'a4') {
       justify-content: space-between;
       ${isRolo ? 'width: 76mm;' : ''}
     }
-    .barco { text-align: center; font-size: 10px; font-weight: 700; color: #fff; background: #059669; padding: 1px 4px; border-radius: 3px; margin-bottom: 2mm; letter-spacing: 0.3px; text-transform: uppercase; word-break: break-word; }
+    .barco { text-align: center; font-size: 10px; font-weight: 700; color: #fff; background: #059669; padding: 1px 4px; border-radius: 3px; margin-bottom: 1mm; letter-spacing: 0.3px; text-transform: uppercase; word-break: break-word; }
+    .periodo { text-align: center; font-size: 9px; color: #555; font-weight: 600; margin-bottom: 1mm; }
     .body { display: flex; gap: 2mm; flex: 1; }
-    .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .meta { font-size: 9px; color: #555; font-weight: 600; }
-    .meta b { background: #059669; color: #fff; padding: 0 5px; border-radius: 3px; margin-left: 2px; }
+    .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.8mm; }
     .numero-grande {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: #059669; color: #fff;
+      color: #059669; border: 2px solid #059669;
       padding: 1mm 2mm; border-radius: 4px;
       min-width: 16mm; text-align: center; flex-shrink: 0;
     }
-    .numero-grande .label { font-size: 7px; opacity: 0.95; font-weight: 600; letter-spacing: 0.5px; }
-    .numero-grande .valor { font-size: 24px; font-weight: 900; line-height: 1; margin-top: 1mm; }
-    .destinatario { font-size: 11px; font-weight: 700; margin: 1mm 0 0; line-height: 1.1; word-break: break-word; }
-    .rota { font-size: 11px; font-weight: 700; color: #047857; margin-top: 1mm; text-transform: uppercase; letter-spacing: 0.3px; }
-    .remetente { font-size: 8px; color: #777; margin-top: 1mm; }
-    .nota { font-size: 8px; color: #333; margin-top: 1mm; font-weight: 600; }
-    .barcode-wrap { margin-top: auto; padding-top: 2mm; text-align: center; }
+    .numero-grande .label { font-size: 7px; font-weight: 600; letter-spacing: 0.5px; color: #059669; }
+    .numero-grande .valor { font-size: 24px; font-weight: 900; line-height: 1; margin-top: 1mm; color: #059669; }
+    .rota { font-size: 11px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.3px; }
+    .linha { font-size: 9px; line-height: 1.25; word-break: break-word; }
+    .linha .lbl { color: #555; font-weight: 600; letter-spacing: 0.2px; }
+    .linha .val { color: #111; font-weight: 600; }
+    .linha .val.dest { font-weight: 800; }
+    .nota { font-size: 8px; color: #333; font-weight: 600; }
+    .rodape { display: flex; align-items: flex-end; justify-content: space-between; gap: 2mm; margin-top: 1mm; }
+    .barcode-wrap { flex: 1; text-align: center; }
     .barcode-wrap svg { max-width: 100%; height: 32px; }
+    .vol-tag { font-size: 9px; font-weight: 700; color: #059669; border: 1px solid #059669; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
     ${pageCss}
   </style>
 </head>
@@ -705,6 +713,10 @@ export async function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva 
     encomenda.data_viagem ||
     (viagemAtiva && (viagemAtiva.data_viagem_fmt || viagemAtiva.data_viagem))
   ))
+  const dataChegada = h(fmtDataEtiqueta(
+    encomenda.data_chegada || (viagemAtiva && viagemAtiva.data_chegada)
+  ))
+  const periodo = dataViagem && dataChegada ? `${dataViagem} \u2013 ${dataChegada}` : (dataViagem || '')
 
   // Monta lista plana de volumes com descricao do item de cada um
   const flatVolumes = []
@@ -723,19 +735,22 @@ export async function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva 
     return `
       <div class="etiqueta">
         <div class="barco">${nomeBarco}</div>
+        <div class="periodo">${periodo || '\u2014'}</div>
         <div class="body">
           <div class="info">
-            <div class="meta">${dataViagem || '\u2014'} \u00B7 Vol <b>${i}/${totalVolumes}</b></div>
-            <div class="destinatario">${destinatario}</div>
             <div class="rota">${rota}</div>
-            <div class="remetente">De: ${remetente}</div>
+            <div class="linha"><span class="lbl">DESTINATARIO:</span> <span class="val dest">${destinatario}</span></div>
+            <div class="linha"><span class="lbl">REMETENTE:</span> <span class="val">${remetente}</span></div>
             <div class="nota">Item: ${h(itemDesc)}</div>
-            <div class="barcode-wrap">${barcodeSvg}</div>
           </div>
           <div class="numero-grande">
             <div class="label">ENC</div>
             <div class="valor">${h(numeroEnc || '-')}</div>
           </div>
+        </div>
+        <div class="rodape">
+          <div class="barcode-wrap">${barcodeSvg}</div>
+          <div class="vol-tag">Vol ${i}/${totalVolumes}</div>
         </div>
       </div>
     `
@@ -768,25 +783,28 @@ export async function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva 
       justify-content: space-between;
       ${isRolo ? 'width: 76mm;' : ''}
     }
-    .barco { text-align: center; font-size: 10px; font-weight: 700; color: #fff; background: #059669; padding: 1px 4px; border-radius: 3px; margin-bottom: 2mm; letter-spacing: 0.3px; text-transform: uppercase; word-break: break-word; }
+    .barco { text-align: center; font-size: 10px; font-weight: 700; color: #fff; background: #059669; padding: 1px 4px; border-radius: 3px; margin-bottom: 1mm; letter-spacing: 0.3px; text-transform: uppercase; word-break: break-word; }
+    .periodo { text-align: center; font-size: 9px; color: #555; font-weight: 600; margin-bottom: 1mm; }
     .body { display: flex; gap: 2mm; flex: 1; }
-    .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .meta { font-size: 9px; color: #555; font-weight: 600; }
-    .meta b { background: #059669; color: #fff; padding: 0 5px; border-radius: 3px; margin-left: 2px; }
+    .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.8mm; }
     .numero-grande {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: #059669; color: #fff;
+      color: #059669; border: 2px solid #059669;
       padding: 1mm 2mm; border-radius: 4px;
       min-width: 16mm; text-align: center; flex-shrink: 0;
     }
-    .numero-grande .label { font-size: 7px; opacity: 0.95; font-weight: 600; letter-spacing: 0.5px; }
-    .numero-grande .valor { font-size: 24px; font-weight: 900; line-height: 1; margin-top: 1mm; }
-    .destinatario { font-size: 11px; font-weight: 700; margin: 1mm 0 0; line-height: 1.1; word-break: break-word; }
-    .rota { font-size: 11px; font-weight: 700; color: #047857; margin-top: 1mm; text-transform: uppercase; letter-spacing: 0.3px; }
-    .remetente { font-size: 8px; color: #777; margin-top: 1mm; }
-    .nota { font-size: 8px; color: #333; margin-top: 1mm; font-weight: 600; }
-    .barcode-wrap { margin-top: auto; padding-top: 2mm; text-align: center; }
+    .numero-grande .label { font-size: 7px; font-weight: 600; letter-spacing: 0.5px; color: #059669; }
+    .numero-grande .valor { font-size: 24px; font-weight: 900; line-height: 1; margin-top: 1mm; color: #059669; }
+    .rota { font-size: 11px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.3px; }
+    .linha { font-size: 9px; line-height: 1.25; word-break: break-word; }
+    .linha .lbl { color: #555; font-weight: 600; letter-spacing: 0.2px; }
+    .linha .val { color: #111; font-weight: 600; }
+    .linha .val.dest { font-weight: 800; }
+    .nota { font-size: 8px; color: #333; font-weight: 600; }
+    .rodape { display: flex; align-items: flex-end; justify-content: space-between; gap: 2mm; margin-top: 1mm; }
+    .barcode-wrap { flex: 1; text-align: center; }
     .barcode-wrap svg { max-width: 100%; height: 32px; }
+    .vol-tag { font-size: 9px; font-weight: 700; color: #059669; border: 1px solid #059669; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
     ${pageCss}
   </style>
 </head>

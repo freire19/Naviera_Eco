@@ -164,6 +164,7 @@ router.get('/', async (req, res) => {
       f.data_emissao, f.local_transporte, f.cidade_cobranca,
       f.num_notafiscal, f.valor_notafiscal, f.peso_notafiscal,
       TO_CHAR(v.data_viagem, 'DD/MM/YYYY') AS data_viagem,
+      TO_CHAR(v.data_chegada, 'DD/MM/YYYY') AS data_chegada,
       COALESCE((SELECT SUM(fi.quantidade) FROM frete_itens fi WHERE fi.id_frete = f.id_frete), 0) AS total_volumes
       FROM fretes f
       LEFT JOIN viagens v ON f.id_viagem = v.id_viagem

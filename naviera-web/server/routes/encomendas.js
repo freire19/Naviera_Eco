@@ -11,13 +11,21 @@ router.get('/', async (req, res) => {
   try {
     const { viagem_id } = req.query
     const empresaId = req.user.empresa_id
-    let sql = 'SELECT id_encomenda, id_viagem, numero_encomenda, remetente, destinatario, observacoes, total_volumes, total_a_pagar, valor_pago, desconto, status_pagamento, entregue, forma_pagamento, local_pagamento, doc_recebedor, nome_recebedor, rota, id_caixa, data_lancamento FROM encomendas WHERE empresa_id = $1'
+    let sql = `SELECT e.id_encomenda, e.id_viagem, e.numero_encomenda, e.remetente, e.destinatario,
+      e.observacoes, e.total_volumes, e.total_a_pagar, e.valor_pago, e.desconto, e.status_pagamento,
+      e.entregue, e.forma_pagamento, e.local_pagamento, e.doc_recebedor, e.nome_recebedor, e.rota,
+      e.id_caixa, e.data_lancamento,
+      TO_CHAR(v.data_viagem, 'DD/MM/YYYY') AS data_viagem,
+      TO_CHAR(v.data_chegada, 'DD/MM/YYYY') AS data_chegada
+      FROM encomendas e
+      LEFT JOIN viagens v ON e.id_viagem = v.id_viagem
+      WHERE e.empresa_id = $1`
     const params = [empresaId]
     if (viagem_id) {
-      sql += ' AND id_viagem = $2'
+      sql += ' AND e.id_viagem = $2'
       params.push(viagem_id)
     }
-    sql += ' ORDER BY id_encomenda DESC'
+    sql += ' ORDER BY e.id_encomenda DESC'
     // DP052: LIMIT para evitar datasets ilimitados
     const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
     const offset = parseInt(req.query.offset) || 0
