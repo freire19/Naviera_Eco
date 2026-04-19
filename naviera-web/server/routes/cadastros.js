@@ -569,13 +569,22 @@ async function calcFinanceiroFuncionario(pool, idFunc, empresaId, f) {
   }
 }
 
-async function getViagemAtivaCategoriaRH(pool, empresaId) {
-  const [vRes, cRes] = await Promise.all([
-    pool.query(`SELECT id_viagem FROM viagens WHERE empresa_id = $1 AND is_atual = true LIMIT 1`, [empresaId]),
+async function getViagemAtivaCategoriaRH(pool, empresaId, idViagemCliente) {
+  let viagemId = idViagemCliente ? parseInt(idViagemCliente) : null
+  const queries = [
     pool.query(`SELECT id FROM categorias_despesa WHERE empresa_id = $1 AND UPPER(nome) LIKE '%FUNCIONARIO%' LIMIT 1`, [empresaId])
-  ])
+  ]
+  if (!viagemId) {
+    queries.push(pool.query(`SELECT id_viagem FROM viagens WHERE empresa_id = $1 AND is_atual = true LIMIT 1`, [empresaId]))
+  }
+  const results = await Promise.all(queries)
+  const cRes = results[0]
+  if (!viagemId) {
+    const vRes = results[1]
+    viagemId = vRes.rows.length > 0 ? vRes.rows[0].id_viagem : 1
+  }
   return {
-    viagemId: vRes.rows.length > 0 ? vRes.rows[0].id_viagem : 1,
+    viagemId,
     categoriaId: cRes.rows.length > 0 ? cRes.rows[0].id : 1
   }
 }
@@ -632,10 +641,10 @@ router.post('/funcionarios/:id/pagamento', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const idFunc = req.params.id
-    const { descricao, valor } = req.body
+    const { descricao, valor, id_viagem } = req.body
     if (!descricao || !valor) return res.status(400).json({ error: 'descricao e valor obrigatorios' })
 
-    const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId)
+    const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId, id_viagem)
 
     const hoje = new Date().toISOString().split('T')[0]
     await pool.query(`
@@ -710,6 +719,7 @@ router.post('/funcionarios/:id/fechar-mes', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const idFunc = req.params.id
+    const { id_viagem } = req.body || {}
 
     const fRes = await pool.query('SELECT * FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
     if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
@@ -735,7 +745,7 @@ router.post('/funcionarios/:id/fechar-mes', async (req, res, next) => {
 
     // pagar saldo restante
     if (saldoParaPagar > 0) {
-      const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId)
+      const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId, id_viagem)
       const desc = `FECHAMENTO MENSAL ${(f.nome || '').toUpperCase()}`
       await pool.query(`
         INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento,
@@ -744,13 +754,9 @@ router.post('/funcionarios/:id/fechar-mes', async (req, res, next) => {
       `, [desc, saldoParaPagar, saldoParaPagar, hojeISO, hojeISO, categoriaId, viagemId, idFunc, empresaId])
     }
 
-    // atualizar data_inicio_calculo
-    let novaData
-    if (hoje.getUTCDate() >= 28) {
-      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1, 1))
-    } else {
-      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1))
-    }
+    // atualizar data_inicio_calculo: dia seguinte ao fechamento
+    // (pagamentos/descontos de hoje ficam no ciclo antigo, novo ciclo zera)
+    const novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() + 1))
     const novaDataISO = novaData.toISOString().split('T')[0]
 
     await pool.query(

@@ -10,6 +10,26 @@ const FORM_INICIAL = {
 }
 
 const fmtMoney = v => v != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : 'R$ 0,00'
+
+// Tabela INSS 2025 (progressiva) — atualizar anualmente
+function calcularINSS(salario) {
+  const s = parseFloat(salario) || 0
+  if (s <= 0) return 0
+  const faixas = [
+    { ate: 1518.00, aliq: 0.075 },
+    { ate: 2793.88, aliq: 0.09 },
+    { ate: 4190.83, aliq: 0.12 },
+    { ate: 8157.41, aliq: 0.14 }
+  ]
+  if (s > 8157.41) return 951.63 // teto 2025
+  let inss = 0, base = 0
+  for (const f of faixas) {
+    if (s <= f.ate) { inss += (s - base) * f.aliq; return Math.round(inss * 100) / 100 }
+    inss += (f.ate - base) * f.aliq
+    base = f.ate
+  }
+  return Math.round(inss * 100) / 100
+}
 const fmtDate = d => {
   if (!d) return '-'
   const s = String(d).includes('T') ? d.substring(0, 10) : String(d)
@@ -75,6 +95,15 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
   useEffect(() => {
     api.get('/cadastros/empresa').then(e => setEmpresaNome(e?.nome || e?.razao_social || '')).catch(() => {})
   }, [])
+
+  // Preenche valor_inss automaticamente via tabela progressiva quando
+  // salario ou checkbox "descontar_inss" mudam
+  useEffect(() => {
+    if (form.descontar_inss && form.salario) {
+      const calculado = calcularINSS(form.salario)
+      setForm(prev => prev.valor_inss === calculado ? prev : { ...prev, valor_inss: calculado })
+    }
+  }, [form.salario, form.descontar_inss])
 
   const carregarFinanceiro = useCallback((id) => {
     if (!id) return
@@ -155,7 +184,11 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
     if (!valorPgto || parseFloat(valorPgto) <= 0) { showToast('Valor invalido.', 'error'); return }
     try {
       const desc = `PAGTO ${selecionado.nome.toUpperCase()} - ${descPgto.toUpperCase()}`
-      await api.post(`/cadastros/funcionarios/${selecionado.id}/pagamento`, { descricao: desc, valor: parseFloat(valorPgto) })
+      await api.post(`/cadastros/funcionarios/${selecionado.id}/pagamento`, {
+        descricao: desc,
+        valor: parseFloat(valorPgto),
+        id_viagem: viagemAtiva?.id_viagem || null
+      })
       showToast('Pagamento lancado!')
       setDescPgto(''); setValorPgto('')
       carregarFinanceiro(selecionado.id); carregarHistorico(selecionado.id)
@@ -175,7 +208,9 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
   async function handleFecharMes() {
     if (!selecionado) return
     try {
-      const res = await api.post(`/cadastros/funcionarios/${selecionado.id}/fechar-mes`)
+      const res = await api.post(`/cadastros/funcionarios/${selecionado.id}/fechar-mes`, {
+        id_viagem: viagemAtiva?.id_viagem || null
+      })
       let msg = `Ciclo Fechado! Novo ciclo iniciado em: ${fmtDate(res.nova_data_inicio)}`
       showToast(msg)
       setModalFechar(false); carregar()
@@ -320,32 +355,33 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
   }
 
   // ---- INLINE STYLES ----
-  const L = { fontSize: '0.82rem', fontWeight: 700, color: '#424242', display: 'block', marginBottom: 2 }
-  const I = { width: '100%', padding: '9px 10px', border: '1px solid #c8c8c8', borderRadius: 4, fontSize: '0.88rem', boxSizing: 'border-box', background: '#fff' }
-  const Ival = { ...I, background: '#FEF3C7', fontWeight: 700 }
+  const L = { fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 2 }
+  const I = { width: '100%', padding: '9px 10px', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.88rem', boxSizing: 'border-box', background: 'var(--bg-soft)', color: 'var(--text)' }
+  const Ival = { ...I, background: 'var(--bg-accent)', color: 'var(--text)', fontWeight: 700, borderColor: 'var(--primary)' }
 
   return (
     <div style={{ display: 'flex', gap: 0, height: 'calc(100vh - 100px)', minHeight: 500 }}>
       {/* ========= SIDEBAR ESQUERDA ========= */}
-      <div style={{ width: 300, minWidth: 260, borderRight: '1px solid #e0e0e0', padding: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ width: 300, minWidth: 260, borderRight: '1px solid var(--border)', padding: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button onClick={novoFuncionario} style={{
-          width: '100%', padding: '14px', background: '#059669', color: '#fff', border: 'none',
+          width: '100%', padding: '14px', background: 'var(--primary)', color: '#fff', border: 'none',
           borderRadius: 6, fontWeight: 700, fontSize: '1rem', cursor: 'pointer'
         }}>+ NOVO FUNCIONARIO</button>
 
-        <div style={{ fontSize: '0.88rem', color: '#757575', marginTop: 8 }}>Selecione um funcionario:</div>
+        <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: 8 }}>Selecione um funcionario:</div>
 
-        <div style={{ flex: 1, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 4 }}>
-          {loading ? <div style={{ padding: 12, color: '#999' }}>Carregando...</div> :
-            funcionarios.length === 0 ? <div style={{ padding: 12, color: '#999' }}>Nenhum funcionario</div> :
+        <div style={{ flex: 1, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-card)' }}>
+          {loading ? <div style={{ padding: 12, color: 'var(--text-muted)' }}>Carregando...</div> :
+            funcionarios.length === 0 ? <div style={{ padding: 12, color: 'var(--text-muted)' }}>Nenhum funcionario</div> :
             funcionarios.map(f => (
               <div key={f.id} onClick={() => selecionarFuncionario(f)} style={{
-                padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0',
-                background: selecionado?.id === f.id ? '#E6F5ED' : 'transparent',
+                padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
+                background: selecionado?.id === f.id ? 'var(--bg-accent)' : 'transparent',
+                color: 'var(--text)',
                 opacity: f.ativo ? 1 : 0.5, fontSize: '0.88rem'
               }}>
                 <div style={{ fontWeight: 600 }}>{f.nome}</div>
-                <div style={{ fontSize: '0.72rem', color: '#888' }}>{f.cargo || ''}{!f.ativo ? ' (INATIVO)' : ''}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{f.cargo || ''}{!f.ativo ? ' (INATIVO)' : ''}</div>
               </div>
             ))
           }
@@ -360,15 +396,15 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
       {/* ========= AREA PRINCIPAL ========= */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* TABS */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e0e0e0' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
           <button onClick={() => setAbaAtiva('dados')} style={{
-            padding: '14px 28px', border: 'none', borderBottom: abaAtiva === 'dados' ? '3px solid #059669' : '3px solid transparent',
-            background: abaAtiva === 'dados' ? '#fff' : '#f5f5f5', color: abaAtiva === 'dados' ? '#1a1a1a' : '#666',
+            padding: '14px 28px', border: 'none', borderBottom: abaAtiva === 'dados' ? '3px solid var(--primary)' : '3px solid transparent',
+            background: abaAtiva === 'dados' ? 'var(--bg-card)' : 'var(--bg-soft)', color: abaAtiva === 'dados' ? 'var(--text)' : 'var(--text-muted)',
             fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer'
           }}>DADOS PESSOAIS E CONTRATO</button>
           <button onClick={() => setAbaAtiva('financeiro')} style={{
-            padding: '14px 28px', border: 'none', borderBottom: abaAtiva === 'financeiro' ? '3px solid #059669' : '3px solid transparent',
-            background: abaAtiva === 'financeiro' ? '#fff' : '#f5f5f5', color: abaAtiva === 'financeiro' ? '#1a1a1a' : '#666',
+            padding: '14px 28px', border: 'none', borderBottom: abaAtiva === 'financeiro' ? '3px solid var(--primary)' : '3px solid transparent',
+            background: abaAtiva === 'financeiro' ? 'var(--bg-card)' : 'var(--bg-soft)', color: abaAtiva === 'financeiro' ? 'var(--text)' : 'var(--text-muted)',
             fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer'
           }}>FINANCEIRO & PAGAMENTOS</button>
         </div>
@@ -379,7 +415,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
             <form onSubmit={handleSalvar}>
               {/* Dados Pessoais */}
               <div style={{ marginBottom: 25 }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 15, color: '#333' }}>Dados Pessoais</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 15, color: 'var(--text)' }}>Dados Pessoais</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px 25px' }}>
                   <div>
                     <label style={L}>Nome Completo *</label>
@@ -412,11 +448,11 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                 </div>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '20px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '20px 0' }} />
 
               {/* Dados do Contrato */}
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 15, color: '#333' }}>Dados do Contrato (CLT / INSS)</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 15, color: 'var(--text)' }}>Dados do Contrato (CLT / INSS)</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px 25px' }}>
                   <div>
                     <label style={L}>Cargo *</label>
@@ -431,11 +467,14 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                     <input style={I} type="date" name="data_admissao" value={form.data_admissao} onChange={handleChange} />
                   </div>
                   <div>
-                    <label style={L}>Valor INSS/Folha (R$)</label>
+                    <label style={L}>
+                      Valor INSS/Folha (R$)
+                      {form.descontar_inss && <span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>(auto — tabela INSS)</span>}
+                    </label>
                     <input style={I} type="number" step="0.01" name="valor_inss" placeholder="0,00" value={form.valor_inss} onChange={handleChange} />
                   </div>
                   <div>
-                    <label style={{ ...L, color: '#757575' }}>Data de Reinicio (Opcional)</label>
+                    <label style={{ ...L, color: 'var(--text-muted)' }}>Data de Reinicio (Opcional)</label>
                     <input style={I} type="date" name="data_inicio_calculo" placeholder="Data de corte" value={form.data_inicio_calculo} onChange={handleChange} />
                   </div>
                   <div />
@@ -444,7 +483,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                 {/* Checkboxes row */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 30, padding: '12px 16px', marginTop: 20,
-                  border: '1px solid #e0e0e0', borderRadius: 5
+                  border: '1px solid var(--border)', borderRadius: 5, background: 'var(--bg-soft)', color: 'var(--text)'
                 }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <input type="checkbox" name="descontar_inss" checked={form.descontar_inss} onChange={handleChange} /> Descontar INSS Auto?
@@ -461,7 +500,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                 {selecionado && (
                   <div style={{
                     fontSize: '1.1rem', fontWeight: 700, marginTop: 16,
-                    color: selecionado.ativo ? '#059669' : '#DC2626'
+                    color: selecionado.ativo ? 'var(--primary)' : 'var(--danger)'
                   }}>
                     {selecionado.ativo ? 'ATIVO' : 'DEMITIDO / INATIVO'}
                   </div>
@@ -472,12 +511,12 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
                 {selecionado && selecionado.ativo && (
                   <button type="button" onClick={handleDemitir} style={{
-                    padding: '12px 24px', background: '#DC2626', color: '#fff', border: 'none',
+                    padding: '12px 24px', background: 'var(--danger)', color: '#fff', border: 'none',
                     borderRadius: 4, fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer'
                   }}>Demissao</button>
                 )}
                 <button type="submit" disabled={salvando} style={{
-                  padding: '12px 30px', background: '#059669', color: '#fff', border: 'none',
+                  padding: '12px 30px', background: 'var(--primary)', color: '#fff', border: 'none',
                   borderRadius: 4, fontWeight: 700, fontSize: '1rem', cursor: 'pointer', minWidth: 180
                 }}>{salvando ? 'Salvando...' : 'SALVAR DADOS'}</button>
               </div>
@@ -489,49 +528,49 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
         {abaAtiva === 'financeiro' && (
           <div style={{ flex: 1, overflow: 'auto', padding: '20px 20px' }}>
             {!selecionado ? (
-              <div style={{ textAlign: 'center', padding: 60, color: '#999', fontSize: '1rem' }}>
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)', fontSize: '1rem' }}>
                 Selecione um funcionario na lista para ver o financeiro.
               </div>
             ) : (
               <>
                 {/* Cards resumo — 4 em linha */}
                 <div style={{ display: 'flex', gap: 15, marginBottom: 16 }}>
-                  <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', border: '1px solid #eee', borderRadius: 5, background: '#fff' }}>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#757575' }}>Base de Calculo</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{financeiro?.dias_trabalhados ?? 0} dias</div>
+                  <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--bg-card)' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Base de Calculo</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)' }}>{financeiro?.dias_trabalhados ?? 0} dias</div>
                   </div>
-                  <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', border: '1px solid #eee', borderRadius: 5, background: '#fff' }}>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#757575' }}>Salario Acumulado</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#059669' }}>{fmtMoney(financeiro?.acumulado)}</div>
+                  <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--bg-card)' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Salario Acumulado</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>{fmtMoney(financeiro?.acumulado)}</div>
                   </div>
-                  <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', border: '1px solid #eee', borderRadius: 5, background: '#fff' }}>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#757575' }}>Total Pago</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#c62828' }}>{fmtMoney(financeiro?.pago)}</div>
+                  <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--bg-card)' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Total Pago</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--danger)' }}>{fmtMoney(financeiro?.pago)}</div>
                   </div>
-                  <div style={{ flex: 1.2, textAlign: 'center', padding: '14px 10px', border: '1px solid #eee', borderRadius: 5, background: '#fff' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#757575' }}>Saldo a Receber</div>
+                  <div style={{ flex: 1.2, textAlign: 'center', padding: '14px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--bg-card)' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Saldo a Receber</div>
                     <div style={{
                       fontSize: '1.7rem', fontWeight: 700,
-                      color: (financeiro?.saldo ?? 0) >= 0 ? '#059669' : '#DC2626'
+                      color: (financeiro?.saldo ?? 0) >= 0 ? 'var(--primary)' : 'var(--danger)'
                     }}>{fmtMoney(financeiro?.saldo)}</div>
                   </div>
                 </div>
 
                 {/* Linha info referencia */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 16, fontSize: '0.85rem' }}>
-                  <span style={{ color: '#757575' }}>Mes Referencia (Calculo):</span>
-                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Mes Referencia (Calculo):</span>
+                  <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)' }}>
                     {financeiro?.data_inicio ? fmtDate(financeiro.data_inicio) : 'Mes Atual'}
                     {financeiro?.ciclo_atual ? ' (CICLO ATUAL)' : financeiro?.data_inicio ? ' (EM ABERTO)' : ''}
                   </span>
                   <div style={{ flex: 1 }} />
-                  <span style={{ fontWeight: 700, color: '#555' }}>Valor Diaria (30d): {fmtMoney(financeiro?.valor_diaria)}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-soft)' }}>Valor Diaria (30d): {fmtMoney(financeiro?.valor_diaria)}</span>
                   <div style={{ flex: 1 }} />
-                  <span style={{ fontWeight: 700, color: '#555' }}>13o Acumulado: {fmtMoney(financeiro?.provisao_13)}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-soft)' }}>13o Acumulado: {fmtMoney(financeiro?.provisao_13)}</span>
                 </div>
 
                 {/* Titulo lancamento */}
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#333', marginBottom: 10 }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)', marginBottom: 10 }}>
                   Lancar Novo Pagamento / Vale / Acoes
                 </div>
 
@@ -540,31 +579,31 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                   <input style={{ ...I, flex: 2 }} placeholder="Descricao (Ex: Vale Supermercado)" value={descPgto} onChange={e => setDescPgto(e.target.value)} />
                   <input style={{ ...Ival, width: 130, flex: 'none' }} type="number" step="0.01" placeholder="R$ Valor" value={valorPgto} onChange={e => setValorPgto(e.target.value)} />
                   <button type="button" onClick={handleLancarPagamento} style={{
-                    padding: '10px 18px', background: '#059669', color: '#fff', border: 'none',
+                    padding: '10px 18px', background: 'var(--primary)', color: '#fff', border: 'none',
                     borderRadius: 4, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                   }}>LANCAR (+)</button>
-                  <div style={{ width: 1, height: 30, background: '#ddd' }} />
+                  <div style={{ width: 1, height: 30, background: 'var(--border)' }} />
                   <button type="button" onClick={() => setModalFalta(true)} style={{
-                    padding: '10px 18px', background: '#DC2626', color: '#fff', border: 'none',
+                    padding: '10px 18px', background: 'var(--danger)', color: '#fff', border: 'none',
                     borderRadius: 4, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap'
                   }}>REGISTRAR FALTA</button>
-                  <div style={{ width: 1, height: 30, background: '#ddd' }} />
+                  <div style={{ width: 1, height: 30, background: 'var(--border)' }} />
                   <button type="button" onClick={() => setModalFechar(true)} style={{
-                    padding: '10px 18px', background: '#059669', color: '#fff', border: 'none',
+                    padding: '10px 18px', background: 'var(--primary)', color: '#fff', border: 'none',
                     borderRadius: 4, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap'
                   }}>FECHAR CICLO / MES</button>
                 </div>
 
-                <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '10px 0 14px' }} />
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '10px 0 14px' }} />
 
                 {/* Historico header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 10 }}>
-                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#333' }}>Historico Detalhado</span>
-                  <span style={{ fontSize: '0.88rem', color: '#666' }}>| Selecionar Competencia:</span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text)' }}>Historico Detalhado</span>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>| Selecionar Competencia:</span>
                   <select value={mesSel} onChange={handleMesChange} style={{
                     padding: '7px 10px', fontWeight: 700, fontSize: '0.85rem', borderRadius: 4,
-                    border: '1px solid #c8c8c8', background: '#047857', color: '#fff', cursor: 'pointer'
+                    border: '1px solid var(--border)', background: 'var(--primary-hover)', color: '#fff', cursor: 'pointer'
                   }}>
                     {mesesLista.map(m => (
                       <option key={`${m.mes}-${m.ano}`} value={`${m.mes}-${m.ano}`}>{m.label}</option>
@@ -572,17 +611,17 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                   </select>
                   <div style={{ flex: 1 }} />
                   <button type="button" onClick={imprimirHolerite} style={{
-                    padding: '8px 16px', background: '#fff', color: '#333', border: '1px solid #c8c8c8',
+                    padding: '8px 16px', background: 'var(--bg-soft)', color: 'var(--text)', border: '1px solid var(--border)',
                     borderRadius: 4, fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6
                   }}>&#128424; IMPRIMIR HOLERITE</button>
                 </div>
 
                 {/* Tabela historico */}
-                <div style={{ border: '1px solid #e0e0e0', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', background: 'var(--bg-card)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', color: 'var(--text)' }}>
                     <thead>
-                      <tr style={{ background: '#047857', color: '#fff' }}>
+                      <tr style={{ background: 'var(--primary-hover)', color: '#fff' }}>
                         <th style={{ padding: '8px 12px', textAlign: 'left', width: '15%' }}>Data</th>
                         <th style={{ padding: '8px 12px', textAlign: 'left' }}>Descricao do Lancamento</th>
                         <th style={{ padding: '8px 12px', textAlign: 'right', width: '18%' }}>Valor (R$)</th>
@@ -590,7 +629,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                     </thead>
                     <tbody>
                       {historico.length === 0 ? (
-                        <tr><td colSpan="3" style={{ padding: 40, textAlign: 'center', color: '#999', fontWeight: 700 }}>
+                        <tr><td colSpan="3" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontWeight: 700 }}>
                           Nao ha conteudo na tabela
                         </td></tr>
                       ) : historico.map((h, i) => {
@@ -602,10 +641,10 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                           if (desc.startsWith('- ')) desc = desc.substring(2)
                         }
                         return (
-                          <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '6px 12px' }}>{fmtDate(h.data)}</td>
                             <td style={{ padding: '6px 12px' }}>{desc}</td>
-                            <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 700, color: isDesc ? '#DC2626' : '#059669' }}>
+                            <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 700, color: isDesc ? 'var(--danger)' : 'var(--primary)' }}>
                               {isDesc ? '(-) ' : ''}{fmtMoney(h.valor)}
                             </td>
                           </tr>
@@ -619,7 +658,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
                 {selecionado && selecionado.ativo && (
                   <div style={{ marginTop: 14 }}>
                     <button type="button" onClick={handleDemitir} style={{
-                      padding: '10px 20px', background: '#DC2626', color: '#fff', border: 'none',
+                      padding: '10px 20px', background: 'var(--danger)', color: '#fff', border: 'none',
                       borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem'
                     }}>Demissao</button>
                   </div>
@@ -635,7 +674,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
         <div className="modal-overlay" onClick={() => setModalFalta(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
             <h3>Registrar Falta</h3>
-            <p style={{ fontSize: '0.85rem', color: '#666' }}>Lancar Falta no RH</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Lancar Falta no RH</p>
             <div style={{ marginBottom: 12 }}>
               <label style={L}>Data da Falta:</label>
               <input style={I} type="date" value={dataFalta} onChange={e => setDataFalta(e.target.value)} />
@@ -656,7 +695,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
             <p style={{ fontSize: '0.88rem', fontWeight: 600, marginBottom: 10 }}>
               Encerrar competencia e iniciar novo mes?
             </p>
-            <div style={{ background: '#f9f9f9', padding: 14, borderRadius: 6, fontSize: '0.88rem', marginBottom: 14 }}>
+            <div style={{ background: 'var(--bg-soft)', color: 'var(--text)', padding: 14, borderRadius: 6, fontSize: '0.88rem', marginBottom: 14, border: '1px solid var(--border)' }}>
               <div>Resumo do Fechamento:</div>
               <div style={{ marginTop: 6 }}>Acumulado Bruto: <strong>{fmtMoney(financeiro?.acumulado)}</strong></div>
               {financeiro?.desconto_inss_auto > 0 && !financeiro?.inss_ja_lancado && (
@@ -664,10 +703,10 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
               )}
               <div>Total Descontos (Faltas/Outros): <strong>{fmtMoney(financeiro?.descontos_rh)}</strong></div>
               <div>Ja Pago em Dinheiro: <strong>{fmtMoney(financeiro?.pago)}</strong></div>
-              <div style={{ marginTop: 8, fontSize: '1rem', fontWeight: 700, color: (financeiro?.saldo ?? 0) >= 0 ? '#059669' : '#DC2626' }}>
+              <div style={{ marginTop: 8, fontSize: '1rem', fontWeight: 700, color: (financeiro?.saldo ?? 0) >= 0 ? 'var(--primary)' : 'var(--danger)' }}>
                 Saldo Liquido Restante: {fmtMoney(financeiro?.saldo)}
               </div>
-              <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#888' }}>
+              <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                 Ao confirmar, o INSS sera gravado no historico (RH) e o saldo sera pago.
               </div>
             </div>

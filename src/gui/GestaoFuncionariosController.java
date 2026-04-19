@@ -478,11 +478,9 @@ public class GestaoFuncionariosController {
                     lancarDebitoAutomatico(funcionarioSelecionado, desc, saldoParaPagar, dataReferenciaFechamento, "DINHEIRO");
                 }
                 
-                LocalDate novaDataInicio = LocalDate.of(dataHoje.getYear(), dataHoje.getMonth(), 1);
-                if (dataHoje.getDayOfMonth() >= 28) {
-                    novaDataInicio = dataHoje.withDayOfMonth(1).plusMonths(1);
-                }
-                
+                // Novo ciclo comeca no dia seguinte ao fechamento (zera contador)
+                LocalDate novaDataInicio = dataHoje.plusDays(1);
+
                 atualizarDataInicioCalculo(funcionarioSelecionado.getId(), novaDataInicio);
                 funcionarioSelecionado.setDataInicioCalculo(novaDataInicio);
                 dpInicioCalculo.setValue(novaDataInicio); 
