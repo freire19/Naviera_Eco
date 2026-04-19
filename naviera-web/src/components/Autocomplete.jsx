@@ -35,6 +35,11 @@ const itemStyle = {
   wordBreak: 'break-word'
 }
 
+const itemHighlightedStyle = {
+  ...itemStyle,
+  background: 'var(--bg-accent)'
+}
+
 const loadingStyle = {
   position: 'absolute',
   right: 8,
@@ -63,7 +68,9 @@ export default function Autocomplete({
   minChars = 2
 }) {
   const [showDropdown, setShowDropdown] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef(null)
+  const itemRefs = useRef([])
 
   useEffect(() => {
     function handleClick(e) {
@@ -74,6 +81,19 @@ export default function Autocomplete({
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Reseta highlight quando sugestoes mudam
+  useEffect(() => {
+    setHighlightedIndex(-1)
+    itemRefs.current = itemRefs.current.slice(0, suggestions.length)
+  }, [suggestions])
+
+  // Rola item destacado para dentro do viewport do dropdown
+  useEffect(() => {
+    if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
+      itemRefs.current[highlightedIndex].scrollIntoView({ block: 'nearest' })
+    }
+  }, [highlightedIndex])
 
   function handleChange(e) {
     onChange(e.target.value)
@@ -91,6 +111,35 @@ export default function Autocomplete({
   function handleSelect(item) {
     onSelect(item)
     setShowDropdown(false)
+    setHighlightedIndex(-1)
+  }
+
+  function handleKeyDown(e) {
+    // Esc fecha dropdown mesmo sem itens
+    if (e.key === 'Escape') {
+      setShowDropdown(false)
+      setHighlightedIndex(-1)
+      return
+    }
+    if (!showDropdown || suggestions.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightedIndex(i => (i < suggestions.length - 1 ? i + 1 : 0))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightedIndex(i => (i > 0 ? i - 1 : suggestions.length - 1))
+    } else if (e.key === 'Enter') {
+      if (highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        e.preventDefault() // evita submit do form
+        handleSelect(suggestions[highlightedIndex])
+      }
+    } else if (e.key === 'Tab') {
+      // Tab seleciona item destacado (se houver) e segue para o proximo campo
+      if (highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        handleSelect(suggestions[highlightedIndex])
+      }
+    }
   }
 
   const showSuggestions = showDropdown && suggestions.length > 0
@@ -102,6 +151,7 @@ export default function Autocomplete({
         value={value}
         onChange={handleChange}
         onFocus={handleFocus}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         required
         autoComplete="off"
@@ -113,10 +163,10 @@ export default function Autocomplete({
           {suggestions.map((item, idx) => (
             <div
               key={item.id || idx}
+              ref={el => { itemRefs.current[idx] = el }}
               onClick={() => handleSelect(item)}
-              style={itemStyle}
-              onMouseEnter={e => e.target.style.background = 'var(--bg-hover)'}
-              onMouseLeave={e => e.target.style.background = 'transparent'}
+              onMouseEnter={() => setHighlightedIndex(idx)}
+              style={idx === highlightedIndex ? itemHighlightedStyle : itemStyle}
             >
               {renderItem ? renderItem(item) : <strong>{item.label}</strong>}
             </div>
