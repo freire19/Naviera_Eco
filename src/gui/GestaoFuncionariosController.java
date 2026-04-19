@@ -97,6 +97,21 @@ public class GestaoFuncionariosController {
             });
         }
 
+        // Calculo automatico de INSS via tabela progressiva quando salario ou checkbox mudam
+        if (chkDescontarInss != null && txtSalario != null && txtValorInss != null) {
+            Runnable atualizarInss = () -> {
+                if (chkDescontarInss.isSelected() && !txtSalario.getText().isEmpty()) {
+                    try {
+                        double sal = Double.parseDouble(txtSalario.getText().replace(".", "").replace(",", "."));
+                        double inss = calcularINSS(sal);
+                        txtValorInss.setText(String.format(BRASIL, "%.2f", inss));
+                    } catch (NumberFormatException ex) { /* ignora salario invalido */ }
+                }
+            };
+            chkDescontarInss.selectedProperty().addListener((obs, oldV, newV) -> atualizarInss.run());
+            txtSalario.textProperty().addListener((obs, oldV, newV) -> atualizarInss.run());
+        }
+
         listaFuncionarios.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) selecionarFuncionario(newVal);
         });
@@ -382,7 +397,11 @@ public class GestaoFuncionariosController {
             try {
                 String descricao = "DESC. " + txtDesc.getText().toUpperCase();
                 double valor = Double.parseDouble(txtVal.getText().replace(".", "").replace(",", "."));
-                lancarEventoContabil(funcionarioSelecionado, "DESCONTO_MANUAL", descricao, valor, LocalDate.now(), funcionarioSelecionado.getDataInicioCalculo());
+                // data_referencia = inicio do ciclo atual (agrupa no mes do ciclo; fallback = data_admissao)
+                LocalDate dataRef = (funcionarioSelecionado.getDataInicioCalculo() != null)
+                    ? funcionarioSelecionado.getDataInicioCalculo()
+                    : funcionarioSelecionado.getDataAdmissao();
+                lancarEventoContabil(funcionarioSelecionado, "DESCONTO_MANUAL", descricao, valor, LocalDate.now(), dataRef);
                 AlertHelper.info("Desconto lançado no prontuário do funcionário!");
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
@@ -413,7 +432,11 @@ public class GestaoFuncionariosController {
                 }
                 double valorDesconto = funcionarioSelecionado.getSalario().doubleValue() / 30.0;
                 String descricao = "FALTA - " + funcionarioSelecionado.getNome().toUpperCase() + " - " + dataFalta.format(dtf);
-                lancarEventoContabil(funcionarioSelecionado, "FALTA", descricao, valorDesconto, dataFalta, funcionarioSelecionado.getDataInicioCalculo());
+                // data_referencia = inicio do ciclo atual (agrupa a falta no mes do ciclo; fallback = data_admissao)
+                LocalDate dataRefFalta = (funcionarioSelecionado.getDataInicioCalculo() != null)
+                    ? funcionarioSelecionado.getDataInicioCalculo()
+                    : funcionarioSelecionado.getDataAdmissao();
+                lancarEventoContabil(funcionarioSelecionado, "FALTA", descricao, valorDesconto, dataFalta, dataRefFalta);
                 AlertHelper.info("Falta registrada no prontuário! Valor: " + nf.format(valorDesconto));
                 calcularFinanceiro(funcionarioSelecionado);
                 carregarHistoricoFinanceiro(funcionarioSelecionado);
@@ -475,7 +498,8 @@ public class GestaoFuncionariosController {
                 if (saldoParaPagar > 0) {
                     String mesExtenso = dataInicio.format(dtfMesExtenso).toUpperCase();
                     String desc = "FECHAMENTO MENSAL " + funcionarioSelecionado.getNome().toUpperCase() + " REF " + mesExtenso;
-                    lancarDebitoAutomatico(funcionarioSelecionado, desc, saldoParaPagar, dataReferenciaFechamento, "DINHEIRO");
+                    // mes_referencia = inicio do ciclo fechado (agrupa FECHAMENTO no mes correto do filtro)
+                    lancarDebitoAutomatico(funcionarioSelecionado, desc, saldoParaPagar, dataReferenciaFechamento, "DINHEIRO", dataInicio);
                 }
                 
                 // Novo ciclo comeca no dia seguinte ao fechamento (zera contador)
@@ -526,16 +550,43 @@ public class GestaoFuncionariosController {
             double valor = Double.parseDouble(txtValorPagamento.getText().replace(".", "").replace(",", "."));
             if (txtDescricaoPagamento.getText().isEmpty()) { AlertHelper.info("Digite uma descrição."); return; }
             String desc = "PAGTO " + funcionarioSelecionado.getNome().toUpperCase() + " - " + txtDescricaoPagamento.getText().toUpperCase();
-            
-            lancarDebitoAutomatico(funcionarioSelecionado, desc, valor, LocalDate.now(), "DINHEIRO");
-            
+
+            // mes_referencia = inicio do ciclo atual (agrupa lancamento no mes do ciclo, nao no dia do pagamento)
+            LocalDate mesRef = (funcionarioSelecionado.getDataInicioCalculo() != null)
+                ? funcionarioSelecionado.getDataInicioCalculo()
+                : funcionarioSelecionado.getDataAdmissao();
+            lancarDebitoAutomatico(funcionarioSelecionado, desc, valor, LocalDate.now(), "DINHEIRO", mesRef);
+
             txtValorPagamento.clear(); txtDescricaoPagamento.clear();
             calcularFinanceiro(funcionarioSelecionado); carregarHistoricoFinanceiro(funcionarioSelecionado);
          } catch(Exception e) { AlertHelper.info("Valor inválido."); }
     }
     
-    private void lancarDebitoAutomatico(Funcionario f, String descricao, double valor, LocalDate dataRef, String formaPagamento) {
-        funcionarioDAO.lancarDebito(f.getId(), descricao, valor, dataRef, formaPagamento);
+    private void lancarDebitoAutomatico(Funcionario f, String descricao, double valor, LocalDate dataRef,
+                                         String formaPagamento, LocalDate mesReferencia) {
+        funcionarioDAO.lancarDebito(f.getId(), descricao, valor, dataRef, formaPagamento, mesReferencia);
+    }
+
+    /**
+     * Tabela INSS 2025 (progressiva) — atualizar anualmente.
+     * Espelha calcularINSS() de naviera-web/src/pages/GestaoFuncionarios.jsx.
+     */
+    private static double calcularINSS(double salario) {
+        if (salario <= 0) return 0;
+        if (salario > 8157.41) return 951.63; // teto 2025
+        double[][] faixas = {
+            {1518.00, 0.075},
+            {2793.88, 0.09},
+            {4190.83, 0.12},
+            {8157.41, 0.14}
+        };
+        double inss = 0, base = 0;
+        for (double[] f : faixas) {
+            if (salario <= f[0]) { inss += (salario - base) * f[1]; return Math.round(inss * 100.0) / 100.0; }
+            inss += (f[0] - base) * f[1];
+            base = f[0];
+        }
+        return Math.round(inss * 100.0) / 100.0;
     }
 
     private void lancarEventoContabil(Funcionario f, String tipo, String descricao, double valor, LocalDate dataEvento, LocalDate dataReferencia) {

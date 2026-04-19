@@ -15,6 +15,21 @@ import util.AppLogger;
  */
 public class FuncionarioDAO {
 
+    // Sentinela usada quando nao ha FECHAMENTO MENSAL anterior — filtro "data > sentinela" nao exclui nada.
+    private static final LocalDate SEM_FECHAMENTO = LocalDate.of(1900, 1, 1);
+
+    // Migracao idempotente — garante coluna mes_referencia em financeiro_saidas
+    // (espelha a migration do BFF em naviera-web/server/index.js)
+    static {
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(
+                "ALTER TABLE financeiro_saidas ADD COLUMN IF NOT EXISTS mes_referencia DATE")) {
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            AppLogger.warn("FuncionarioDAO", "Migration mes_referencia falhou (ok se ja aplicada): " + e.getMessage());
+        }
+    }
+
     // ========================= CRUD FUNCIONARIOS =========================
 
     public List<Funcionario> listarTodos(boolean incluirInativos) {
@@ -97,24 +112,53 @@ public class FuncionarioDAO {
 
     // ========================= QUERIES FINANCEIRAS =========================
 
+    /**
+     * Data do ultimo FECHAMENTO MENSAL — pagamentos/descontos com data <= essa
+     * ficam "presos" no ciclo anterior e nao entram no calculo do ciclo atual.
+     * Retorna SEM_FECHAMENTO (1900-01-01) quando nunca houve fechamento.
+     */
+    public LocalDate buscarDataUltimoFechamento(int idFuncionario) {
+        String sql = "SELECT MAX(data_pagamento) AS ultimo FROM financeiro_saidas " +
+                     "WHERE funcionario_id = ? AND empresa_id = ? AND is_excluido = false " +
+                     "AND UPPER(descricao) LIKE 'FECHAMENTO MENSAL%'";
+        try (Connection con = ConexaoBD.getConnection();
+             PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, idFuncionario);
+            stmt.setInt(2, DAOUtils.empresaId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    java.sql.Date d = rs.getDate("ultimo");
+                    if (d != null) return d.toLocalDate();
+                }
+            }
+        } catch (SQLException e) {
+            AppLogger.warn("FuncionarioDAO", "Erro SQL em FuncionarioDAO.buscarDataUltimoFechamento: " + e.getMessage());
+        }
+        return SEM_FECHAMENTO;
+    }
+
     public double buscarTotalPagamentosReais(int idFuncionario, LocalDate inicio) {
+        LocalDate ultFech = buscarDataUltimoFechamento(idFuncionario);
         String sql = "SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas " +
-                     "WHERE funcionario_id = ? AND empresa_id = ? AND is_excluido = false AND data_pagamento >= ? " +
+                     "WHERE funcionario_id = ? AND empresa_id = ? AND is_excluido = false " +
+                     "AND data_pagamento >= ? AND data_pagamento > ? " +
                      "AND (forma_pagamento IS NULL OR forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO')";
-        return queryDouble(sql, idFuncionario, inicio);
+        return queryDouble(sql, idFuncionario, inicio, ultFech);
     }
 
     public double buscarTotalEventosRH(int idFuncionario, LocalDate dataReferencia) {
+        LocalDate ultFech = buscarDataUltimoFechamento(idFuncionario);
         String sql = "SELECT COALESCE(SUM(valor), 0) as total FROM eventos_rh " +
-                     "WHERE funcionario_id = ? AND empresa_id = ? AND data_referencia >= ?";
-        return queryDouble(sql, idFuncionario, dataReferencia);
+                     "WHERE funcionario_id = ? AND empresa_id = ? AND data_referencia >= ? AND data_evento > ?";
+        return queryDouble(sql, idFuncionario, dataReferencia, ultFech);
     }
 
     public double buscarTotalDescontosLegado(int idFuncionario, LocalDate inicio) {
+        LocalDate ultFech = buscarDataUltimoFechamento(idFuncionario);
         String sql = "SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas " +
-                     "WHERE funcionario_id = ? AND empresa_id = ? AND data_pagamento >= ? " +
+                     "WHERE funcionario_id = ? AND empresa_id = ? AND data_pagamento >= ? AND data_pagamento > ? " +
                      "AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')";
-        return queryDouble(sql, idFuncionario, inicio);
+        return queryDouble(sql, idFuncionario, inicio, ultFech);
     }
 
     public boolean existeEventoRH(int idFuncionario, LocalDate dataReferencia, String tipo) {
@@ -191,14 +235,15 @@ public class FuncionarioDAO {
     }
 
     public boolean lancarDebito(int idFuncionario, String descricao, double valor,
-                                LocalDate dataRef, String formaPagamento) {
+                                LocalDate dataRef, String formaPagamento, LocalDate mesReferencia) {
         try (Connection con = ConexaoBD.getConnection()) {
             int idViagem = buscarViagemAtiva(con);
             int idCategoria = buscarIdCategoriaFuncionarios(con);
 
             String sql = "INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, " +
-                         "data_pagamento, status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, empresa_id) " +
-                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, false, ?)";
+                         "data_pagamento, status, forma_pagamento, id_categoria, id_viagem, funcionario_id, " +
+                         "is_excluido, mes_referencia, empresa_id) " +
+                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, false, ?, ?)";
             try (PreparedStatement stmt = con.prepareStatement(sql)) {
                 stmt.setString(1, descricao.toUpperCase());
                 stmt.setDouble(2, valor);
@@ -210,7 +255,9 @@ public class FuncionarioDAO {
                 stmt.setInt(8, idCategoria);
                 stmt.setInt(9, idViagem);
                 stmt.setInt(10, idFuncionario);
-                stmt.setInt(11, DAOUtils.empresaId());
+                if (mesReferencia != null) stmt.setDate(11, Date.valueOf(mesReferencia));
+                else stmt.setNull(11, Types.DATE);
+                stmt.setInt(12, DAOUtils.empresaId());
                 stmt.executeUpdate();
             }
             return true;
@@ -223,17 +270,20 @@ public class FuncionarioDAO {
     public List<PagamentoHistorico> carregarHistorico(int idFuncionario, int mes, int ano) {
         List<PagamentoHistorico> historico = new ArrayList<>();
 
-        // DP041: single UNION ALL query instead of 2 round-trips
+        // Agrupa por mes do CICLO (mes_referencia / data_referencia),
+        // com fallback para data_pagamento / data_evento quando coluna/valor nao existir.
         String sql = "SELECT data_pagamento AS data, descricao, valor_pago AS valor, forma_pagamento, 'FIN' AS origem " +
                      "FROM financeiro_saidas " +
                      "WHERE funcionario_id = ? AND empresa_id = ? " +
                      "AND ( (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false ) " +
-                     "AND EXTRACT(MONTH FROM data_pagamento) = ? AND EXTRACT(YEAR FROM data_pagamento) = ? " +
+                     "AND EXTRACT(MONTH FROM COALESCE(mes_referencia, data_pagamento)) = ? " +
+                     "AND EXTRACT(YEAR FROM COALESCE(mes_referencia, data_pagamento)) = ? " +
                      "UNION ALL " +
                      "SELECT data_evento AS data, descricao, valor, NULL AS forma_pagamento, 'RH' AS origem " +
                      "FROM eventos_rh " +
                      "WHERE funcionario_id = ? AND empresa_id = ? " +
-                     "AND EXTRACT(MONTH FROM data_evento) = ? AND EXTRACT(YEAR FROM data_evento) = ?";
+                     "AND EXTRACT(MONTH FROM COALESCE(data_referencia, data_evento)) = ? " +
+                     "AND EXTRACT(YEAR FROM COALESCE(data_referencia, data_evento)) = ?";
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             int empresaId = DAOUtils.empresaId();
@@ -327,12 +377,13 @@ public class FuncionarioDAO {
         }
     }
 
-    private double queryDouble(String sql, int idFuncionario, LocalDate data) {
+    private double queryDouble(String sql, int idFuncionario, LocalDate data, LocalDate ultimoFechamento) {
         try (Connection con = ConexaoBD.getConnection();
              PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setInt(1, idFuncionario);
             stmt.setInt(2, DAOUtils.empresaId());
             stmt.setDate(3, Date.valueOf(data));
+            stmt.setDate(4, Date.valueOf(ultimoFechamento));
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     java.math.BigDecimal v = rs.getBigDecimal("total");
