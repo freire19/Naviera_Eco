@@ -658,6 +658,102 @@ export function printEtiquetaFrete(frete, formato = 'a4') {
   printContent(html)
 }
 
+/**
+ * Prints etiquetas de encomenda — uma etiqueta por unidade de cada item,
+ * numeradas "X/N" (N = total de unidades = soma de todas as quantidades),
+ * com codigo de barras Code128 contendo ENC-<numero>-<volume>.
+ *
+ * formato: 'a4' (default, grade 3 colunas) ou 'rolo' (80mm empilhado).
+ */
+export function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva = null, formato = 'a4') {
+  const numeroEnc = String(encomenda.numero_encomenda || encomenda.id_encomenda || '')
+  const destinatario = h(encomenda.destinatario || encomenda.nome_destinatario || '\u2014')
+  const remetente = h(encomenda.remetente || encomenda.nome_remetente || '\u2014')
+  const rota = h(encomenda.nome_rota || (viagemAtiva && viagemAtiva.nome_rota) ||
+    (viagemAtiva && viagemAtiva.origem && viagemAtiva.destino ? `${viagemAtiva.origem} - ${viagemAtiva.destino}` : '\u2014'))
+  const dataViagem = h(
+    encomenda.data_viagem ||
+    (viagemAtiva && (viagemAtiva.data_viagem_fmt || viagemAtiva.data_viagem)) ||
+    ''
+  )
+
+  // Monta lista plana de volumes com descricao do item de cada um
+  const flatVolumes = []
+  ;(itens || []).forEach(it => {
+    const qtd = parseInt(it.quantidade) || 1
+    const desc = it.descricao || it.nome_item || '\u2014'
+    for (let k = 0; k < qtd; k++) flatVolumes.push(desc)
+  })
+  const totalVolumes = flatVolumes.length || 1
+  if (flatVolumes.length === 0) flatVolumes.push('\u2014')
+
+  const etiquetas = flatVolumes.map((itemDesc, idx) => {
+    const i = idx + 1
+    const barcodeValue = numeroEnc ? `ENC-${numeroEnc}-${i}` : `ENC-VOL-${i}`
+    const barcodeSvg = gerarBarcodeSvg(barcodeValue, { height: 28, fontSize: 9, margin: 0 })
+    return `
+      <div class="etiqueta">
+        <div class="top">
+          <span class="frete">Enc. ${h(numeroEnc || '\u2014')}${dataViagem ? ' \u00B7 ' + dataViagem : ''}</span>
+          <span class="volume">${i}/${totalVolumes}</span>
+        </div>
+        <div class="destinatario">${destinatario}</div>
+        <div class="rota">${rota}</div>
+        <div class="remetente">De: ${remetente}</div>
+        <div class="nota">Item: ${h(itemDesc)}</div>
+        <div class="barcode-wrap">${barcodeSvg}</div>
+      </div>
+    `
+  })
+
+  const isRolo = formato === 'rolo'
+  const pageCss = isRolo
+    ? '@page { size: 80mm auto; margin: 2mm; }'
+    : '@page { size: A4; margin: 8mm; }'
+  const gridCss = isRolo
+    ? '.grid { display: flex; flex-direction: column; gap: 2mm; }'
+    : '.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }'
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Etiquetas Encomenda ${h(numeroEnc)} - ${totalVolumes} volumes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; padding: ${isRolo ? '0' : '5mm'}; }
+    ${gridCss}
+    .etiqueta {
+      border: 1px dashed #999;
+      padding: 2mm 2.5mm;
+      min-height: 40mm;
+      page-break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      ${isRolo ? 'width: 76mm;' : ''}
+    }
+    .top { display: flex; justify-content: space-between; font-size: 9px; color: #555; font-weight: 600; gap: 3mm; }
+    .top .frete { word-break: break-word; }
+    .top .volume { background: #059669; color: #fff; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+    .destinatario { font-size: 11px; font-weight: 700; margin: 2mm 0 0; line-height: 1.1; word-break: break-word; }
+    .rota { font-size: 9px; color: #555; margin-top: 1mm; }
+    .remetente { font-size: 8px; color: #777; margin-top: 1mm; }
+    .nota { font-size: 8px; color: #333; margin-top: 1mm; font-weight: 600; }
+    .barcode-wrap { margin-top: auto; padding-top: 2mm; text-align: center; }
+    .barcode-wrap svg { max-width: 100%; height: 32px; }
+    ${pageCss}
+  </style>
+</head>
+<body>
+  <div class="grid">${etiquetas.join('')}</div>
+  <script>window.onload = function() { setTimeout(function() { window.print() }, 100) }<\/script>
+</body>
+</html>`
+
+  printContent(html)
+}
+
 /** Helper: carrega dados da empresa para impressao */
 async function loadEmpresa() {
   try {

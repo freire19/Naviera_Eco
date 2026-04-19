@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
-import { printReciboEncomenda } from '../utils/print.js'
+import { printReciboEncomenda, printEtiquetaEncomenda } from '../utils/print.js'
 import Autocomplete from '../components/Autocomplete.jsx'
 import MoneyInput from '../components/MoneyInput.jsx'
 
@@ -626,6 +626,11 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
           <button className="btn-sm primary" onClick={() => { if (selecionada) { setEditando(true) } }}>Editar</button>
           <button className="btn-sm danger" onClick={handleExcluir}>Excluir</button>
           <button className="btn-sm primary" onClick={() => { if (selecionada) printReciboEncomenda(selecionada, viagemAtiva) }}>Imprimir</button>
+          <button className="btn-sm primary" onClick={() => {
+            if (!selecionada) return
+            const rolo = window.confirm('Imprimir em impressora de rolo (80mm)?\n\n[OK] Rolo termico 80mm — uma etiqueta embaixo da outra\n[Cancelar] Folha A4 — varias etiquetas por pagina')
+            printEtiquetaEncomenda(selecionada, itens, viagemAtiva, rolo ? 'rolo' : 'a4')
+          }}>Etiqueta</button>
           <button className="btn-sm primary" onClick={handleEntregar} style={{ background: '#0369A1' }}>Entregar</button>
           <button className="btn-sm" onClick={() => onClose ? onClose() : limparForm()}>Sair (Esc)</button>
         </div>
