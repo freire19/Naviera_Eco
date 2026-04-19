@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { mes, ano } = req.query
-    let sql = 'SELECT * FROM agenda_anotacoes WHERE empresa_id = $1'
+    let sql = 'SELECT id_anotacao AS id, data_evento, descricao, concluida, empresa_id FROM agenda_anotacoes WHERE empresa_id = $1'
     const params = [empresaId]
 
     if (mes && ano) {
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
       sql += ' AND data_evento >= $2 AND data_evento < $3'
       params.push(firstDay, nextMonth)
     }
-    sql += ' ORDER BY data_evento, id'
+    sql += ' ORDER BY data_evento, id_anotacao'
 
     const result = await pool.query(sql, params)
     res.json(result.rows)
@@ -41,7 +41,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'data_evento e descricao obrigatorios' })
     }
     const result = await pool.query(
-      'INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES ($1, $2, FALSE, $3) RETURNING *',
+      `INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id)
+       VALUES ($1, $2, FALSE, $3)
+       RETURNING id_anotacao AS id, data_evento, descricao, concluida, empresa_id`,
       [data_evento, descricao.trim(), empresaId]
     )
     res.status(201).json(result.rows[0])
@@ -60,8 +62,8 @@ router.put('/:id', async (req, res) => {
       UPDATE agenda_anotacoes
       SET descricao = COALESCE($1, descricao),
           concluida = COALESCE($2, concluida)
-      WHERE id = $3 AND empresa_id = $4
-      RETURNING *
+      WHERE id_anotacao = $3 AND empresa_id = $4
+      RETURNING id_anotacao AS id, data_evento, descricao, concluida, empresa_id
     `, [descricao || null, concluida !== undefined ? concluida : null, req.params.id, empresaId])
 
     if (result.rows.length === 0) return res.status(404).json({ error: 'Anotacao nao encontrada' })
@@ -77,7 +79,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const result = await pool.query(
-      'DELETE FROM agenda_anotacoes WHERE id = $1 AND empresa_id = $2 RETURNING id',
+      'DELETE FROM agenda_anotacoes WHERE id_anotacao = $1 AND empresa_id = $2 RETURNING id_anotacao',
       [req.params.id, empresaId]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Anotacao nao encontrada' })
