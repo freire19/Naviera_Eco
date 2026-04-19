@@ -114,15 +114,23 @@ export default function CalendarioEventos() {
           const isHoje = dateStr === hojeStr
           const isSel = dia === diaSelecionado
           const feriadoNome = feriados[dateStr]
-          const temViagem = (viagensPorDia[dateStr] || []).length > 0
-          const temTarefa = (tarefasPorDia[dateStr] || []).length > 0
-          const temBoleto = (boletosPorDia[dateStr] || []).length > 0
+          const viagensDia = viagensPorDia[dateStr] || []
+          const tarefasDia = tarefasPorDia[dateStr] || []
+          const boletosDia = boletosPorDia[dateStr] || []
+          const temViagem = viagensDia.length > 0
+          const temTarefa = tarefasDia.length > 0
+          const temBoleto = boletosDia.length > 0
+          // Resumo curto da primeira viagem do dia (ex: "MANAUS - JUTAI")
+          const rotaResumo = temViagem
+            ? (viagensDia[0].nome_rota ||
+               (viagensDia[0].origem && viagensDia[0].destino ? `${viagensDia[0].origem} - ${viagensDia[0].destino}` : viagensDia[0].descricao || 'Viagem'))
+            : null
 
           return (
             <button key={dia}
               onClick={() => setDiaSelecionado(dia)}
               style={{
-                minHeight: 62, padding: '4px 3px', position: 'relative',
+                minHeight: 74, padding: '4px 3px', position: 'relative',
                 background: isHoje ? 'var(--primary)' : (isSel ? 'var(--bg-accent)' : 'var(--bg-card)'),
                 color: isHoje ? '#fff' : 'var(--text)',
                 border: isSel && !isHoje ? '2px solid var(--primary)' : '1px solid var(--border)',
@@ -136,6 +144,26 @@ export default function CalendarioEventos() {
               </div>
               {feriadoNome && (
                 <div style={{ fontSize: 9, color: isHoje ? '#fff' : '#B45309', lineHeight: 1.1 }}>&#9733; {feriadoNome}</div>
+              )}
+              {rotaResumo && (
+                <div style={{
+                  fontSize: 9, fontWeight: 700, lineHeight: 1.1,
+                  color: isHoje ? '#fff' : '#DC2626',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  maxWidth: '100%'
+                }} title={viagensDia.map(v => v.nome_rota || v.descricao).join(', ')}>
+                  &#9875; {rotaResumo}{viagensDia.length > 1 ? ` +${viagensDia.length - 1}` : ''}
+                </div>
+              )}
+              {temTarefa && tarefasDia[0]?.descricao && (
+                <div style={{
+                  fontSize: 9, lineHeight: 1.1,
+                  color: isHoje ? '#fff' : '#7C3AED',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  maxWidth: '100%'
+                }} title={tarefasDia.map(t => t.descricao).join(', ')}>
+                  &#128221; {tarefasDia[0].descricao}{tarefasDia.length > 1 ? ` +${tarefasDia.length - 1}` : ''}
+                </div>
               )}
               <div style={{ display: 'flex', gap: 3, marginTop: 'auto' }}>
                 {temViagem && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#DC2626' }} title="Viagem" />}
