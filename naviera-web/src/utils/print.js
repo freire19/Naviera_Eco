@@ -2,6 +2,7 @@
  * Naviera Web — Print Utilities
  * Generates printable HTML for bilhetes, recibos, notas, etiquetas, and listas.
  */
+import JsBarcode from 'jsbarcode'
 
 // #DS5-205: escape de HTML para impedir XSS via dados de OCR/input livre
 // Todos os valores dinamicos interpolados no HTML devem passar por esta funcao.
@@ -547,70 +548,86 @@ export function printNotaFrete(frete, viagem) {
 }
 
 /**
- * Prints an etiqueta de frete — small label format.
+ * Gera um SVG Code128 em string (para embutir direto no HTML de impressao).
+ * Usa jsbarcode passando um SVG fora do DOM.
+ */
+function gerarBarcodeSvg(value, opts = {}) {
+  try {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    JsBarcode(svg, String(value), {
+      format: 'CODE128',
+      height: 38,
+      width: 1.4,
+      fontSize: 11,
+      margin: 0,
+      displayValue: true,
+      ...opts
+    })
+    return new XMLSerializer().serializeToString(svg)
+  } catch (e) {
+    return `<div style="font-size:9px;color:#999;">[barcode ${h(value)}]</div>`
+  }
+}
+
+/**
+ * Prints etiquetas de frete — uma etiqueta por volume, numeradas "X/N",
+ * cada uma com codigo de barras Code128 contendo numero_frete-volume.
  */
 export function printEtiquetaFrete(frete) {
-  const content = `
-    <div style="text-align:center; padding: 4px;">
-      <div style="font-size: 10px; font-weight: 700; color: #059669; margin-bottom: 4px;">NAVIERA</div>
+  const totalVolumes = parseInt(frete.total_volumes) || 1
+  const numeroFrete = String(frete.numero_frete || frete.id_frete || '')
+  const destinatario = h(frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014')
+  const rota = h(frete.nome_rota || frete.rota_temp || '\u2014')
+  const remetente = h(frete.nome_remetente || frete.remetente_nome_temp || '\u2014')
 
-      <div style="font-size: 14px; font-weight: 700; margin: 6px 0;">
-        ${h(frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014')}
+  const etiquetas = []
+  for (let i = 1; i <= totalVolumes; i++) {
+    const barcodeValue = numeroFrete ? `${numeroFrete}-${i}` : `VOL-${i}`
+    const barcodeSvg = gerarBarcodeSvg(barcodeValue)
+    etiquetas.push(`
+      <div class="etiqueta">
+        <div class="header">NAVIERA</div>
+        <div class="destinatario">${destinatario}</div>
+        <div class="rota">${rota}</div>
+        <hr class="divider">
+        <div class="info"><strong>Frete:</strong> ${h(numeroFrete || '\u2014')}</div>
+        <div class="info volume-bloco"><strong>Volume ${i} / ${totalVolumes}</strong></div>
+        <div class="info"><strong>Remetente:</strong> ${remetente}</div>
+        <div class="barcode-wrap">${barcodeSvg}</div>
       </div>
-
-      <div style="font-size: 11px; margin-bottom: 4px;">
-        ${h(frete.nome_rota || frete.rota_temp || '\u2014')}
-      </div>
-
-      <hr class="divider">
-
-      <div style="font-size: 12px; font-weight: 600; margin: 4px 0;">
-        Frete: ${h(frete.numero_frete || frete.id_frete || '\u2014')}
-      </div>
-
-      <div style="font-size: 11px;">
-        Volumes: <strong>${h(frete.total_volumes || '\u2014')}</strong>
-      </div>
-
-      <div style="font-size: 11px; margin-top: 2px;">
-        Remetente: ${h(frete.nome_remetente || frete.remetente_nome_temp || '\u2014')}
-      </div>
-
-      <div class="qr-placeholder" style="margin-top: 6px; padding: 8px;">
-        [ Codigo ]<br>${h(frete.numero_frete || frete.id_frete || '')}
-      </div>
-    </div>
-  `
+    `)
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Etiqueta Frete ${h(frete.numero_frete || '')}</title>
+  <title>Etiquetas Frete ${h(numeroFrete)} — ${totalVolumes} volumes</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; }
+    .etiqueta {
       width: 72mm;
-      max-width: 72mm;
-      color: #111;
+      padding: 4mm 3mm;
+      text-align: center;
+      page-break-after: always;
+      page-break-inside: avoid;
     }
-    .divider {
-      border: none;
-      border-top: 1px dashed #ccc;
-      margin: 4px 0;
-    }
-    .qr-placeholder {
-      border: 1px dashed #ccc;
-      font-size: 9px;
-      color: #999;
-    }
+    .etiqueta:last-child { page-break-after: auto; }
+    .header { font-size: 10px; font-weight: 700; color: #059669; margin-bottom: 4px; }
+    .destinatario { font-size: 14px; font-weight: 700; margin: 6px 0; word-break: break-word; }
+    .rota { font-size: 11px; margin-bottom: 4px; }
+    .divider { border: none; border-top: 1px dashed #ccc; margin: 4px 0; }
+    .info { font-size: 11px; margin-top: 2px; text-align: left; }
+    .volume-bloco { text-align: center; font-size: 13px; margin: 6px 0; padding: 3px; border: 1px solid #059669; border-radius: 3px; }
+    .barcode-wrap { margin-top: 6px; }
+    .barcode-wrap svg { width: 100%; height: 44px; }
     @page { size: 80mm 60mm; margin: 2mm; }
   </style>
 </head>
 <body>
-  ${content}
-  <script>window.onload = function() { window.print(); }</script>
+  ${etiquetas.join('')}
+  <script>window.onload = function() { setTimeout(function() { window.print() }, 100) }<\/script>
 </body>
 </html>`
 
