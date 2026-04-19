@@ -4,8 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Orquestra criacao de cobranca: chama o PSP + persiste log em psp_cobrancas.
@@ -31,37 +34,67 @@ public class PspCobrancaService {
     /**
      * Cria cobranca no PSP e grava log em psp_cobrancas.
      * Usado na Fase 3.3 pelos services de passagem/encomenda/frete.
+     *
+     * #DS5-003: idempotencia em 3 passos sem transacao global (a chamada HTTP nao entra em tx DB):
+     *   1. Dedup — se ja existe cobranca PENDENTE/CONFIRMADA para a origem, retorna ela.
+     *   2. Persiste row INICIADA com chave idempotente ANTES do POST ao PSP.
+     *   3. Chama PSP; em sucesso, UPDATE com dados reais; em falha, marca FALHA (nao perde referencia).
      */
-    @Transactional
     public PspCobranca criar(CobrancaRequest req) {
-        CobrancaResponse resp = gateway.criarCobranca(req);
-
-        PspCobranca c = new PspCobranca();
-        c.setEmpresaId(req.empresaId());
-        c.setTipoOrigem(req.tipoOrigem());
-        c.setOrigemId(req.origemId());
-        c.setPspProvider(resp.pspProvider());
-        c.setPspCobrancaId(resp.pspCobrancaId());
-        c.setPspStatus(resp.pspStatus());
-        c.setFormaPagamento(req.formaPagamento());
-        c.setValorBruto(req.valorBruto());
-        c.setDescontoAplicado(req.descontoAplicado());
-        c.setValorLiquido(resp.valorLiquido());
-        c.setSplitNavieraPct(req.splitNavieraPct() != null ? req.splitNavieraPct() : props.getSplitNavieraPct());
-        c.setSplitNavieraValor(resp.splitNavieraValor());
-        c.setSplitEmpresaValor(resp.splitEmpresaValor());
-        c.setQrCodePayload(resp.qrCodePayload());
-        c.setQrCodeImageUrl(resp.qrCodeImageUrl());
-        c.setLinhaDigitavel(resp.linhaDigitavel());
-        c.setBoletoUrl(resp.boletoUrl());
-        c.setCheckoutUrl(resp.checkoutUrl());
-        c.setClienteAppId(req.clienteAppId());
-        if (resp.dataVencimento() != null) {
-            c.setDataVencimento(LocalDateTime.ofInstant(resp.dataVencimento(), ZoneOffset.UTC));
+        Optional<PspCobranca> existente = repo.findUltimaPorOrigem(req.tipoOrigem(), req.origemId());
+        if (existente.isPresent()) {
+            String st = existente.get().getPspStatus();
+            if ("PENDENTE".equals(st) || "CONFIRMADA".equals(st)) {
+                log.info("[PspCobrancaService] Idempotente: reutilizando cobranca {} para {}:{} (status={})",
+                    existente.get().getPspCobrancaId(), req.tipoOrigem(), req.origemId(), st);
+                return existente.get();
+            }
         }
-        c.setRawResponse(resp.rawResponseJson());
 
-        PspCobranca salvo = repo.save(c);
+        PspCobranca inicial = new PspCobranca();
+        inicial.setEmpresaId(req.empresaId());
+        inicial.setTipoOrigem(req.tipoOrigem());
+        inicial.setOrigemId(req.origemId());
+        inicial.setPspProvider(gateway.providerName());
+        inicial.setPspCobrancaId("IDEM_" + UUID.randomUUID().toString().replace("-", ""));
+        inicial.setPspStatus("INICIADA");
+        inicial.setFormaPagamento(req.formaPagamento());
+        inicial.setValorBruto(req.valorBruto());
+        BigDecimal desc = req.descontoAplicado() != null ? req.descontoAplicado() : BigDecimal.ZERO;
+        inicial.setDescontoAplicado(desc);
+        inicial.setValorLiquido(req.valorBruto().subtract(desc));
+        inicial.setClienteAppId(req.clienteAppId());
+        PspCobranca row = repo.save(inicial);
+
+        CobrancaResponse resp;
+        try {
+            resp = gateway.criarCobranca(req);
+        } catch (RuntimeException e) {
+            row.setPspStatus("FALHA");
+            String msg = e.getMessage() != null ? e.getMessage().replace("\"", "\\\"") : "erro";
+            row.setRawResponse("{\"erro\":\"" + msg + "\"}");
+            repo.save(row);
+            throw e;
+        }
+
+        row.setPspProvider(resp.pspProvider());
+        row.setPspCobrancaId(resp.pspCobrancaId());
+        row.setPspStatus(resp.pspStatus());
+        row.setValorLiquido(resp.valorLiquido());
+        row.setSplitNavieraPct(req.splitNavieraPct() != null ? req.splitNavieraPct() : props.getSplitNavieraPct());
+        row.setSplitNavieraValor(resp.splitNavieraValor());
+        row.setSplitEmpresaValor(resp.splitEmpresaValor());
+        row.setQrCodePayload(resp.qrCodePayload());
+        row.setQrCodeImageUrl(resp.qrCodeImageUrl());
+        row.setLinhaDigitavel(resp.linhaDigitavel());
+        row.setBoletoUrl(resp.boletoUrl());
+        row.setCheckoutUrl(resp.checkoutUrl());
+        if (resp.dataVencimento() != null) {
+            row.setDataVencimento(LocalDateTime.ofInstant(resp.dataVencimento(), ZoneOffset.UTC));
+        }
+        row.setRawResponse(resp.rawResponseJson());
+
+        PspCobranca salvo = repo.save(row);
         log.info("[PspCobrancaService] Cobranca {} criada no {} para {}:{} valor={}",
             salvo.getPspCobrancaId(), salvo.getPspProvider(),
             salvo.getTipoOrigem(), salvo.getOrigemId(), salvo.getValorLiquido());

@@ -44,7 +44,9 @@ app.use(cors({
   credentials: true
 }))
 app.use(rateLimit({ windowMs: 60000, max: 200, message: 'Muitas requisicoes. Tente novamente em breve.' }))
-app.use(express.json())
+// #DS5-206: body size limit + strict JSON. Rotas que precisam mais (ex: /api/ocr/upload) usam multer proprio.
+app.use(express.json({ limit: '200kb', strict: true }))
+app.use(express.urlencoded({ limit: '200kb', extended: false }))
 
 // Request logging
 app.use((req, res, next) => {
@@ -90,6 +92,10 @@ app.use(errorHandler)
 const server = app.listen(PORT, () => {
   log.info('Server', `Naviera Web BFF running on http://localhost:${PORT}`)
 })
+// #DS5-206: fecha conexoes lentas (slowloris) — headersTimeout e body (requestTimeout) ocioso
+server.headersTimeout = 15_000
+server.requestTimeout = 30_000
+server.keepAliveTimeout = 65_000
 server.timeout = 120_000
 
 function shutdown(signal) {

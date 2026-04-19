@@ -187,9 +187,22 @@ router.get('/empresas/:id/stats', async (req, res) => {
 // adminOnly middleware ja garante ROLE_ADMIN.
 const SPRING_API_BASE_PSP = process.env.SPRING_API_BASE || 'http://localhost:8081/api'
 
+// #DS5-201: valida id como inteiro positivo antes de interpolar na URL upstream
+function parseEmpresaId(req, res) {
+  const raw = req.params.id
+  const id = Number.parseInt(raw, 10)
+  if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647 || String(id) !== raw) {
+    res.status(400).json({ error: 'ID de empresa invalido' })
+    return null
+  }
+  return id
+}
+
 router.get('/empresas/:id/psp/status', async (req, res) => {
+  const id = parseEmpresaId(req, res)
+  if (id == null) return
   try {
-    const upstream = await fetch(`${SPRING_API_BASE_PSP}/admin/empresas/${req.params.id}/psp/status`, {
+    const upstream = await fetch(`${SPRING_API_BASE_PSP}/admin/empresas/${id}/psp/status`, {
       headers: { Authorization: req.headers.authorization }
     })
     const body = await upstream.text()
@@ -201,8 +214,10 @@ router.get('/empresas/:id/psp/status', async (req, res) => {
 })
 
 router.post('/empresas/:id/psp/onboarding', async (req, res) => {
+  const id = parseEmpresaId(req, res)
+  if (id == null) return
   try {
-    const upstream = await fetch(`${SPRING_API_BASE_PSP}/admin/empresas/${req.params.id}/psp/onboarding`, {
+    const upstream = await fetch(`${SPRING_API_BASE_PSP}/admin/empresas/${id}/psp/onboarding`, {
       method: 'POST',
       headers: {
         Authorization: req.headers.authorization,

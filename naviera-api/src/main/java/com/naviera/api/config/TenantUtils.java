@@ -33,4 +33,22 @@ public class TenantUtils {
         }
         return null;
     }
+
+    /** Retorna id do operador/usuario logado (do JWT claim `id`). */
+    public static Integer getOperadorId(Authentication auth) {
+        if (auth == null) throw ApiException.unauthorized("Nao autenticado");
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Number) return ((Number) principal).intValue();
+        if (principal != null) {
+            try { return Integer.valueOf(principal.toString()); } catch (NumberFormatException ignored) {}
+        }
+        throw ApiException.unauthorized("operador_id nao encontrado no token");
+    }
+
+    /** True se o operador logado tem ROLE_ADMIN (JwtFilter atribui quando funcao=ADMIN/Administrador). */
+    public static boolean isAdmin(Authentication auth) {
+        if (auth == null || auth.getAuthorities() == null) return false;
+        return auth.getAuthorities().stream()
+            .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
 }

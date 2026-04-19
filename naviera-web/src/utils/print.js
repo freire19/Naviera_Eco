@@ -3,6 +3,20 @@
  * Generates printable HTML for bilhetes, recibos, notas, etiquetas, and listas.
  */
 
+// #DS5-205: escape de HTML para impedir XSS via dados de OCR/input livre
+// Todos os valores dinamicos interpolados no HTML devem passar por esta funcao.
+export function escapeHtml(v) {
+  if (v == null) return ''
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+// Alias curto para nao poluir os templates
+const h = escapeHtml
+
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
@@ -170,7 +184,7 @@ function buildHeader(docTitle) {
     <div class="header">
       <h1>NAVIERA</h1>
       <div class="subtitle">Sistema de Gestao Fluvial</div>
-      <div class="doc-title">${docTitle}</div>
+      <div class="doc-title">${h(docTitle)}</div>
     </div>
   `
 }
@@ -236,7 +250,7 @@ export async function printBilhete(passagem, viagem, empresaData) {
   const rota = (origem && destino) ? `${origem} - ${destino}` : (viagem?.nome_rota || '\u2014')
   const dataViagem = formatDate(viagem?.data_viagem)
   const dataChegada = formatDate(viagem?.data_chegada)
-  const numBilhete = passagem.numero_bilhete || passagem.num_bilhete || passagem.id_passagem || '\u2014'
+  const numBilhete = String(passagem.numero_bilhete || passagem.num_bilhete || passagem.id_passagem || '\u2014')
   const vTotal = parseFloat(passagem.valor_total) || 0
   const vPago = parseFloat(passagem.valor_pago) || 0
   const vDevedor = parseFloat(passagem.valor_devedor) || Math.max(0, vTotal - vPago)
@@ -245,7 +259,7 @@ export async function printBilhete(passagem, viagem, empresaData) {
   const statusColor = vDevedor <= 0.01 ? '#059669' : '#DC2626'
 
   const html = `<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><title>Bilhete ${numBilhete}</title>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Bilhete ${h(numBilhete)}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; color: #111; }
@@ -287,22 +301,22 @@ export async function printBilhete(passagem, viagem, empresaData) {
   <!-- PAINEL ESQUERDO -->
   <div class="left">
     <div class="emp-header">
-      <div class="emp-nome">${emp.nome_embarcacao ? 'F/B ' + emp.nome_embarcacao : emp.companhia || 'NAVIERA'}</div>
-      <div class="emp-prop">${emp.companhia || emp.proprietario || ''}</div>
-      <div class="emp-info">CNPJ: ${emp.cnpj || '—'} | ${emp.telefone || ''}</div>
-      ${emp.frase_relatorio ? `<div class="emp-frase">${emp.frase_relatorio}</div>` : ''}
+      <div class="emp-nome">${emp.nome_embarcacao ? 'F/B ' + h(emp.nome_embarcacao) : h(emp.companhia || 'NAVIERA')}</div>
+      <div class="emp-prop">${h(emp.companhia || emp.proprietario || '')}</div>
+      <div class="emp-info">CNPJ: ${h(emp.cnpj || '—')} | ${h(emp.telefone || '')}</div>
+      ${emp.frase_relatorio ? `<div class="emp-frase">${h(emp.frase_relatorio)}</div>` : ''}
     </div>
 
     <div class="sec-title">VIAGEM</div>
-    <div class="row"><span class="lbl">De:</span><span class="val">${origem || '\u2014'}</span></div>
-    <div class="row"><span class="lbl">Para:</span><span class="val">${destino || '\u2014'}</span></div>
+    <div class="row"><span class="lbl">De:</span><span class="val">${h(origem || '\u2014')}</span></div>
+    <div class="row"><span class="lbl">Para:</span><span class="val">${h(destino || '\u2014')}</span></div>
     <div class="row"><span class="lbl">Data:</span><span class="val">${dataViagem} | Prev: ${dataChegada}</span></div>
-    <div class="row"><span class="lbl">Acom.:</span><span class="val">${passagem.nome_acomodacao || '\u2014'} | Agente: ${passagem.nome_agente || '\u2014'}</span></div>
+    <div class="row"><span class="lbl">Acom.:</span><span class="val">${h(passagem.nome_acomodacao || '\u2014')} | Agente: ${h(passagem.nome_agente || '\u2014')}</span></div>
 
     <div class="sec-title">PASSAGEIRO</div>
-    <div class="row"><span class="lbl">Nome:</span><span class="val"><strong>${passagem.nome_passageiro || '\u2014'}</strong></span></div>
-    <div class="row"><span class="lbl">Doc:</span><span class="val"><strong>${passagem.numero_doc || '\u2014'}</strong>  Nac: <strong>${passagem.nome_nacionalidade || '\u2014'}</strong></span></div>
-    <div class="row"><span class="lbl">DN:</span><span class="val"><strong>${formatDate(passagem.data_nascimento)}</strong>  Id: <strong>${calcIdadePrint(passagem.data_nascimento)}a</strong>  Sx: <strong>${passagem.nome_sexo || '\u2014'}</strong></span></div>
+    <div class="row"><span class="lbl">Nome:</span><span class="val"><strong>${h(passagem.nome_passageiro || '\u2014')}</strong></span></div>
+    <div class="row"><span class="lbl">Doc:</span><span class="val"><strong>${h(passagem.numero_doc || '\u2014')}</strong>  Nac: <strong>${h(passagem.nome_nacionalidade || '\u2014')}</strong></span></div>
+    <div class="row"><span class="lbl">DN:</span><span class="val"><strong>${formatDate(passagem.data_nascimento)}</strong>  Id: <strong>${calcIdadePrint(passagem.data_nascimento)}a</strong>  Sx: <strong>${h(passagem.nome_sexo || '\u2014')}</strong></span></div>
 
     <div style="display:flex; gap:6px; margin-top:6px; border-top:1px solid #999; padding-top:4px;">
       <div style="flex:1;">
@@ -329,12 +343,12 @@ export async function printBilhete(passagem, viagem, empresaData) {
   <div class="right">
     <div class="bilhete-box">
       <div class="bilhete-label">BILHETE</div>
-      <div class="bilhete-num">${numBilhete}</div>
+      <div class="bilhete-num">${h(numBilhete)}</div>
       <div class="bilhete-status" style="color:${statusColor};">${situacao === 'A VISTA' ? 'PAGO' : 'PENDENTE'}</div>
     </div>
     <div class="avisos-box">
       <div class="avisos-title">AVISOS</div>
-      ${(emp.recomendacoes_bilhete || '- Chegar com 01 hora de antecedencia.\n- Documento original obrigatorio.\n- Menores so com responsavel.').replace(/\\n/g, '\n').split('\n').map(l => `<div>${l.trim()}</div>`).join('')}
+      ${(emp.recomendacoes_bilhete || '- Chegar com 01 hora de antecedencia.\n- Documento original obrigatorio.\n- Menores so com responsavel.').replace(/\\n/g, '\n').split('\n').map(l => `<div>${h(l.trim())}</div>`).join('')}
     </div>
   </div>
 </div>
@@ -357,7 +371,7 @@ function buildFormaPagamento(p) {
  */
 export async function printReciboEncomenda(encomenda, viagem) {
   const emp = await loadEmpresa()
-  const num = encomenda.numero_encomenda || encomenda.id_encomenda || '—'
+  const num = String(encomenda.numero_encomenda || encomenda.id_encomenda || '—')
   const vTotal = parseFloat(encomenda.total_a_pagar) || 0
   const vPago = parseFloat(encomenda.valor_pago) || 0
   const status = vPago >= vTotal && vTotal > 0 ? 'PAGO' : 'PENDENTE'
@@ -381,15 +395,15 @@ export async function printReciboEncomenda(encomenda, viagem) {
         <th style="text-align:right; padding:2px 4px;">TOTAL</th>
       </tr></thead>
       <tbody>${itensData.map(i => `<tr style="border-bottom:1px solid #ccc;">
-        <td style="padding:2px 4px;">${i.quantidade || 1}</td>
-        <td style="padding:2px 4px;">${(i.descricao || '').toUpperCase()}</td>
+        <td style="padding:2px 4px;">${h(i.quantidade || 1)}</td>
+        <td style="padding:2px 4px;">${h((i.descricao || '').toUpperCase())}</td>
         <td style="text-align:right; padding:2px 4px;">${formatMoney(i.valor_unitario)}</td>
         <td style="text-align:right; padding:2px 4px;">${formatMoney(i.valor_total)}</td>
       </tr>`).join('')}</tbody>
     </table>`
   }
 
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Encomenda ${num}</title>
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo Encomenda ${h(num)}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Courier New', Courier, monospace; color:#000; width:80mm; max-width:80mm; padding:4mm; font-size:12px; }
@@ -399,24 +413,24 @@ export async function printReciboEncomenda(encomenda, viagem) {
   .big { font-size:18px; }
   .hr { border:none; border-top:1px solid #000; margin:6px 0; }
 </style></head><body>
-  <div class="center bold" style="font-size:14px;">${emp.nome_embarcacao ? 'F/B ' + emp.nome_embarcacao : emp.companhia || 'NAVIERA'}</div>
-  <div class="center" style="font-size:10px;">CNPJ: ${emp.cnpj || '—'}</div>
-  <div class="center" style="font-size:10px;">Tel: ${emp.telefone || '—'}</div>
-  <div class="center" style="font-size:10px;">${emp.endereco || ''}</div>
+  <div class="center bold" style="font-size:14px;">${emp.nome_embarcacao ? 'F/B ' + h(emp.nome_embarcacao) : h(emp.companhia || 'NAVIERA')}</div>
+  <div class="center" style="font-size:10px;">CNPJ: ${h(emp.cnpj || '—')}</div>
+  <div class="center" style="font-size:10px;">Tel: ${h(emp.telefone || '—')}</div>
+  <div class="center" style="font-size:10px;">${h(emp.endereco || '')}</div>
 
   <div class="center bold" style="margin:8px 0; font-size:14px;">RECIBO DE ENCOMENDA</div>
 
-  <div class="center" style="border:2px solid #000; display:inline-block; padding:4px 16px; margin:4px auto; font-size:20px; font-weight:700;">N° ${num}</div>
+  <div class="center" style="border:2px solid #000; display:inline-block; padding:4px 16px; margin:4px auto; font-size:20px; font-weight:700;">N° ${h(num)}</div>
 
   <hr class="hr">
-  <div><strong>REM:</strong> ${(encomenda.remetente || '').toUpperCase()}</div>
-  <div><strong>DEST:</strong> ${(encomenda.destinatario || '').toUpperCase()}</div>
-  <div><strong>ROTA:</strong> ${encomenda.rota || '—'}</div>
+  <div><strong>REM:</strong> ${h((encomenda.remetente || '').toUpperCase())}</div>
+  <div><strong>DEST:</strong> ${h((encomenda.destinatario || '').toUpperCase())}</div>
+  <div><strong>ROTA:</strong> ${h(encomenda.rota || '—')}</div>
   <hr class="hr">
 
   ${itensHtml}
 
-  <div style="color:#059669; font-weight:700; margin-top:4px;">VOLUMES: ${encomenda.total_volumes || itensData.reduce((s,i) => s + (parseInt(i.quantidade) || 0), 0)}</div>
+  <div style="color:#059669; font-weight:700; margin-top:4px;">VOLUMES: ${h(encomenda.total_volumes || itensData.reduce((s,i) => s + (parseInt(i.quantidade) || 0), 0))}</div>
 
   <div class="center" style="margin-top:12px;">
     <div class="big bold">TOTAL: ${formatMoney(vTotal)}</div>
@@ -449,15 +463,15 @@ export function printNotaFrete(frete, viagem) {
     <div class="section">
       <div class="info-row">
         <span class="label">N. Frete:</span>
-        <span class="value"><strong>${frete.numero_frete || frete.id_frete || '\u2014'}</strong></span>
+        <span class="value"><strong>${h(frete.numero_frete || frete.id_frete || '\u2014')}</strong></span>
       </div>
       <div class="info-row">
         <span class="label">Viagem:</span>
-        <span class="value">${viagemDesc}</span>
+        <span class="value">${h(viagemDesc)}</span>
       </div>
       <div class="info-row">
         <span class="label">Rota:</span>
-        <span class="value">${frete.nome_rota || frete.rota_temp || '\u2014'}</span>
+        <span class="value">${h(frete.nome_rota || frete.rota_temp || '\u2014')}</span>
       </div>
     </div>
 
@@ -467,11 +481,11 @@ export function printNotaFrete(frete, viagem) {
       <div class="section-title">Remetente / Destinatario</div>
       <div class="info-row">
         <span class="label">Remetente:</span>
-        <span class="value">${frete.nome_remetente || frete.remetente_nome_temp || '\u2014'}</span>
+        <span class="value">${h(frete.nome_remetente || frete.remetente_nome_temp || '\u2014')}</span>
       </div>
       <div class="info-row">
         <span class="label">Destinatario:</span>
-        <span class="value">${frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014'}</span>
+        <span class="value">${h(frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014')}</span>
       </div>
     </div>
 
@@ -485,8 +499,8 @@ export function printNotaFrete(frete, viagem) {
           <tbody>
             ${frete.itens.map(i => `
               <tr>
-                <td>${i.descricao || i.nome || '\u2014'}</td>
-                <td>${i.quantidade || 1}</td>
+                <td>${h(i.descricao || i.nome || '\u2014')}</td>
+                <td>${h(i.quantidade || 1)}</td>
                 <td>${formatMoney(i.valor || i.valor_unitario)}</td>
               </tr>
             `).join('')}
@@ -512,23 +526,23 @@ export function printNotaFrete(frete, viagem) {
       </div>
       <div class="info-row">
         <span class="label">Tipo Pgto:</span>
-        <span class="value">${frete.tipo_pagamento || '\u2014'}</span>
+        <span class="value">${h(frete.tipo_pagamento || '\u2014')}</span>
       </div>
       <div class="info-row">
         <span class="label">Status:</span>
-        <span class="value">${frete.status || 'Pendente'}</span>
+        <span class="value">${h(frete.status || 'Pendente')}</span>
       </div>
     </div>
 
     <div class="qr-placeholder">
       [ QR Code / Codigo de Barras ]<br>
-      Frete ${frete.numero_frete || frete.id_frete || ''}
+      Frete ${h(frete.numero_frete || frete.id_frete || '')}
     </div>
 
     ${buildFooter()}
   `
 
-  const html = buildPage(content, `Nota Frete ${frete.numero_frete || ''}`, true)
+  const html = buildPage(content, `Nota Frete ${h(frete.numero_frete || '')}`, true)
   printContent(html)
 }
 
@@ -541,29 +555,29 @@ export function printEtiquetaFrete(frete) {
       <div style="font-size: 10px; font-weight: 700; color: #059669; margin-bottom: 4px;">NAVIERA</div>
 
       <div style="font-size: 14px; font-weight: 700; margin: 6px 0;">
-        ${frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014'}
+        ${h(frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014')}
       </div>
 
       <div style="font-size: 11px; margin-bottom: 4px;">
-        ${frete.nome_rota || frete.rota_temp || '\u2014'}
+        ${h(frete.nome_rota || frete.rota_temp || '\u2014')}
       </div>
 
       <hr class="divider">
 
       <div style="font-size: 12px; font-weight: 600; margin: 4px 0;">
-        Frete: ${frete.numero_frete || frete.id_frete || '\u2014'}
+        Frete: ${h(frete.numero_frete || frete.id_frete || '\u2014')}
       </div>
 
       <div style="font-size: 11px;">
-        Volumes: <strong>${frete.total_volumes || '\u2014'}</strong>
+        Volumes: <strong>${h(frete.total_volumes || '\u2014')}</strong>
       </div>
 
       <div style="font-size: 11px; margin-top: 2px;">
-        Remetente: ${frete.nome_remetente || frete.remetente_nome_temp || '\u2014'}
+        Remetente: ${h(frete.nome_remetente || frete.remetente_nome_temp || '\u2014')}
       </div>
 
       <div class="qr-placeholder" style="margin-top: 6px; padding: 8px;">
-        [ Codigo ]<br>${frete.numero_frete || frete.id_frete || ''}
+        [ Codigo ]<br>${h(frete.numero_frete || frete.id_frete || '')}
       </div>
     </div>
   `
@@ -572,7 +586,7 @@ export function printEtiquetaFrete(frete) {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Etiqueta Frete ${frete.numero_frete || ''}</title>
+  <title>Etiqueta Frete ${h(frete.numero_frete || '')}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -631,11 +645,11 @@ function calcIdadePrint(dataNasc) {
 function buildEmpresaHeader(emp, titulo) {
   return `
     <div style="text-align:center; margin-bottom:12px;">
-      <div style="font-size:18px; font-weight:700;">${emp.nome_embarcacao || emp.companhia || 'NAVIERA'}</div>
-      <div style="font-size:10px; color:#555;">${emp.endereco || ''}</div>
-      <div style="font-size:10px; color:#555;">CNPJ: ${emp.cnpj || '—'}</div>
-      <div style="font-size:10px; color:#555;">Tel: ${emp.telefone || '—'}</div>
-      <div style="font-size:15px; font-weight:700; margin-top:10px; border-top:2px solid #059669; border-bottom:2px solid #059669; padding:6px 0;">${titulo}</div>
+      <div style="font-size:18px; font-weight:700;">${h(emp.nome_embarcacao || emp.companhia || 'NAVIERA')}</div>
+      <div style="font-size:10px; color:#555;">${h(emp.endereco || '')}</div>
+      <div style="font-size:10px; color:#555;">CNPJ: ${h(emp.cnpj || '—')}</div>
+      <div style="font-size:10px; color:#555;">Tel: ${h(emp.telefone || '—')}</div>
+      <div style="font-size:15px; font-weight:700; margin-top:10px; border-top:2px solid #059669; border-bottom:2px solid #059669; padding:6px 0;">${h(titulo)}</div>
     </div>`
 }
 
@@ -653,11 +667,11 @@ export async function printListaPassageiros(passagens, viagem) {
   const rows = passagens.map((p, i) => `
     <tr>
       <td style="text-align:center; width:35px;">${i + 1}</td>
-      <td style="text-transform:uppercase;">${p.nome_passageiro || '—'}</td>
-      <td>${p.numero_doc || '—'}</td>
+      <td style="text-transform:uppercase;">${h(p.nome_passageiro || '—')}</td>
+      <td>${h(p.numero_doc || '—')}</td>
       <td>${formatDate(p.data_nascimento)}</td>
-      <td>${p.origem || '—'}</td>
-      <td>${p.destino || '—'}</td>
+      <td>${h(p.origem || '—')}</td>
+      <td>${h(p.destino || '—')}</td>
     </tr>
   `).join('')
 
@@ -675,7 +689,7 @@ export async function printListaPassageiros(passagens, viagem) {
 </style></head><body>
   ${buildEmpresaHeader(emp, 'LISTA DE PASSAGEIROS')}
   <div style="font-size:10px; margin-bottom:10px;">
-    Embarcacao: <strong>${vEmb}</strong> | Saida: <strong>${vData}</strong> | Prev. Chegada: <strong>${vCheg}</strong> | Hora: <strong>${vHora}</strong>
+    Embarcacao: <strong>${h(vEmb)}</strong> | Saida: <strong>${h(vData)}</strong> | Prev. Chegada: <strong>${h(vCheg)}</strong> | Hora: <strong>${h(vHora)}</strong>
   </div>
   <table>
     <thead><tr>
@@ -719,21 +733,21 @@ export async function printRelatorioPassagens(passagens, viagem, filtrosTexto) {
 
   const rows = passagens.map(p => `
     <tr>
-      <td>${p.numero_bilhete || '—'}</td>
+      <td>${h(p.numero_bilhete || '—')}</td>
       <td>${formatDate(p.data_emissao)}</td>
-      <td>${p.nome_passageiro || '—'}</td>
-      <td>${p.origem && p.destino ? p.origem + ' - ' + p.destino : '—'}</td>
-      <td>${p.nome_tipo_passagem || '—'}</td>
-      <td>${p.nome_agente || '—'}</td>
+      <td>${h(p.nome_passageiro || '—')}</td>
+      <td>${h(p.origem && p.destino ? p.origem + ' - ' + p.destino : '—')}</td>
+      <td>${h(p.nome_tipo_passagem || '—')}</td>
+      <td>${h(p.nome_agente || '—')}</td>
       <td style="text-align:right;">${formatMoney(p.valor_total)}</td>
       <td style="text-align:right;">${formatMoney(p.valor_pago)}</td>
       <td style="text-align:right; color:${parseFloat(p.valor_devedor) > 0 ? '#c00' : '#000'};">${formatMoney(p.valor_devedor)}</td>
-      <td>${formaPgto(p)}</td>
-      <td style="text-align:center;"><span style="padding:2px 6px; border-radius:3px; font-size:9px; font-weight:600; background:${p.status_passagem === 'PAGO' ? '#d4edda' : '#f8d7da'}; color:${p.status_passagem === 'PAGO' ? '#155724' : '#721c24'};">${p.status_passagem || 'PENDENTE'}</span></td>
+      <td>${h(formaPgto(p))}</td>
+      <td style="text-align:center;"><span style="padding:2px 6px; border-radius:3px; font-size:9px; font-weight:600; background:${p.status_passagem === 'PAGO' ? '#d4edda' : '#f8d7da'}; color:${p.status_passagem === 'PAGO' ? '#155724' : '#721c24'};">${h(p.status_passagem || 'PENDENTE')}</span></td>
     </tr>
   `).join('')
 
-  const filtrosHtml = filtrosTexto ? `<div style="font-size:10px; margin-bottom:8px; color:#555;">Filtros: ${filtrosTexto}</div>` : ''
+  const filtrosHtml = filtrosTexto ? `<div style="font-size:10px; margin-bottom:8px; color:#555;">Filtros: ${h(filtrosTexto)}</div>` : ''
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatorio Passagens</title>
@@ -774,7 +788,7 @@ export async function printRelatorioPassagens(passagens, viagem, filtrosTexto) {
     </tr></tfoot>
   </table>
   <div class="footer">
-    <span>Viagem: ${viagem?.id_viagem || '—'} - ${viagem?.data_viagem || ''} (${viagem?.nome_rota || viagem?.origem && viagem?.destino ? viagem.origem + ' - ' + viagem.destino : ''})</span>
+    <span>Viagem: ${h(viagem?.id_viagem || '—')} - ${h(viagem?.data_viagem || '')} (${h(viagem?.nome_rota || viagem?.origem && viagem?.destino ? viagem.origem + ' - ' + viagem.destino : '')})</span>
     <span>Data: ${new Date().toLocaleString('pt-BR')}</span>
   </div>
   <script>window.onload = function() { window.print(); }</script>

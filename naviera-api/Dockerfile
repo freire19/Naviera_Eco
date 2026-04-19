@@ -8,7 +8,11 @@ RUN mvn package -DskipTests -B
 
 # ── Stage 2: Run ──
 FROM eclipse-temurin:17-jre-alpine
+# #DS5-402: container nao roda mais como root
+RUN addgroup -S naviera && adduser -S naviera -G naviera
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
+COPY --from=build --chown=naviera:naviera /app/target/*.jar app.jar
+USER naviera
+# #DS5-403: app Spring Boot escuta em 8081 (application.properties) — EXPOSE alinhado
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]

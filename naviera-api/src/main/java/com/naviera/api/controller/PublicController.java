@@ -53,10 +53,16 @@ public class PublicController {
     // FOTOS
     // ========================================================================
 
+    // #DS5-004: whitelist estrita de nome — bloqueia schemes file://, http://, path traversal
+    // Aceita: perfil_<id>.(jpg|png|webp) (legado) e perfil_<id>_<uuid32>.(jpg|png|webp) (novo)
+    private static final java.util.regex.Pattern FOTO_NAME =
+        java.util.regex.Pattern.compile("^perfil_\\d+(?:_[a-f0-9]{32})?\\.(jpg|jpeg|png|webp)$");
+
     @GetMapping("/fotos/{filename:.+}")
     public ResponseEntity<Resource> servirFoto(@PathVariable String filename) {
         try {
             String safe = Paths.get(filename).getFileName().toString();
+            if (!FOTO_NAME.matcher(safe).matches()) return ResponseEntity.notFound().build();
             Path file = Paths.get(uploadsDir, "fotos", safe);
             Resource resource = new UrlResource(file.toUri());
             if (!resource.exists()) return ResponseEntity.notFound().build();

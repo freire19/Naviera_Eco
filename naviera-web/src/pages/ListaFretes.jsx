@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
-import { printNotaFrete } from '../utils/print.js'
+import { printNotaFrete, escapeHtml } from '../utils/print.js'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -135,7 +135,8 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
       const valor = parseFloat(f.valor_total_itens || f.valor_frete_calculado) || 0
       const pago = parseFloat(f.valor_pago) || 0
       const dev = Math.max(0, valor - pago)
-      return `<tr><td>${f.numero_frete}</td><td>${f.remetente || f.remetente_nome_temp || ''}</td><td>${f.destinatario || f.destinatario_nome_temp || ''}</td><td>${f.rota || ''}</td><td>${formatDate(f.data_emissao)}</td><td class="money">${formatMoney(valor)}</td><td class="money">${formatMoney(dev)}</td><td class="money">${formatMoney(pago)}</td><td>${f.conferente || ''}</td></tr>`
+      // #DS5-205: escape obrigatorio em dados do banco — XSS via OCR/input livre
+      return `<tr><td>${escapeHtml(f.numero_frete)}</td><td>${escapeHtml(f.remetente || f.remetente_nome_temp || '')}</td><td>${escapeHtml(f.destinatario || f.destinatario_nome_temp || '')}</td><td>${escapeHtml(f.rota || '')}</td><td>${escapeHtml(formatDate(f.data_emissao))}</td><td class="money">${formatMoney(valor)}</td><td class="money">${formatMoney(dev)}</td><td class="money">${formatMoney(pago)}</td><td>${escapeHtml(f.conferente || '')}</td></tr>`
     }).join('')
     const html = `<!DOCTYPE html><html><head><title>Lista de Fretes</title><style>${css}</style></head><body>
       <h2>Gerenciamento de Fretes da Viagem</h2>

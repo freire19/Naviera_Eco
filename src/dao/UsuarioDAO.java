@@ -215,16 +215,22 @@ public class UsuarioDAO {
         return nomesUsuarios;
     }
 
-    /** Retorna apenas os logins de usuarios ativos (nao excluidos) para combo de login. */
+    /**
+     * Retorna apenas os logins de usuarios ativos (nao excluidos) para combo de login.
+     * #DS5-202: filtra por empresa_id do TenantContext — evita enumeracao cross-tenant
+     * quando o desktop apontar para banco central.
+     */
     public List<String> listarLoginsAtivos() {
         List<String> logins = new ArrayList<>();
-        String sql = "SELECT login_usuario FROM usuarios WHERE excluido IS NOT TRUE ORDER BY login_usuario";
+        String sql = "SELECT login_usuario FROM usuarios WHERE excluido IS NOT TRUE AND "
+                   + DAOUtils.TENANT_FILTER + " ORDER BY login_usuario";
         try (Connection conn = ConexaoBD.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            DAOUtils.setEmpresa(ps, 1);
             try (ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                logins.add(rs.getString("login_usuario"));
-            }
+                while (rs.next()) {
+                    logins.add(rs.getString("login_usuario"));
+                }
             }
         } catch (SQLException e) {
             AppLogger.warn("UsuarioDAO", "Erro SQL em UsuarioDAO.listarLoginsAtivos: " + e.getMessage());

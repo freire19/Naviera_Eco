@@ -1,0 +1,16 @@
+# #DS5-404: evita copiar secrets, caches e metadados para a imagem
+node_modules
+dist
+.git
+.gitignore
+.dockerignore
+.env
+.env.*
+!.env.example
+*.log
+*.tgz
+.vscode
+.idea
+coverage
+certs
+.DS_Store

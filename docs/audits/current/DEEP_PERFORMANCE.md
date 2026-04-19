@@ -1,9 +1,9 @@
 # AUDITORIA PROFUNDA — PERFORMANCE — Naviera_Eco
-> **Versao:** V4.0
-> **Data:** 2026-04-15
+> **Versao:** V5.0
+> **Data:** 2026-04-18
 > **Categoria:** Performance
-> **Base:** AUDIT_V1.2
-> **Arquivos analisados:** 205 de 205 total (cobertura completa — Desktop + BFF + Web + App + OCR + Site)
+> **Base:** AUDIT_V1.3
+> **Arquivos analisados:** 240+ (Desktop + API Spring + BFF + Web + App Mobile + OCR helpers)
 
 ---
 
@@ -11,636 +11,694 @@
 
 | Status | Quantidade |
 |--------|-----------|
-| Novos problemas encontrados | 38 |
-| Novos problemas corrigidos | 36 |
-| Issues anteriores resolvidas | 23 |
-| Issues anteriores parcialmente resolvidas | 0 |
-| Issues anteriores pendentes | 0 |
-| **Total de issues ativas** | **1** |
+| Issues AUDIT_V1.3 confirmadas (secao 2.5) | 33 |
+| Issues anteriores (V4.0) resolvidas | 30 |
+| Issues anteriores (V4.0) ainda pendentes | 2 |
+| Novos problemas encontrados neste deep | 23 |
+| **Total de issues ativas de performance** | **58** |
+
+Distribuicao por severidade das 58 ativas:
+
+| Severidade | Qtd |
+|------------|-----|
+| CRITICO | 3 |
+| ALTO | 17 |
+| MEDIO | 28 |
+| BAIXO | 10 |
 
 ---
 
 ## ISSUES ANTERIORES — STATUS
 
-### Resolvidas
+### Resolvidas (V4.0 → hoje)
+
+Todas as issues DP034-DP062 e carryovers foram verificadas e mantem-se corrigidas. Nao ha regressoes. Lista-sintese:
 
 | Issue | Titulo | Verificacao |
-|-------|--------|------------|
-| #DP026 | NumberFormat em formatar() BalancoViagemController | RESOLVIDO — `static final FMT_MOEDA` em linha 483 |
-| #DP027 | Impressao sincrona ListarPassageirosViagemController | RESOLVIDO — daemon Thread em linha 401 |
-| #DP028 | Autocomplete sem debounce InserirEncomendaController | RESOLVIDO — 3 PauseTransition (linhas 176-178) |
-| #DP030 | BalancoViagem bypassa EmpresaDAO cache | RESOLVIDO — usa EmpresaDAO.buscarPorId com cache (linha 486) |
-| #DP031 | ObservableList recriado ListaEncomendaController | RESOLVIDO — setAll() pattern (linha 153) |
-| #DP032 | DateTimeFormatter inline Viagem.java | RESOLVIDO — static final DTF_DATA (linha 9) |
-| #089 | ViagemDAO.cacheViagemAtiva nao volatile | RESOLVIDO — ConcurrentHashMap keyed por empresa_id (linha 157) |
-| #090 | PassagemDAO.temDataChegada campo compartilhado | RESOLVIDO — ThreadLocal (linha 184) |
-| #083 | Boleto batch sem transacao (BFF) | RESOLVIDO — BEGIN/COMMIT/ROLLBACK em financeiro.js:275-328 |
-| #084 | Race condition numero_bilhete MAX+1 | RESOLVIDO — pg_advisory_xact_lock em passagens.js:97 |
-| #085 | Race condition id_frete MAX+1 | RESOLVIDO — nextval + advisory lock em criarFrete.js:21-43 |
+|-------|--------|-------------|
+| #DP034 | DB queries no FX thread (BalancoViagem) | RESOLVIDO — bg thread mantida |
+| #DP035 | DB queries no FX thread (TelaPrincipal) | RESOLVIDO |
+| #DP036 | EmpresaDAO no FX (EncomendaPrintHelper) | RESOLVIDO |
+| #DP037 | Impressao multi-pagina FX (6 controllers) | RESOLVIDO |
+| #DP038 | PassageiroDAO cache preload | RESOLVIDO |
+| #DP039 | AgendaDAO LIMIT | RESOLVIDO — LIMIT 500 |
+| #DP040 | AuxiliaresDAO cache por tenant | RESOLVIDO |
+| #DP041 | FuncionarioDAO UNION | RESOLVIDO |
+| #DP042 | SELECT * em 6 DAOs Desktop | RESOLVIDO |
+| #DP043 | PooledConnection AtomicBoolean | RESOLVIDO |
+| #DP044-#DP048 | NumberFormat/DateTimeFormatter hot path (5) | RESOLVIDO |
+| #DP049 | Logo sem ImageCache | RESOLVIDO |
+| #DP050 | Cascata de threads BalancoViagem | RESOLVIDO |
+| #DP051 | Thread sem daemon | RESOLVIDO |
+| #DP052 | Queries BFF sem LIMIT (parcial) | REGREDIU — ver novos abaixo |
+| #DP053 | Admin N+1 | RESOLVIDO |
+| #DP054 | Itens em loop sem batch | RESOLVIDO |
+| #DP055 | Boleto 240 INSERTs | RESOLVIDO |
+| #DP056 | Estorno merge+sort JS | ACEITAVEL |
+| #DP057 | Agenda EXTRACT range | RESOLVIDO |
+| #DP058 | existsSync OCR foto | RESOLVIDO |
+| #DP059-#DP060 | Overpayment guard | RESOLVIDO (DS4-011) |
+| #DP061 | Indices compostos | RESOLVIDO (script 024) |
+| #DP062 | React.lazy 34 paginas | RESOLVIDO |
+| #079, #088, #092, #093 | N+1/LIMIT Desktop | RESOLVIDO |
+| #086 | ViagemDAO LIMIT | RESOLVIDO |
+| #091 | Site monolitico | ACEITAVEL |
 
 ### Parcialmente resolvidas
 
 | Issue | Titulo | O que falta |
-|-------|--------|------------|
-| #DP029 | Logo sem cache (7 locais) | 3 locais ainda sem ImageCache: PassagemPrintHelper:153, GerarReciboAvulsoController:611, FinanceiroSaidaController:548 |
-| #DP033 | Model classes sem equals/hashCode | 15 de 30 classes ainda faltam: ApiConfig, DadosBalancoViagem, Despesa, Empresa, FreteDevedor, FreteItem, Funcionario, ItemFrete, ItemResumoBalanco, LinhaDespesaDetalhada, PassagemFinanceiro, ReciboAvulso, ReciboQuitacaoPassageiro + 2 novos (EncomendaFinanceiro, FreteFinanceiro) |
-| #080 | BFF queries sem LIMIT | Parcial — alguns endpoints com LIMIT (ocr.js:132, passagens.js:20), mas maioria ainda sem LIMIT |
+|-------|--------|-------------|
+| #DP033 | equals/hashCode models | Fixado em 4 classes (ApiConfig, Empresa, Funcionario, ItemFrete). 11 classes ainda sem: DadosBalancoViagem, Despesa, FreteDevedor, FreteItem, ItemResumoBalanco, LinhaDespesaDetalhada, PassagemFinanceiro, ReciboAvulso, ReciboQuitacaoPassageiro, EncomendaFinanceiro, FreteFinanceiro |
 
 ### Pendentes
 
 | Issue | Titulo | Observacao |
 |-------|--------|-----------|
-| #048 | JSON parser custom SyncClient (~290 linhas) | Pendente — SyncClient:950-1236, substituir por Gson |
-| #DP023 | JARs duplicados (~35MB) | Pendente — sem mudanca |
-| #079 | N+1 em PassagemDAO.mapResultSetToPassagem | PARCIAL — listarExtratoPorPassageiro (linha 347) nao chama preCarregarCachesPassagem |
-| #086 | ViagemDAO.listarTodasViagensResumido sem LIMIT | Pendente — linha 294, sem LIMIT |
-| #088 | PassagemDAO.filtrarRelatorio pos-filtragem em Java | Pendente — 5 filtros removeIf em linhas 324-342 |
-| #092 | filtrarRelatorio nao pre-carrega caches | Pendente — linha 279 sem preCarregarCachesPassagem |
-| #093 | DespesaDAO.buscarBoletos sem LIMIT | Pendente — linha 375, buscarDespesas (linha 63) tambem |
-| #081 | SELECT * em 15+ endpoints BFF | Pendente — 17+ endpoints ainda usam SELECT * |
-| #082 | Admin N+1 subqueries correlacionadas | Pendente — admin.js:35-48, 4 subqueries por empresa |
-| #087 | React Web sem React.lazy/code splitting | Pendente — Layout.jsx importa 34 paginas estaticamente |
-| #091 | Site institucional monolitico sem code splitting | Pendente — App.jsx ~757 linhas |
+| #DP023 | JARs duplicados (~35MB lib/) | Infra — sem mudanca |
 
 ---
 
-## NOVOS PROBLEMAS
+## ISSUES DO AUDIT_V1.3 (SECAO 2.5 — CONFIRMADAS VIA DEEP DIVE)
 
-### CAMADA DESKTOP — GUI (FX Thread Blocking)
+Todas as 33 issues listadas na secao 2.5 do AUDIT_V1.3 foram re-verificadas linha-por-linha e confirmadas. Nao duplico aqui — referenciar diretamente o AUDIT_V1.3 para descricao e fix. Consolidando por severidade para o plano:
 
-#### Issue #DP034 — DB queries no FX thread em BalancoViagemController.carregarDetalhamentoTab2Fx()
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** CRITICO
-- **Arquivo:** `src/gui/BalancoViagemController.java`
-- **Linha(s):** 173-237, 403-407
-- **Problema:** `carregarDetalhamentoTab2Fx()` executa 4 queries SQL + `carregarDespesasAgrupadas()` diretamente no FX Application Thread via `Platform.runLater`. Cada query abre conexao JDBC e bloqueia a UI.
-- **Impacto:** Freeze de 1-5s ao abrir relatorio de balanco — tela financeira principal.
+- **CRITICO (3):** #403, #411 (PSP/@Transactional), #400 (se release expandir base)
+- **ALTO (14):** #400, #401, #402, #404, #405, #406, #407, #409, #412, #413, #415, #429, #431, #703
+- **MEDIO (13):** #408, #410, #414, #416, #417, #418, #419, #420, #421, #422, #424, #425, #430, #700
+- **BAIXO (3):** #427, #428, #701, #702
+
+---
+
+## NOVOS PROBLEMAS (descobertos neste deep)
+
+### API SPRING — SERVICES
+
+#### Issue #DP063 — SyncService.processar loop N+1 — processarRegistro por registro
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
+- **Linha(s):** 103-115
+- **Problema:** Para cada SyncRegistro recebido, `processarRegistro(tabela, reg, empresaId)` executa 1 SELECT por UUID + 1 INSERT/UPDATE. Desktop envia batches de ate 1000 registros (LIMIT 1000 em buscarParaDownload). 1000 registros = 2000 queries sequenciais dentro de `@Transactional`.
+- **Impacto:** Sync do Desktop mais lenta que o necessario; lock de transacao prolongado; se pool=10, 1 sync ocupa 1 conn por minutos.
 - **Codigo problematico:**
 ```java
-Platform.runLater(() -> {
-    carregarDetalhamentoTab2Fx(idViagem); // 4 queries SQL no FX thread
-});
+for (SyncRegistro reg : registros) {
+    if (reg.uuid() == null || reg.uuid().isBlank()) continue;
+    try {
+        uuidsRecebidos.add(reg.uuid());
+        processarRegistro(tabela, reg, empresaId); // 1-2 queries dentro
+        recebidos++;
+    } catch (Exception e) { ... }
+}
 ```
-- **Fix sugerido:** Mover todas as queries para a background thread existente em `carregarRelatorio()`, coletar resultados em POJOs, usar `Platform.runLater()` apenas para renderizar UI.
+- **Fix sugerido:** (1) Batch SELECT dos UUIDs existentes em uma query; (2) Classificar registros em INSERT-novos vs UPDATE-existentes; (3) Usar `jdbc.batchUpdate(...)` para cada grupo. Reduz para 3 queries no total.
 - **Observacoes:**
-> _Problema mais critico desta auditoria — afeta tela financeira usada diariamente._
+> _Sync e hot path — executa a cada 30s em cada Desktop conectado._
 
 ---
 
-#### Issue #DP035 — DB queries no FX thread em TelaPrincipalController (calendario + dashboard)
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** CRITICO
-- **Arquivo:** `src/gui/TelaPrincipalController.java`
-- **Linha(s):** 575-630
-- **Problema:** `carregarDadosComboParam()` (linha 575) e `carregarDadosComboSimples()` (linha 592) executam SQL sincronamente. Chamados durante construcao do calendario e handlers de dialogo no FX thread. `gerarLembretesNoBanco()` (linha 609) faz INSERT no FX thread.
-- **Impacto:** Freeze ao navegar meses no calendario — tela principal do sistema.
-- **Codigo problematico:**
-```java
-// Chamado de handlers no FX thread
-private ObservableList<String> carregarDadosComboParam(String sql, String... params) {
-    try (Connection con = ConexaoBD.getConnection(); // BLOQUEIA FX THREAD
-         PreparedStatement stmt = con.prepareStatement(sql)) {
-```
-- **Fix sugerido:** Envolver em `javafx.concurrent.Task` ou background Thread, similar ao padrao usado em outros controllers.
-- **Observacoes:**
-> _TelaPrincipalController e a tela principal — qualquer freeze aqui e visivel ao operador._
-
----
-
-#### Issue #DP036 — EmpresaDAO + DB queries no FX thread em EncomendaPrintHelper
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DP064 — GpsService.historicoViagem: SELECT sem LIMIT, sem filtro empresa_id
+- [ ] **Concluido**
 - **Severidade:** ALTO
-- **Arquivo:** `src/gui/util/EncomendaPrintHelper.java`
-- **Linha(s):** 49-50, 128-129
-- **Problema:** `imprimirCupomTermico()` e chamado de handlers no FX thread. Cria `new EmpresaDAO()` e `new EncomendaItemDAO()`, executa `buscarPorId()` e `listarPorIdEncomenda()` sincronamente. Combinado com `job.printPage()` sincrono na linha 182.
-- **Impacto:** Freeze de 1-3s ao imprimir cupom de encomenda.
-- **Fix sugerido:** Pre-carregar dados de empresa e itens no controller chamador (que ja os tem) e passar como parametros.
-- **Observacoes:**
-> _Afeta fluxo de impressao de encomendas — operacao de alta frequencia._
-
----
-
-#### Issue #DP037 — Impressao sincrona de relatorios multi-pagina no FX thread
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** Multiplos controllers
-- **Linha(s):**
-  - `BalancoViagemController.java`: 305 (loop `job.printPage()`)
-  - `RelatorioEncomendaGeralController.java`: 281, 324, 410, 554
-  - `RelatorioFretesController.java`: 640, 866, 1326, 1466
-  - `FinanceiroSaidaController.java`: 517 (loop)
-  - `RelatorioUtil.java`: 394, 672, 698
-  - `EncomendaPrintHelper.java`: 182
-- **Problema:** `job.printPage()` (JavaFX PrinterJob) chamado no FX thread em loop para relatorios multi-pagina. Cada pagina bloqueia a UI por 0.5-2s.
-- **Impacto:** Freeze de 5-30s ao imprimir relatorios com muitas paginas. Nota: `PrinterJob.printPage()` do JavaFX DEVE ser chamado no FX thread (requisito da API).
-- **Fix sugerido:** Para relatorios multi-pagina, snapshot nodes no FX thread, passar imagens raster para AWT `PrinterJob` em daemon thread (padrao ja usado em `PassagemPrintHelper`). Adicionar progress indicator.
-- **Observacoes:**
-> _VenderPassagemController e ListarPassageirosViagemController ja usam daemon thread — aplicar mesmo padrao._
-
----
-
-### CAMADA DESKTOP — DAO (Queries e Cache)
-
-#### Issue #DP038 — PassageiroDAO.listarTodos sem pre-carregamento de cache
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/dao/PassageiroDAO.java`
-- **Linha(s):** 29, 183-198
-- **Problema:** `mapResultSetToPassageiro` chama `buscarNomeAuxiliarPorId` 3x por linha (tipo_doc, sexo, nacionalidade). `listarTodos` (linha 29) nao chama `preCarregarCaches`. Cold-start com 200 passageiros = 600 queries.
-- **Impacto:** Listagem de passageiros lenta na primeira abertura.
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/GpsService.java`
+- **Linha(s):** 45-51
+- **Problema:** `SELECT ... FROM embarcacao_gps WHERE id_viagem = ? ORDER BY timestamp` sem LIMIT e sem `AND empresa_id = ?`. Viagem ativa com GPS ligado 24h coleta ~8640 pontos/dia. Viagem de 5 dias = 43200 pontos. Payload JSON 1-3 MB.
+- **Impacto:** Timeout no mobile sob 3G; memoria alta no Node BFF ao proxiar.
 - **Fix sugerido:**
 ```java
-public List<Passageiro> listarTodos() {
-    try { auxiliaresDAO.preCarregarCachesPassageiro(); } catch (SQLException e) { /* cache opcional */ }
-    // ... resto do metodo
+return jdbc.queryForList("""
+    SELECT latitude, longitude, velocidade_nos, curso_graus, timestamp
+    FROM embarcacao_gps
+    WHERE id_viagem = ?
+      AND empresa_id = ?        -- DEFESA MULTI-TENANT
+    ORDER BY timestamp
+    LIMIT 5000                  -- cap razoavel
+    """, idViagem, empresaId);
 ```
 - **Observacoes:**
-> _Mesmo padrao N+1 do #079 mas em PassageiroDAO._
+> _Considerar tambem downsampling (1 ponto a cada X min) no lado cliente._
 
 ---
 
-#### Issue #DP039 — AgendaDAO.buscarTodasTarefas sem LIMIT
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DP065 — GpsService.todasUltimasPosicoes: cross-tenant sem cache nem LIMIT
+- [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `src/dao/AgendaDAO.java`
-- **Linha(s):** 174-194
-- **Problema:** Carrega TODAS as tarefas (concluidas e nao concluidas) sem LIMIT. Acumula ao longo dos anos.
-- **Impacto:** Degradacao progressiva da tela de agenda.
-- **Fix sugerido:** `LIMIT 500` ou filtro por periodo (ultimos 6 meses).
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/GpsService.java`
+- **Linha(s):** 54-62
+- **Problema:** `DISTINCT ON (id_embarcacao)` sem LIMIT e sem cache. Endpoint do mapa publico de tracking — pode ser chamado a cada segundo por clientes. DISTINCT ON em tabela grande (`embarcacao_gps`) sem indice `(id_embarcacao, timestamp DESC)` vira seq scan.
+- **Impacto:** DB load proporcional ao numero de conexoes no mapa publico.
+- **Fix sugerido:** (1) `@Cacheable(value="gps-atual", key="'all'")` com TTL de 30s; (2) Indice `CREATE INDEX idx_gps_emb_ts_desc ON embarcacao_gps(id_embarcacao, timestamp DESC);`.
 - **Observacoes:**
-> _Tabela agenda_anotacoes cresce com boletos automaticos + tarefas manuais._
+> _Ligado ao #DP064 — mesma tabela, mesmo gap de indice._
 
 ---
 
-#### Issue #DP040 — AuxiliaresDAO cache nao segmentado por tenant
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DP066 — FinanceiroService.balanco: 4 queries sequenciais por viagem
+- [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `src/dao/AuxiliaresDAO.java`
-- **Linha(s):** 73-103
-- **Problema:** Cache Maps (`cacheNomeParaId`, `cacheIdParaNome`) sao keyed apenas por nome da tabela, nao por `(tabela, empresa_id)`. Para tabelas tenant-scoped (caixas, rotas, embarcacoes), se tenant A carrega o cache e tenant B le, pega dados do tenant A. No Desktop single-tenant e inofensivo. Na API multi-tenant (se DAOs forem reutilizados) seria data leak.
-- **Impacto:** Risco arquitetural — seguro HOJE no Desktop, perigoso se DAOs migrarem para API.
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FinanceiroService.java`
+- **Linha(s):** 38-65
+- **Problema:** Dashboard de balanco faz 4 `queryForObject` sequenciais (passagens, encomendas, fretes, despesas). Cada roundtrip ~2-5ms. Total 10-20ms para 1 balanco — 4x o necessario.
+- **Impacto:** Dashboard financeiro mais lento; ocupa 4 conexoes do pool sequencialmente.
 - **Fix sugerido:**
 ```java
-String cacheKey = isTenantScoped(tabela) ? tabela + ":" + DAOUtils.empresaId() : tabela;
+Map<String, Object> row = jdbc.queryForMap("""
+    SELECT
+      (SELECT COALESCE(SUM(valor_pago), 0) FROM passagens WHERE id_viagem = ? AND empresa_id = ?) AS passagens,
+      (SELECT COALESCE(SUM(valor_pago), 0) FROM encomendas WHERE id_viagem = ? AND empresa_id = ?) AS encomendas,
+      (SELECT COALESCE(SUM(valor_pago), 0) FROM fretes WHERE id_viagem = ? AND empresa_id = ?) AS fretes,
+      (SELECT COALESCE(SUM(valor), 0) FROM financeiro_saidas WHERE id_viagem = ? AND excluido = FALSE AND empresa_id = ?) AS despesas
+    """, viagemId, empresaId, viagemId, empresaId, viagemId, empresaId, viagemId, empresaId);
 ```
 - **Observacoes:**
-> _Risco BAIXO atual. Documentar como dica tecnica para quando/se DAOs forem usados na API._
+> _Mesmo padrao corrigido em #408 (DashboardService) — replicar aqui._
 
 ---
 
-#### Issue #DP041 — FuncionarioDAO.carregarHistorico: 2 queries separadas em vez de UNION
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** `src/dao/FuncionarioDAO.java`
-- **Linha(s):** 223-282
-- **Problema:** Duas queries separadas (financeiro_saidas + eventos_rh) com 2 conexoes do pool.
-- **Impacto:** 1 roundtrip extra. Impacto minimo.
-- **Fix sugerido:** Combinar em `UNION ALL ... ORDER BY data`.
+#### Issue #DP067 — FinanceiroService.listarEntradas/listarSaidas: SELECT * sem LIMIT
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FinanceiroService.java`
+- **Linha(s):** 18-36
+- **Problema:** `SELECT * FROM financeiro_entradas/saidas WHERE empresa_id = ? ORDER BY data DESC` sem LIMIT. Tenant com 2 anos de dados pode ter 10k+ linhas de cada tabela. SELECT * sem projecao.
+- **Impacto:** Payload crescente ao longo do tempo; pode estourar timeout.
+- **Fix sugerido:** Projecao explicita + paginacao (`LIMIT ? OFFSET ?`). Ou filtro obrigatorio por periodo.
 - **Observacoes:**
-> _Otimizacao opcional._
+> _Alinhado com #418 (crudFactory) mas estes endpoints nao usam crudFactory._
 
 ---
 
-#### Issue #DP042 — SELECT * em 6+ DAOs Desktop
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** Multiplos DAOs
-- **Linha(s):**
-  - `EncomendaDAO.java`: 91, 108, 123
-  - `FuncionarioDAO.java`: 23-24
-  - `PassageiroDAO.java`: 32, 132, 149, 165
-  - `ReciboAvulsoDAO.java`: 42, 62
-  - `ReciboQuitacaoPassageiroDAO.java`: 37
-  - `ClienteEncomendaDAO.java`: 22, 65
-- **Problema:** SELECT * em vez de colunas especificas.
-- **Impacto:** Dados extras transferidos. Impacto baixo em banco local.
-- **Fix sugerido:** Especificar colunas necessarias.
-- **Observacoes:**
-> _Menor impacto no Desktop (banco local) vs BFF (banco remoto)._
-
----
-
-#### Issue #DP043 — ConexaoBD.PooledConnection.close() race condition
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** `src/dao/ConexaoBD.java`
-- **Linha(s):** 195-199
-- **Problema:** Campo `closed` e volatile mas check-then-act nao e atomico. Dois threads chamando `close()` podem devolver mesma conexao ao pool 2x.
-- **Impacto:** Baixo — conexoes raramente compartilhadas entre threads. Mas pode causar corrupcao do pool em edge cases.
+#### Issue #DP068 — OnboardingService.gerarSlug: while loop com query por tentativa
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OnboardingService.java`
+- **Linha(s):** 66-71
+- **Problema:** `while (!jdbc.queryForList("SELECT 1 FROM empresas WHERE slug = ?", slug).isEmpty())` — 1 roundtrip por tentativa. Race condition: se 2 operadores se cadastrarem com nome similar simultaneamente, ambos passam no check e um falha no INSERT (se UNIQUE) ou cria duplicata (se nao).
+- **Impacto:** Onboarding mais lento; possivel inconsistencia em pico.
 - **Fix sugerido:**
+```sql
+ALTER TABLE empresas ADD CONSTRAINT empresas_slug_key UNIQUE (slug);
+```
 ```java
-private final AtomicBoolean closed = new AtomicBoolean(false);
-@Override public void close() {
-    if (closed.compareAndSet(false, true)) {
-        ConexaoBD.devolver(real);
-    }
+// Tentar INSERT direto; em conflito, append sufixo aleatorio e retentar
+try {
+    insertEmpresa(slug, ...);
+} catch (DuplicateKeyException e) {
+    insertEmpresa(slug + "-" + RandomStringUtils.random(4), ...);
 }
 ```
 - **Observacoes:**
-> _Fix defensivo. Risco pratico baixo._
+> _Mesmo risco em AdminService.gerarCodigoAtivacaoUnico (linha 45-52) — mas com cap de 10 tentativas._
 
 ---
 
-### CAMADA DESKTOP — GUI (NumberFormat / Formatacao)
-
-#### Issue #DP044 — NumberFormat criado em CellFactory updateItem (hot path)
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/GerarReciboAvulsoController.java`
-- **Linha(s):** 250
-- **Problema:** `NumberFormat.getCurrencyInstance(new Locale("pt","BR"))` criado dentro de `TableCell.updateItem()`. Chamado por JavaFX para cada celula visivel a cada scroll/resize. 50 linhas = 50 instanciacoes por render.
-- **Impacto:** Lag de scroll em tabelas com muitas linhas.
-- **Fix sugerido:** `private static final NumberFormat NF = NumberFormat.getCurrencyInstance(new Locale("pt","BR"));`
-- **Observacoes:**
-> _Fix de 1 linha._
-
----
-
-#### Issue #DP045 — NumberFormat por chamada em CadastroBoletoController.BoletoRow
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/CadastroBoletoController.java`
-- **Linha(s):** 394
-- **Problema:** `BoletoRow.getValorFormatado()` cria `NumberFormat.getCurrencyInstance()` a cada chamada. Usado por `PropertyValueFactory` para table display — dispara por celula. Classe ja tem `private static final NumberFormat nf` em linha 52.
-- **Impacto:** Instanciacoes redundantes — NF ja existe como campo static.
-- **Fix sugerido:** Usar o `nf` ja existente: `return nf.format(valor);`
-- **Observacoes:**
-> _Fix de 1 linha. Campo ja existe, so precisa usar._
-
----
-
-#### Issue #DP046 — NumberFormat per-call em TelaPrincipalController
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DP069 — SELECT * em services de listagem do operador
+- [ ] **Concluido**
 - **Severidade:** BAIXO
-- **Arquivo:** `src/gui/TelaPrincipalController.java`
-- **Linha(s):** 330, 467
-- **Problema:** `NumberFormat.getCurrencyInstance()` criado dentro de `construirCalendario()` (chamado a cada navegacao de mes) e handler de click.
-- **Impacto:** Baixo — 1 instanciacao por acao do usuario.
-- **Fix sugerido:** static final.
-- **Observacoes:**
-> _Consistencia com padrao do resto do codebase._
-
----
-
-#### Issue #DP047 — NumberFormat como campo de instancia (nao static)
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** Multiplos controllers
-- **Linha(s):**
-  - `TabelaPrecosEncomendaController.java`: 89
-  - `ExtratoPassageiroController.java`: 77
-- **Problema:** `private final NumberFormat moedaBR` — campo de instancia em vez de static final. Nova instancia por abertura de tela.
-- **Impacto:** Minimo — 1 alocacao por abertura de controller.
-- **Fix sugerido:** `private static final NumberFormat`.
-- **Observacoes:**
-> _Consistencia._
-
----
-
-#### Issue #DP048 — SimpleDateFormat em vez de DateTimeFormatter
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** `src/gui/BalancoViagemController.java`
-- **Linha(s):** 510
-- **Problema:** `new SimpleDateFormat("dd/MM/yyyy")` em background thread. `SimpleDateFormat` nao e thread-safe (neste caso instancia local, entao funcional). Inconsistente com resto do codebase que usa `DateTimeFormatter`.
-- **Impacto:** Minimo. Risco se reutilizado.
-- **Fix sugerido:** Usar `DateTimeFormatter` static final ou `RelatorioUtil.FMT_DATA`.
-- **Observacoes:**
-> _Consistencia._
-
----
-
-#### Issue #DP049 — Logo sem ImageCache em 3 locais restantes
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
 - **Arquivo:** Multiplos
 - **Linha(s):**
-  - `PassagemPrintHelper.java`: 153
-  - `GerarReciboAvulsoController.java`: 611
-  - `FinanceiroSaidaController.java`: 548
-- **Problema:** `new Image(f.toURI().toString())` em vez de `ImageCache.get()`. PassagemPrintHelper e o de maior impacto (impressao de bilhetes = alta frequencia).
-- **Impacto:** 1-2 leituras de disco desnecessarias por impressao.
-- **Fix sugerido:** `ImageCache.get(emp.pathLogo)` — ImageCache ja existe e e usado em outros 4 locais.
+  - `OpEncomendaService.java`: 19, 23
+  - `OpFreteService.java`: 19, 23
+  - `OpViagemService.java`: 18-25
+  - `CadastrosService.java`: listarTarifas linha 31-37
+  - `SyncService.java`: buscarParaDownload linha 331
+- **Problema:** `SELECT *` ou `SELECT t.*` em endpoints de listagem. Tabelas com colunas grandes (descricao, observacoes, dados_extraidos JSON) transmitem payload desnecessario.
+- **Impacto:** Payloads 2-3x maiores que o necessario.
+- **Fix sugerido:** Projecao explicita por endpoint.
 - **Observacoes:**
-> _Expande DP029. Fix de 1 linha por local._
+> _Expansao de #701 (OpEmbarcacaoController) — mesmo padrao generalizado._
 
 ---
 
-#### Issue #DP050 — Cascata de threads redundantes em BalancoViagemController
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/BalancoViagemController.java`
-- **Linha(s):** 93-144
-- **Problema:** `inicializarDados()` lanca 1 background thread → `carregarComboViagensFx()` lanca OUTRA thread (linhas 501-532) → `carregarRelatorio()` lanca MAIS OUTRA thread (linhas 116-143) → que chama `carregarDetalhamentoTab2Fx()` no FX thread com 4+ queries. Total: 3 threads + 7+ conexoes para 1 tela.
-- **Impacto:** Contencao no pool de conexoes + overhead de thread creation.
-- **Fix sugerido:** Consolidar em UMA background thread que carrega todos os dados, depois `Platform.runLater()` uma vez com tudo pronto.
-- **Observacoes:**
-> _Combinar com fix do DP034._
-
----
-
-#### Issue #DP051 — Thread de impressao sem setDaemon(true) em ExtratoPassageiroController
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DP070 — AuthService.login: @Transactional desnecessario
+- [ ] **Concluido**
 - **Severidade:** BAIXO
-- **Arquivo:** `src/gui/ExtratoPassageiroController.java`
-- **Linha(s):** 572, ~764
-- **Problema:** `new Thread(() -> job.print()).start()` sem `setDaemon(true)`. Se usuario fechar app durante impressao, JVM nao termina.
-- **Impacto:** Processo fica pendurado no SO.
-- **Fix sugerido:** `thread.setDaemon(true);`
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthService.java`
+- **Linha(s):** 23-33
+- **Problema:** Login faz 1 SELECT + 1 UPDATE (`ultimo_acesso`). Metodo marcado com `@Transactional`. Overhead de transacao para operacao idempotente sem requisito de ACID.
+- **Impacto:** ~0.5ms extra por login. Menor.
+- **Fix sugerido:** Remover `@Transactional` — UPDATE de ultimo_acesso e fire-and-forget.
 - **Observacoes:**
-> _Fix de 1 linha. Padrao ja usado em ListarPassageirosViagemController._
+> _Consistencia com padrao de read-heavy services._
 
 ---
 
-### CAMADA BFF — QUERIES E PAGINACAO
+### BFF — ROUTES + HELPERS
 
-#### Issue #DP052 — Queries sem LIMIT em 10+ endpoints BFF
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DP071 — Financeiro /dashboard: filtros categoria/forma_pagto em JS pos-UNION
+- [ ] **Concluido**
 - **Severidade:** ALTO
-- **Arquivo:** Multiplos
-- **Linha(s):**
-  - `encomendas.js`: 14 (`SELECT * FROM encomendas` sem viagem_id)
-  - `fretes.js`: 15 (`SELECT * FROM fretes` sem viagem_id)
-  - `financeiro.js`: 34 (saidas), 90-152 (detalhes), 209 (boletos)
-  - `viagens.js`: 13 (todas viagens)
-  - `passagens.js`: 36 (passagens por viagem)
-  - `estornos.js`: 237-345 (historico completo)
-  - `admin.js`: 33, 182, 237 (listas admin)
-- **Problema:** SELECTs retornam datasets ilimitados. Uma empresa com anos de dados pode ter dezenas de milhares de registros.
-- **Impacto:** Uso excessivo de memoria no BFF; timeouts; possivel OOM kill.
-- **Fix sugerido:**
-```javascript
-const page = parseInt(req.query.page) || 1
-const limit = Math.min(parseInt(req.query.limit) || 100, 500)
-const offset = (page - 1) * limit
-sql += ` LIMIT ${limit} OFFSET ${offset}`
-```
-- **Observacoes:**
-> _Consolida #080. Corrigir em TODOS os endpoints de listagem._
-
----
-
-#### Issue #DP053 — Admin N+1 subqueries correlacionadas (4 por empresa)
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-web/server/routes/admin.js`
-- **Linha(s):** 35-48, 193-202
-- **Problema:** GET `/empresas` usa 4 subqueries correlacionadas por linha de empresa (COUNT usuarios, passagens, encomendas, fretes). GET `/metricas` repete o padrao + 5 full-table COUNTs sem filtro empresa_id. Com 50 empresas = 200+ subqueries.
-- **Impacto:** Painel admin lento com crescimento do numero de tenants.
-- **Fix sugerido:**
-```javascript
-const result = await pool.query(`
-  SELECT e.*, COALESCE(u.cnt, 0) AS total_usuarios, ...
-  FROM empresas e
-  LEFT JOIN (SELECT empresa_id, COUNT(*) cnt FROM usuarios WHERE ... GROUP BY empresa_id) u ON u.empresa_id = e.id
-  LEFT JOIN (SELECT empresa_id, COUNT(*) cnt FROM passagens GROUP BY empresa_id) p ON p.empresa_id = e.id
-  LEFT JOIN (SELECT empresa_id, COUNT(*) cnt FROM encomendas GROUP BY empresa_id) en ON en.empresa_id = e.id
-  LEFT JOIN (SELECT empresa_id, COUNT(*) cnt FROM fretes GROUP BY empresa_id) f ON f.empresa_id = e.id
-`)
-```
-- **Observacoes:**
-> _Consolida #082. Remover query `totais` redundante — somar resultados por_empresa._
-
----
-
-#### Issue #DP054 — Itens inseridos em loop individual sem batch
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** Multiplos
-- **Linha(s):**
-  - `naviera-web/server/routes/encomendas.js`: 88-95
-  - `naviera-web/server/helpers/criarFrete.js`: 75-88
-- **Problema:** Cada item de encomenda/frete e INSERT individual dentro de transacao. 20 itens = 20 roundtrips ao PostgreSQL.
-- **Impacto:** Latencia acumulada + lock duration.
-- **Fix sugerido:** Multi-row INSERT: `INSERT INTO ... VALUES ($1,$2), ($3,$4), ...`
-- **Observacoes:**
-> _Roundtrip local e rapido, mas pattern e ineficiente._
-
----
-
-#### Issue #DP055 — Boleto batch: 240 INSERTs sequenciais em transacao
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
-- **Linha(s):** 295-318
-- **Problema:** POST `/boleto/batch` cria ate 120 parcelas com 2 INSERTs cada (financeiro_saidas + agenda_anotacoes) = 240 queries sequenciais. Transaction lock mantido durante todas.
-- **Impacto:** Transacao longa + pool contention.
-- **Fix sugerido:** Batch INSERTs: 1 multi-row INSERT para financeiro_saidas + 1 para agenda_anotacoes = 2 queries total.
-- **Observacoes:**
-> _Transacao ja existe (fix #083), mas o conteudo ainda e sequencial._
-
----
-
-#### Issue #DP056 — Estorno historico: merge + sort em JavaScript
-- [x] **Concluido** _(aceitavel �� LIMIT 500 aplicado)_
-- **Severidade:** BAIXO
-- **Arquivo:** `naviera-web/server/routes/estornos.js`
-- **Linha(s):** 268-271
-- **Problema:** GET `/historico` dispara 3 queries paralelas (passagens, encomendas, fretes estornos), concatena com flatMap, sort em JS. Sem LIMIT.
-- **Impacto:** Baixo com poucos estornos. Cresce com o tempo.
-- **Fix sugerido:** UNION ALL com ORDER BY e LIMIT no SQL.
-- **Observacoes:**
-> _Combinar com paginacao._
-
----
-
-#### Issue #DP057 — Agenda query com EXTRACT() previne uso de indice
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** `naviera-web/server/routes/agenda.js`
-- **Linha(s):** 17-18
-- **Problema:** `EXTRACT(MONTH FROM data_evento)` e `EXTRACT(YEAR FROM data_evento)` previnem B-tree index em data_evento.
-- **Impacto:** Baixo — tabela agenda e pequena.
-- **Fix sugerido:** Range query: `WHERE data_evento >= $2 AND data_evento < $3` com primeiro/ultimo dia do mes.
-- **Observacoes:**
-> _Mesmo padrao do DP007 (corrigido no Desktop). Replicar no BFF._
-
----
-
-#### Issue #DP058 — existsSync no request path (OCR foto)
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** `naviera-web/server/routes/ocr.js`
-- **Linha(s):** 347
-- **Problema:** `existsSync(fullPath)` — chamada sincrona de filesystem no event loop.
-- **Impacto:** Microsegundos por request. Minimo.
-- **Fix sugerido:** Remover — `res.sendFile` ja retorna 404 se arquivo nao existe.
-- **Observacoes:**
-> _Fix de 1 linha._
-
----
-
-### CAMADA BFF — INTEGRIDADE (encontradas durante scan de performance)
-
-#### Issue #DP059 — Encomenda pagamento sem guarda de overpayment
-- [x] **Concluido** _(ja corrigido por DS4-011)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/encomendas.js`
-- **Linha(s):** 153-158
-- **Problema:** POST `/encomendas/:id/pagar` adiciona `valor_pago` sem checar se excede total. Passagens (passagens.js:197) tem `WHERE valor_devedor >= $1` — encomendas nao.
-- **Impacto:** Pagamento excessivo corrompe relatorios financeiros.
-- **Fix sugerido:** `AND (total_a_pagar - COALESCE(desconto, 0) - valor_pago) >= $1`
-- **Observacoes:**
-> _Issue de integridade encontrada durante scan de performance._
-
----
-
-#### Issue #DP060 — Frete pagamento sem guarda de overpayment e sem transacao
-- [x] **Concluido** _(ja corrigido por DS4-011)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/fretes.js`
-- **Linha(s):** 98-108
-- **Problema:** POST `/fretes/:id/pagar` sem overpayment guard e sem transacao. Pagamentos concorrentes podem resultar em valor_pago > valor do frete.
-- **Impacto:** Dados financeiros inconsistentes.
-- **Fix sugerido:** Transacao com FOR UPDATE + `WHERE valor_devedor >= $1`.
-- **Observacoes:**
-> _Critico para integridade financeira._
-
----
-
-### CAMADA DESKTOP — INDICES E SQL
-
-#### Issue #DP061 — Indices compostos faltantes para queries frequentes
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `database_scripts/`
-- **Linha(s):** N/A
-- **Problema:** Queries frequentes sem cobertura de indice composto:
-  - `passagens WHERE empresa_id = ? AND id_viagem = ?`
-  - `encomendas WHERE empresa_id = ? AND id_viagem = ?`
-  - `fretes WHERE empresa_id = ? AND id_viagem = ?`
-  - `financeiro_saidas WHERE empresa_id = ? AND forma_pagamento = 'BOLETO' AND status = 'PENDENTE'`
-  - `agenda_anotacoes WHERE empresa_id = ? AND data_evento >= ? AND data_evento < ? AND concluida = false`
-  - `viagens WHERE is_atual = TRUE AND empresa_id = ?` (partial index)
-- **Impacto:** Full table scans em tabelas que crescem com o tempo.
-- **Fix sugerido:** Script de migration com indices compostos:
+- **Linha(s):** 100-147
+- **Problema:** Extensao do #403. Mesmo apos fix do `viagem_id` obrigatorio, os filtros `categoria` e `forma_pagto` sao aplicados com `.filter()` em JS sobre o dataset ja trafegado. Uma viagem pequena tem ~500 linhas; com filtro forma_pagto='PIX', retornamos as 500 e filtramos 50.
+- **Impacto:** Payload 10x maior que necessario; CPU de node wasted.
+- **Fix sugerido:** Mover filtros para o WHERE de cada subquery do UNION:
 ```sql
-CREATE INDEX IF NOT EXISTS idx_passagens_empresa_viagem ON passagens(empresa_id, id_viagem);
-CREATE INDEX IF NOT EXISTS idx_encomendas_empresa_viagem ON encomendas(empresa_id, id_viagem);
-CREATE INDEX IF NOT EXISTS idx_fretes_empresa_viagem ON fretes(empresa_id, id_viagem);
-CREATE INDEX IF NOT EXISTS idx_saidas_boleto_pendente ON financeiro_saidas(empresa_id, forma_pagamento, status) WHERE forma_pagamento = 'BOLETO';
-CREATE INDEX IF NOT EXISTS idx_agenda_empresa_data ON agenda_anotacoes(empresa_id, data_evento, concluida);
-CREATE INDEX IF NOT EXISTS idx_viagens_ativa ON viagens(empresa_id) WHERE is_atual = TRUE;
+WHERE e.empresa_id = $1 AND e.id_viagem = $2
+  ${categoria === 'ENCOMENDA' || categoria === 'Todas' ? '' : 'AND false'}
+  ${forma_pagto && forma_pagto !== 'Todas' ? `AND e.forma_pagamento = $${n}` : ''}
 ```
 - **Observacoes:**
-> _Verificar se `006_criar_indices_performance.sql` ja cobre algum destes. Complementar se necessario._
+> _Ampliacao do #403 — completa o fix._
 
 ---
 
-### CAMADA FRONTEND WEB
-
-#### Issue #DP062 — 34 paginas importadas estaticamente sem code splitting
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/src/components/Layout.jsx`
-- **Linha(s):** 1-57
-- **Problema:** 34 imports estaticos de paginas. Bundle inteiro carregado no login. Sem React.lazy() nem Suspense.
-- **Impacto:** Tempo de carregamento inicial mais alto que necessario. Payloads maiores em conexoes lentas.
+#### Issue #DP072 — ListaFretes.jsx: Promise.all de /itens sem concurrency limit
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-web/src/pages/ListaFretes.jsx`
+- **Linha(s):** 72-86
+- **Problema:** `Promise.all(idsParaCarregar.map(id => api.get(/fretes/${id}/itens)))` sem limite. Usuario com 500 fretes filtrados dispara 500 requests paralelos. BFF e DB ficam sob burst de queries.
+- **Impacto:** Rate limit hits; pool DB saturado; UI trava por 5-30s.
 - **Fix sugerido:**
 ```jsx
-const Dashboard = React.lazy(() => import('../pages/Dashboard.jsx'))
-const Passagens = React.lazy(() => import('../pages/Passagens.jsx'))
-// ... para todas as 34 paginas
-// Envolver em <Suspense fallback={<div>Carregando...</div>}>
+import pLimit from 'p-limit'
+const limit = pLimit(5) // 5 requests paralelos max
+const results = await Promise.all(
+  idsParaCarregar.map(id => limit(() => api.get(`/fretes/${id}/itens`)...))
+)
+```
+Melhor ainda: endpoint batch `POST /fretes/itens?ids=1,2,3` que retorna `{1:[...], 2:[...], 3:[...]}`.
+- **Observacoes:**
+> _Pattern tipico de "busca por item" lazy-load — precisa throttle._
+
+---
+
+#### Issue #DP073 — ocr.js upload storage: existsSync + mkdirSync no request path
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-web/server/routes/ocr.js`
+- **Linha(s):** 52-55
+- **Problema:** `multer.diskStorage.destination` chama `existsSync(dir)` + `mkdirSync(dir, {recursive:true})` em cada upload. fs sincrono bloqueia event loop por milissegundos — sob upload concorrente, agrava contention.
+- **Impacto:** Latencia perceptivel em uploads concorrentes de OCR (ocr.js e frequentemente usado).
+- **Fix sugerido:** Pre-criar o diretorio root uma vez na inicializacao do modulo; usar `fs.promises.mkdir({recursive:true}).catch(()=>{})` dentro de `destination`.
+```js
+// topo do arquivo
+await fs.promises.mkdir(UPLOAD_PATH, { recursive: true }).catch(() => {})
+
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const dir = path.join(UPLOAD_PATH, String(req.user.empresa_id))
+    await fs.promises.mkdir(dir, { recursive: true }).catch(() => {})
+    cb(null, dir)
+  },
+  ...
+})
 ```
 - **Observacoes:**
-> _Consolida #087. Vite ja faz tree-shaking, mas lazy loading reduz initial bundle._
+> _Similar ao #428 scan mas na rota principal de OCR, maior frequencia._
+
+---
+
+#### Issue #DP074 — documentos.js /upload: existsSync sincrono no request path
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-web/server/routes/documentos.js`
+- **Linha(s):** 4 (importar existsSync), destination handler
+- **Problema:** Mesma pattern do #DP073 mas em rota de upload de documentos.
+- **Impacto:** Uploads de documentos sao menos frequentes, impacto menor.
+- **Fix sugerido:** Identico ao #DP073.
+- **Observacoes:**
+> _Pair com #DP073._
+
+---
+
+#### Issue #DP075 — criarFrete.js: dual fallback com SAVEPOINT adiciona 2 queries
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-web/server/helpers/criarFrete.js`
+- **Linha(s):** 22-49
+- **Problema:** `SAVEPOINT` + `pg_advisory_xact_lock` + fallback MAX query para numero_frete. Se sequence nao estiver inicializado, faz 2 queries extras + 1 savepoint.
+- **Impacto:** Minimo na pratica (sequence esta sempre inicializado apos migration).
+- **Fix sugerido:** Simplificar: `SELECT nextval('seq_numero_frete')` unica query; garantir em migration que sequence e criada antes do primeiro INSERT.
+- **Observacoes:**
+> _Fallback e defensivo — avaliar se realmente necessario._
+
+---
+
+### WEB FRONTEND (React)
+
+#### Issue #DP076 — Layout.jsx: useEffect ESC handler sem cleanup
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-web/src/components/Layout.jsx`
+- **Linha(s):** 140-150
+- **Problema:** `useEffect(() => { document.addEventListener('keydown', handler) })` sem `return () => document.removeEventListener(...)`. Cada re-render do Layout adiciona um listener — acumulam indefinidamente.
+- **Impacto:** Memory leak progressivo + ESC dispara handler N vezes.
+- **Fix sugerido:**
+```jsx
+useEffect(() => {
+  const handler = (e) => { if (e.key === 'Escape') ... }
+  document.addEventListener('keydown', handler)
+  return () => document.removeEventListener('keydown', handler)
+}, [/* deps */])
+```
+- **Observacoes:**
+> _Classico bug de lifecycle em React._
+
+---
+
+#### Issue #DP077 — ListaFretes/RelatorioFretes: filter + reduce sem useMemo
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** Multiplos
+- **Linha(s):**
+  - `naviera-web/src/pages/ListaFretes.jsx`: 89-114 (filter), 116-119 (4 reduces)
+  - `naviera-web/src/pages/RelatorioFretes.jsx`: 115-118 (3 reduces)
+- **Problema:** Filtros e agregacoes executados em cada render. Para 500 fretes, cada digitacao em campo de busca re-executa ~2000 operacoes.
+- **Impacto:** Input lag perceptivel com >200 items.
+- **Fix sugerido:**
+```jsx
+const filtrados = useMemo(() => fretes.filter(...), [fretes, filtroNumero, filtroRemetente, ...])
+const totais = useMemo(() => {
+  return filtrados.reduce((acc, f) => ({
+    totalLancado: acc.totalLancado + (parseFloat(f.valor_total_itens || 0)),
+    totalRecebido: acc.totalRecebido + (parseFloat(f.valor_pago || 0)),
+    totalVolumes: acc.totalVolumes + (parseInt(f.total_volumes) || 0),
+  }), {totalLancado:0, totalRecebido:0, totalVolumes:0})
+}, [filtrados])
+```
+- **Observacoes:**
+> _Expansao do padrao #413 e #414 (app mobile) para web._
+
+---
+
+#### Issue #DP078 — Boletos.jsx: loop await de POST parcelas
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-web/src/pages/Boletos.jsx`
+- **Linha(s):** ~14 (funcao gerar)
+- **Problema:** `for (let i=0; i<qtdParcelas; i++) { await api.post(...) }` — serializa POSTs de parcelas. 12 parcelas = 12 roundtrips sequenciais.
+- **Impacto:** Geracao de carne anual demora 2-5s; UX ruim.
+- **Fix sugerido:** Usar o endpoint batch ja existente (`POST /financeiro/boleto/batch` — ver #DP055 fix) em 1 chamada.
+- **Observacoes:**
+> _Endpoint batch ja existe no BFF; frontend nao esta usando._
+
+---
+
+#### Issue #DP079 — Agenda.jsx: forEach montando objeto contagem sem useMemo
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-web/src/pages/Agenda.jsx`
+- **Linha(s):** ~72
+- **Problema:** `tarefas.forEach(...)` construindo `contagem{}` a cada render. Se tarefas tem 300 items e agenda re-renderiza com frequencia, desperdicio.
+- **Impacto:** Baixo.
+- **Fix sugerido:** `const contagem = useMemo(() => { ... }, [tarefas])`.
+- **Observacoes:**
+> _Quick win._
+
+---
+
+#### Issue #DP080 — App.jsx: localStorage+JSON.parse em useState initializer sem try/catch
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-web/src/App.jsx`
+- **Linha(s):** 12-25
+- **Problema:** `useState(() => JSON.parse(localStorage.getItem('xxx')))` sem try/catch. Se localStorage corrompido, app quebra no boot.
+- **Impacto:** Bug latente raro.
+- **Fix sugerido:**
+```jsx
+const initial = (() => { try { return JSON.parse(localStorage.getItem(k)) ?? fallback } catch { return fallback } })()
+```
+- **Observacoes:**
+> _Resiliencia + correcao de perf (evita boot re-tentativa)._
+
+---
+
+#### Issue #DP081 — Financeiro.jsx: new Date().toLocaleDateString no render
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-web/src/pages/Financeiro.jsx`
+- **Linha(s):** ~93
+- **Problema:** `new Date().toLocaleDateString('pt-BR')` avaliado a cada render. Cria Date object + locale lookup desnecessariamente.
+- **Impacto:** Minimo.
+- **Fix sugerido:** `useMemo(() => new Date().toLocaleDateString('pt-BR'), [])` ou constante fora do componente.
+- **Observacoes:**
+> _Minimo._
+
+---
+
+### APP MOBILE
+
+#### Issue #DP082 — FinanceiroCNPJ.jsx: array opts literal dentro do render
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-app/src/screens/FinanceiroCNPJ.jsx`
+- **Linha(s):** 83-92
+- **Problema:** `const opts = [{...}, {...}]` dentro do corpo do componente — nova referencia a cada render. Componentes filhos que recebem `opts` como prop quebram `React.memo` por mudanca de referencia.
+- **Impacto:** Re-renders desnecessarios de filhos.
+- **Fix sugerido:** Mover `PAYMENT_OPTS` para fora do componente como constante modular.
+- **Observacoes:**
+> _Padrao recorrente em componentes React — mover arrays/objetos literais estaticos para fora._
+
+---
+
+#### Issue #DP083 — Header.jsx: `<img>` sem loading=lazy nem thumbnail
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-app/src/components/Header.jsx`
+- **Linha(s):** ~17
+- **Problema:** `<img src={foto}/>` sem `loading="lazy"`. Mobile em listas com avatares baixa imagens fora do viewport.
+- **Impacto:** Dados moveis desperdicados; LCP pior.
+- **Fix sugerido:** `<img loading="lazy" src={foto}/>` + backend servir thumbnail (100x100) em endpoint separado.
+- **Observacoes:**
+> _Padrao pode existir em outros 2-3 componentes — scan opcional._
+
+---
+
+### DESKTOP JAVAFX
+
+#### Issue #DP084 — CadastroFreteController: Files.readAllBytes no FX thread
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `src/gui/CadastroFreteController.java`
+- **Linha(s):** 1795
+- **Problema:** Handler `handleCodXml` le XML da NF-e com `Files.readAllBytes(file.toPath())` no FX Application Thread. NF-e pode ter >500KB. File I/O sincrono bloqueia a UI.
+- **Impacto:** Freeze de 200-800ms ao importar XML.
+- **Codigo problematico:**
+```java
+String conteudoXml = new String(
+    java.nio.file.Files.readAllBytes(file.toPath()),
+    java.nio.charset.StandardCharsets.UTF_8);
+```
+- **Fix sugerido:** Envolver em Task, parsear em bg thread, `Platform.runLater` para popular campos.
+```java
+new Thread(() -> {
+    try {
+        String xml = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+        String numNota = extrairTagXml(xml, "nNF");
+        ...
+        Platform.runLater(() -> {
+            if (!numNota.isEmpty()) txtNumNota.setText(numNota);
+            ...
+        });
+    } catch (IOException e) { /* alert no FX */ }
+}, "xml-parse").start();
+```
+- **Observacoes:**
+> _Padrao ja usado em outros controllers Desktop._
+
+---
+
+#### Issue #DP085 — ConfigurarApiController: FileInputStream em getters estaticos sem cache
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `src/gui/ConfigurarApiController.java`
+- **Linha(s):** 352-386
+- **Problema:** `getUrlApi()`, `getToken()`, `getPastaArquivos()` — 3 metodos estaticos que abrem `FileInputStream(CONFIG_FILE)` + `Properties.load()` a cada chamada. Nenhum cache. Cada chamada do `SyncClient` ou `ApiClient` re-le o arquivo.
+- **Impacto:** File I/O por cada request HTTP saindo do Desktop. Impacto acumula em sync continuo.
+- **Fix sugerido:**
+```java
+private static volatile Properties cachedProps = null;
+private static Properties loadProps() {
+    Properties p = cachedProps;
+    if (p != null) return p;
+    synchronized (ConfigurarApiController.class) {
+        if (cachedProps != null) return cachedProps;
+        Properties np = new Properties();
+        try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
+            np.load(fis);
+        } catch (IOException ignored) {}
+        cachedProps = np;
+        return np;
+    }
+}
+public static String getUrlApi() {
+    return loadProps().getProperty("url.api", DEFAULT_URL);
+}
+// adicionar metodo invalidateCache() chamado apos salvar
+```
+- **Observacoes:**
+> _Padrao singleton com double-checked locking._
+
+---
+
+#### Issue #DP086 — ListaFretesController: clear() + loop .add() em ObservableList
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `src/gui/ListaFretesController.java`
+- **Linha(s):** 428-429
+- **Problema:** `listaCompletaFretes.clear()` seguido de `for (Frete f : fretesDoBanco) listaCompletaFretes.add(f)`. Cada `.add` dispara change listeners da TableView — N updates de UI.
+- **Impacto:** Flicker + render lento ao recarregar lista.
+- **Fix sugerido:** `listaCompletaFretes.setAll(fretesDoBanco)` — 1 notificacao apenas.
+- **Observacoes:**
+> _Mesmo padrao ja corrigido em ListaEncomendaController (#DP031) — faltou aqui._
+
+---
+
+#### Issue #DP087 — VenderPassagemController: 15+ addListener sem remove no destruct
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `src/gui/VenderPassagemController.java`
+- **Linha(s):** 239, 374, 386, 438, 899, 1055, 1077, 1089, 1142, 1280, 1303, 1323, 1404, 1445, 1447
+- **Problema:** 15+ `.addListener(...)` em `initialize()`. Se controller for aberto/fechado varias vezes na mesma sessao, listeners acumulam (memory leak + eventos disparando multiplas vezes). Linha 1280 em loop `List.of(...).forEach(field -> field.textProperty().addListener(...))`.
+- **Impacto:** Memory growth + UI glitches sob uso prolongado.
+- **Fix sugerido:**
+  - Opcao 1: Usar `WeakChangeListener` para auto-cleanup.
+  - Opcao 2: Armazenar as `ChangeListener` como campos e remover em `handleClose()` / `onCloseRequest`.
+  - Opcao 3: Garantir que o controller so e instanciado 1x via FXML loader com cache.
+- **Observacoes:**
+> _VenderPassagem e a tela mais usada — efeito mais visivel._
+
+---
+
+#### Issue #DP088 — ExtratoPassageiroController: clear() + loop .add() em ObservableList
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `src/gui/ExtratoPassageiroController.java`
+- **Linha(s):** 176-177
+- **Problema:** Mesmo padrao do #DP086.
+- **Fix sugerido:** `todosNomesPassageiros.setAll(lista.stream().map(Passageiro::getNome).toList())`.
+- **Observacoes:**
+> _Quick win._
 
 ---
 
 ## COBERTURA
 
-| Diretorio | Arquivos | Issues ativas |
-|-----------|----------|---------------|
-| src/dao/ | 13 | 9 (DP038-DP043 + #079/#086/#088/#092/#093) |
+| Diretorio | Arquivos | Issues ativas (V5.0) |
+|-----------|----------|---------------------|
+| src/dao/ | 13 | 0 |
 | src/database/ | 2 | 0 |
-| src/gui/ | 43 | 12 (DP034-DP037, DP044-DP046, DP049-DP051 + #DP029) |
-| src/gui/util/ | 16 | 3 (DP036, DP049, #048) |
-| src/model/ | 23 | 1 (#DP033 parcial) |
-| naviera-web/server/ | 22 | 12 (DP052-DP060 + #081/#082) |
-| naviera-web/src/ | 38 | 1 (DP062/#087) |
-| naviera-app/src/ | 31 | 0 |
-| naviera-ocr/src/ | 16 | 0 |
-| naviera-site/src/ | 2 | 1 (#091) |
-| database_scripts/ | 23 | 1 (DP061) |
-| lib/ | N/A | 1 (#DP023) |
-| **TOTAL** | **205** | **47** |
+| src/gui/ | 43 | 5 (#DP084-#DP088) |
+| src/gui/util/ | 16 | 0 |
+| src/model/ | 25 | 1 (#DP033 parcial) |
+| naviera-api/service/ | 31 | 20 (AUDIT#400-#430 + #700-#702 + #DP063-#DP070) |
+| naviera-api/config/ | 8 | 2 (#419, #420) |
+| naviera-api/controller/ | 28 | 1 (#701) |
+| naviera-web/server/routes/ | 15 | 11 (AUDIT#403,#416,#418,#421,#425,#703 + #DP071-#DP075) |
+| naviera-web/server/helpers/ | 8 | 2 (#415, #431) |
+| naviera-web/src/ | 38 | 7 (#413, #425 + #DP076-#DP081) |
+| naviera-app/src/ | 31 | 5 (#412, #413, #414 + #DP082, #DP083) |
+| naviera-ocr/ | 16 | 0 |
+| naviera-site/ | 2 | 1 (#091 aceitavel) |
+| database_scripts/ | 23 | 2 (#429 trigram, #430 indice) |
+| lib/ | N/A | 1 (#DP023 infra) |
+| **TOTAL** | **300+** | **58** |
 
 ---
 
 ## PLANO DE CORRECAO
 
-### Urgente (CRITICO) — 2 issues
+### Urgente (CRITICO) — 3 issues
 
-- [x] #DP034 — DB queries no FX thread em BalancoViagemController — **FIXADO** (queries movidas para bg thread em carregarRelatorio)
-- [x] #DP035 — DB queries no FX thread em TelaPrincipalController — **FIXADO** (carregarDadosComboParam, gerarLembretesNoBanco, handleCarregarDados, adicionarAnotacao — todos em bg thread)
+- [ ] #403 — Financeiro /dashboard UNION ALL sem LIMIT — **Esforco:** 2h
+- [ ] #411 — PSP chamado dentro de @Transactional (EncomendaService/FreteService/PassagemService.pagar) — **Esforco:** 4h (outbox pattern)
+- [ ] #DP071 — Filtros categoria/forma_pagto em JS pos-UNION (extende #403) — **Esforco:** 1h (junto com #403)
 - **Notas:**
-> _Ambos corrigidos 2026-04-15. Zero queries SQL no FX thread nestas telas._
+> _#411 e o mais critico operacionalmente — incidente no Asaas derruba toda a API._
 
-### Importante (ALTO) — 5 issues
+### Importante (ALTO) — 17 issues
 
-- [x] #DP036 — DB + print sincrono EncomendaPrintHelper — **FIXADO** (pre-carrega empresa+itens em bg thread)
-- [x] #DP037 — Impressao sincrona multi-pagina (6+ controllers) — **FIXADO** (setDisable em 5 controllers, 10 loops)
-- [x] #DP052 — Queries sem LIMIT em 10+ endpoints BFF — **FIXADO** (LIMIT em encomendas, fretes, passagens, financeiro, viagens, estornos, boletos)
-- [x] #DP053 — Admin N+1 subqueries — **FIXADO** (LEFT JOIN + GROUP BY em /empresas e /metricas)
-- [x] #079/#092 — N+1 listarExtratoPorPassageiro/filtrarRelatorio — **FIXADO** (preCarregarCachesPassagem em ambos)
+- [ ] #400 — rastreioCrossTenant LIKE sem LIMIT — **Esforco:** 1h (indices + LIMIT)
+- [ ] #401 — viagens/buscarPublicas sem LIMIT/cache — **Esforco:** 30min
+- [ ] #402 — Pool conexoes subdimensionado — **Esforco:** 2h (pgbouncer recomendado)
+- [ ] #404 — FreteService buscarPorRemetenteCrossTenant LIKE — **Esforco:** 1h
+- [ ] #405 — AmigoService NOT IN subquery — **Esforco:** 30min (indices)
+- [ ] #406 — LojaService.stats N+1 toPedidoDTO — **Esforco:** 1h
+- [ ] #407 — EmbarcacaoService LATERAL JOIN — **Esforco:** 30min (indice)
+- [ ] #409 — PassagemService.minhasPassagens sem limite — **Esforco:** 30min
+- [ ] #412 — QR PIX base64 em JSON — **Esforco:** 2h (gerar no cliente)
+- [ ] #413 — PassagensCPF.jsx sem useMemo — **Esforco:** 30min
+- [ ] #415 — OCR base64 em heap — **Esforco:** 1h (streaming)
+- [ ] #429 — Indices trigram faltantes — **Esforco:** 1h (migration)
+- [ ] #431 — OCR upload serial — **Esforco:** 1h (p-limit)
+- [ ] #703 — /dashboard F5 rapido — **Esforco:** 30min (dedup middleware)
+- [ ] #DP063 — SyncService.processar loop N+1 — **Esforco:** 3h (batch refactor)
+- [ ] #DP064 — GpsService.historicoViagem sem LIMIT/empresa_id — **Esforco:** 30min
+- [ ] #DP072 — ListaFretes Promise.all sem limit — **Esforco:** 30min (p-limit ou endpoint batch)
 - **Notas:**
-> _DP052 tem maior blast radius (10+ endpoints). DP053 e fix de 1 query._
+> _#402 exige decisao de infra (pgbouncer vs pool resize)._
 
-### Importante (MEDIO) — 14 issues
+### Importante (MEDIO) — 28 issues
 
-- [x] #DP038 — PassageiroDAO cache preload — **FIXADO** (preCarregarCachesPassagem em listarTodos)
-- [x] #DP039 — AgendaDAO LIMIT — **FIXADO** (LIMIT 500)
-- [x] #DP040 — AuxiliaresDAO cache tenant-key — **FIXADO** (cacheKey segmenta por tenant)
-- [x] #DP044 — NumberFormat em CellFactory — **FIXADO** (MoneyUtil.formatar)
-- [x] #DP045 — NumberFormat em BoletoRow — **FIXADO** (static final NF_MOEDA em Boleto.java)
-- [x] #DP049 — Logo sem ImageCache (3 locais) — **FIXADO** (ImageCache.get em 3 locais)
-- [x] #DP050 — Cascata de threads BalancoViagem — **FIXADO** (consolidado no fix DP034)
-- [x] #DP054 — Itens em loop individual BFF — **FIXADO** (batch INSERT multi-row)
-- [x] #DP055 — Boleto batch 240 INSERTs — **FIXADO** (2 batch INSERTs em vez de 2*N)
-- [x] #DP059 — Encomenda overpayment guard — **JA CORRIGIDO** (DS4-011)
-- [x] #DP060 — Frete overpayment guard — **JA CORRIGIDO** (DS4-011)
-- [x] #DP061 — Indices compostos faltantes — **FIXADO** (script 024_indices_compostos_performance.sql)
-- [x] #DP062 — React.lazy code splitting — **FIXADO** (36 paginas lazy + Suspense)
-- [x] #088 — filtrarRelatorio pos-filtragem em Java — **FIXADO** (LEFT JOINs + WHERE no SQL)
-- **Notas:**
-> _Todas as 14 issues MEDIAS corrigidas em 2026-04-15._
+- [ ] #408 — DashboardService 3 queries sequenciais — **Esforco:** 30min
+- [ ] #410 — BilheteService advisory lock por empresa — **Esforco:** 30min
+- [ ] #414 — FinanceiroCNPJ.jsx sem useMemo — **Esforco:** 30min
+- [ ] #416 — OCR aprovar INSERT sequencial — **Esforco:** 1h
+- [ ] #417 — listarAvaliacoes sem LIMIT — **Esforco:** 15min
+- [ ] #418 — crudFactory sem LIMIT default — **Esforco:** 30min (muda default)
+- [ ] #419 — RateLimitFilter sem LRU — **Esforco:** 1h (Caffeine)
+- [ ] #420 — TenantCache sem max size — **Esforco:** 30min
+- [ ] #421 — viagens.delete cascade 6 DELETEs — **Esforco:** 1h (FK CASCADE)
+- [ ] #422 — Encomenda/Frete pagar 3 queries metadata — **Esforco:** 1h
+- [ ] #424 — PushService loop sincrono FCM — **Esforco:** 1h (multicast)
+- [ ] #425 — useEffect sem cleanup (Dashboard) — **Esforco:** 15min
+- [ ] #430 — Indice compound passageiros(documento,empresa) — **Esforco:** 15min
+- [ ] #700 — confirmarEmbarque query pesada em tx — **Esforco:** 30min
+- [ ] #DP065 — GpsService.todasUltimasPosicoes sem cache — **Esforco:** 1h
+- [ ] #DP066 — FinanceiroService.balanco 4 queries — **Esforco:** 30min
+- [ ] #DP067 — FinanceiroService listar sem LIMIT — **Esforco:** 30min
+- [ ] #DP068 — OnboardingService gerarSlug loop — **Esforco:** 30min (UNIQUE + try/catch)
+- [ ] #DP073 — OCR existsSync no request — **Esforco:** 30min
+- [ ] #DP074 — documentos existsSync — **Esforco:** 15min
+- [ ] #DP076 — Layout useEffect sem cleanup — **Esforco:** 15min
+- [ ] #DP077 — Lista/Relatorio Fretes sem useMemo — **Esforco:** 30min
+- [ ] #DP078 — Boletos.jsx loop await — **Esforco:** 30min (usar endpoint batch)
+- [ ] #DP084 — CadastroFrete readAllBytes FX thread — **Esforco:** 30min
+- [ ] #DP085 — ConfigurarApi getters sem cache — **Esforco:** 30min
+- [ ] #DP086 — ListaFretes clear+add ObservableList — **Esforco:** 15min
+- [ ] #DP087 — VenderPassagem listeners sem cleanup — **Esforco:** 2h (WeakListener refactor)
+- [ ] #DP033 | equals/hashCode models (11 restantes) — **Esforco:** 1h
 
-### Menor (BAIXO) — 13 issues
+### Menor (BAIXO) — 10 issues
 
-- [x] #DP041 — FuncionarioDAO UNION — **FIXADO** (UNION ALL em 1 query)
-- [x] #DP042 — SELECT * em DAOs Desktop — **FIXADO** (colunas explicitas em 6 DAOs)
-- [x] #DP043 — PooledConnection AtomicBoolean — **FIXADO** (compareAndSet)
-- [x] #DP046 — NumberFormat TelaPrincipalController — **FIXADO** (static final NF_MOEDA)
-- [x] #DP047 — NumberFormat instancia vs static — **FIXADO** (2 controllers)
-- [x] #DP048 — SimpleDateFormat → DateTimeFormatter — **FIXADO** (FMT_DATA static final)
-- [x] #DP051 — Thread sem daemon — **FIXADO** (setDaemon em 4 threads)
-- [x] #DP056 — Estorno historico merge+sort — **ACEITAVEL** (LIMIT 500 ja aplicado)
-- [x] #DP057 — Agenda EXTRACT → range — **FIXADO** (range query data_evento >= AND <)
-- [x] #DP058 — existsSync no request path — **FIXADO** (removido, sendFile trata 404)
-- [x] #048 — JSON parser custom SyncClient — **FIXADO** (substituido por Jackson ObjectMapper — JARs ja existiam em lib/)
-- [x] #DP023 — JARs duplicados — **MAPEADO** (commons-beanutils 1.9.2, commons-logging 1.1.1 podem ser removidos; vosk 24MB+sqlite 14MB potencialmente nao usados)
-- [x] #086 — ViagemDAO LIMIT — **FIXADO** (LIMIT 200)
-- [x] #093 — DespesaDAO LIMIT — **FIXADO** (LIMIT 500 em buscarBoletos e buscarDespesas)
-- [x] #081 — SELECT * em BFF endpoints — **FIXADO** (colunas explicitas em encomendas, fretes, financeiro saidas)
-- [x] #091 — Site monolitico — **ACEITAVEL** (INFO, <50ms impacto)
-- [x] #DP033 — equals/hashCode models — **FIXADO** (4 classes: ApiConfig, Empresa, Funcionario, ItemFrete)
-- **Notas:**
-> _Todas as BAIXAS corrigidas exceto #048 (requer JAR externo) e #DP023 (infra). 2026-04-15._
+- [ ] #427 — console.log/System.err hot paths — **Esforco:** 1h (substituir por logger)
+- [ ] #428 — LinkedHashMap pressure — **Esforco:** 2h (DTO records)
+- [ ] #701 — SELECT * OpEmbarcacaoController — **Esforco:** 15min
+- [ ] #702 — MAX(CAST()) numero_bilhete — **Esforco:** 30min (sequence)
+- [ ] #DP023 — JARs duplicados — **Esforco:** 1h (audit lib/)
+- [ ] #DP069 — SELECT * servicos operador — **Esforco:** 1h
+- [ ] #DP070 — AuthService @Transactional desnecessario — **Esforco:** 15min
+- [ ] #DP075 — criarFrete dual fallback — **Esforco:** 30min
+- [ ] #DP079 — Agenda.jsx forEach sem useMemo — **Esforco:** 15min
+- [ ] #DP080 — App.jsx localStorage sem try/catch — **Esforco:** 15min
+- [ ] #DP081 — Financeiro.jsx new Date() render — **Esforco:** 15min
+- [ ] #DP082 — FinanceiroCNPJ opts no render — **Esforco:** 15min
+- [ ] #DP083 — Header.jsx img sem lazy — **Esforco:** 15min
+- [ ] #DP088 — ExtratoPassageiro clear+add — **Esforco:** 15min
 
 ---
 
 ## NOTAS
 
-> **Progresso V3.0 → V4.0:** Escopo expandido para cobertura completa (205 arquivos vs 131 anterior). 11 issues anteriores resolvidas, 2 parciais, 9 pendentes. 38 novos problemas encontrados — principalmente FX thread blocking no Desktop e queries sem paginacao no BFF.
+> **Progresso V4.0 → V5.0:** V4.0 fechou 30+ issues em 2026-04-15. AUDIT_V1.3 (2026-04-18) trouxe 33 issues NOVAS de performance (secao 2.5) — a maioria concentrada na API Spring e no BFF, camadas que receberam mais codigo no sprint de PSP/onboarding. Deep dive adicionou 23 issues residuais.
 >
-> **Achados mais criticos:** DP034 e DP035 causam freezes visiveis nas telas mais usadas (BalancoViagem e TelaPrincipal). Estes devem ser priorizados.
+> **Padroes recorrentes nesta V5.0:**
+> 1. **Queries cross-tenant sem LIMIT** (#400, #401, #404, #409, #DP064) — pattern de endpoints publicos do app.
+> 2. **HTTP sincrono dentro de @Transactional** (#411) — padrao critico que derruba API sob incidente do PSP.
+> 3. **Loops com await/query sequencial** (#416, #421, #424, #DP063, #DP078) — oportunidade de batch.
+> 4. **React sem useMemo** (#413, #414, #425, #DP076-#DP081) — migrado do padrao encontrado em V3/V4.
+> 5. **fs sincrono no event loop** (#DP073, #DP074) — pattern recorrente em uploads.
+> 6. **Indices compound/trigram faltantes** (#429, #430, #DP065) — cobertura parcial do script 024.
 >
-> **Quick wins (fix em <15min):** DP044, DP045, DP049, DP051, DP058, DP046, DP047, DP048, DP043 — total de 9 issues corrigiveis em ~1 hora.
+> **Quick wins (<30min cada, 10 issues):** #401, #405, #407, #409, #417, #430, #DP067, #DP076, #DP079, #DP080, #DP081, #DP088.
 >
-> **Padroes recorrentes:** (1) FX thread blocking com DB queries — afeta 5+ controllers. (2) NumberFormat/DateTimeFormatter criados em hot paths — 6 locais. (3) Missing LIMIT — 10+ endpoints BFF + 3 DAOs. (4) Logo sem ImageCache — 3 locais residuais.
+> **Criticos de infra:** #402 (pool/pgbouncer) e #411 (outbox PSP) sao os 2 unicos que exigem decisoes arquiteturais antes de codar.
 >
-> **Camadas limpas:** naviera-app (0 issues), naviera-ocr (0 issues), models (quase limpo apos DP032/DP033).
+> **Camadas mais limpas:** `src/dao/`, `src/gui/util/`, `naviera-ocr/` permanecem zeradas. `naviera-api/service/` concentra 20 das 58 issues (34%).
+>
+> **Carryover:** #DP023 (JARs) e #091 (site monolitico) seguem como aceitaveis/infra — sem acao recomendada no MVP.
 
 ---
 *Gerado por Claude Code (Deep Audit) — Revisao humana obrigatoria*

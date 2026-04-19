@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import { escapeHtml as esc } from '../utils/print.js'
 
 const FORM_INICIAL = {
   nome: '', cpf: '', rg: '', ctps: '', telefone: '', endereco: '',
@@ -208,28 +209,29 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
     const totalDescontos = historico.reduce((s, h) => s + (parseFloat(h.valor) || 0), 0)
     const liquido = totalVencimentos - totalDescontos
 
+    // #DS5-205: escape obrigatorio — descricao pode conter dados livres
     const linhasHtml = linhas.map(l => `
       <div class="row">
-        <span class="c-data">${l.data}</span>
-        <span class="c-desc">${l.desc}</span>
+        <span class="c-data">${esc(l.data)}</span>
+        <span class="c-desc">${esc(l.desc)}</span>
         <span class="c-ref"></span>
         <span class="c-venc"></span>
-        <span class="c-descv">${fmtMoney(l.valor)}</span>
+        <span class="c-descv">${esc(fmtMoney(l.valor))}</span>
       </div>`).join('')
 
     const viaHtml = (titulo) => `
       <div class="holerite">
         <div class="header">
           <div class="top-row">
-            <span class="empresa">${empresaNome || ''}</span>
-            <span class="via">${titulo}</span>
+            <span class="empresa">${esc(empresaNome || '')}</span>
+            <span class="via">${esc(titulo)}</span>
           </div>
           <div class="titulo">RECIBO DE PAGAMENTO DE SALARIO</div>
         </div>
         <div class="dados">
-          <div><b>FUNCIONARIO:</b> ${selecionado.nome || ''}</div>
-          <div><b>COMPETENCIA:</b> <b>${mesLabel}</b></div>
-          <div><b>CARGO:</b> ${selecionado.cargo || ''}</div>
+          <div><b>FUNCIONARIO:</b> ${esc(selecionado.nome || '')}</div>
+          <div><b>COMPETENCIA:</b> <b>${esc(mesLabel)}</b></div>
+          <div><b>CARGO:</b> ${esc(selecionado.cargo || '')}</div>
           <div></div>
         </div>
         <div class="tabela-header row">
@@ -243,7 +245,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
           <span class="c-data"></span>
           <span class="c-desc">SALARIO BASE MENSAL</span>
           <span class="c-ref">30d</span>
-          <span class="c-venc">${fmtMoney(salarioBase)}</span>
+          <span class="c-venc">${esc(fmtMoney(salarioBase))}</span>
           <span class="c-descv"></span>
         </div>
         ${linhasHtml}
@@ -268,7 +270,7 @@ export default function GestaoFuncionarios({ viagemAtiva, onNavigate }) {
       </div>`
 
     const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Holerite - ${selecionado.nome}</title>
+<html><head><meta charset="utf-8"><title>Holerite - ${esc(selecionado.nome)}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #fff; color: #000; }

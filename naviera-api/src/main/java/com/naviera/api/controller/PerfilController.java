@@ -17,6 +17,7 @@ import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @RestController @RequestMapping("/perfil")
 public class PerfilController {
@@ -67,15 +68,28 @@ public class PerfilController {
 
         return repo.findById(id).map(c -> {
             try {
+                byte[] data = file.getBytes();
+                // #DS5-004: valida magic bytes — content-type header e falsificavel
+                String realMime = detectMime(data);
+                if (realMime == null || !TIPOS_PERMITIDOS.contains(realMime))
+                    return ResponseEntity.badRequest().body(Map.of("erro", "Conteudo do arquivo nao bate com imagem jpg/png/webp"));
+                String ext = ".jpg";
+                if ("image/png".equals(realMime)) ext = ".png";
+                else if ("image/webp".equals(realMime)) ext = ".webp";
+
                 Path dir = Paths.get(uploadsDir, "fotos"); Files.createDirectories(dir);
-                String rawExt = file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")
-                    ? file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")) : ".jpg";
-                // DB150: whitelist de extensoes — rejeita extensoes nao permitidas
-                Set<String> allowedExts = Set.of(".jpg", ".jpeg", ".png", ".webp", ".gif");
-                String ext = allowedExts.contains(rawExt.toLowerCase()) ? rawExt.toLowerCase() : ".jpg";
-                String filename = "perfil_" + id + ext;
+                // #DS5-004: UUID no nome impede enumeracao /public/fotos/perfil_<N>.jpg
+                String filename = "perfil_" + id + "_" + UUID.randomUUID().toString().replace("-", "") + ext;
                 Path dest = dir.resolve(filename);
-                Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+                Files.write(dest, data, StandardOpenOption.CREATE_NEW);
+
+                // limpa foto anterior (se existir e apontar pra uploads/fotos/)
+                String oldUrl = c.getFotoUrl();
+                if (oldUrl != null && oldUrl.startsWith("/public/fotos/")) {
+                    String oldName = Paths.get(oldUrl.substring("/public/fotos/".length())).getFileName().toString();
+                    try { Files.deleteIfExists(dir.resolve(oldName)); } catch (IOException ignored) {}
+                }
+
                 String url = "/public/fotos/" + filename;
                 c.setFotoUrl(url);
                 repo.save(c);
@@ -84,5 +98,17 @@ public class PerfilController {
                 return ResponseEntity.internalServerError().body(Map.of("erro", "Erro ao salvar foto"));
             }
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    private static String detectMime(byte[] data) {
+        if (data == null || data.length < 12) return null;
+        // JPEG: FF D8 FF
+        if ((data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8 && (data[2] & 0xFF) == 0xFF) return "image/jpeg";
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if ((data[0] & 0xFF) == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') return "image/png";
+        // WebP: "RIFF" ???? "WEBP"
+        if (data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F'
+         && data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P') return "image/webp";
+        return null;
     }
 }

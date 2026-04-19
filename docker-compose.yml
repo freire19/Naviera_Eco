@@ -3,12 +3,14 @@ version: "3.8"
 services:
   db:
     image: postgres:16-alpine
+    # #DS5-401: bind em loopback — acesso externo via SSH tunnel ou da rede docker interna
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     environment:
       - POSTGRES_DB=naviera_eco
       - POSTGRES_USER=${DB_USER:-postgres}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?DB_PASSWORD obrigatorio}
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./database_scripts:/docker-entrypoint-initdb.d:ro
@@ -26,14 +28,17 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/naviera_eco
       - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD obrigatorio}
+      # #DS5-405: JWT_SECRET obrigatorio — sem default. Minimo 32 bytes validado no boot.
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET obrigatorio (min 32 chars, use 'openssl rand -base64 48')}
+      # #DS5-406: CORS_ORIGINS obrigatorio em qualquer deploy — sem fallback inseguro.
+      - CORS_ORIGINS=${CORS_ORIGINS:?CORS_ORIGINS obrigatorio (ex: https://app.naviera.com.br)}
     depends_on:
       db:
         condition: service_healthy
+    # #DS5-424: usa wget? — eclipse-temurin alpine nao tem wget. Troca por curl-less java probe.
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/api/actuator/health"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8081 && echo -e 'GET /api/actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && head -c 1 <&3"]
       interval: 30s
       timeout: 5s
       retries: 3

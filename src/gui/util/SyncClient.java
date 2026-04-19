@@ -130,30 +130,30 @@ public class SyncClient {
         File file = new File(CONFIG_FILE);
         if (!file.exists()) return;
 
+        // #DS5-204: se o arquivo antigo contem senha/token em Base64, migra (deleta dos campos)
+        // sem reutilizar valores — exige re-login imediato. Base64 nao e criptografia.
+        boolean precisaMigrar = false;
+
         try (FileInputStream fis = new FileInputStream(file)) {
             Properties props = new Properties();
             props.load(fis);
 
             this.serverUrl = props.getProperty("server.url", serverUrl);
 
-            // Credenciais para login JWT
+            // Mantem apenas o username para pre-preencher a tela de login (nao e credencial).
             this.login = props.getProperty("operador.login", "");
-            // DS4-013 fix: senha agora em Base64 (antes plaintext)
-            String senhaRaw = props.getProperty("operador.senha", "");
-            if ("true".equals(props.getProperty("operador.senha.encoded")) && !senhaRaw.isEmpty()) {
-                try { senhaRaw = new String(Base64.getDecoder().decode(senhaRaw), StandardCharsets.UTF_8); }
-                catch (Exception ignored) { /* fallback: usa valor raw */ }
-            }
-            this.senha = senhaRaw;
 
-            // Token JWT pre-existente (caso ja esteja autenticado)
-            String tokenRaw = props.getProperty("api.token", "");
-            if ("true".equals(props.getProperty("api.token.encoded")) && !tokenRaw.isEmpty()) {
-                try {
-                    tokenRaw = new String(Base64.getDecoder().decode(tokenRaw), StandardCharsets.UTF_8);
-                } catch (Exception ignored) { /* fallback: usa valor raw */ }
+            // #DS5-204: senha nunca mais carregada do disco — forca re-autenticacao.
+            this.senha = "";
+            if (props.containsKey("operador.senha") || props.containsKey("operador.senha.encoded")) {
+                precisaMigrar = true;
             }
-            this.jwtToken = tokenRaw;
+
+            // #DS5-204: JWT nunca mais carregado do disco — re-autentica a cada execucao.
+            this.jwtToken = "";
+            if (props.containsKey("api.token") || props.containsKey("api.token.encoded")) {
+                precisaMigrar = true;
+            }
 
             this.autoSyncEnabled = Boolean.parseBoolean(props.getProperty("sync.auto", "false"));
             this.syncIntervalMinutes = Integer.parseInt(props.getProperty("sync.interval.minutos",
@@ -170,30 +170,21 @@ public class SyncClient {
         } catch (Exception e) {
             AppLogger.warn(TAG, "Erro ao carregar configuracoes de sync: " + e.getMessage());
         }
+
+        // #DS5-204: se detectou campos sensiveis no arquivo antigo, reescreve sem eles.
+        if (precisaMigrar) {
+            AppLogger.warn(TAG, "sync_config.properties tinha credenciais persistidas — removidas (DS5-204). Re-autentique.");
+            salvarConfiguracoes();
+        }
     }
 
     public void salvarConfiguracoes() {
         try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE)) {
             Properties props = new Properties();
             props.setProperty("server.url", serverUrl);
+            // #DS5-204: persiste apenas o username (identificador, nao credencial).
+            // Senha e JWT NUNCA sao gravados — sao mantidos so em memoria.
             props.setProperty("operador.login", login != null ? login : "");
-            // DS4-013 fix: Base64 na senha (antes plaintext no disco)
-            if (senha != null && !senha.isEmpty()) {
-                props.setProperty("operador.senha", Base64.getEncoder().encodeToString(
-                    senha.getBytes(StandardCharsets.UTF_8)));
-                props.setProperty("operador.senha.encoded", "true");
-            } else {
-                props.setProperty("operador.senha", "");
-            }
-
-            if (jwtToken != null && !jwtToken.isEmpty()) {
-                props.setProperty("api.token", Base64.getEncoder().encodeToString(
-                    jwtToken.getBytes(StandardCharsets.UTF_8)));
-                props.setProperty("api.token.encoded", "true");
-            } else {
-                props.setProperty("api.token", "");
-                props.setProperty("api.token.encoded", "false");
-            }
 
             props.setProperty("sync.auto", String.valueOf(autoSyncEnabled));
             props.setProperty("sync.interval.minutos", String.valueOf(syncIntervalMinutes));
@@ -201,7 +192,7 @@ public class SyncClient {
             if (ultimaSincronizacao != null) {
                 props.setProperty("sync.ultima", ultimaSincronizacao.toString());
             }
-            props.store(fos, "Configuracoes de Sincronizacao - Naviera");
+            props.store(fos, "Configuracoes de Sincronizacao - Naviera (sem credenciais — DS5-204)");
         } catch (Exception e) {
             AppLogger.warn(TAG, "Erro ao salvar configuracoes de sync: " + e.getMessage());
         }

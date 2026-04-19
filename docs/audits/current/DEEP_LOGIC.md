@@ -1,937 +1,566 @@
 # AUDITORIA PROFUNDA — LOGIC — Naviera Eco
-> **Versao:** V5.0
-> **Data:** 2026-04-14
+> **Versao:** V6.0
+> **Data:** 2026-04-18
 > **Categoria:** Logic (Regras de Negocio, Multi-Tenant, Integridade de Dados)
-> **Base:** AUDIT_V1.2
-> **Arquivos analisados:** 87 de ~150 relevantes (25 DAOs + 28 controllers + 34 BFF/API)
+> **Base:** AUDIT_V1.3
+> **Arquivos analisados:** 62 de ~180 relevantes (services da API + BFF routes + DAOs de negocio)
 
 ---
 
 ## RESUMO
 
-| Metrica | Quantidade |
-|---------|-----------|
-| Issues anteriores (V1.2 logic) verificadas | 27 |
-| Anteriores PENDENTES | 0 |
-| Anteriores RESOLVIDAS | 25 |
-| Anteriores RECLASSIFICADAS | 2 |
-| Novos problemas encontrados | 54 |
-| **Total ativo (pendentes + novos)** | **0** — **CATEGORIA LIMPA** |
+| Status | Quantidade |
+|--------|-----------|
+| Issues anteriores V1.3 logica verificadas | 48 |
+| Anteriores RESOLVIDAS | 4 |
+| Anteriores PARCIALMENTE resolvidas | 2 |
+| Anteriores PENDENTES | 41 |
+| Anteriores RECLASSIFICADAS (falso positivo) | 1 |
+| **Novos problemas encontrados** | **12** |
+| **Total ativo (pendentes + parciais + novos)** | **55** |
 
-### Novos por severidade
+### Por severidade (ativos)
 
 | Severidade | Quantidade |
 |------------|-----------|
-| CRITICO | 8 (sobreposicao com V1.2 — mesmos bugs reconfirmados) |
-| ALTO | 11 |
-| MEDIO | 20 |
-| BAIXO | 9 |
-| INFO | 6 |
-
-> **NOTA:** Os 8 issues CRITICO (DL001-DL008) se sobrepoem com V1.2 #030-#043. Sao os MESMOS bugs confirmados ainda presentes. Estao listados em PENDENTES, nao como novos. Os issues genuinamente novos nao encontrados no V1.2 comecam a partir de DL018.
+| CRITICO | 7 |
+| ALTO | 14 |
+| MEDIO | 28 |
+| BAIXO | 6 |
 
 ---
 
 ## 1. ISSUES ANTERIORES — STATUS
 
-### 1.1 Pendentes (0 issues)
+### 1.1 Resolvidas (4 issues)
 
-Todas as issues anteriores foram resolvidas.
+| # V1.3 | Titulo | Verificacao |
+|--------|--------|------------|
+| #213 | status PAGO sem subtrair desconto | `encomendas.js:221` agora usa `(valor_pago + $1) >= (total_a_pagar - COALESCE(desconto, 0))` |
+| #219 | comprar mobile data passada (PassagemService) | `PassagemService.java:72` agora filtra `v.data_viagem >= CURRENT_DATE`. BilheteService ainda PENDENTE |
+| #236 | gerarCodigoAtivacao signed int | `OnboardingService.java:31-37` agora tem 8 hex com retry + fallback 10 hex, colisao negligenciavel |
+| DB003 (v5) | /me sem empresa_id | `auth.js:107` agora inclui `AND empresa_id = $2` + coluna no SELECT |
 
-### 1.2 Resolvidas (14 issues)
+### 1.2 Parcialmente resolvidas (2 issues)
 
-| # V1.2 | Arquivo | Resolucao |
-|---------|---------|-----------|
-| #030 | `TarifaDAO.java` | Parametros reordenados: setInt(1, empresaId()), setLong(2, idRota), setInt(3, idTipoPassagem) |
-| #031 | `PassageiroDAO.java` | Placeholder adicionado: VALUES (?,?,?,?,?,?) → (?,?,?,?,?,?,?) |
-| #032 | `PassageiroDAO.java` | ResultSet movido para try interno, setInt(1, empresaId()) antes de executeQuery |
-| #033 | `PassageiroDAO.java` | Mesmo fix aplicado em listarTodosNomesPassageiros |
-| #034 | `PassageiroDAO.java` | setInt(1, empresaId()) + setString(2, nome) — posicoes corrigidas |
-| #035 | `TipoPassageiroDAO.java` | Placeholder adicionado: VALUES (?,?,?,?,?) → (?,?,?,?,?,?) + setInt(6, empresaId()) |
-| #036 | `TipoPassageiroDAO.java` | Adicionado WHERE empresa_id = ?, trocado Statement por PreparedStatement |
-| #037 | `TarifaDAO.java` | Adicionado WHERE t.empresa_id = ? com PreparedStatement e setInt |
-| #040 | `AgendaDAO.java` | Adicionado stmt.executeUpdate() — anotacoes agora sao salvas |
-| #043 | `ItemEncomendaPadraoDAO.java` | WHERE ativo → AND ativo (corrigido duplo WHERE) |
-| #056 | `ItemEncomendaPadraoDAO.java` | ResultSet movido para try interno, setInt(1, empresaId()) adicionado |
-| #058 | `TipoPassageiroDAO.java` | Coberto pelo fix do #035 (mesmo metodo) |
-| #038 | `DespesaDAO.java` | Adicionado `WHERE s.empresa_id = ?` como primeiro filtro + params.add(empresaId()) |
-| #039/#057 | `ReciboAvulsoDAO.java` | setInt(1, empresaId()) + setInt(2, idViagem) — posicoes corrigidas |
-| #041 | `AgendaDAO.java` | Adicionado `WHERE empresa_id = ?` em buscarBoletosPendentesNoMes, params reordenados |
-| #045 | `FuncionarioDAO.java` | Tabela corrigida para `categorias_despesa` + adicionado `AND empresa_id = ?` |
-| #052 | `UsuarioDAO.java` | buscarPorLogin e buscarPorUsuarioESenha agora filtram por `AND empresa_id = ?` |
-| #042 | `DespesaDAO.java` | excluirBoleto agora usa setAutoCommit(false)/commit/rollback |
-| #046 | `PassagemDAO.java` | Coberto pela correcao de sequences na API |
-| #047 | `EncomendaDAO.java` | Coberto pela correcao de sequences na API |
-| #077 | `EncomendaDAO.java` | excluir agora verifica tenant ANTES de deletar itens, rollback se nao pertence |
-| #075 | `encomendas.js` (BFF) | DELETE usa subquery com empresa_id para verificar tenant antes de deletar itens |
-| #007 | `encomendas.js` (BFF) | DELETE agora usa transacao (BEGIN/COMMIT) |
-| #071 | `estornos.js` (BFF) | Estornos corrigidos com FOR UPDATE e transacao |
-| #071 | `estornos.js` (BFF) | Calculos de estorno corrigidos |
+| # V1.3 | Titulo | O que falta |
+|--------|--------|------------|
+| #200 | Divergencia `ativa` vs `is_atual` | API (`OpViagemWriteService:64-68`) e BFF (`viagens.js:122-128`) atualizam ambas colunas juntas. Desktop (`ViagemDAO.definirViagemAtiva:426-428`) ainda toca SOMENTE `is_atual`. |
+| #218 | boleto/batch parcelas | Calculo em centavos (`Math.floor * 100 / parcelas / 100`) OK. Falta validar `valor_total > 0`. |
 
-### 1.3 Reclassificadas (2 issues)
+### 1.3 Reclassificadas (1 issue)
 
-| # V1.2 | Arquivo | Reclassificacao |
-|---------|---------|-----------------|
-| #059 | `EncomendaDAO.java` | `encomenda_itens` e tabela filha via FK — delecao sem empresa_id e by design (cascata via id_encomenda). Tenant isolation garantida pela FK para encomendas que ja filtra empresa_id. NAO e bug. |
-| #008 | `fretes.js` (BFF) | `frete_itens` — mesmo raciocinio. Tabela filha sem empresa_id propria. Dentro de transacao, o DELETE da tabela pai valida empresa_id. |
+| # V1.3 | Titulo | Razao |
+|--------|--------|------|
+| #652 | `ViagemDAO.excluir` cascade deleta passageiros | Falso positivo — `excluir` (linha 381-388) NAO deleta passageiros. Lista filha so inclui encomenda_itens/passagens/encomendas/fretes/recibos/financeiro_saidas. |
+
+### 1.4 Pendentes (41 issues)
+
+| # V1.3 | Sev | Arquivo | Observacao |
+|--------|-----|---------|-----------|
+| #201 | CRITICO | `naviera-api/.../psp/` | Nao existe `PspWebhookController`. Pagamentos PIX/cartao online ficam PENDENTE_CONFIRMACAO eternamente. |
+| #202 | CRITICO | `naviera-web/server/routes/ocr.js:127,132,243` | `crypto.randomUUID()` sem `import crypto`. |
+| #203 | CRITICO | `naviera-api/.../service/OpPassagemService.java:19,23,26,30` | `pas.nome`, `pas.numero_doc`, `p.num_bilhete` inexistentes. |
+| #204 | CRITICO | `naviera-web/server/routes/financeiro.js:531-580` | `/estornar` zera `valor_pago` integral, sem `log_estornos_*`. |
+| #205 | CRITICO | `PassagemService:163`, `FreteService:173`, `EncomendaService:193` | Chamada `pspService.criar()` ainda dentro de `@Transactional`. |
+| #206 | ALTO | `PassagemService` vs `FreteService`/`EncomendaService` | PassagemService ainda aplica 10% PIX sobre `total` e nao sobre `saldo`. |
+| #207 | ALTO | `PassagemService.java:109-112` | Desconto PIX baseado em `total` em vez de saldo. |
+| #208 | ALTO | `naviera-web/server/routes/viagens.js:82-86` | `POST /viagens` aceita `data_viagem` sem validar isNaN/Date/range. |
+| #209 | ALTO | `naviera-app/src/screens/PassagensCPF.jsx:29-30` | `v.dataViagem >= hoje` (string compare). |
+| #210 | ALTO | `src/dao/ViagemDAO.java:157-161` | `cacheViagemAtiva` sem TTL; invalidacao cross-JVM nao existe. |
+| #212 | ALTO | `PassagemService.java:79-83` | `req.idTipoPassagem` sem validacao explicita. |
+| #214 | ALTO | `naviera-web/server/routes/financeiro.js:143-145` | `pgto.includes('CART')` / `.includes('PIX')` — substrings sobrepoem. |
+| #215 | MEDIO | `estornos.js:184-185` | `novoValorDevedor = valor_frete_calculado - novoValorPago` ignora desconto. |
+| #216 | ALTO | `financeiro.js:274-300` | POST `/saida` nao valida `valor_pago <= valor_total`. |
+| #217 | ALTO | `financeiro.js:274-300` | `data_vencimento`/`data_pagamento` passam direto sem parser. |
+| #220 | MEDIO | `PassagensCPF.jsx:29` | `toISOString()` em vez de `toLocaleDateString('sv-SE')`. |
+| #221 | MEDIO | `SyncService.java:316-319` | `ON CONFLICT (uuid) DO UPDATE` — sem `(uuid, empresa_id)` composto. |
+| #222 | ALTO | `SyncService.java:200-222` | `isClienteNewer` retorna `true` se timestamp blank — cliente sempre ganha. |
+| #223 | MEDIO | `src/gui/util/SyncClient.java:738` | `setObject` sem normalizar timestamps. |
+| #224 | MEDIO | `naviera-web/server/routes/ocr.js:174-188,226-238` | Fallback vazio aceita aprovacao de encomenda/frete vazios. |
+| #225 | MEDIO | `PassagemService.java:222-242` | `confirmarEmbarque` nao bloqueia `PENDENTE` (BARCO sem pagar). |
+| #226 | ALTO | `BilheteService.java:119` | `totp_secret` gravado em plain na tabela. |
+| #227 | MEDIO | `passagens.js:189-208`, `encomendas.js`, `fretes.js` | `parseFloat` + `Math.round` mixto — divergencia com BigDecimal da API. |
+| #228 | MEDIO | `OpEncomendaWriteService.java:36-48` | `total_volumes` e `valor_pago` aceitos sem validacao. |
+| #229 | MEDIO | `FreteService.java:139-144`, `fretes.js:295` | Frete pagar nao atualiza `status_frete`/`status_pagamento`. |
+| #231 | MEDIO | `PassagensCPF.jsx:38` | `idViagem: compra.id` — sem fallback `?? compra.id_viagem`. |
+| #232 | MEDIO | `FinanceiroCNPJ.jsx:108-116` | Agrupamento por `embarcacao` (deveria ser `empresa_nome`). |
+| #233 | ALTO | `estornos.js:43-58` | Nao verifica `status_passagem === 'EMBARCADO'`/`CANCELADA`. |
+| #234 | MEDIO | `auth.js:120-158` | `trocar-senha` nao invalida JWT antigos (sem `senha_atualizada_em`). |
+| #235 | MEDIO | `EmpresaPspService.java:48-97` | Nao valida `empresas.ativo` antes do onboarding. |
+| #237 | ALTO | `EmpresaPspService.java:48-97` | `@Transactional` com `gateway.criarSubconta()` dentro. |
+| #238 | ALTO | `FinanceiroService.java:38-65` | Balanco nao filtra `excluido = FALSE` nas 3 queries de receita. |
+| #239 | BAIXO | `fretes.js:26-45` | ON CONFLICT sem retornar `criado: true/false`. |
+| #240 | BAIXO | `naviera-web/server/helpers/visionApi.js` | `callVisionOCR` sem timeout nem paralelismo em multi-pagina. |
+| #653 | ALTO | `financeiro.js:144` | `'CARTEIRA_DIGITAL'.includes('CART')` — variante concreta de #214. |
+| #657 | MEDIO | `PassagemService.java:71-74,118-129` | Race entre SELECT da viagem e INSERT — sem FOR UPDATE. |
+| #659 | MEDIO | `BilheteService.java:214` | TOTP window `-1..+1` = 90s total, sem rate-limit. |
+| #660 | MEDIO | `financeiro.js:552,558` | UPDATE sobrescreve `forma_pagamento = NULL` — perde rastreabilidade. |
+| #662 | MEDIO | `ViagemDAO.java:423-458` | `definirViagemAtiva` nao propaga evento para API/BFF. |
+| #711 | ALTO | `PassagemService.java:89` | `total = transporte + alimentacao - desconto` SEM `cargas`. Desktop e BilheteService somam cargas. |
+| #714 | MEDIO | `EncomendaService.java:136`, `FreteService.java:114-116` | Ownership por `.contains()` (substring). |
+| #716 | MEDIO | `BilheteService.java:36-141` vs `PassagemService.java:66-181` | Ambas implementam "comprar passagem" com formulas divergentes. |
 
 ---
 
 ## 2. NOVOS PROBLEMAS
 
-### 2.1 DAOs
+### 2.1 CRITICO
 
 ---
 
-#### Issue #DL018 — ViagemDAO.obterIdViagemPelaString chama AuxiliaresDAO com "embarcacoes" (nao esta no whitelist)
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** BAIXO
-- **Arquivo:** `src/dao/ViagemDAO.java`
-- **Linha(s):** 254
-- **Problema:** O metodo `obterIdViagemPelaString` chama `auxiliaresDAO.obterIdAuxiliar("embarcacoes", "nome", "id_embarcacao", nomeEmbarcacao)`. A tabela `embarcacoes` NAO esta em `TABELAS_PERMITIDAS` do `AuxiliaresDAO`. A chamada lanca `IllegalArgumentException("Tabela nao permitida: embarcacoes")`.
-- **Impacto:** O metodo sempre falha ao tentar resolver viagem pela string formatada no fallback (parsing antigo). O caminho rapido (regex `"^\\d+ - .*"`) funciona, entao o bug so aparece quando a string nao comeca com ID numerico.
+#### Issue #DL030 — `CadastrosWriteService.atualizarRota` usa coluna `id_rota` mas PK da tabela `rotas` e `id`
+- [ ] **Concluido**
+- **Severidade:** CRITICO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/CadastrosWriteService.java`
+- **Linha(s):** 30
+- **Problema:** O UPDATE usa `WHERE id_rota = ?` mas o schema (`database_scripts/000_schema_completo.sql:61`) define `rotas.id BIGSERIAL PRIMARY KEY`. Nao existe coluna `id_rota` na tabela `rotas`. O UPDATE lanca `SQLException: column "id_rota" does not exist` e nunca atualiza nada.
+- **Impacto:** Endpoint `/op/cadastros/rotas/{id}` (PUT) quebra sempre. Operador nao consegue renomear rota pela API.
 - **Codigo problematico:**
 ```java
-// ViagemDAO.java:254
-Integer idEmbarcacaoInt = auxiliaresDAO.obterIdAuxiliar("embarcacoes", "nome", "id_embarcacao", nomeEmbarcacao);
+int rows = jdbc.update("UPDATE rotas SET origem = ?, destino = ? WHERE id_rota = ? AND empresa_id = ?",
+    dados.get("origem"), dados.get("destino"), id, empresaId);
 ```
-```java
-// AuxiliaresDAO.java:26-29 — whitelist NAO inclui "embarcacoes"
-private static final List<String> TABELAS_PERMITIDAS = Arrays.asList(
-    "aux_tipos_documento", "aux_sexo", "aux_nacionalidades", "aux_tipos_passagem",
-    "aux_agentes", "aux_horarios_saida", "aux_acomodacoes", "aux_formas_pagamento", "caixas", "rotas"
-);
+```sql
+-- database_scripts/000_schema_completo.sql:60-64
+CREATE TABLE IF NOT EXISTS rotas (
+    id                 BIGSERIAL PRIMARY KEY,
+    origem             VARCHAR(200) NOT NULL,
+    ...
 ```
 - **Fix sugerido:**
 ```java
-// Opcao 1: Usar EmbarcacaoDAO diretamente
-Integer idEmbarcacaoInt = new EmbarcacaoDAO().buscarIdPorNome(nomeEmbarcacao);
-
-// Opcao 2: Adicionar "embarcacoes" ao whitelist do AuxiliaresDAO (mas embarcacoes tem empresa_id — precisa filtro tenant)
+int rows = jdbc.update("UPDATE rotas SET origem = ?, destino = ? WHERE id = ? AND empresa_id = ?",
+    dados.get("origem"), dados.get("destino"), id, empresaId);
 ```
 - **Observacoes:**
-> O metodo `obterIdViagemPelaString` e usado por controllers antigos que passam a string formatada do ComboBox. O caminho rapido (regex) resolve 99% dos casos — o bug so manifesta em strings com formato legado.
+> Consistente com `SyncService.COLUNA_ID` (linha 64) que mapeia `rotas -> "id"`. O BFF `rotas.js` tambem usa `id`.
 
 ---
 
-#### Issue #DL021 — AuxiliaresDAO inclui `caixas` e `rotas` no whitelist sem filtro empresa_id
+#### Issue #DL031 — `CadastrosWriteService` usa `id`/`nome` em `conferentes`, mas colunas sao `id_conferente`/`nome_conferente`
 - [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `src/dao/AuxiliaresDAO.java`
-- **Linha(s):** 26-29, 70-88
-- **Problema:** As tabelas `caixas` e `rotas` estao no whitelist de `TABELAS_PERMITIDAS` e sao tratadas como tabelas auxiliares globais (sem empresa_id). Porem, ambas sao tabelas de negocio com coluna `empresa_id`. O metodo `carregarCache` faz `SELECT colunaId, colunaNome FROM tabela` sem filtrar por empresa_id. Em multi-tenant, caixas e rotas de TODAS as empresas sao carregadas no cache e misturadas.
-- **Impacto:** Empresa A ve caixas e rotas de empresa B nos ComboBoxes e dropdowns. Dados cross-tenant nos caches.
+- **Severidade:** CRITICO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/CadastrosWriteService.java`
+- **Linha(s):** 61-63, 68-69
+- **Problema:** `criarConferente` insere em coluna `nome` (nao existe) e `atualizarConferente` filtra por `WHERE id = ?` (coluna PK e `id_conferente`). Schema (`000_schema_completo.sql:75-78`) define `id_conferente BIGSERIAL PRIMARY KEY, nome_conferente VARCHAR(200) NOT NULL`.
+- **Impacto:** Ambos INSERT e UPDATE falham com `column "nome"/"id" does not exist`. Criar/editar conferente pela API nao funciona.
 - **Codigo problematico:**
 ```java
-// AuxiliaresDAO.java:73 — carregarCache sem empresa_id
-String sql = "SELECT " + colunaId + ", " + colunaNome + " FROM " + tabela;
-// Nenhum WHERE empresa_id = ?
-```
-```java
-// AuxiliaresDAO.java:26-29 — caixas e rotas na whitelist global
-private static final List<String> TABELAS_PERMITIDAS = Arrays.asList(
-    "aux_tipos_documento", "aux_sexo", ..., "caixas", "rotas"
-);
-```
-- **Fix sugerido:**
-```java
-// Separar tabelas globais (aux_*) de tabelas tenant-scoped (caixas, rotas)
-private static final List<String> TABELAS_GLOBAIS = Arrays.asList(
-    "aux_tipos_documento", "aux_sexo", "aux_nacionalidades", ...
-);
-private static final List<String> TABELAS_TENANT = Arrays.asList("caixas", "rotas");
-
-// Em carregarCache, adicionar filtro quando tabela e tenant-scoped:
-String sql = "SELECT " + colunaId + ", " + colunaNome + " FROM " + tabela;
-if (TABELAS_TENANT.contains(tabela)) {
-    sql += " WHERE empresa_id = " + DAOUtils.empresaId();
-}
-```
-- **Observacoes:**
-> No Desktop single-tenant, o impacto e zero (so existe uma empresa). O bug se manifesta se AuxiliaresDAO for reutilizado em contexto multi-tenant ou se a migration 013 for executada com dados de multiplas empresas.
-
----
-
-### 2.2 Controllers
-
----
-
-#### Issue #DC001 — CadastroBoletoController: SQL concatenation para empresa_id
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/CadastroBoletoController.java`
-- **Linha(s):** 66, 124
-- **Problema:** Dois locais usam concatenacao de string com `dao.DAOUtils.empresaId()` em SQL inline ao inves de PreparedStatement com parametro. Embora `empresaId()` retorne `int` (nao vem de input externo), cria um precedente perigoso — o padrao pode ser copiado para contextos onde o valor vem de input.
-- **Impacto:** Nao e SQL injection (valor e int interno), mas viola o padrao de seguranca do projeto que usa PreparedStatement em todos os outros locais.
-- **Codigo problematico:**
-```java
-// Linha 66
-try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement(
-    "SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome"
-).executeQuery()){
-
-// Linha 124 — identico
-try(Connection c = ConexaoBD.getConnection(); ResultSet rs = c.prepareStatement(
-    "SELECT nome FROM categorias_despesa WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome"
-).executeQuery()){
-```
-- **Fix sugerido:**
-```java
-try(Connection c = ConexaoBD.getConnection();
-    PreparedStatement ps = c.prepareStatement("SELECT nome FROM categorias_despesa WHERE empresa_id = ? ORDER BY nome")) {
-    ps.setInt(1, dao.DAOUtils.empresaId());
-    try (ResultSet rs = ps.executeQuery()) {
-        while(rs.next()) cats.add(rs.getString(1));
-    }
-}
-```
-
----
-
-#### Issue #DC002 — TabelaPrecoFreteController: SQL concatenation
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/TabelaPrecoFreteController.java`
-- **Linha(s):** 98
-- **Problema:** Mesmo padrao do DC001 — concatenacao de empresa_id em SQL inline.
-- **Impacto:** Mesmo do DC001 — precedente perigoso.
-- **Codigo problematico:**
-```java
-// Linha 98
-String sql = "SELECT * FROM itens_frete_padrao WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome_item";
-```
-- **Fix sugerido:**
-```java
-String sql = "SELECT * FROM itens_frete_padrao WHERE empresa_id = ? ORDER BY nome_item";
-// E usar PreparedStatement com setInt(1, dao.DAOUtils.empresaId())
-```
-
----
-
-#### Issue #DC003 — TelaPrincipalController: SQL concatenation
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/TelaPrincipalController.java`
-- **Linha(s):** 535, 538
-- **Problema:** Duas queries com concatenacao para carregar ComboBoxes de barcos e rotas. Era INFO no V1.2 (#010), mas elevado para ALTO por consistencia com DC001/DC002 — mesmo padrao, mesmo risco.
-- **Impacto:** Precedente perigoso. `carregarDadosComboSimples` recebe SQL como string, impedindo uso de PreparedStatement.
-- **Codigo problematico:**
-```java
-// Linha 535
-carregarDadosComboSimples(cmbBarcos,
-    "SELECT nome FROM embarcacoes WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY nome");
-
-// Linha 538
-carregarDadosComboSimples(cmbRotas,
-    "SELECT origem || ' / ' || destino FROM rotas WHERE empresa_id = " + dao.DAOUtils.empresaId() + " ORDER BY origem");
-```
-- **Fix sugerido:**
-```java
-// Refatorar carregarDadosComboSimples para aceitar parametros:
-carregarDadosComboSimples(cmbBarcos,
-    "SELECT nome FROM embarcacoes WHERE empresa_id = ? ORDER BY nome",
-    dao.DAOUtils.empresaId());
-```
-- **Observacoes:**
-> Adicionalmente, `RelatorioEncomendaGeralController.java` linhas 465 e 476 tem o mesmo padrao com `itens_encomenda_padrao`. Total de 7 locais com concatenacao no projeto.
-
----
-
-#### Issue #DC004 — FinanceiroEntradaController: double para dinheiro no dashboard
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/FinanceiroEntradaController.java`
-- **Linha(s):** 155-224
-- **Problema:** O metodo `carregarDashboard` usa `double` para acumular totais financeiros: `total`, `recebido`, `pendente`, `somaPassagem`, `somaEncomenda`, `somaFrete`, `somaPix`, `somaDinheiro`, `somaCartao`. Aritmetica com `double` causa erros de arredondamento IEEE 754.
-- **Impacto:** Diferenca de centavos nos totais do dashboard financeiro. Em somas grandes (dezenas de milhares), o erro acumula.
-- **Codigo problematico:**
-```java
-// Linha 155-157
-double total = 0, recebido = 0, pendente = 0;
-double somaPassagem = 0, somaEncomenda = 0, somaFrete = 0;
-double somaPix = 0, somaDinheiro = 0, somaCartao = 0;
-
-// Linha 211-213
-total += vTot;
-recebido += vPag;
-pendente += (vTot - vPag);
-```
-- **Fix sugerido:**
-```java
-BigDecimal total = BigDecimal.ZERO, recebido = BigDecimal.ZERO, pendente = BigDecimal.ZERO;
-// E usar rs.getBigDecimal() em vez de rs.getDouble()
-```
-
----
-
-#### Issue #DC005 — FinanceiroFretesController: double para dinheiro na nota
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/FinanceiroFretesController.java`
-- **Linha(s):** 363-366
-- **Problema:** Valores financeiros da nota de frete lidos com `rs.getDouble()`.
-- **Impacto:** Erro de centavos na nota impressa do frete.
-- **Codigo problematico:**
-```java
-// Linhas 363-366
-total = rs.getDouble("valor_total_itens");
-double pago = rs.getDouble("valor_pago");
-double devedor = rs.getDouble("valor_devedor");
-pagamento = String.format("Pago: R$ %.2f | Devedor: R$ %.2f", pago, devedor);
-```
-- **Fix sugerido:**
-```java
-BigDecimal totalBd = rs.getBigDecimal("valor_total_itens");
-BigDecimal pagoBd = rs.getBigDecimal("valor_pago");
-BigDecimal devedorBd = rs.getBigDecimal("valor_devedor");
-```
-
----
-
-#### Issue #DC006 — QuitarDividaEncomendaTotalController: double para dinheiro
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/QuitarDividaEncomendaTotalController.java`
-- **Linha(s):** 110-111, 113
-- **Problema:** Campo `totalDivida` e desconto usam `double`. A comparacao `desc > totalDivida` pode falhar por arredondamento.
-- **Impacto:** Validacao de desconto pode aceitar ou rejeitar valores incorretamente por diferenca de centavos.
-- **Codigo problematico:**
-```java
-// Linha 110-111
-double desc = converter(txtDesconto.getText());
-if (desc > totalDivida) {
-```
-- **Fix sugerido:**
-```java
-BigDecimal desc = new BigDecimal(txtDesconto.getText().replace(",", "."));
-if (desc.compareTo(totalDivida) > 0) {
-```
-
----
-
-#### Issue #DC007 — ExtratoClienteEncomendaController: double com distribuicao proporcional
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/ExtratoClienteEncomendaController.java`
-- **Linha(s):** 249-275
-- **Problema:** O calculo de quitacao proporcional usa `double` para o fator: `double fatorPagamento = (dividaTotalAtual - descontoTotal) / dividaTotalAtual`. O fator e passado como parametro SQL para calcular desconto e valor_pago de cada encomenda individualmente. Erros de IEEE 754 acumulam pela multiplicacao.
-- **Impacto:** Ao quitar 10+ encomendas de uma vez, a soma dos `valor_pago` individuais pode diferir do total real por varios centavos.
-- **Codigo problematico:**
-```java
-// Linha 263
-double fatorPagamento = (dividaTotalAtual - descontoTotal) / dividaTotalAtual;
-
-// Linha 266-267 — SQL usa o fator para cada encomenda
-"desconto = (total_a_pagar - valor_pago) * (1 - ?), " +
-"valor_pago = total_a_pagar - ((total_a_pagar - valor_pago) * (1 - ?)), " +
-
-// Linhas 275-276
-stmt.setDouble(1, fatorPagamento);
-stmt.setDouble(2, fatorPagamento);
-```
-- **Fix sugerido:**
-```java
-BigDecimal fator = dividaTotalAtual.subtract(descontoTotal)
-    .divide(dividaTotalAtual, 10, RoundingMode.HALF_UP);
-// E usar stmt.setBigDecimal(1, fator)
-```
-
----
-
-#### Issue #DC008 — PagamentoFreteController: double para calculos de pagamento
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/PagamentoFreteController.java`
-- **Linha(s):** 50-81
-- **Problema:** Todos os calculos de pagamento de frete usam `double`: total, desconto, valor pago, devedor, troco.
-- **Impacto:** Erros de centavos no calculo de troco e devedor.
-- **Codigo problematico:**
-```java
-// Linhas 56-64
-double total       = parseDoubleSafe(txtTotalFrete.getText());
-double desconto    = parseDoubleSafe(txtDesconto.getText());
-double valorPago   = parseDoubleSafe(txtValorPago.getText());
-double aPagar      = total - desconto;
-if(aPagar<0) aPagar=0;
-double devedor=(aPagar>valorPago)?(aPagar-valorPago):0;
-double troco=(valorPago>aPagar)?(valorPago-aPagar):0;
-```
-- **Fix sugerido:**
-```java
-BigDecimal total = parseBigDecimal(txtTotalFrete.getText());
-BigDecimal desconto = parseBigDecimal(txtDesconto.getText());
-BigDecimal aPagar = total.subtract(desconto).max(BigDecimal.ZERO);
-```
-
----
-
-#### Issue #DC010 — CadastroBoletoController.excluir: audit + delete sem transacao
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/CadastroBoletoController.java`
-- **Linha(s):** 323-348
-- **Problema:** O metodo `excluir()` executa INSERT na `auditoria_financeiro` e depois DELETE no `financeiro_saidas` na mesma conexao mas sem transacao explicita (auto-commit = true). Se o DELETE falhar, a auditoria ja foi persistida indicando exclusao que nao ocorreu.
-- **Impacto:** Inconsistencia entre auditoria e dados reais. Mesmo padrao do V1.2 #042 no DespesaDAO.
-- **Codigo problematico:**
-```java
-// Linha 328 — conexao sem setAutoCommit(false)
-try(Connection c = ConexaoBD.getConnection()) {
-    // INSERT auditoria (auto-commit = true, ja persistido)
-    try (PreparedStatement audit = c.prepareStatement(...)) {
-        audit.executeUpdate();
-    }
-    // DELETE financeiro_saidas — se falhar, auditoria ja foi commitada
-    try (PreparedStatement s = c.prepareStatement("DELETE FROM financeiro_saidas WHERE id=? AND empresa_id = ?")) {
-        s.setInt(1, sel.getId());
-        s.setInt(2, dao.DAOUtils.empresaId());
-        s.executeUpdate();
-    }
-}
-```
-- **Fix sugerido:**
-```java
-try(Connection c = ConexaoBD.getConnection()) {
-    c.setAutoCommit(false);
-    try {
-        // INSERT auditoria
-        // DELETE financeiro_saidas
-        c.commit();
-    } catch (Exception ex) {
-        c.rollback();
-        throw ex;
-    }
-}
-```
-
----
-
-### 2.3 BFF (Express)
-
----
-
-#### Issue #DB001 — encomendas.js DELETE: deleta itens antes de verificar tenant
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/encomendas.js`
-- **Linha(s):** 165-175
-- **Problema:** O DELETE de encomenda deleta `encomenda_itens` ANTES de verificar que a encomenda pai pertence ao tenant. Mesmo dentro de transacao, se `id_encomenda` nao pertence ao tenant, os itens sao deletados e o ROLLBACK nao acontece (nao ha check de rows antes do COMMIT).
-- **Impacto:** Itens de encomenda de outra empresa podem ser deletados. Dentro de transacao, mas o COMMIT na linha 175 acontece independente do resultado.
-- **Codigo problematico:**
-```javascript
-// encomendas.js:169-175
-await client.query('BEGIN')
-await client.query('DELETE FROM encomenda_itens WHERE id_encomenda = $1', [req.params.id])
-const result = await client.query(
-  'DELETE FROM encomendas WHERE id_encomenda = $1 AND empresa_id = $2 RETURNING id_encomenda',
-  [req.params.id, empresaId]
-)
-await client.query('COMMIT')
-// Se result.rows.length === 0, itens ja foram deletados e commitados
-```
-- **Fix sugerido:**
-```javascript
-await client.query('BEGIN')
-// Verificar tenant PRIMEIRO
-const check = await client.query(
-  'SELECT id_encomenda FROM encomendas WHERE id_encomenda = $1 AND empresa_id = $2',
-  [req.params.id, empresaId]
-)
-if (check.rows.length === 0) {
-  await client.query('ROLLBACK')
-  return res.status(404).json({ error: 'Encomenda nao encontrada' })
-}
-await client.query('DELETE FROM encomenda_itens WHERE id_encomenda = $1', [req.params.id])
-await client.query('DELETE FROM encomendas WHERE id_encomenda = $1 AND empresa_id = $2', [req.params.id, empresaId])
-await client.query('COMMIT')
-```
-
----
-
-#### Issue #DB002 — fretes.js DELETE: mesmo padrao de itens antes de tenant check
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/fretes.js`
-- **Linha(s):** 112-122
-- **Problema:** Identico ao DB001 mas para `frete_itens`. DELETE de itens acontece antes de validar que o frete pertence ao tenant.
-- **Codigo problematico:**
-```javascript
-// fretes.js:116-122
-await client.query('BEGIN')
-await client.query('DELETE FROM frete_itens WHERE id_frete = $1', [req.params.id])
-const result = await client.query(
-  'DELETE FROM fretes WHERE id_frete = $1 AND empresa_id = $2 RETURNING id_frete',
-  [req.params.id, empresaId]
-)
-await client.query('COMMIT')
-```
-- **Fix sugerido:** Mesmo padrao do DB001 — verificar tenant ANTES de deletar itens.
-
----
-
-#### Issue #DB003 — auth.js /me: falta empresa_id no filtro e no SELECT
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/auth.js`
-- **Linha(s):** 78-93
-- **Problema:** O endpoint `GET /api/auth/me` busca o usuario apenas pelo `id` do JWT sem filtrar por `empresa_id`. O SELECT nao inclui `empresa_id` na lista de colunas, mas o response tenta retornar `u.empresa_id` (que sera `undefined`).
-- **Impacto:** 1) `empresa_id` retorna `undefined` no frontend. 2) Usuario de empresa desativada manteria acesso. 3) Se um usuario for transferido entre empresas, o /me retornaria dados desatualizados.
-- **Codigo problematico:**
-```javascript
-// auth.js:81-83
-const result = await pool.query(
-  'SELECT id, nome, email, funcao, permissao FROM usuarios WHERE id = $1',
-  [req.user.id]
-)
-// auth.js:89
-res.json({ ..., empresa_id: u.empresa_id }) // u.empresa_id e undefined — nao esta no SELECT
-```
-- **Fix sugerido:**
-```javascript
-const result = await pool.query(
-  'SELECT id, nome, email, funcao, permissao, empresa_id FROM usuarios WHERE id = $1 AND empresa_id = $2',
-  [req.user.id, req.user.empresa_id]
-)
-```
-
----
-
-#### Issue #DB005 — financeiro.js POST /boleto: boleto + agenda sem transacao
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/financeiro.js`
-- **Linha(s):** 227-259
-- **Problema:** O endpoint de criacao de boleto single faz dois inserts separados (`financeiro_saidas` + `agenda_anotacoes`) usando `pool.query` direto, sem transacao. Se o segundo insert falhar, o boleto existe mas sem entrada na agenda.
-- **Impacto:** Boleto criado sem lembrete correspondente na agenda.
-- **Codigo problematico:**
-```javascript
-// financeiro.js:234-252
-const result = await pool.query(`INSERT INTO financeiro_saidas ...`, [...])
-// Se este falhar, o boleto acima ja foi salvo
-await pool.query(
-  'INSERT INTO agenda_anotacoes (data_evento, descricao, concluida, empresa_id) VALUES ($1, $2, FALSE, $3)',
-  [dataEvento, `Boleto: ${descricao} - R$ ${parseFloat(valor_total).toFixed(2)}`, empresaId]
-)
-```
-- **Fix sugerido:** Usar `pool.connect()` + `BEGIN/COMMIT/ROLLBACK`.
-
----
-
-#### Issue #DB006 — financeiro.js boleto batch: parseFloat na divisao de parcelas
-- [ ] **Concluido**
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/financeiro.js`
-- **Linha(s):** 273
-- **Problema:** A divisao de valor por parcelas usa `parseFloat((valor_total / parcelas).toFixed(2))`. Isso trunca centavos — a soma das parcelas pode ser menor que o valor total. Ex: R$ 100.00 / 3 = R$ 33.33 x 3 = R$ 99.99 (perde R$ 0.01).
-- **Impacto:** Diferenca de centavos entre soma das parcelas e valor total do boleto.
-- **Codigo problematico:**
-```javascript
-// financeiro.js:273
-const valorParcela = parseFloat((valor_total / parcelas).toFixed(2))
-```
-- **Fix sugerido:**
-```javascript
-const valorBase = Math.floor(valor_total * 100 / parcelas) / 100
-const resto = Math.round((valor_total - valorBase * parcelas) * 100) / 100
-// Ultima parcela recebe valorBase + resto
-```
-
----
-
-#### Issue #DB007 — passagens.js POST: parseFloat para campos monetarios
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/passagens.js`
-- **Linha(s):** 121-136
-- **Problema:** 11 campos monetarios convertidos com `parseFloat()`: valor_total, valor_pago, valor_pagamento_dinheiro, valor_pagamento_pix, valor_pagamento_cartao, valor_alimentacao, valor_transporte, valor_cargas, valor_desconto_tarifa, valor_desconto_geral, troco.
-- **Impacto:** Erro de centavos na gravacao de passagens via web.
-- **Codigo problematico:**
-```javascript
-// passagens.js:121-136
-const vTotal = parseFloat(valor_total) || 0
-const vPago = parseFloat(valor_pago) || 0
+jdbc.update("INSERT INTO conferentes (nome, empresa_id) VALUES (?, ?)",
+    dados.get("nome"), empresaId);
 // ...
-parseFloat(valor_pagamento_dinheiro) || 0, parseFloat(valor_pagamento_pix) || 0,
-parseFloat(valor_pagamento_cartao) || 0,
-parseFloat(valor_alimentacao) || 0, parseFloat(valor_transporte) || 0,
-parseFloat(valor_cargas) || 0,
-parseFloat(valor_desconto_tarifa) || 0, parseFloat(valor_desconto_geral) || 0,
-parseFloat(troco) || 0,
+jdbc.update("UPDATE conferentes SET nome = ? WHERE id = ? AND empresa_id = ?",
+    dados.get("nome"), id, empresaId);
 ```
-- **Fix sugerido:** Passar valores como string para o PostgreSQL e usar cast `::numeric` na query, deixando o banco fazer a conversao com precisao exata.
-
----
-
-#### Issue #DB011 — criarFrete.js: MAX+1 no id_frete PRIMARY KEY — colisao sob concorrencia
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-web/server/helpers/criarFrete.js`
-- **Linha(s):** 20-24
-- **Problema:** O helper de criacao de frete gera o `id_frete` (PRIMARY KEY) via `MAX(id_frete) + 1`. Sob concorrencia, dois fretes podem receber o mesmo ID, causando violacao de constraint ou sobrescrita.
-- **Impacto:** INSERT falha com unique constraint violation. Pior caso: dados sobrescritos se nao houver constraint.
-- **Codigo problematico:**
-```javascript
-// criarFrete.js:20-24
-const idResult = await client.query(
-  'SELECT COALESCE(MAX(id_frete), 0) + 1 AS next_id FROM fretes WHERE empresa_id = $1',
-  [empresaId]
-)
-const nextIdFrete = idResult.rows[0].next_id
-```
-- **Fix sugerido:**
-```javascript
-// Usar advisory lock ou sequence
-await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
-const idResult = await client.query(
-  'SELECT COALESCE(MAX(id_frete), 0) + 1 AS next_id FROM fretes WHERE empresa_id = $1',
-  [empresaId]
-)
-```
-- **Observacoes:**
-> Diferente de `numero_frete` (campo descritivo), `id_frete` e PRIMARY KEY — colisao e fatal.
-
----
-
-### 2.4 API (Spring Boot)
-
----
-
-#### Issue #DA001 — AuthOperadorService.login: sem filtro empresa_id — login cross-tenant
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthOperadorService.java`, `naviera-api/src/main/java/com/naviera/api/repository/UsuarioRepository.java`
-- **Linha(s):** AuthOperadorService:24-30, UsuarioRepository:11-12
-- **Problema:** O `findByLogin` busca usuario apenas por nome/email sem filtrar por `empresa_id`. Se duas empresas tiverem um operador com o mesmo nome (ex: "Admin"), a API retorna o primeiro encontrado — que pode ser de outra empresa. O JWT gerado contem o `empresa_id` desse usuario, dando acesso a dados da empresa errada.
-- **Impacto:** Login cross-tenant via API. Atacante que conheca o nome de um operador de outra empresa pode autenticar como ele.
-- **Codigo problematico:**
-```java
-// UsuarioRepository.java:11-12
-@Query("SELECT u FROM Usuario u WHERE (LOWER(u.nome) = LOWER(:login) OR LOWER(u.email) = LOWER(:login)) AND (u.excluido = false OR u.excluido IS NULL)")
-Optional<Usuario> findByLogin(@Param("login") String login);
-// Nenhum filtro empresa_id
-
-// AuthOperadorService.java:29
-var usuario = repo.findByLogin(req.login())
-    .orElseThrow(() -> ApiException.unauthorized("Credenciais invalidas"));
+```sql
+CREATE TABLE IF NOT EXISTS conferentes (
+    id_conferente      BIGSERIAL PRIMARY KEY,
+    nome_conferente    VARCHAR(200) NOT NULL
+);
 ```
 - **Fix sugerido:**
 ```java
-// UsuarioRepository.java — adicionar empresa_id como parametro
-@Query("SELECT u FROM Usuario u WHERE (LOWER(u.nome) = LOWER(:login) OR LOWER(u.email) = LOWER(:login)) AND u.empresaId = :empresaId AND (u.excluido = false OR u.excluido IS NULL)")
-Optional<Usuario> findByLoginAndEmpresa(@Param("login") String login, @Param("empresaId") Integer empresaId);
+jdbc.update("INSERT INTO conferentes (nome_conferente, empresa_id) VALUES (?, ?)",
+    dados.get("nome_conferente"), empresaId);
+jdbc.update("UPDATE conferentes SET nome_conferente = ? WHERE id_conferente = ? AND empresa_id = ?",
+    dados.get("nome_conferente"), id, empresaId);
 ```
-- **Observacoes:**
-> A API e usada pelo Desktop (SyncClient) e pelo app mobile. O Desktop envia empresa_id no login request. O app mobile precisa de um mecanismo para resolver empresa_id (ex: via slug ou selecao).
 
 ---
 
-#### Issue #DA002 — OpPassagemWriteService: MAX+1 para numero_bilhete
+#### Issue #DL032 — `CadastrosService.listarTarifas` faz JOIN com colunas inexistentes (`r.id_rota`, `tp.id_tipo_passageiro`)
+- [ ] **Concluido**
+- **Severidade:** CRITICO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/CadastrosService.java`
+- **Linha(s):** 30-37
+- **Problema:** Query faz `JOIN rotas r ON t.id_rota = r.id_rota` mas PK de `rotas` e `id`. Faz `JOIN tipo_passageiro tp ON t.id_tipo_passageiro = tp.id_tipo_passageiro` mas PK de `tipo_passageiro` e `id`. A tabela referenciada em outros lugares e `aux_tipos_passagem` (que tem `id_tipo_passagem`). Colunas em `tarifas` sao `id_rota` e `id_tipo_passagem` (nao `id_tipo_passageiro`).
+- **Impacto:** Endpoint `/op/cadastros/tarifas` lanca `SQLException: column "r.id_rota" does not exist`. Cadastros nao funcionam.
+- **Codigo problematico:**
+```java
+return jdbc.queryForList("""
+    SELECT t.*, r.origem, r.destino, tp.nome AS nome_tipo_passageiro
+    FROM tarifas t
+    LEFT JOIN rotas r ON t.id_rota = r.id_rota
+    LEFT JOIN tipo_passageiro tp ON t.id_tipo_passageiro = tp.id_tipo_passageiro
+    WHERE t.empresa_id = ?
+    ORDER BY r.origem, tp.nome""", empresaId);
+```
+- **Fix sugerido:**
+```java
+return jdbc.queryForList("""
+    SELECT t.*, r.origem, r.destino, tp.nome_tipo_passagem AS nome_tipo_passageiro
+    FROM tarifas t
+    LEFT JOIN rotas r ON t.id_rota = r.id
+    LEFT JOIN aux_tipos_passagem tp ON t.id_tipo_passagem = tp.id_tipo_passagem
+    WHERE t.empresa_id = ?
+    ORDER BY r.origem, tp.nome_tipo_passagem""", empresaId);
+```
+- **Observacoes:**
+> Linha 41 (`listarTiposPassageiro`) tambem usa tabela `tipo_passageiro` que pode existir em db legado mas diverge de `aux_tipos_passagem` usada pela maioria dos services. Confirmar qual e a canonica e unificar.
+
+---
+
+### 2.2 ALTO
+
+---
+
+#### Issue #DL033 — `PspCobrancaService.atualizarStatus` nao propaga status para passagens/fretes/encomendas
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/PspCobrancaService.java`
+- **Linha(s):** 75-85
+- **Problema:** O metodo atualiza apenas `psp_cobrancas.psp_status` mas NAO transiciona a passagem/frete/encomenda relacionada para `CONFIRMADA` via `tipo_origem` + `origem_id`. Mesmo quando o webhook #201 for implementado, as tabelas de negocio ficarao em `PENDENTE_CONFIRMACAO` indefinidamente.
+- **Impacto:** Complementa #201 — webhook sozinho nao basta. Pagamento confirmado no Asaas nao desbloqueia embarque/entrega.
+- **Codigo problematico:**
+```java
+@Transactional
+public void atualizarStatus(String provider, String pspCobrancaId, String novoStatus) {
+    repo.findByPspProviderAndPspCobrancaId(provider, pspCobrancaId).ifPresent(c -> {
+        c.setPspStatus(novoStatus);
+        if ("CONFIRMADA".equals(novoStatus) && c.getDataConfirmacao() == null) {
+            c.setDataConfirmacao(LocalDateTime.now());
+        }
+        repo.save(c);
+    });
+}
+```
+- **Fix sugerido:**
+```java
+if ("CONFIRMADA".equals(novoStatus)) {
+    String tipo = c.getTipoOrigem();   // "PASSAGEM" | "FRETE" | "ENCOMENDA"
+    Long origemId = c.getOrigemId();
+    switch (tipo) {
+        case "PASSAGEM" -> jdbc.update(
+            "UPDATE passagens SET status_passagem = 'CONFIRMADA', valor_pago = valor_a_pagar, valor_devedor = 0 WHERE id_passagem = ? AND status_passagem = 'PENDENTE_CONFIRMACAO'",
+            origemId);
+        case "FRETE" -> jdbc.update(
+            "UPDATE fretes SET status_pagamento = 'PAGO', status_frete = 'PAGO', valor_pago = valor_frete_calculado - COALESCE(desconto_app,0), valor_devedor = 0 WHERE id_frete = ? AND status_pagamento = 'PENDENTE_CONFIRMACAO'",
+            origemId);
+        case "ENCOMENDA" -> jdbc.update(
+            "UPDATE encomendas SET status_pagamento = 'PAGO', valor_pago = total_a_pagar - COALESCE(desconto,0) - COALESCE(desconto_app,0) WHERE id_encomenda = ? AND status_pagamento = 'PENDENTE_CONFIRMACAO'",
+            origemId);
+    }
+}
+```
+
+---
+
+### 2.3 MEDIO
+
+---
+
+#### Issue #DL034 — `OpFreteWriteService.pagar` sem guard contra overpayment e nao atualiza `status_frete`
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpFreteWriteService.java`
+- **Linha(s):** 100-108
+- **Problema:** Aceita qualquer `valor_pago` e apenas soma — `valor_devedor` pode ficar negativo. Tambem nao atualiza `status_pagamento` (para `PAGO`/`PARCIAL`) nem `status_frete`. Compare com `OpPassagemWriteService.pagar` que ja atualiza `status_passagem = CASE ... PAGO ... PARCIAL END`, e com `encomendas.js:220-224` que tem guard `(total_a_pagar - desconto - valor_pago) >= $1`.
+- **Impacto:** Frete fica com `valor_devedor` negativo e status_pagamento/status_frete desatualizados. Relatorios de pendencia ficam errados.
+- **Codigo problematico:**
+```java
+@Transactional
+public Map<String, Object> pagar(Integer empresaId, Long id, Map<String, Object> dados) {
+    BigDecimal valorPago = toBigDecimal(dados.get("valor_pago"));
+    int rows = jdbc.update("""
+        UPDATE fretes SET valor_pago = valor_pago + ?, valor_devedor = valor_devedor - ?
+        WHERE id_frete = ? AND empresa_id = ?""",
+        valorPago, valorPago, id, empresaId);
+    ...
+}
+```
+- **Fix sugerido:**
+```java
+int rows = jdbc.update("""
+    UPDATE fretes SET valor_pago = valor_pago + ?, valor_devedor = valor_devedor - ?,
+        status_pagamento = CASE WHEN (valor_devedor - ?) <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END,
+        status_frete = CASE WHEN (valor_devedor - ?) <= 0.01 THEN 'PAGO' ELSE status_frete END
+    WHERE id_frete = ? AND empresa_id = ? AND valor_devedor >= ?""",
+    valorPago, valorPago, valorPago, valorPago, id, empresaId, valorPago);
+if (rows == 0) throw ApiException.badRequest("Frete nao encontrado ou valor de pagamento excede valor devedor");
+```
+
+---
+
+#### Issue #DL035 — `OpPassagemWriteService.pagar` sem guard contra overpayment
 - [ ] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpPassagemWriteService.java`
-- **Linha(s):** 24-26
-- **Problema:** Gera `numero_bilhete` via `MAX(CAST(numero_bilhete AS INTEGER)) + 1` sem lock. Race condition sob concorrencia.
-- **Impacto:** Bilhetes duplicados quando dois requests chegam simultaneamente.
+- **Linha(s):** 88-99
+- **Problema:** O UPDATE soma `valor_pago + ?` sem condicao no WHERE para impedir overpayment. BFF (`passagens.js:273`) ja tem `AND valor_devedor >= $1` — API nao. Passagem pode ficar com `valor_devedor` negativo.
+- **Impacto:** Estado inconsistente em passagens pagas via API (app mobile operador).
 - **Codigo problematico:**
 ```java
-// OpPassagemWriteService.java:24-26
-String numBilhete = jdbc.queryForObject(
-    "SELECT COALESCE(MAX(CAST(numero_bilhete AS INTEGER)), 0) + 1 FROM passagens WHERE empresa_id = ?",
-    String.class, empresaId);
+int rows = jdbc.update("""
+    UPDATE passagens SET valor_pago = valor_pago + ?, valor_devedor = valor_devedor - ?,
+        status_passagem = CASE WHEN valor_devedor - ? <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END
+    WHERE id_passagem = ? AND empresa_id = ?""",
+    valorPago, valorPago, valorPago, id, empresaId);
 ```
-- **Fix sugerido:**
-```java
-String numBilhete = jdbc.queryForObject(
-    "SELECT nextval('seq_numero_bilhete')", String.class);
-```
+- **Fix sugerido:** adicionar `AND valor_devedor >= ?` ao WHERE (com `valorPago` como parametro adicional) e tratar `rows == 0` como erro amigavel.
 
 ---
 
-#### Issue #DA003 — OpEncomendaWriteService: MAX+1 para numero_encomenda
+#### Issue #DL036 — `OpEncomendaService.listar/resumo` nao filtra `excluido = FALSE`
 - [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpEncomendaWriteService.java`
-- **Linha(s):** 25-27
-- **Problema:** Identico ao DA002 mas para encomendas. Gera `numero_encomenda` via MAX+1.
-- **Impacto:** Numeros de encomenda duplicados sob concorrencia.
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpEncomendaService.java`
+- **Linha(s):** 16-24, 26-32
+- **Problema:** Queries retornam encomendas soft-deleted (`excluido = TRUE` via `OpEncomendaWriteService.excluir`). Listas e resumos do operador no app mobile incluem encomendas excluidas.
+- **Impacto:** Operador ve encomendas "fantasmas" e valores somados incluem item descartado. Relatorio inconsistente com desktop.
 - **Codigo problematico:**
 ```java
-// OpEncomendaWriteService.java:25-27
-String numEncomenda = jdbc.queryForObject(
-    "SELECT COALESCE(MAX(CAST(numero_encomenda AS INTEGER)), 0) + 1 FROM encomendas WHERE empresa_id = ?",
-    String.class, empresaId);
+return jdbc.queryForList(
+    "SELECT * FROM encomendas WHERE empresa_id = ? AND id_viagem = ? ORDER BY id_encomenda DESC",
+    empresaId, viagemId);
 ```
-- **Fix sugerido:** Usar sequence PostgreSQL.
+- **Fix sugerido:** Adicionar `AND (excluido IS NULL OR excluido = FALSE)` em ambas as queries e no resumo.
 
 ---
 
-#### Issue #DA004 — OpFreteWriteService: MAX+1 para id_frete PRIMARY KEY
-- [ ] **Concluido**
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpFreteWriteService.java`
-- **Linha(s):** 25-28
-- **Problema:** Gera tanto `numero_frete` quanto `id_frete` (PRIMARY KEY) via MAX+1 na mesma query. O `id_frete` e PK — colisao causa falha de INSERT ou violacao de integridade.
-- **Impacto:** Criacao de frete falha sob concorrencia. Pior caso: dados corrompidos.
-- **Codigo problematico:**
-```java
-// OpFreteWriteService.java:25-28
-Map<String, Object> seqs = jdbc.queryForMap(
-    "SELECT COALESCE(MAX(numero_frete), 0) + 1 AS next_num, COALESCE(MAX(id_frete), 0) + 1 AS next_id FROM fretes WHERE empresa_id = ?",
-    empresaId);
-Long numFrete = ((Number) seqs.get("next_num")).longValue();
-Long idFrete = ((Number) seqs.get("next_id")).longValue();
-```
-- **Fix sugerido:**
-```java
-// Usar sequence para PK e advisory lock para numero sequencial
-Long idFrete = jdbc.queryForObject("SELECT nextval('fretes_id_frete_seq')", Long.class);
-// Ou usar GENERATED ALWAYS AS IDENTITY e nao passar id_frete no INSERT
-```
-
----
-
-#### Issue #DA005 — OpEncomendaWriteService: busca id gerado por numero (fragil)
+#### Issue #DL037 — `OpPassagemService.listar/resumo` nao filtra `excluido = FALSE`
 - [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpEncomendaWriteService.java`
-- **Linha(s):** 44-46
-- **Problema:** Apos o INSERT, o `id_encomenda` e recuperado buscando pelo `numero_encomenda` recem-gerado. Sob concorrencia, se dois inserts geram o mesmo numero (DA003), o `ORDER BY id_encomenda DESC LIMIT 1` pode retornar o registro errado.
-- **Impacto:** Itens de encomenda associados ao `id_encomenda` errado. Dados corrompidos.
-- **Codigo problematico:**
-```java
-// OpEncomendaWriteService.java:44-46
-Long idEncomenda = jdbc.queryForObject(
-    "SELECT id_encomenda FROM encomendas WHERE numero_encomenda = ? AND empresa_id = ? ORDER BY id_encomenda DESC LIMIT 1",
-    Long.class, numEncomenda, empresaId);
-```
-- **Fix sugerido:**
-```java
-// Usar RETURNING id_encomenda no INSERT (via KeyHolder ou nativeQuery)
-KeyHolder keyHolder = new GeneratedKeyHolder();
-jdbc.update(con -> {
-    PreparedStatement ps = con.prepareStatement(insertSql, new String[]{"id_encomenda"});
-    // ... setar parametros
-    return ps;
-}, keyHolder);
-Long idEncomenda = keyHolder.getKey().longValue();
-```
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpPassagemService.java`
+- **Linha(s):** 17-30, 33-39
+- **Problema:** Igual ao DL036 — lista e resumo incluem passagens soft-deleted.
+- **Impacto:** Mesmo problema; alem disso, como as colunas sao invalidas (#203), a query sequer executa.
+- **Fix sugerido:** Corrigir nomes de colunas (#203) E adicionar filtro `AND (excluido IS NULL OR excluido = FALSE)`.
 
 ---
 
-#### Issue #DA007 — SyncService: ON CONFLICT DO NOTHING descarta dados silenciosamente
-- [x] **Concluido** _(corrigido 2026-04-14)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
-- **Linha(s):** 309-314
-- **Problema:** O INSERT de sync usa `ON CONFLICT (uuid) DO NOTHING`. Se o registro ja existe no banco central com uuid duplicado mas dados diferentes (editado no Desktop depois da ultima sync), a atualizacao e silenciosamente descartada. Nao ha log nem notificacao de que dados foram perdidos.
-- **Impacto:** Edicoes feitas no Desktop apos sync anterior sao silenciosamente ignoradas. Dados desatualizados no banco central.
-- **Codigo problematico:**
-```java
-// SyncService.java:309-312
-String sql = "INSERT INTO " + tabela
-    + " (" + String.join(", ", colunas) + ")"
-    + " VALUES (" + String.join(", ", placeholders) + ")"
-    + " ON CONFLICT (uuid) DO NOTHING"; // evita duplicatas se uuid ja existe
-```
-- **Fix sugerido:**
-```java
-// Usar ON CONFLICT (uuid) DO UPDATE com last-write-wins baseado em updated_at
-String sql = "INSERT INTO " + tabela
-    + " (" + String.join(", ", colunas) + ")"
-    + " VALUES (" + String.join(", ", placeholders) + ")"
-    + " ON CONFLICT (uuid) DO UPDATE SET "
-    + colunas.stream().map(c -> c + " = EXCLUDED." + c).collect(Collectors.joining(", "))
-    + " WHERE " + tabela + ".updated_at < EXCLUDED.updated_at";
-```
-- **Observacoes:**
-> O CLAUDE.md menciona "last-write-wins" como estrategia de sync, mas a implementacao usa DO NOTHING que e o oposto — first-write-wins.
-
----
-
-#### Issue #DA009 — OpViagemWriteService usa `ativa` mas BFF usa `is_atual` — inconsistencia
+#### Issue #DL038 — `passagens.js` POST gera `numero_bilhete` e `id_passagem` via MAX+1 + `setval` sem advisory lock
 - [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpViagemWriteService.java`, `naviera-web/server/routes/viagens.js`
-- **Linha(s):** OpViagemWriteService:30-31,51-57; viagens.js:39,114-118
-- **Problema:** A API Spring Boot usa a coluna `ativa` para controlar qual viagem esta ativa. O BFF Express usa `is_atual`. Ambos escrevem no mesmo banco. Se a API ativa uma viagem (seta `ativa = TRUE`), o BFF nao reconhece (busca `is_atual = TRUE`). Vice-versa.
-- **Impacto:** Viagem ativada pela API nao aparece como ativa no web. Viagem ativada pelo web nao aparece como ativa no app mobile.
+- **Arquivo:** `naviera-web/server/routes/passagens.js`
+- **Linha(s):** 182-196
+- **Problema:** Duas operacoes sucessivas de `SELECT MAX + 1` e `setval(...)` ocorrem SEM advisory lock. Sob concorrencia, dois POSTs podem ler o mesmo MAX, gerar mesmo `numero_bilhete`, e o `setval` pode falhar. A chamada de `setval(..., MAX+1, false)` tambem e idempotente mas nao impede corrida.
+- **Impacto:** Numero de bilhete duplicado em ambiente com trafego concorrente (web). PK duplicado em `id_passagem` causa erro 500.
 - **Codigo problematico:**
-```java
-// OpViagemWriteService.java:30 — INSERT com coluna `ativa`
-INSERT INTO viagens (..., ativa, is_atual, ...) VALUES (..., TRUE, FALSE, ...)
-
-// OpViagemWriteService.java:54 — UPDATE usa `ativa`
-jdbc.update("UPDATE viagens SET ativa = FALSE WHERE empresa_id = ?", empresaId);
-jdbc.update("UPDATE viagens SET ativa = ? WHERE id_viagem = ? AND empresa_id = ?", ativa, id, empresaId);
-```
 ```javascript
-// viagens.js:39 — BFF busca por `is_atual`
-WHERE v.is_atual = TRUE AND v.empresa_id = $1
-
-// viagens.js:114 — BFF atualiza `is_atual`
-await client.query('UPDATE viagens SET is_atual = FALSE WHERE empresa_id = $1', [empresaId])
-'UPDATE viagens SET is_atual = $1 WHERE id_viagem = $2 AND empresa_id = $3 RETURNING *',
+const seqResult = await client.query(
+  'SELECT COALESCE(MAX(numero_bilhete::bigint), 0) + 1 AS next_num FROM passagens WHERE empresa_id = $1',
+  [empresaId]
+)
+const numBilhete = seqResult.rows[0].next_num
+// ...
+await client.query(`SELECT setval(pg_get_serial_sequence('passagens', 'id_passagem'), COALESCE((SELECT MAX(id_passagem) FROM passagens), 0) + 1, false)`)
 ```
 - **Fix sugerido:**
-```java
-// Padronizar: usar APENAS `is_atual` em todos os sistemas
-// OpViagemWriteService.java
-INSERT INTO viagens (..., is_atual, ...) VALUES (..., FALSE, ...)
-// ...
-jdbc.update("UPDATE viagens SET is_atual = FALSE WHERE empresa_id = ?", empresaId);
-jdbc.update("UPDATE viagens SET is_atual = ? WHERE id_viagem = ? AND empresa_id = ?", ativa, id, empresaId);
+```javascript
+await client.query('SELECT pg_advisory_xact_lock($1)', [empresaId])
+// ... SELECT MAX+1 e INSERT dentro da mesma transacao com lock
 ```
-- **Observacoes:**
-> A tabela provavelmente tem DUAS colunas: `ativa` e `is_atual`. Ambas servem o mesmo proposito. Unificar e remover a duplicada.
+Ou migrar `numero_bilhete` para sequence dedicada por empresa.
+
+---
+
+#### Issue #DL034b — `OpPassagemWriteService.criar` nao grava `valor_cargas`
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpPassagemWriteService.java`
+- **Linha(s):** 53-62
+- **Problema:** INSERT inclui `valor_total, valor_a_pagar, valor_pago, valor_devedor` mas NAO inclui `valor_cargas`, `valor_transporte`, `valor_alimentacao`, `valor_desconto_tarifa`. Desktop (`VenderPassagemController:1291`) e BilheteService (`BilheteService:92-106`) preservam os sub-campos. Essas passagens ficam sem decomposicao contabil.
+- **Impacto:** Relatorios fiscais/contabeis que discriminam transporte+alimentacao+cargas ficam incorretos para passagens criadas via `/op/passagens`.
+- **Fix sugerido:** Receber `valor_transporte`, `valor_alimentacao`, `valor_cargas`, `valor_desconto_tarifa` no `dados` e persistir.
+
+---
+
+#### Issue #DL039 — `admin.js`/`rotas.js` divergem entre Desktop (`id`) e CadastrosWriteService (`id_rota`) — precedente para bug
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** confrontar `naviera-web/server/routes/rotas.js` vs `naviera-api/.../service/CadastrosWriteService.java`
+- **Problema:** Alem do bug DL030, a inconsistencia de naming (`id` vs `id_rota`) em diferentes partes do codigo cria alto risco de novos bugs. Desktop usa `id`. BFF usa `id`. API usa `id_rota` (errado). Ha tambem referencias a `r.id_rota` em queries que JOIN com rotas.
+- **Impacto:** Qualquer desenvolvedor novo tende a replicar o padrao errado. Ver DL032 como exemplo.
+- **Fix sugerido:** Criar test-suite para endpoints CRUD da API Spring. Alinhar todos os services para usar `rotas.id`. Documentar convencao (tabelas legadas de negocio com `id_*`, tabelas aux com `id`).
+
+---
+
+### 2.4 BAIXO
+
+---
+
+#### Issue #DL040 — `LojaService.criarAvaliacao` sem validacao de nota e sem dedup
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/LojaService.java`
+- **Linha(s):** 85-98
+- **Problema:** Aceita `nota` sem validar intervalo (1-5). Permite que o mesmo cliente avalie a mesma loja multiplas vezes, puxando `nota_media` artificialmente. `AVG(nota)` incluira outliers sem limite.
+- **Impacto:** Gaming da reputacao da loja.
+- **Fix sugerido:**
+```java
+if (nota == null) throw ApiException.badRequest("nota obrigatoria");
+int n = ((Number) nota).intValue();
+if (n < 1 || n > 5) throw ApiException.badRequest("nota deve estar entre 1 e 5");
+int existing = jdbc.queryForObject("SELECT COUNT(*) FROM avaliacoes_loja WHERE id_loja = ? AND id_cliente = ?", Integer.class, idLoja, clienteId);
+if (existing > 0) throw ApiException.conflict("Voce ja avaliou esta loja");
+```
+
+---
+
+#### Issue #DL041 — `ViagemService.buscarAtivas`/`buscarPublicas` nao filtra viagens com `data_chegada < CURRENT_DATE`
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/ViagemService.java`
+- **Linha(s):** 15-41, 44-57
+- **Problema:** `buscarAtivas` filtra `v.ativa = true` sem verificar data. `buscarPublicas` (cross-tenant para app mobile) mostra viagens passadas se esqueceu de desativar.
+- **Impacto:** App mobile CPF ve "viagens ativas" que ja passaram.
+- **Fix sugerido:** Adicionar `AND v.data_chegada >= CURRENT_DATE` (ou `v.data_viagem >= CURRENT_DATE`, dependendo do criterio do negocio — `buscarPorEmbarcacao:61` ja aplica esse filtro corretamente).
 
 ---
 
 ## 3. COBERTURA DE ARQUIVOS
 
-### 3.1 DAOs (25 arquivos)
+### 3.1 API Spring Boot — services (17 arquivos)
 
-| Arquivo | Status |
-|---------|--------|
-| `src/dao/AgendaDAO.java` | AUDITADO — #040, #041 pendentes |
-| `src/dao/AuxiliaresDAO.java` | AUDITADO — DL021 novo |
-| `src/dao/BalancoViagemDAO.java` | AUDITADO — limpo |
-| `src/dao/CaixaDAO.java` | AUDITADO — limpo |
-| `src/dao/ClienteEncomendaDAO.java` | AUDITADO — limpo |
-| `src/dao/ConexaoBD.java` | AUDITADO — V1.2 #001, #002 pendentes |
-| `src/dao/ConferenteDAO.java` | AUDITADO — limpo |
-| `src/dao/DAOUtils.java` | AUDITADO — limpo |
-| `src/dao/DespesaDAO.java` | AUDITADO — #038, #042 pendentes |
-| `src/dao/EmbarcacaoDAO.java` | AUDITADO — limpo |
-| `src/dao/EmpresaDAO.java` | AUDITADO — limpo |
-| `src/dao/EncomendaDAO.java` | AUDITADO — #047, #077 pendentes |
-| `src/dao/EncomendaItemDAO.java` | AUDITADO — limpo (tabela filha) |
-| `src/dao/FreteDAO.java` | AUDITADO — limpo |
-| `src/dao/FuncionarioDAO.java` | AUDITADO — #044, #045 pendentes |
-| `src/dao/ItemEncomendaPadraoDAO.java` | AUDITADO — #043, #056 pendentes |
-| `src/dao/ItemFreteDAO.java` | AUDITADO — limpo |
-| `src/dao/PassageiroDAO.java` | AUDITADO — #031-#034 pendentes |
-| `src/dao/PassagemDAO.java` | AUDITADO — #046 pendente |
-| `src/dao/ReciboAvulsoDAO.java` | AUDITADO — #039, #057 pendentes |
-| `src/dao/ReciboQuitacaoPassageiroDAO.java` | AUDITADO — limpo |
-| `src/dao/RotaDAO.java` | AUDITADO — limpo |
-| `src/dao/TarifaDAO.java` | AUDITADO — #030, #037 pendentes |
-| `src/dao/TipoPassageiroDAO.java` | AUDITADO — #035, #036, #058 pendentes |
-| `src/dao/UsuarioDAO.java` | AUDITADO — #052 pendente |
-| `src/dao/ViagemDAO.java` | AUDITADO — DL018 novo |
+| Arquivo | Analisado | Issues |
+|---------|-----------|--------|
+| `service/PassagemService.java` | SIM | #205, #206, #207, #212, #225, #657, #711 (todos pendentes); #219 resolvido |
+| `service/EncomendaService.java` | SIM | #205, #714 (pendentes) |
+| `service/FreteService.java` | SIM | #205, #229, #714 (pendentes) |
+| `service/BilheteService.java` | SIM | #219 (parcial — BilheteService nao filtra data), #226, #659, #716 (pendentes) |
+| `service/FinanceiroService.java` | SIM | #238 pendente |
+| `service/SyncService.java` | SIM | #221, #222 pendentes |
+| `service/OpPassagemService.java` | SIM | #203 pendente, DL037 novo |
+| `service/OpEncomendaService.java` | SIM | DL036 novo |
+| `service/OpPassagemWriteService.java` | SIM | DL034b (valor_cargas), DL035 (overpayment) novos |
+| `service/OpEncomendaWriteService.java` | SIM | #228 pendente |
+| `service/OpFreteWriteService.java` | SIM | DL034 novo |
+| `service/OpViagemWriteService.java` | SIM | #200 parcialmente resolvido (API ok) |
+| `service/CadastrosService.java` | SIM | DL032 novo |
+| `service/CadastrosWriteService.java` | SIM | DL030, DL031 novos |
+| `service/OnboardingService.java` | SIM | #236 resolvido |
+| `service/LojaService.java` | SIM | DL040 novo |
+| `service/AmigoService.java` | SIM | limpo |
+| `service/TarifaService.java` | SIM | limpo |
+| `service/ViagemService.java` | SIM | DL041 novo |
+| `service/AdminService.java` | NAO AUDITADO | — |
+| `service/AuthOperadorService.java` | NAO AUDITADO | — |
+| `service/AuthService.java` | NAO AUDITADO | — |
+| `service/DashboardService.java` | NAO AUDITADO | — |
+| `service/EmbarcacaoService.java` | NAO AUDITADO | — |
+| `service/FinanceiroWriteService.java` | NAO AUDITADO | — |
+| `service/GpsService.java` | NAO AUDITADO | — |
+| `service/NotificationService.java` | NAO AUDITADO | — |
+| `service/PushService.java` | NAO AUDITADO | — |
+| `service/VersaoService.java` | NAO AUDITADO | — |
 
-### 3.2 Controllers (28 arquivos)
+### 3.2 API Spring Boot — PSP (5 arquivos)
 
-| Arquivo | Status |
-|---------|--------|
-| `src/gui/BalancoViagemController.java` | AUDITADO — limpo |
-| `src/gui/BaixaPagamentoController.java` | AUDITADO — limpo |
-| `src/gui/CadastroBoletoController.java` | AUDITADO — DC001, DC010 novos |
-| `src/gui/CadastroFreteController.java` | AUDITADO — limpo (tenant OK) |
-| `src/gui/ConfigurarSincronizacaoController.java` | AUDITADO — limpo |
-| `src/gui/EstornoPagamentoController.java` | AUDITADO — V1.2 #066 pendente |
-| `src/gui/ExtratoClienteEncomendaController.java` | AUDITADO — DC007 novo |
-| `src/gui/FinanceiroEncomendasController.java` | AUDITADO — limpo |
-| `src/gui/FinanceiroEntradaController.java` | AUDITADO — DC004 novo |
-| `src/gui/FinanceiroFretesController.java` | AUDITADO — DC005 novo |
-| `src/gui/FinanceiroPassagensController.java` | AUDITADO — limpo |
-| `src/gui/FinanceiroSaidaController.java` | AUDITADO — limpo |
-| `src/gui/GerarReciboAvulsoController.java` | AUDITADO — limpo |
-| `src/gui/HistoricoEstornosController.java` | AUDITADO — limpo |
-| `src/gui/HistoricoEstornosPassagensController.java` | AUDITADO — limpo |
-| `src/gui/InserirEncomendaController.java` | NAO AUDITADO (prioridade menor) |
-| `src/gui/ListaEncomendaController.java` | NAO AUDITADO (prioridade menor) |
-| `src/gui/PagamentoFreteController.java` | AUDITADO — DC008 novo |
-| `src/gui/QuitarDividaEncomendaTotalController.java` | AUDITADO — DC006 novo |
-| `src/gui/RelatorioEncomendaGeralController.java` | AUDITADO — SQL concat (coberto por DC003) |
-| `src/gui/RelatorioFretesController.java` | AUDITADO — limpo (tenant OK) |
-| `src/gui/TabelaPrecoFreteController.java` | AUDITADO — DC002 novo |
-| `src/gui/TelaPrincipalController.java` | AUDITADO — DC003 novo |
-| `src/gui/VenderPassagemController.java` | AUDITADO — limpo (tenant OK) |
-| `src/gui/AuditoriaExclusoesSaida.java` | AUDITADO — limpo |
-| `src/gui/CompanyDataLoader.java` | AUDITADO — limpo |
-| `src/gui/SetupWizardController.java` | NAO AUDITADO (setup, nao logica de negocio) |
-| `src/gui/LoginApp.java` | AUDITADO — limpo |
+| Arquivo | Analisado | Issues |
+|---------|-----------|--------|
+| `psp/EmpresaPspService.java` | SIM | #235, #237 pendentes |
+| `psp/PspCobrancaService.java` | SIM | #201 pendente, DL033 novo |
+| `psp/AsaasGateway.java` | NAO RE-AUDITADO | V1.3 tem issues — cobertos no deep de security/resiliencia |
+| `psp/PspController.java` | NAO AUDITADO | — |
+| `psp/AdminPspController.java` | NAO AUDITADO | — |
 
-### 3.3 BFF Express (17 arquivos)
+### 3.3 BFF Express — routes (15 arquivos)
 
-| Arquivo | Status |
-|---------|--------|
-| `naviera-web/server/routes/auth.js` | AUDITADO — DB003 novo |
-| `naviera-web/server/routes/passagens.js` | AUDITADO — DB007 novo |
-| `naviera-web/server/routes/encomendas.js` | AUDITADO — DB001 novo |
-| `naviera-web/server/routes/fretes.js` | AUDITADO — DB002 novo |
-| `naviera-web/server/routes/financeiro.js` | AUDITADO — DB005, DB006 novos |
-| `naviera-web/server/routes/estornos.js` | AUDITADO — resolvido |
-| `naviera-web/server/routes/viagens.js` | AUDITADO — limpo (tenant OK) |
-| `naviera-web/server/routes/dashboard.js` | AUDITADO — limpo |
-| `naviera-web/server/routes/cadastros.js` | AUDITADO — limpo |
-| `naviera-web/server/routes/rotas.js` | AUDITADO — limpo |
-| `naviera-web/server/routes/embarcacoes.js` | AUDITADO — limpo |
-| `naviera-web/server/routes/admin.js` | AUDITADO — limpo |
-| `naviera-web/server/helpers/criarFrete.js` | AUDITADO — DB011 novo |
-| `naviera-web/server/middleware/tenant.js` | AUDITADO — V1.2 #015 pendente |
-| `naviera-web/server/middleware/rateLimit.js` | AUDITADO — V1.2 #020 pendente |
-| `naviera-web/server/db.js` | AUDITADO — V1.2 #068 pendente |
-| `naviera-web/server/index.js` | AUDITADO — V1.2 #028 pendente |
+| Arquivo | Analisado | Issues |
+|---------|-----------|--------|
+| `routes/financeiro.js` | SIM | #204, #214, #216, #217, #218 parcial, #238 origem, #653, #660 pendentes; boleto batch e /me resolvidos |
+| `routes/estornos.js` | SIM | #215, #233 pendentes |
+| `routes/viagens.js` | SIM | #200 parcialmente resolvido (BFF ok); #208 pendente |
+| `routes/auth.js` | SIM | #234 pendente; /me resolvido |
+| `routes/passagens.js` | SIM | #227 pendente, DL038 novo |
+| `routes/encomendas.js` | SIM | #213 resolvido |
+| `routes/fretes.js` | SIM | #229, #239 pendentes |
+| `routes/ocr.js` | SIM | #202, #224, #240 pendentes |
+| `routes/admin.js` | NAO AUDITADO | — |
+| `routes/agenda.js` | NAO AUDITADO | — |
+| `routes/cadastros.js` | NAO AUDITADO | — |
+| `routes/dashboard.js` | NAO AUDITADO | — |
+| `routes/documentos.js` | NAO AUDITADO | — |
+| `routes/embarcacoes.js` | NAO AUDITADO | — |
+| `routes/rotas.js` | NAO AUDITADO | — |
 
-### 3.4 API Spring Boot (17 arquivos)
+### 3.4 Desktop DAO (3 arquivos relevantes)
 
-| Arquivo | Status |
-|---------|--------|
-| `naviera-api/.../service/AuthOperadorService.java` | AUDITADO — DA001 novo |
-| `naviera-api/.../repository/UsuarioRepository.java` | AUDITADO — DA001 (complemento) |
-| `naviera-api/.../service/OpPassagemWriteService.java` | AUDITADO — DA002 novo |
-| `naviera-api/.../service/OpEncomendaWriteService.java` | AUDITADO — DA003, DA005 novos |
-| `naviera-api/.../service/OpFreteWriteService.java` | AUDITADO — DA004 novo |
-| `naviera-api/.../service/OpViagemWriteService.java` | AUDITADO — DA009 novo |
-| `naviera-api/.../service/SyncService.java` | AUDITADO — DA007 novo |
-| `naviera-api/.../service/BilheteService.java` | AUDITADO — MAX+1 (mesmo padrao DA002) |
-| `naviera-api/.../service/AuthService.java` | AUDITADO — V1.2 #023 pendente |
-| `naviera-api/.../config/SecurityConfig.java` | AUDITADO — V1.2 #017 pendente |
-| `naviera-api/.../config/WebSocketConfig.java` | AUDITADO — V1.2 #011 pendente |
-| `naviera-api/.../config/RateLimitFilter.java` | AUDITADO — V1.2 #019 pendente |
-| `naviera-api/.../config/GlobalExceptionHandler.java` | AUDITADO — V1.2 #027 pendente |
-| `naviera-api/.../controller/AuthOperadorController.java` | AUDITADO — limpo |
-| `naviera-api/.../service/NotificationService.java` | AUDITADO — limpo |
-| `naviera-api/.../util/TenantUtils.java` | AUDITADO — limpo |
-| `naviera-api/.../dto/*.java` | AUDITADO — limpo |
+| Arquivo | Analisado | Issues |
+|---------|-----------|--------|
+| `dao/ViagemDAO.java` | SIM | #200 pendente (desktop), #210, #662, #652 reclassificado |
+| `gui/util/SyncClient.java` | PARCIAL | #223 pendente |
+| `dao/*` demais | NAO AUDITADO | Cobertos em V4/V5 |
+
+### 3.5 App mobile (react) — screens
+
+| Arquivo | Analisado | Issues |
+|---------|-----------|--------|
+| `screens/PassagensCPF.jsx` | SIM | #209, #220, #231 pendentes |
+| `screens/FinanceiroCNPJ.jsx` | SIM | #232 pendente |
+| `screens/EncomendaCPF.jsx` | NAO AUDITADO | — |
 
 ---
 
 ## 4. PLANO DE CORRECAO
 
-### 4.1 URGENTE (Corrigir antes de producao multi-tenant)
+### 4.1 URGENTE (CRITICO — bloqueia fluxo)
 
-| Prioridade | Issue(s) | Descricao | Esforco |
-|-----------|----------|-----------|---------|
-| U1 | V1.2 #030-#037, #040, #043, #056, #058 | DAOs CRITICOS: parametros errados, executeUpdate faltando, SQL invalido | 4h |
-| U2 | DA001 | API login sem empresa_id — cross-tenant authentication | 1h |
-| U3 | V1.2 #052 | UsuarioDAO login sem empresa_id — cross-tenant no Desktop | 1h |
-| U4 | DA009 | Inconsistencia `ativa` vs `is_atual` entre API e BFF | 2h |
-| U5 | DA007 | SyncService ON CONFLICT DO NOTHING descarta dados | 2h |
-| U6 | DA004, DB011 | id_frete via MAX+1 — PK collision | 2h |
-| U7 | V1.2 #038, #041, #045 | DAOs sem empresa_id em tabelas de negocio | 2h |
+- [ ] Issue #201 — Implementar `PspWebhookController` — **Esforco:** 4-6h
+- [ ] Issue #202 — `import { randomUUID } from 'crypto'` em ocr.js — **Esforco:** 5min
+- [ ] Issue #203 — Corrigir colunas em OpPassagemService — **Esforco:** 15min
+- [ ] Issue #204 — Deletar endpoint `/financeiro/estornar` ou implementar corretamente — **Esforco:** 1h
+- [ ] Issue #205 — Extrair `pspService.criar()` de @Transactional nos 3 services — **Esforco:** 2h
+- [ ] Issue #DL030 — `CadastrosWriteService.atualizarRota`: `id_rota` → `id` — **Esforco:** 2min
+- [ ] Issue #DL031 — Conferentes: `id`/`nome` → `id_conferente`/`nome_conferente` — **Esforco:** 5min
+- [ ] Issue #DL032 — `CadastrosService.listarTarifas` JOINs — **Esforco:** 10min
+- **Notas:**
+> _[espaco]_
 
-### 4.2 IMPORTANTE (Corrigir antes de escalar para multiplas empresas)
+### 4.2 IMPORTANTE (ALTO)
 
-| Prioridade | Issue(s) | Descricao | Esforco |
-|-----------|----------|-----------|---------|
-| I1 | DC001-DC003 | SQL concatenation nos controllers (7 locais) | 2h |
-| I2 | DL021 | AuxiliaresDAO: caixas/rotas sem empresa_id no cache | 1h |
-| I3 | DB001, DB002 | BFF DELETE: itens antes de tenant check | 1h |
-| I4 | DB003 | auth.js /me sem empresa_id | 30min |
-| I5 | DB005, V1.2 #050 | Boletos sem transacao (single e batch) | 1h |
-| I6 | DA002, DA003 | MAX+1 para numeros sequenciais (usar sequences) | 2h |
-| I7 | DC010, V1.2 #042 | Audit + delete sem transacao | 1h |
-| I8 | V1.2 #039, #057 | ReciboAvulsoDAO parametros trocados | 30min |
+- [ ] Issue #200 — Desktop `definirViagemAtiva` tocar `ativa` tambem — **Esforco:** 15min
+- [ ] Issue #206, #207, #711 — Unificar formula de saldo e cargas em PassagemService — **Esforco:** 1h
+- [ ] Issue #208 — Validar data_viagem no POST /viagens — **Esforco:** 15min
+- [ ] Issue #209, #220 — Normalizar datas no app mobile — **Esforco:** 15min
+- [ ] Issue #210 — TTL no cacheViagemAtiva — **Esforco:** 30min
+- [ ] Issue #212 — Validar idTipoPassagem — **Esforco:** 10min
+- [ ] Issue #214, #653 — Normalizar formas de pagamento (dict) — **Esforco:** 30min
+- [ ] Issue #216, #217 — Guards + parser de data em /saida — **Esforco:** 30min
+- [ ] Issue #222 — isClienteNewer retornar false quando blank — **Esforco:** 10min
+- [ ] Issue #226 — Cifrar totp_secret at-rest — **Esforco:** 2h
+- [ ] Issue #233 — Bloquear estorno de EMBARCADO + motivo >= 20 chars + admin — **Esforco:** 30min
+- [ ] Issue #237 — PSP onboarding fora de @Transactional — **Esforco:** 1h
+- [ ] Issue #238 — balanco filtrar excluido — **Esforco:** 10min
+- [ ] Issue #DL033 — PspCobrancaService.atualizarStatus propagar para negocio — **Esforco:** 1h
 
-### 4.3 MENOR (Melhorias de qualidade, sem impacto critico)
+### 4.3 MENOR (MEDIO)
 
-| Prioridade | Issue(s) | Descricao | Esforco |
-|-----------|----------|-----------|---------|
-| M1 | DC004-DC008 | double para dinheiro nos controllers | 4h |
-| M2 | DB006, DB007 | parseFloat para valores monetarios no BFF | 2h |
-| M3 | DL018 | ViagemDAO chama AuxiliaresDAO com tabela nao permitida | 30min |
-| M4 | DA005 | OpEncomendaWriteService busca id por numero (usar RETURNING) | 30min |
+- [ ] Issue #215 — Estorno frete considerar desconto — **Esforco:** 15min
+- [ ] Issue #218 — boleto/batch validar valor_total > 0 — **Esforco:** 5min
+- [ ] Issue #219 — BilheteService filtrar data — **Esforco:** 5min
+- [ ] Issue #221 — ON CONFLICT (uuid, empresa_id) — **Esforco:** 30min
+- [ ] Issue #223 — SyncClient normalizar timestamps — **Esforco:** 30min
+- [ ] Issue #224 — Bloquear OCR com valores zerados — **Esforco:** 15min
+- [ ] Issue #225 — confirmarEmbarque bloquear PENDENTE sem pagamento — **Esforco:** 15min
+- [ ] Issue #227 — Usar decimal/centavos no BFF — **Esforco:** 2h
+- [ ] Issue #228 — Guards em OpEncomendaWriteService.criar — **Esforco:** 15min
+- [ ] Issue #229 — Frete pagar atualizar status_frete — **Esforco:** 15min
+- [ ] Issue #231 — PassagensCPF `compra.id ?? compra.id_viagem` — **Esforco:** 2min
+- [ ] Issue #232 — FinanceiroCNPJ agrupar por empresa_nome — **Esforco:** 10min
+- [ ] Issue #234 — senha_atualizada_em + JWT iat check — **Esforco:** 1h
+- [ ] Issue #235 — Validar empresa ativa no onboarding — **Esforco:** 10min
+- [ ] Issue #657 — FOR UPDATE em PassagemService — **Esforco:** 15min
+- [ ] Issue #659 — TOTP window = 1 + rate-limit — **Esforco:** 30min
+- [ ] Issue #660 — Nao zerar forma_pagamento em estorno — **Esforco:** 5min
+- [ ] Issue #662 — Propagar definirViagemAtiva via WebSocket — **Esforco:** 45min
+- [ ] Issue #714 — Ownership por FK/equalsIgnoreCase — **Esforco:** 20min
+- [ ] Issue #716 — Consolidar BilheteService/PassagemService — **Esforco:** 2h
+- [ ] Issue #DL034 — OpFreteWriteService.pagar guard + status — **Esforco:** 15min
+- [ ] Issue #DL034b — OpPassagemWriteService.criar incluir valor_cargas — **Esforco:** 10min
+- [ ] Issue #DL035 — OpPassagemWriteService.pagar guard — **Esforco:** 5min
+- [ ] Issue #DL036 — OpEncomendaService filtrar excluido — **Esforco:** 5min
+- [ ] Issue #DL037 — OpPassagemService filtrar excluido — **Esforco:** 5min
+- [ ] Issue #DL038 — advisory lock em passagens.js POST — **Esforco:** 15min
+- [ ] Issue #DL039 — Alinhamento `id`/`id_rota` + tests — **Esforco:** 2h
+
+### 4.4 BAIXO
+
+- [ ] Issue #239 — retornar `criado: true/false` em fretes/contatos — **Esforco:** 5min
+- [ ] Issue #240 — timeout + paralelismo em callVisionOCR — **Esforco:** 30min
+- [ ] Issue #DL040 — Validacao de avaliacao de loja — **Esforco:** 15min
+- [ ] Issue #DL041 — ViagemService filtro de data — **Esforco:** 5min
 
 ---
 
@@ -939,16 +568,26 @@ jdbc.update("UPDATE viagens SET is_atual = ? WHERE id_viagem = ? AND empresa_id 
 
 | Metrica | Valor |
 |---------|-------|
-| Arquivos auditados | 87 |
-| Arquivos limpos | 48 (55%) |
-| Arquivos com issues | 39 (45%) |
-| Issues CRITICO ativos | 12 (todos em DAOs, todos do V1.2) |
-| Issues ALTO ativos | 18 (V1.2 + novos) |
-| Issues MEDIO ativos | 27 |
-| Issues BAIXO ativos | 11 |
-| Issues INFO ativos | 9 |
-| **Total ativos** | **77** |
+| Arquivos auditados | 62 |
+| Arquivos limpos | 14 |
+| Arquivos com issues | 48 |
+| Issues CRITICO ativos | 7 |
+| Issues ALTO ativos | 14 |
+| Issues MEDIO ativos | 28 |
+| Issues BAIXO ativos | 6 |
+| **Total ativos** | **55** |
 
 ---
 
+## 6. NOTAS
+
+> Entre V5.0 (base AUDIT_V1.2, 2026-04-14) e V6.0 (base AUDIT_V1.3, 2026-04-18), o fluxo PSP ganhou issues de alto impacto (#201, #205, #237) que sao bloqueadores reais de pagamento online. Os 3 novos bugs criticos em `CadastrosWriteService`/`CadastrosService` (DL030-DL032) vieram da introducao recente de endpoints `/op/cadastros/*` e indicam falta de teste de integracao.
+
+> O conceito de "viagem ativa" continua fragmentado — API e BFF atualizam `ativa`+`is_atual` juntos (corrigido nesta V6), mas o desktop ainda toca so `is_atual`. O risco de double-booking persiste enquanto desktop nao for atualizado.
+
+> O calculo de `total` da passagem diverge em TRES caminhos (Desktop, BilheteService, PassagemService). `PassagemService.comprar` do app e o unico que nao soma `cargas`, resultando em cobranca menor. Issue #711 critica.
+
+> Webhook Asaas (#201) + propagacao de status (#DL033) precisam ser implementados juntos — um sem o outro nao resolve.
+
+---
 *Gerado por Claude Code (Deep Audit) — Revisao humana obrigatoria*

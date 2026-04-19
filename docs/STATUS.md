@@ -1,74 +1,41 @@
 # STATUS DO PROJETO — Naviera Eco
-> Ultima atualizacao: 2026-04-17
-> Atualizado por: Claude Code (status-update)
+> Ultima atualizacao: 2026-04-19
+> Atualizado por: Claude Code (fix CRITICOS DEEP_SECURITY V5.0)
 
 ---
 
-## Estado Geral: PRONTO PARA MVP
+## Estado Geral: REPROVADO PARA PRODUCAO
 
 ### Resumo
-Plataforma SaaS multi-tenant de gestao fluvial com 4 camadas ativas (Desktop JavaFX, API Spring Boot, Web React+BFF, App React). Verificacao de codigo confirma que **todos os 3 bloqueadores MVP e todas as 11 issues ALTAS** listadas no AUDIT V1.2 estao resolvidas. Categorias Security, Logic, Bugs e Resilience: 100% limpas. Unica categoria com issues estruturais remanescentes: Maintainability (god classes, falta de camada Service). O AUDIT_V1.2.md ainda tem 69 checkboxes nao marcados, mas a maioria ja foi corrigida no codigo — o arquivo de tracking esta desatualizado.
+Auditoria V1.3 (scan + review) identificou **30 issues CRITICAS** concentradas em novos modulos adicionados apos V1.2: integracao PSP Asaas, webhook, onboarding self-service, ativacao/desativacao de empresas. Status piorou em relacao a V1.2 (0 CRITICOs) porque novos vetores foram introduzidos sem hardening. Desktop continua limpo apos fixes do V1.2. **Nao fazer deploy de producao ate concluir Sprint 1.**
 
 ---
 
-## ISSUES CRITICAS ABERTAS
+## ISSUES CRITICAS ABERTAS (30)
 
-**Nenhuma issue critica pendente.**
+**Bloqueadores de deploy** — detalhes completos em [AUDIT_V1.3](audits/current/AUDIT_V1.3.md).
 
-Todas as 12 CRITICAS do AUDIT V1.2 (DAOs multi-tenant com params/placeholders quebrados) foram corrigidas no commit `895adc9` (2026-04-14).
+### Top 5 bloqueadores
+1. **#201** — Webhook Asaas NAO existe: pagamentos PIX/boleto ficam eternamente PENDENTE
+2. **#411** — PSP chamado dentro de `@Transactional` + HikariCP=10: incidente Asaas derruba API
+3. **#650** — `X-Tenant-Slug` aceito do cliente sem validar trusted proxy: bypass multi-tenant
+4. **#100/#114** — Admin de qualquer empresa pode modificar/desativar outras via `/admin/empresas`
+5. **#107/#105/#106** — Cross-tenant data leak em rotas e pagamentos
 
----
+### CRITICOs por categoria
+| Categoria | CRITICOs | Detalhe |
+|-----------|----------|---------|
+| Security | 9 | #100, #102, #103, #105, #106, #107, #108, #114, #650 |
+| Resiliencia | 7 | #300, #301, #304, #305, #308, #311, #315 |
+| Bugs | 6 | #003, #004, #005, #006, #007, #008 |
+| Logic | 6 | #200, #201, #202, #203, #204, #205 |
+| Performance | 2 | #403, #411 |
+| Maintainability | 0 | — |
 
-## ISSUES RESOLVIDAS NESTA SESSAO (2026-04-17)
-
-| # | Issue | Arquivo | Fix aplicado |
-|---|-------|---------|--------------|
-| DS-repo | `UsuarioRepository.findByLogin` sem empresa_id (cross-tenant) | `naviera-api/.../repository/UsuarioRepository.java` | Metodo inseguro removido — so `findByLoginAndEmpresa` continua |
-| #7d-A | SQL concatenation em relatorio de precos | `src/gui/RelatorioEncomendaGeralController.java:470,482` | Substituido por PreparedStatement com `?` + setInt |
-| #7d-B | SQL concatenation de nome de tabela | `src/gui/ConfigurarSincronizacaoController.java:141` | Whitelist `TABELAS_SYNC_PERMITIDAS` antes de montar SQL |
-
----
-
-## VERIFICACAO CRUZADA (codigo vs AUDIT V1.2)
-
-Todas as 11 issues ALTAS listadas no AUDIT V1.2 foram verificadas linha a linha no codigo:
-
-| # | Issue | Status | Evidencia |
-|---|-------|--------|-----------|
-| #038 | `DespesaDAO.buscarDespesas` sem empresa_id | RESOLVIDO | `src/dao/DespesaDAO.java:36` — `WHERE s.empresa_id = ?` |
-| #039 | `ReciboAvulsoDAO.listarPorViagem` params trocados | RESOLVIDO | Verificado previamente |
-| #041 | `AgendaDAO.buscarBoletos` sem empresa_id | RESOLVIDO | `src/dao/AgendaDAO.java:120` — filtro presente |
-| #045 | `FuncionarioDAO.buscarIdCategoria` tabela errada | RESOLVIDO | Verificado previamente |
-| #048 | `UsuarioDAO.buscarPorLogin` login cross-tenant | RESOLVIDO | `src/dao/UsuarioDAO.java:150` — `AND empresa_id = ?` |
-| DC001-003 | SQL concat em 3 controllers Desktop | RESOLVIDO (falso positivo) | Os 3 controllers ja usam PreparedStatement |
-| DA001 | `UsuarioRepository.findByLogin` API sem empresa_id | RESOLVIDO (nesta sessao) | Metodo removido |
-| DA004 | MAX+1 para `id_frete` (API) | RESOLVIDO | `OpFreteWriteService.java:26-40` — sequence + advisory lock |
-| DB011 | MAX+1 para `id_frete` (BFF) | RESOLVIDO | `criarFrete.js:19-49` — sequence + SAVEPOINT |
-
----
-
-## BLOQUEADORES MVP — STATUS REAL
-
-Os 3 bloqueadores que o MVP_PLAN V4.0 apontava estao **todos resolvidos**:
-
-| Bloqueador | Estado no Doc | Estado Real | Evidencia |
-|-----------|---------------|-------------|-----------|
-| CORS BFF sem restricao | FALTANDO | RESOLVIDO | `naviera-web/server/index.js:38-45` — whitelist via `CORS_ORIGINS` |
-| SyncService SQL injection | INCOMPLETO | RESOLVIDO | `SyncService.java:29-42` — whitelist de 11 tabelas + `sanitizeColumnName()` |
-| HTTPS nginx | INCOMPLETO | RESOLVIDO | `nginx/naviera.conf:6-228` — TLS 1.2/1.3 ativos, certs Let's Encrypt |
-
----
-
-## CATEGORIAS — ESTADO ATUAL
-
-| Categoria | Status | Observacao |
-|-----------|--------|-----------|
-| Security | 100% limpa | DEEP_SECURITY V4.0 — 0 issues ativas (43/43 corrigidas) |
-| Logic | 100% limpa | DEEP_LOGIC V5.0 |
-| Bugs | 100% limpa | DEEP_BUGS V2.0 (61/61 corrigidas) |
-| Resilience | 100% limpa | DEEP_RESILIENCE V5.0 (49/49 + 2 antigas) |
-| Performance | 99% limpa | Apenas 1 INFO sobre site inline |
-| Maintainability | 92% limpa | 7 estruturais pendentes (god classes >2000 linhas, #DM057 falta Service layer, cobertura de testes DB) |
+### Areas concentradoras de risco
+- **Tenant isolation** (9 CRITICOs) — queries sem `empresa_id`, escalacao de privilegio, header X-Tenant-Slug confiado
+- **PSP Asaas / webhook** (5 CRITICOs) — webhook ausente, fail-open HMAC, HTTP em transacao
+- **Pagamento saga** (4 CRITICOs) — estados `PROCESSANDO` orfaos, estorno destrutivo
 
 ---
 
@@ -76,30 +43,70 @@ Os 3 bloqueadores que o MVP_PLAN V4.0 apontava estao **todos resolvidos**:
 
 | Tipo | Versao | Data | Status | Doc |
 |------|--------|------|--------|-----|
-| Scan Geral | V1.2 | 2026-04-14 | 43/112 marcadas concluidas no doc, mas codigo resolveu mais — atualizar tracking | [AUDIT_V1.2](audits/current/AUDIT_V1.2.md) |
-| Deep Security | V4.0 | 2026-04-15 | 100% limpa (0 ativas) | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
-| Deep Logic | V5.0 | 2026-04-14 | 100% limpa | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
-| Deep Bugs | V2.0 | 2026-04-15 | 100% limpa | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
-| Deep Resilience | V5.0 | 2026-04-14 | 100% limpa | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
-| Deep Performance | V3.0 | 2026-04-09 | 99% limpa | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
-| Deep Maintainability | V4.0 | 2026-04-15 | 7 estruturais ativas | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
-| MVP Plan | V4.0 | 2026-04-10 | **0 bloqueadores reais** (doc mostra 3, mas codigo esta ok) | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
+| **Scan Geral** | **V1.3** | **2026-04-18** | **30 CRITICOs (REPROVADO)** | [AUDIT_V1.3](audits/current/AUDIT_V1.3.md) |
+| Deep Security | V5.0 | 2026-04-19 | 132 ativas (0 CRIT, 44 ALTO, 42 MEDIO, 23 BAIXO + 23 V1.3) — **16 CRITICOs fixados em 2026-04-19**; 5 CVEs ainda ativos (multer, spring-boot) | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
+| Deep Logic | V6.0 | 2026-04-18 | 55 ativas (7 CRIT, 14 ALTO, 28 MEDIO, 6 BAIXO) | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
+| Deep Bugs | V3.0 | 2026-04-18 | 26 ativas (5 CRIT, 6 ALTO, 10 MEDIO, 3 BAIXO) — 161/162 V2.0 resolvidas, 25 novas | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
+| Deep Resilience | V6.0 | 2026-04-18 | 53 ativas (8 CRIT, 19 ALTO, 21 MEDIO, 5 BAIXO) — 27 pendentes de AUDIT_V1.3 + 26 novas | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
+| Deep Performance | V5.0 | 2026-04-18 | 58 ativas (3 CRIT, 17 ALTO, 28 MEDIO, 10 BAIXO) | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
+| Deep Maintainability | V5.0 | 2026-04-18 | 49 ativas (0 CRIT, 11 ALTO, 22 MEDIO, 16 BAIXO) — 22 V4.0 resolvidas, 27 V1.3 pendentes, 15 novas DM071-DM085 | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
+| MVP Plan | V4.0 | 2026-04-10 | Desatualizado (nao cobre novos modulos PSP) | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
+
+**Historico de scan geral:**
+| Versao | Data | Total | CRITICOs | Status |
+|--------|------|-------|----------|--------|
+| V1.0 | 2026-04-07 | ~194 | ? | Archive |
+| V1.1 | 2026-04-08 | ? | ? | Archive |
+| V1.2 | 2026-04-14 | 112 | 12 | Archive (100% resolvidas) |
+| **V1.3** | **2026-04-18** | **225** | **30** | **Atual — REPROVADO** |
 
 ---
 
-## PROXIMO SPRINT (sugerido)
+## CATEGORIAS — ESTADO ATUAL (V1.3)
 
-**Sprint Maintainability — ~1 semana:**
-1. Re-sincronizar AUDIT_V1.2.md (marcar 69 checkboxes hoje pendentes mas ja corrigidos no codigo) ou gerar AUDIT_V1.3
-2. Extrair camada Service dos 3 god classes (VenderPassagem 2170L, CadastroFrete 2239L, InserirEncomenda 1798L) — requer cobertura de testes primeiro
-3. Criar testes API (zero arquivos hoje) — fluxos core: auth, viagem, passagem, frete
-4. Re-rodar MVP Plan para atualizar o contador 77% → ~95%
+| Categoria | CRIT | ALTO | MEDIO | BAIXO | Total | Status |
+|-----------|------|------|-------|-------|-------|--------|
+| Bugs | 6 | 13 | 14 | 4 | 37 | Regressao (novos modulos) |
+| Security | 9 | 15 | 14 | 4 | 42 | Regressao critica |
+| Logic | 6 | 18 | 17 | 7 | 48 | Regressao critica |
+| Resilience | 7 | 11 | 9 | 3 | 30 | Regressao |
+| Performance | 2 | 11 | 15 | 6 | 34 | Quase limpa |
+| Maintainability | 0 | 7 | 18 | 9 | 34 | Duplicacao crescente |
+| **TOTAL** | **30** | **75** | **87** | **33** | **225** | **REPROVADO** |
 
-**Sprint Pos-MVP:**
-- Input validation BFF com Zod/Joi
-- Logging BFF com rotacao em arquivo
-- CI/CD pipeline (GitHub Actions)
-- Deep links Web (React Router)
+---
+
+## PROXIMO SPRINT
+
+### Sprint 1 — CRITICOS (bloqueia deploy — fazer AGORA)
+30 issues listadas em [AUDIT_V1.3.md secao 4](audits/current/AUDIT_V1.3.md). Prioridade:
+
+1. **P0 Tenant isolation** — #100, #102, #103, #105, #106, #107, #108, #114, #650 (9 issues)
+2. **P0 PSP/Webhook** — #201, #112, #301, #305, #411 (5 issues)
+3. **P0 Runtime bugs** — #003, #004, #005, #006, #007, #008, #202, #203, #204, #205 (10 issues)
+4. **P0 Resiliencia** — #300, #304, #308, #311, #315 (5 issues)
+5. **P0 Performance** — #403 (1 issue)
+
+### Sprint 2 — ALTOs (~75 issues, 2 semanas)
+Destaques: #222 (sync perda de dados), #226 (TOTP plain text), #655 (desativacao ineficaz), #658 (race PSP), #711 (drift financeiro desktop/API), #502 (magic number PIX), #506/#507 (god classes >1800L), #717 (strings UI corrompidas).
+
+### Sprint 3 — MEDIOs (~87 issues, 1 mes)
+
+### Backlog — BAIXOs (~33 issues)
+
+---
+
+## BLOQUEADORES MVP
+
+**Status: 5 novos bloqueadores adicionados apos V1.2.**
+
+| Bloqueador | Issue | Area |
+|-----------|-------|------|
+| Webhook Asaas ausente | #201 | PSP |
+| Escalacao de privilegio operador→admin | #102/#103 | Auth |
+| Admin cross-empresa (multi-tenant bleed) | #100/#114 | Tenant |
+| X-Tenant-Slug spoofing | #650 | Tenant |
+| Pool exhaustion em incidente Asaas | #411 | Resilience/Perf |
 
 ---
 
@@ -107,33 +114,30 @@ Os 3 bloqueadores que o MVP_PLAN V4.0 apontava estao **todos resolvidos**:
 
 | Metrica | Valor |
 |---------|-------|
-| Issues CRITICAS pendentes | **0** |
-| Issues ALTAS pendentes | **0** (apos fixes desta sessao) |
-| Bloqueadores MVP reais | **0** |
-| Categorias 100% limpas | **Security, Logic, Bugs, Resilience** |
-| Cobertura AUDIT V1.2 tracking | 43/112 marcado (desatualizado — codigo resolveu mais) |
-| MVP readiness real (estimado) | **~95%** (doc V4.0 diz 77% mas antes dos fixes) |
-| Paginas Web | 29 |
-| Telas App | 15 |
-| Endpoints BFF | ~50 |
-| Endpoints API | 108+ |
+| Issues CRITICAS pendentes | **30** |
+| Issues ALTAS pendentes | **75** |
+| Issues totais abertas (V1.3) | **225** |
+| Bloqueadores MVP reais | **5** |
+| Categorias 100% limpas | **nenhuma** |
+| Novos modulos desde V1.2 | PSP Asaas, webhook, onboarding, OCR Gemini, bilhetes digitais |
 
 ---
 
 ## DECISOES RECENTES
 
-Nenhuma ADR registrada em `docs/decisions/`. Considere documentar:
-- Por que app mobile vai ser React nativo (nao Capacitor)
-- Estrategia multi-tenant (empresa_id em todas tabelas vs schema-per-tenant)
-- Desktop offline-first + sync eventual
+Nenhuma ADR registrada em `docs/decisions/`. Documentacao pendente:
+- Estrategia de integracao PSP Asaas (outbox vs saga vs sincrono)
+- Modelo de super-admin vs admin de empresa
+- Webhook idempotencia (tabela `webhook_events` proposta em #201)
+- Sincronizacao `JWT_SECRET` entre API Spring e BFF Express
 
 ---
 
 ## LINKS RAPIDOS
 
-- **AUDIT atual:** [AUDIT_V1.2](audits/current/AUDIT_V1.2.md) — **Atualizar tracking, codigo esta a frente**
-- **MVP Plan:** [MVP_PLAN](mvp/current/MVP_PLAN.md) — **Regerar, bloqueadores resolvidos**
-- **Deep Security:** [DEEP_SECURITY](audits/current/DEEP_SECURITY.md)
+- **AUDIT atual:** [AUDIT_V1.3](audits/current/AUDIT_V1.3.md) — **REPROVADO, 30 CRITICOs**
+- **MVP Plan:** [MVP_PLAN](mvp/current/MVP_PLAN.md) — **Regerar, V1.3 introduziu novos bloqueadores**
+- **Deep Security:** [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) — **V5.0, 148 ativas, 16 CRIT incluindo CVEs em multer/spring/vite**
 - **Deep Logic:** [DEEP_LOGIC](audits/current/DEEP_LOGIC.md)
 - **Deep Bugs:** [DEEP_BUGS](audits/current/DEEP_BUGS.md)
 - **Deep Resilience:** [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)
@@ -155,7 +159,14 @@ Nenhuma ADR registrada em `docs/decisions/`. Considere documentar:
 | 2026-04-14 | DEEP_LOGIC V5.0, DEEP_RESILIENCE V5.0 — ambas 100% limpas |
 | 2026-04-15 | DEEP_SECURITY V4.0 (200+ arquivos, 0 ativas), DEEP_BUGS V2.0 (61/61) |
 | 2026-04-15 | DEEP_MAINTAINABILITY V4.0 — 155 arquivos, 7 estruturais ativas |
-| 2026-04-17 | Verificacao cruzada codigo vs docs: 11 ALTAS confirmadas resolvidas. Fix de `findByLogin` + 2 SQL concats restantes. Docs desatualizados em relacao ao codigo |
+| 2026-04-17 | Fix de `findByLogin` + 2 SQL concats restantes |
+| 2026-04-18 | Novos modulos adicionados: PSP Asaas, webhook, onboarding, AdminPspController |
+| **2026-04-18** | **AUDIT V1.3: 225 issues, 30 CRITICOs — REPROVADO PARA PRODUCAO** |
+| 2026-04-18 | DEEP_PERFORMANCE V5.0 — 58 ativas (23 novas alem do AUDIT_V1.3) |
+| 2026-04-18 | DEEP_LOGIC V6.0 — 55 ativas (12 novas alem do AUDIT_V1.3, incluindo DL030-DL032 criticos em CadastrosService) |
+| 2026-04-18 | DEEP_RESILIENCE V6.0 — 53 ativas (26 novas alem do AUDIT_V1.3; 27 pendentes nao corrigidas entre V5.0 e V6.0, incluindo 7 CRITICAS PSP/Asaas) |
+| 2026-04-18 | DEEP_BUGS V3.0 — 26 ativas (5 CRIT, 6 ALTO, 10 MEDIO, 3 BAIXO); 25 novas pos-PSP + #DB200 quebra feature super-admin + #DB202 estorno sem validacao + #DB203 PSP em @Transactional + #DB204 webhook secret vazio aceita |
+| 2026-04-18 | DEEP_SECURITY V5.0 — 148 ativas (16 CRIT, 44 ALTO, 42 MEDIO, 23 BAIXO); 125 novas #DS5-001 a #DS5-456 + 23 V1.3 pendentes; CVEs confirmados: multer 1.4.5 (CVE-2025-47944), spring-boot 3.3.5 (CVE-2025-22235), vite 5.4.21 (CVE-2025-62522) |
 
 ---
-*Atualizado automaticamente por Claude Code (status-update) — Revisao humana recomendada*
+*Atualizado automaticamente por Claude Code (audit-4-report) — Revisao humana recomendada*

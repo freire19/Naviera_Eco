@@ -1,9 +1,9 @@
 # AUDITORIA PROFUNDA — BUGS — NAVIERA ECO
-> **Versao:** V2.0
-> **Data:** 2026-04-14
+> **Versao:** V3.0
+> **Data:** 2026-04-18
 > **Categoria:** bugs
-> **Base:** AUDIT_V1.2
-> **Arquivos analisados:** 120+ (DAOs, Controllers, Models, Utils, BFF Express, API Spring Boot, OCR, App)
+> **Base:** AUDIT_V1.3 (+ DEEP_BUGS V2.0 referencia)
+> **Arquivos analisados:** ~70 arquivos novos/modificados pos 2026-04-14 (PSP, super-admin, pagamentos app, gestao funcionarios, tenant hardening)
 
 ---
 
@@ -11,841 +11,397 @@
 
 | Status | Quantidade |
 |--------|-----------|
-| Novos problemas | 98 |
-| Issues anteriores (DEEP V1.0) resolvidas | 30 |
-| Issues anteriores parcialmente resolvidas | 5 |
-| Issues anteriores pendentes | 0 |
-| **Issues corrigidas pos-auditoria** | **61** |
-| **Total de issues ativas** | **0** |
+| Novos problemas | 25 |
+| Issues anteriores (V2.0) resolvidas e verificadas | 161 |
+| Issues anteriores parcialmente resolvidas (ainda pendentes) | 1 (#DB014/015 — double em Funcionario/Holerite) |
+| Issues anteriores regrediram | 0 |
+| **Total de issues ativas** | **26** |
 
 ---
 
 ## ISSUES ANTERIORES — STATUS
 
-### Resolvidas (30/35 do DEEP V1.0)
+### Resolvidas e verificadas (amostra — 161/162)
 | Issue | Titulo | Verificacao |
 |-------|--------|------------|
-| #DB001 | ResultSet TWR PassagemDAO.listarExtrato | try(ResultSet rs) L366 — OK |
-| #DB002 | ResultSet TWR em 8 DAOs (12 ocorrencias) | Todos verificados — OK |
-| #DB003 | double para dinheiro em 3 DAOs | getBigDecimal em AgendaDAO, ReciboQuitacao, ReciboAvulso — OK |
-| #DB004 | TOCTOU AuxiliaresDAO.inserirAuxiliar | ON CONFLICT DO NOTHING L221 — OK |
-| #DB005 | TOCTOU Rota/Embarcacao excluir | DELETE direto + FK catch — OK |
-| #DB006 | Stubs ConferenteDAO/CidadeDAO | Dead code deletado — OK |
-| #DB007 | Quitacao por nome PassagemDAO | quitarDividaTotalPassageiroPorId L377 — OK |
-| #DB008 | Connection leak CadastroBoleto | try(Connection) L221 — OK |
-| #DB009 | Connection leak FinanceiroFretes | try(Connection) L309 — OK |
-| #DB010 | Connection leak FinanceiroPassagens | try(Connection) L406 — OK |
-| #DB011 | NPE FinanceiroPassagens buscar passagem | null check L410-414 — OK |
-| #DB012 | ResultSet TWR FinanceiroPassagens | try(ResultSet) L336-340 — OK |
-| #DB013 | ResultSet TWR CadastroFrete.carregarFrete | OK |
-| #DB016 | Rollback sem try-catch | try(Connection) elimina finally — OK |
-| #DB017 | ArrayIndexOutOfBounds ExtratoPassageiro | length check + try-catch — OK |
-| #DB018 | SessaoUsuario thread safety | volatile L9-10 — OK |
-| #DB019 | HttpURLConnection leak SyncClient | disconnect em finally L284-286 — OK |
-| #DB020 | InputStream null SyncClient | null check em lerResposta L848-851 — OK |
-| #DB021 | ClassCastException SyncClient | instanceof check L412-414 — OK |
-| #DB022 | FreteItem double para dinheiro | Migrado para BigDecimal — OK |
-| #DB023 | ReciboQuitacao double | getBigDecimal L52 — OK |
-| #DB024 | ReciboAvulso double | getBigDecimal L101 — OK |
-| #DB025 | NPE ReciboQuitacao.toString() | null check — OK |
-| #DB026 | toString() null em 5 models | null check com fallback ID — OK |
-| #DB027 | AgendaDAO.ResumoBoleto double | BigDecimal L44 — OK |
-| #DB028 | Scheduler sem awaitTermination | awaitTermination 10s L322-330 — OK |
-| #DB029 | Process leak LogService | Process.onExit() callback — OK |
-| #DB030 | N+1 PassagemDAO cold-start | preCarregarCachesPassagem() — OK |
-| #040 | AgendaDAO.adicionarAnotacao sem executeUpdate | executeUpdate L60 — OK |
-| #061 | SyncClient re-auth apos 401 | enviarComRetry L744-750 — OK |
+| #DB125 | OCR UPDATE sem empresa_id | ocr.js L399 agora tem `AND empresa_id = $3` — OK |
+| #DB126 | OCR path traversal | assertSafePath + path.resolve antes de startsWith — OK |
+| #DB127/#DB128 | Race MAX+1 bilhete/encomenda | pg_advisory_xact_lock em passagens.js L141 e encomendas.js L93 — OK |
+| #DB138-#DB145 | Cross-tenant na API | Queries BilheteService/PassagemService/EncomendaService/FreteService filtram empresa_id — OK |
+| #DB151 | OCR JWT na URL | Substituido por fetch com Authorization header — OK |
+| #DB156 | App WebSocket topico errado | empresaId=null no app mobile — OK |
+| Demais 155 issues | — | Verificado por sample + ver AUDIT_V1.3 |
 
-### Parcialmente resolvidas (5)
+### Parcialmente resolvidas (ainda pendentes)
 | Issue | Titulo | O que falta |
 |-------|--------|------------|
-| #DB014/#DB015 | GestaoFuncionarios resource leaks + double | SQL movido para DAO (OK), mas controller usa `Double.parseDouble()` L528/L384 e calcula com `double` na holerite |
-| #066 | EstornoPagamento PreparedStatement leak | Connection e ResultSet em TWR, mas PreparedStatement e anonimo (inline `con.prepareStatement(sql).executeQuery()`) — nao fechado explicitamente |
-| #001/#073 | DriverManager.setLoginTimeout | Chamado dentro de getConnection() L127 a cada conexao, nao no bloco static (redundante mas funcional) |
-| #002 | PooledConnection.close() race | `volatile` adicionado, mas `close()` nao e `synchronized` — check-then-act race permanece |
-| #070 | SyncClient scheduler duplo | `isShutdown()` check existe, mas `iniciarSyncAutomatica()` nao e synchronized — double-schedule possivel |
+| #DB014/#DB015 | GestaoFuncionariosController double em folha/holerite | `src/gui/GestaoFuncionariosController.java` L325-528 ainda usa `double salarioDiario/acumulado/saldo`. BFF replica (`naviera-web/server/routes/cadastros.js`) tambem usa `parseFloat`. Folha continua com perda de precisao. |
 
 ### Pendentes (0)
-| Issue | Titulo | Observacao |
-|-------|--------|-----------|
-| _(nenhuma)_ | | |
+_(nenhuma)_
 
 ---
 
 ## NOVOS PROBLEMAS
 
-### Desktop — DAOs
+### PSP / Pagamentos app
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB200 — BFF proxy admin PSP envia JWT sem tipo=OPERADOR (Spring sempre rejeita)
+- [ ] **Concluido**
 - **Severidade:** CRITICO
-- **Arquivo:** `src/dao/ViagemDAO.java`
-- **Linha(s):** 156-183
-- **Problema:** `cacheViagemAtiva` e `static volatile Viagem` — compartilhado por todas instancias. Nao indexa por `empresa_id`. Se dois tenants rodarem na mesma JVM (teste multi-tenant), cache do tenant A retorna para tenant B.
-- **Impacto:** Isolamento de dados multi-tenant quebrado no Desktop.
-- **Fix sugerido:** Mudar para `ConcurrentHashMap<Integer, Viagem>` indexado por `empresa_id`, como `EmpresaDAO` ja faz.
+- **Arquivo:** `naviera-web/server/routes/admin.js`
+- **Linha(s):** 203-219 (proxy) + `naviera-web/server/middleware/auth.js` L9-15 + `naviera-api/.../security/JwtFilter.java` L24-40
+- **Problema:** O BFF faz proxy para `/admin/empresas/:id/psp/onboarding` repassando o Authorization do usuario. Esse JWT foi gerado por `naviera-web/server/middleware/auth.js:generateToken` que nao inclui a claim `tipo`. Em Spring, `JwtFilter` so adiciona `ROLE_ADMIN` quando `tipo == "OPERADOR"` E `funcao` == Administrador. Sem `tipo`, a role cai no `else` (ROLE_CPF). `SecurityConfig.requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")` + `AdminPspController.requireAdmin()` rejeitam com 403.
+- **Impacto:** O feature de super-admin onboarding (commit 376eb86) nunca funciona em producao — toda chamada `/admin/empresas/:id/psp/onboarding` via BFF retorna 403.
+- **Codigo problematico:**
+```js
+// auth.js:9
+return jwt.sign(
+  { id, login, funcao, empresa_id },   // <-- falta tipo: "OPERADOR"
+  SECRET, { expiresIn: '8h' }
+)
+```
+- **Fix sugerido:** Adicionar `tipo: 'OPERADOR'` em `generateToken`. Alternativa: mudar `JwtFilter` para aceitar tokens sem `tipo` + funcao==Administrador como ROLE_ADMIN.
 - **Observacoes:**
-> _No desktop atual (single tenant), nao causa problema. Risco real em testes automatizados e evolucao futura._
+> _Testar: logar como admin no subdominio admin.naviera.com.br e tentar onboarding. Deve dar 403._
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/dao/ViagemDAO.java`
-- **Linha(s):** 218
-- **Problema:** Se `nomeRotaOrigem` for null (LEFT JOIN), concatenacao `null + " - " + destino` produz string `"null - Jutai"` visivel ao usuario.
-- **Impacto:** Dados corrompidos visualmente em ComboBox de viagens.
-- **Fix sugerido:** `nomeRotaOrigem != null ? nomeRotaOrigem : ""`
-- **Observacoes:**
-> __
-
----
-
-#### Issue #DB103 — ClienteEncomendaDAO: ON CONFLICT (nome_cliente) e cross-tenant
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB201 — EncomendaService.pagar / FreteService.pagar — ownership fallback bypassado por nome vazio
+- [ ] **Concluido**
 - **Severidade:** CRITICO
-- **Arquivo:** `src/dao/ClienteEncomendaDAO.java`
-- **Linha(s):** 41
-- **Problema:** `ON CONFLICT (nome_cliente) DO NOTHING` — se a constraint UNIQUE for apenas em `nome_cliente` (sem `empresa_id`), um cliente homonimo em outra empresa bloqueia INSERT silenciosamente. `salvar()` retorna `null`.
-- **Impacto:** Impossivel cadastrar clientes com nomes iguais entre empresas diferentes.
-- **Fix sugerido:** Verificar DDL — constraint deve ser `UNIQUE(nome_cliente, empresa_id)`. Ajustar `ON CONFLICT (nome_cliente, empresa_id)`.
-- **Observacoes:**
-> _Verificar migration SQL para confirmar constraint._
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/dao/UsuarioDAO.java`
-- **Linha(s):** 41-53
-- **Problema:** Retorna `0` em caso de erro SQL (logado apenas como warn). Caller pode criar usuario com id=0.
-- **Impacto:** Violacao de PK ou sobrescrita de dados.
-- **Fix sugerido:** Lancar excepcao ou retornar `-1` com documentacao.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/dao/UsuarioDAO.java`
-- **Linha(s):** 149-258
-- **Problema:** Query de `buscarPorLogin` nao inclui `deve_trocar_senha`, mas `extrairUsuarioDoResultSet` tenta ler — cai no catch silencioso toda vez.
-- **Impacto:** Ineficiencia + erros de schema silenciados.
-- **Fix sugerido:** Adicionar `COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha` na query.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** BAIXO
-- **Arquivo:** `src/dao/UsuarioDAO.java`
-- **Linha(s):** 208-222
-- **Problema:** `WHERE empresa_id = ?` sem `AND excluido IS NOT TRUE`. Usuarios excluidos aparecem em ComboBoxes.
-- **Impacto:** Confusao na UI — operadores excluidos visiveis.
-- **Fix sugerido:** Adicionar `AND excluido IS NOT TRUE`.
-- **Observacoes:**
-> _`listarLoginsAtivos()` L225 ja faz isso corretamente._
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/dao/EmpresaDAO.java`
-- **Linha(s):** 53-55
-- **Problema:** `buscarPorId(int id)` chama `buscar()` que usa TenantContext, ignorando `id` completamente.
-- **Impacto:** Caller que passar id diferente do tenant atual recebe dados do tenant atual silenciosamente.
-- **Fix sugerido:** Usar parametro `id` na query, ou renomear metodo para `buscarDoTenantAtual()`.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/dao/FreteDAO.java`
-- **Linha(s):** 134-138
-- **Problema:** `DELETE FROM frete_itens WHERE id_frete = ?` sem verificar que id_frete pertence ao tenant.
-- **Impacto:** Possivel deletar itens de frete de outra empresa se id_frete for conhecido.
-- **Fix sugerido:** `DELETE FROM frete_itens WHERE id_frete = ? AND id_frete IN (SELECT id_frete FROM fretes WHERE empresa_id = ?)`
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/util/SyncClient.java`
-- **Linha(s):** 464
-- **Problema:** `ResultSet rs = stmt.executeQuery()` fora de try-with-resources.
-- **Impacto:** Leak de cursor durante sincronizacao.
-- **Fix sugerido:** `try (ResultSet rs = stmt.executeQuery()) { ... }`
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/util/SyncClient.java`
-- **Linha(s):** 257-262
-- **Problema:** Verifica apenas `jwtToken != null && !isEmpty()` — token expirado considerado valido ate 401 do servidor.
-- **Impacto:** Primeira request de cada ciclo de sync sempre falha com 401 apos token expirar.
-- **Fix sugerido:** Decodificar payload JWT (base64), extrair `exp`, comparar com `System.currentTimeMillis()/1000`.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/util/SyncClient.java`
-- **Linha(s):** 565
-- **Problema:** Abre nova Connection por registro recebido dentro do loop. 100 registros = 100 conexoes abertas/fechadas.
-- **Impacto:** Pool exhaustion sob carga; lentidao na sincronizacao.
-- **Fix sugerido:** Abrir uma conexao fora do loop e reutilizar.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/gui/util/SyncClient.java`
-- **Linha(s):** 359
-- **Problema:** `sincronizarTudo()` usa `supplyAsync()` que chama `sincronizarTabela().get(60s)` — bloqueia thread do ForkJoinPool esperando outra task no mesmo pool.
-- **Impacto:** Thread starvation se pool saturado — possivel deadlock.
-- **Fix sugerido:** Usar `.thenCompose()` em vez de `.get()` bloqueante, ou executor dedicado.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/dao/TenantContext.java`
-- **Linha(s):** 22-66
-- **Problema:** Se o filtro Spring nao chamar `TenantContext.clear()` em `finally`, thread retorna ao pool com empresa_id do request anterior.
-- **Impacto:** Operador de empresa A ve dados de empresa B no proximo request.
-- **Fix sugerido:** Verificar que `TenantFilter` no Spring Boot usa `try { ... } finally { TenantContext.clear(); }`.
-- **Observacoes:**
-> _Risco real em producao com o API Spring Boot._
-
----
-
-### Desktop — Controllers (ResultSet leaks)
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** Multiplos controllers
-- **Linha(s):** Ver tabela
-- **Problema:** `ResultSet rs = stmt.executeQuery()` fora de try-with-resources em 26 locais. Connection e PreparedStatement estao no TWR, mas ResultSet nao.
-- **Impacto:** Leak de cursor PostgreSQL acumulativo.
-
-| Controller | Metodo | Linha aprox |
-|-----------|--------|------------|
-| VenderPassagemController | background load | ~279 |
-| CadastroFreteController | carregarRotas | ~1332 |
-| CadastroFreteController | carregarConferentes | ~1356 |
-| CadastroFreteController | gerarNumeroFrete catch | ~1449 |
-| InserirEncomendaController | 2 locais | ~468, ~477 |
-| BalancoViagemController | carregarDespesasAgrupadas | ~405 |
-| BalancoViagemController | carregarComboViagensFx | ~510 |
-| FinanceiroEntradaController | carregarUsuariosNoCombo | ~94 |
-| FinanceiroSaidaController | 5 metodos | ~393, ~419, ~435, ~684, ~702 |
-| RelatorioFretesController | 4 metodos | ~230, ~254, ~302, ~342 |
-| RelatorioEncomendaGeralController | 2 locais | ~468, ~476 |
-| AuditoriaExclusoesSaida | 2 metodos | ~171, ~219 |
-| GerarReciboAvulsoController | carregarViagens | ~185 |
-| TabelaPrecoFreteController | carregarDados | ~152 |
-
-- **Fix sugerido:** `try (ResultSet rs = stmt.executeQuery()) { ... }` em cada local.
-- **Observacoes:**
-> _Fix mecanico — mesmo padrao em todos. Batch aplicavel._
-
----
-
-#### Issue #DB115 — PreparedStatement anonimo leak em 2 controllers
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** CRITICO
-- **Arquivo:** `src/gui/BaixaPagamentoController.java` L113, `src/gui/QuitarDividaEncomendaTotalController.java` L77
+- **Arquivo:** `naviera-api/.../service/EncomendaService.java` L135-138, `FreteService.java` L113-116
 - **Linha(s):** Ver acima
-- **Problema:** `con.prepareStatement(sql).executeQuery()` — PreparedStatement criado inline nunca e atribuido a variavel e nunca e fechado.
-- **Impacto:** Leak de PreparedStatement em cada chamada a carregarFormasPagamento().
-- **Fix sugerido:** `try (PreparedStatement ps = con.prepareStatement(sql); ResultSet rs = ps.executeQuery()) { ... }`
+- **Problema:** Quando `id_cliente_app_destinatario` (ou `pagador`) for NULL na base (dados legados), o fallback usa `destinatario.toUpperCase().contains(cliente.getNome().toUpperCase())`. Se `cliente.getNome()` for `""`, `String.contains("")` retorna `true` para qualquer destinatario — cliente passa na validacao e paga qualquer encomenda/frete alheio.
+- **Impacto:** Cliente malicioso (ou com nome vazio por bug em cadastro) pode pagar (e depois reivindicar entrega de) encomendas e fretes de qualquer pessoa em qualquer empresa.
+- **Codigo problematico:**
+```java
+if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
+    throw ApiException.forbidden(...);
+```
+- **Fix sugerido:** `if (cliente.getNome() == null || cliente.getNome().isBlank()) throw forbidden(...);` antes do contains. Idealmente migrar dados legados e remover o fallback.
 - **Observacoes:**
-> __
+> _Cadastro clientes_app valida nome nao-vazio? Se sim, ainda sobra risco de row com nome=" ". Preciso confirmar._
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/VenderPassagemController.java`
-- **Linha(s):** ~443
-- **Problema:** `v.getId() == id` compara Long wrapper por referencia em vez de valor. Para IDs >= 128, fora do cache Integer pool, sempre retorna false.
-- **Impacto:** Viagem nunca encontrada por ID se id >= 128 — carregarViagemAtualAoIniciar falha silenciosamente.
-- **Fix sugerido:** `v.getId().equals(id)` ou `Objects.equals(v.getId(), id)`.
-- **Observacoes:**
-> _Bug critico de logica — pode estar mascarado se IDs atuais < 128._
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/gui/TelaPrincipalController.java`
-- **Linha(s):** ~1492
-- **Problema:** `getClass().getResource(cssEscuro).toExternalForm()` sem null check. NPE se arquivo CSS nao encontrado no classpath.
-- **Impacto:** Crash da aplicacao ao aplicar estilo de alerta.
-- **Fix sugerido:** `URL url = getClass().getResource(cssEscuro); if (url != null) ...`
-- **Observacoes:**
-> __
-
----
-
-### Desktop — Models
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB202 — Estorno financeiro: autorizador vem do body (bypass admin password)
+- [ ] **Concluido**
 - **Severidade:** CRITICO
-- **Arquivo:** `src/model/Funcionario.java`
-- **Linha(s):** 17
-- **Problema:** `double salario` e `double valorInss` — erros de arredondamento em calculos de folha (13o, INSS, descontos).
-- **Impacto:** Valores financeiros de RH imprecisos.
-- **Fix sugerido:** Migrar para BigDecimal. Atualizar FuncionarioDAO e GestaoFuncionariosController.
-- **Observacoes:**
-> _Unico model financeiro que ainda usa double._
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** CRITICO
-- **Arquivo:** `src/model/PagamentoHistorico.java`
-- **Linha(s):** 18, 28
-- **Problema:** 1) `double valor` para campo monetario. 2) `data.format(dtf)` sem null check — NPE se `data == null`, chamado por JavaFX PropertyValueFactory em TableView.
-- **Impacto:** Crash da UI ao exibir historico de pagamentos com data nula.
-- **Fix sugerido:** BigDecimal para valor; `dataPagamento != null ? DTF.format(data) : "N/A"`.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/model/Viagem.java`
-- **Linha(s):** 92
-- **Problema:** `String.format("%d", id)` onde `id` e Long wrapper — NPE/FormatException se null.
-- **Impacto:** Crash ao exibir viagem nao salva em ComboBox.
-- **Fix sugerido:** `id != null ? id : 0` ou guard no toString.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/model/OpcaoViagem.java`
-- **Linha(s):** 20
-- **Problema:** `return label` — retorna null se label nao setado. JavaFX ComboBox lanca NPE.
-- **Impacto:** Crash na UI.
-- **Fix sugerido:** `return label != null ? label : ""`
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/model/TipoPassageiro.java`
-- **Linha(s):** Inteiro
-- **Problema:** Sem toString() — ComboBox exibe `model.TipoPassageiro@hexaddr`. Sem equals/hashCode — setValue() nunca encontra item pre-selecionado.
-- **Impacto:** ComboBox de tipo de passageiro inutilizavel visualmente.
-- **Fix sugerido:** Implementar toString() retornando nome, equals/hashCode por id.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `src/model/ItemEncomendaPadrao.java` L32, `src/model/EncomendaItem.java` L36,39
-- **Linha(s):** Ver acima
-- **Problema:** Getters de BigDecimal retornam null se campo nao inicializado. Calculos downstream (`.multiply()`, `.add()`) lancam NPE.
-- **Impacto:** Crash ao calcular totais com itens sem preco.
-- **Fix sugerido:** `return precoUnit != null ? precoUnit : BigDecimal.ZERO`
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `src/model/EncomendaFinanceiro.java` L33, `src/model/FreteFinanceiro.java` L36
-- **Linha(s):** Ver acima
-- **Problema:** Converte BigDecimal para double antes de chamar StatusPagamento.calcularPorSaldo(), usando overload @Deprecated. Versao BigDecimal existe.
-- **Impacto:** Erro de arredondamento na classificacao de status de pagamento.
-- **Fix sugerido:** Chamar overload BigDecimal diretamente.
-- **Observacoes:**
-> __
-
----
-
-### Web BFF (Express)
-
-#### Issue #DB125 — OCR: UPDATE sem empresa_id no ia-review (cross-tenant write)
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-web/server/routes/ocr.js`
-- **Linha(s):** 188-191
-- **Problema:** `UPDATE ocr_lancamentos SET dados_extraidos = $1 WHERE id = $2` — sem filtro `empresa_id`. Token de empresa A pode reescrever dados de empresa B.
-- **Impacto:** Violacao de isolamento multi-tenant em dados OCR.
-- **Fix sugerido:** `WHERE id = $2 AND empresa_id = $3`
-- **Observacoes:**
-> __
-
----
-
-#### Issue #DB126 — OCR: Path traversal na rota foto
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-web/server/routes/ocr.js`
-- **Linha(s):** 344-347
-- **Problema:** `path.join(UPLOAD_PATH, result.rows[0].foto_path)` sem validacao de que fullPath esta dentro de UPLOAD_PATH. Valor manipulado no banco (via #DB125) pode acessar arquivos arbitrarios.
-- **Impacto:** Leitura de arquivos arbitrarios do servidor.
-- **Fix sugerido:** `if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403)`
-- **Observacoes:**
-> _Encadeavel com #DB125: manipular dados_extraidos → manipular foto_path → ler /etc/passwd._
-
----
-
-#### Issue #DB127 — Passagens: race condition MAX+1 numero_bilhete
-- [x] **Concluido** _(corrigido 2026-04-15 — pg_advisory_xact_lock)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-web/server/routes/passagens.js`
-- **Linha(s):** 115-119
-- **Problema:** `MAX(numero_bilhete) + 1` sem advisory lock. Dois operadores simultaneos geram mesmo numero.
-- **Impacto:** Bilhetes duplicados.
-- **Fix sugerido:** `SELECT pg_advisory_xact_lock(empresaId)` antes do MAX, ou usar sequence.
-- **Observacoes:**
-> __
-
----
-
-#### Issue #DB128 — Encomendas: race condition MAX+1 numero_encomenda
-- [x] **Concluido** _(corrigido 2026-04-15 — pg_advisory_xact_lock)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-web/server/routes/encomendas.js`
-- **Linha(s):** 61-65
-- **Problema:** Identico ao #DB127 para numero_encomenda.
-- **Impacto:** Encomendas com numero duplicado.
-- **Fix sugerido:** Advisory lock ou sequence.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-web/server/routes/passagens.js`
-- **Linha(s):** 182-201
-- **Problema:** UPDATE sem transacao — double payment possivel. Nao verifica se `valor_pago > valor_devedor` — permite valor_devedor negativo.
-- **Impacto:** Pagamento duplicado ou em excesso sem controle.
-- **Fix sugerido:** Transacao + check `WHERE valor_devedor >= $1`.
-- **Observacoes:**
-> _Mesmo bug em fretes.js L98-103._
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-web/server/routes/estornos.js`
-- **Linha(s):** 179-185
-- **Problema:** Estorno de passagem atualiza `status_passagem` (L62), encomenda atualiza `status_pagamento` (L125), mas frete nao atualiza status nenhum.
-- **Impacto:** Frete continua marcado como PAGO apos receber estorno.
-- **Fix sugerido:** Adicionar UPDATE no status do frete apos estorno.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
-- **Linha(s):** 74-76
-- **Problema:** `totalReceitas` arredondado com `Math.round(x*100)/100`, mas `totalDespesas` nao. Saldo calculado sem arredondamento final — `666.6700000000001` no JSON.
-- **Impacto:** Valores financeiros com casas decimais espurias na UI.
-- **Fix sugerido:** Arredondar consistentemente ou usar biblioteca decimal (dinero.js).
+- **Linha(s):** 530-580 (/estornar), 506-528 (/validar-admin)
+- **Problema:** `POST /estornar { tipo, id, motivo, autorizador }` — campo `autorizador` vem do cliente. Nao existe amarracao (token, assinatura, sessao efemera) com a chamada previa a `/validar-admin`. Um atacante autenticado como operador comum pode chamar `/estornar` diretamente com `autorizador: "qualquer-nome"` pulando a validacao de senha.
+- **Impacto:** Qualquer operador pode estornar pagamentos sem aprovacao de gerente/admin.
+- **Fix sugerido:** (a) `/validar-admin` retorna um token assinado (HMAC + expiry curto) que `/estornar` exige e valida, ou (b) exigir `senha_admin` no body de `/estornar` e validar internamente, ou (c) manter um map in-memory com autorizacoes concedidas recentemente por operador.
+- **Observacoes:**
+> _Commit introdutor: 0b9407c (feat: estorno de pagamento com senha admin + auditoria). O nome sugeria seguranca mas a implementacao confia no cliente._
+
+---
+
+#### Issue #DB203 — PSP chamado dentro de @Transactional — cobranca orfanada se commit falhar
+- [ ] **Concluido**
+- **Severidade:** CRITICO
+- **Arquivo:** `naviera-api/.../service/PassagemService.java` L140-176, `EncomendaService.java` L176-206, `FreteService.java` L155-188
+- **Linha(s):** Ver acima
+- **Problema:** Os metodos `comprar()` / `pagar()` sao `@Transactional` e chamam `pspService.criar()` DENTRO da transacao. O PSP faz chamadas HTTP que JA gravam cobranca externa no Asaas. Se o commit local falhar depois (constraint violation, connection dead, timeout), a cobranca ja existe no Asaas mas nada no banco — cliente pagou algo que nao aparece. Alem disso, a transacao fica aberta durante 2-3 chamadas HTTP sincronas — conexoes presas no pool.
+- **Impacto:** Cobrancas Asaas sem contrapartida local (dinheiro do cliente recebido sem rastro), pool de conexoes saturado sob carga.
+- **Fix sugerido:** Extrair a chamada PSP para fora do `@Transactional`: (a) commit da passagem/encomenda/frete primeiro, (b) chamar PSP, (c) UPDATE com id_transacao_psp numa segunda tx. Adicionar idempotency-key no PSP para recuperacao.
+- **Observacoes:**
+> _Mesmo anti-pattern em 3 services — fix coordenado._
+
+---
+
+#### Issue #DB204 — AsaasGateway: webhook secret vazio aceita qualquer webhook
+- [ ] **Concluido**
+- **Severidade:** CRITICO
+- **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
+- **Linha(s):** 191-209
+- **Problema:** Se `props.getAsaas().getWebhookSecret()` for blank, a validacao retorna `true` (L194-196) com apenas um `log.warn`. Em producao qualquer um pode postar webhook forjado mudando status de cobrancas (marcar passagem como paga sem pagar).
+- **Impacto:** Acesso gratis a passagens/encomendas/fretes — atacante forja webhook `{status: "CONFIRMED", paymentId: X}` e sistema marca como paga.
+- **Fix sugerido:** Bloquear a inicializacao da aplicacao se webhook-secret vazio em profile producao (`@ConditionalOnProperty` ou validacao no `@PostConstruct`). Alternativa minima: retornar `false` sempre que secret vazio.
+- **Observacoes:**
+> _O comentario ja admite "NAO usar em prod" mas nao impede._
+
+---
+
+#### Issue #DB205 — AsaasGateway: HMAC compare com equalsIgnoreCase (timing attack)
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
+- **Linha(s):** 204
+- **Problema:** `hex.toString().equalsIgnoreCase(assinatura)` — comparacao nao-constant-time. Permite timing-attack remoto para descobrir a assinatura byte-a-byte e forjar webhooks validos.
+- **Impacto:** Mesmo com secret configurado, atacante pode iterativamente descobrir HMACs validos e forjar webhooks.
+- **Fix sugerido:** `MessageDigest.isEqual(hex.toString().getBytes(), assinatura.getBytes())` — constant-time.
 - **Observacoes:**
 > __
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB206 — PassagemService.comprar: numero_bilhete gerado por timestamp%1M (colisao + enumeracao)
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-api/.../service/PassagemService.java`
+- **Linha(s):** 105
+- **Problema:** `"APP-" + String.format("%06d", System.currentTimeMillis() % 1000000)` — em 1 segundo so ha 1000 valores distintos por milissegundo do ano (ciclico em 16min40s). Duas compras simultaneas colidem facilmente. Se constraint UNIQUE(numero_bilhete), 2a compra falha com SQLException. Se nao, bilhetes duplicados.
+- **Impacto:** Compra via app falha intermitentemente; suporte tera que investigar.
+- **Fix sugerido:** Usar a mesma estrategia do BFF — `pg_advisory_xact_lock(empresaId) + MAX(numero_bilhete)+1` ou sequence dedicada. Ou UUID.
+- **Observacoes:**
+> _Commit d071541 criou passagem via app com esse padrao. BFF passagens.js faz advisory lock; API ignora._
+
+---
+
+#### Issue #DB207 — AsaasGateway.obterOuCriarCustomer: cpfCnpj concatenado na URL sem encoding
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
+- **Linha(s):** 216
+- **Problema:** `get("/customers?cpfCnpj=" + req.cpfCnpjPagador())` sem URL-encoding. Se CPF/CNPJ vier com mascara (`123.456.789-00`) ou com espaco, parametros da URL se tornam ambiguos. Alem disso, string maliciosa (improvavel mas possivel via clientes_app nao validado) pode injetar parametros adicionais (`&apiKey=evil`).
+- **Impacto:** Customer nao encontrado quando tinha match; em caso patologico, request HTTP com parametros injetados.
+- **Fix sugerido:** `URLEncoder.encode(req.cpfCnpjPagador(), UTF_8)` ou usar `UriComponentsBuilder`. Alternativa: normalizar CPF/CNPJ (`replaceAll("\\D",""`)) antes do uso.
+- **Observacoes:**
+> _Toda a construcao de URL no AsaasGateway usa concat + string — revisar todas as `get()` e `post()`._
+
+---
+
+#### Issue #DB208 — AsaasGateway: RestTemplate sem timeout configurado
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
+- **Linha(s):** 44
+- **Problema:** `new RestTemplate()` sem `ClientHttpRequestFactory` configurado. Defaults sao sem timeout — request pode ficar pendurado indefinidamente se Asaas nao responder. Combinado com #DB203 (transacao aberta), pool de conexoes trava.
+- **Impacto:** API inteira trava se Asaas ficar lento (vista em incidentes publicos ~2x/ano).
+- **Fix sugerido:** `new RestTemplateBuilder().setConnectTimeout(Duration.ofSeconds(5)).setReadTimeout(Duration.ofSeconds(15)).build()`
+- **Observacoes:**
+> __
+
+---
+
+#### Issue #DB209 — AsaasGateway.criarCobranca: LocalDate.now() usa TZ do servidor (inconsistente com BR)
+- [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/financeiro.js`
-- **Linha(s):** 287
-- **Problema:** `new Date(data_primeira_vencimento)` sem validacao. String invalida gera `Invalid Date`, `toISOString()` lanca `RangeError` — 500 sem mensagem.
-- **Impacto:** Crash do servidor em input invalido.
-- **Fix sugerido:** Validar `!isNaN(new Date(x).getTime())` antes de usar.
+- **Arquivo:** `naviera-api/.../psp/AsaasGateway.java` L74, `PassagemService.java` L158, `EncomendaService.java` L190, `FreteService.java` L166
+- **Linha(s):** Ver acima
+- **Problema:** `LocalDate.now()` sem TZ usa o TZ default da JVM. Containers rodam em UTC; empresa esta em BR (UTC-3). Entre 21:00 e 24:00 local-BR, `LocalDate.now()` na JVM retorna o dia seguinte — boleto que deveria vencer "amanha" pode aparecer como "dois dias" na UI do cliente.
+- **Impacto:** Confusao na UI, boletos com vencimento inesperado para empresas BR.
+- **Fix sugerido:** `LocalDate.now(ZoneId.of("America/Sao_Paulo"))` ou parametrizar TZ da empresa.
 - **Observacoes:**
 > __
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
+### Super-admin / admin console
+
+#### Issue #DB210 — admin.js: isAdminSubdomain aceita qualquer host "admin.*"
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-web/server/routes/admin.js`
+- **Linha(s):** 14-19
+- **Problema:** `host.startsWith('admin.')` — qualquer host iniciado com `admin.` passa (ex.: `admin.atacante.com`). Se Nginx estiver mal configurado (sem strict SNI/host check) ou BFF exposto diretamente, atacante injeta Host header manipulado.
+- **Impacto:** Bypass do check de subdominio admin em deploys mal configurados.
+- **Fix sugerido:** `host === 'admin.naviera.com.br' || (process.env.NODE_ENV === 'development' && host === 'localhost')`. Ou validacao estrita com whitelist de dominios.
+- **Observacoes:**
+> _DS4-010 fixou parte do problema (NODE_ENV check), mas o prefix match permanece frouxo._
+
+---
+
+#### Issue #DB211 — auth.js: header x-tenant-slug=admin bypassa subdomain
+- [ ] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/auth.js`
-- **Linha(s):** 58
-- **Problema:** `empresa_id: user.empresa_id || 1` — usuario com empresa_id null ganha acesso a empresa 1.
-- **Impacto:** Acesso nao autorizado a dados da empresa 1.
-- **Fix sugerido:** `if (!user.empresa_id) return res.status(401)`.
+- **Linha(s):** 27
+- **Problema:** `isAdminApp = ... || req.headers['x-tenant-slug'] === 'admin'` — qualquer cliente pode setar esse header e pular o filtro por empresa_id do subdominio no login. Login acontece sem filtro de tenant, facilitando enumeracao de usuarios/credenciais cross-tenant (mesma senha testada em todos os tenants com uma requisicao).
+- **Impacto:** Facilita ataques de credential-stuffing entre tenants (acham admin de qualquer empresa em 1 request).
+- **Fix sugerido:** Aceitar `x-tenant-slug: admin` apenas se origin/host tambem for o subdominio admin autenticado. Ou remover esse header.
 - **Observacoes:**
 > __
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB212 — admin.js: codigoAtivacao 4 hex (65k possibilidades, sem rate limit)
+- [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/routes/viagens.js`
-- **Linha(s):** 166-169
-- **Problema:** `COMMIT` executado antes de verificar se viagem existia. Se nao existia, retorna 404 mas deletes de financeiro ja commitados.
-- **Impacto:** Dados financeiros potencialmente deletados sem necessidade.
-- **Fix sugerido:** Verificar rowCount antes do COMMIT.
+- **Arquivo:** `naviera-web/server/routes/admin.js`
+- **Linha(s):** 72
+- **Problema:** `'NAV-' + crypto.randomBytes(2).toString('hex').toUpperCase()` — apenas 2 bytes = 65536 possibilidades. Se combinado com endpoint `/public/ativar/:codigo` (Spring) sem rate limit (#DB148 anterior), enumeravel em segundos. Similar ao bug previo, mas re-introduzido aqui.
+- **Impacto:** Atacante enumera empresas ativadas/ativaveis e rouba codigo de ativacao antes do dono usar.
+- **Fix sugerido:** `crypto.randomBytes(6).toString('hex')` = 12 hex = ~10^14 possibilidades. Setup wizard ja aceita 12 chars (commit 4fb6141).
 - **Observacoes:**
-> __
+> _Wizard aceita ate 12 chars mas admin cria 4 — desperdicio._
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB213 — admin.js: PUT /empresas/:id permite mudar slug sem invalidar tokens/sessoes
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-web/server/routes/admin.js`
+- **Linha(s):** 119-142
+- **Problema:** UPDATE de `slug` e permitido sem nenhuma invalidacao. Tokens JWT em circulacao continuam validos, subdominio muda sem aviso, frontend fica apontando para slug antigo. Se slug antigo for reusado por outra empresa (admin mudou da empresa A → depois cadastra empresa B com slug antigo da A), JWTs antigos passam a "pertencer" a B.
+- **Impacto:** Token hijacking por reuso de slug; confusao operacional.
+- **Fix sugerido:** Incluir `empresa_id` (imutavel) no JWT e filtrar todas queries por ele (ja feito); bloquear reuso de slug previo; invalidar tokens da empresa afetada.
+- **Observacoes:**
+> _Tokens ja usam `empresa_id` e nao `slug` — o risco de hijacking e baixo mas o estado inconsistente preocupa._
+
+---
+
+### Gestao funcionarios (web) + holerite
+
+#### Issue #DB214 — cadastros.js getViagemAtivaCategoriaRH: fallback id=1 para viagem/categoria
+- [ ] **Concluido**
 - **Severidade:** ALTO
-- **Arquivo:** `naviera-web/server/helpers/criarFrete.js`
-- **Linha(s):** 22-39
-- **Problema:** Se sequence `seq_numero_frete` nao existir, fallback `MAX(numero_frete)+1` sem advisory lock. Race condition para numeros duplicados.
-- **Impacto:** Fretes com numero duplicado silencioso.
-- **Fix sugerido:** Advisory lock no fallback, ou garantir que sequence existe.
+- **Arquivo:** `naviera-web/server/routes/cadastros.js`
+- **Linha(s):** 572-581
+- **Problema:** `return { viagemId: vRes.rows.length > 0 ? vRes.rows[0].id_viagem : 1, categoriaId: cRes.rows.length > 0 ? cRes.rows[0].id : 1 }` — se empresa nao tem viagem ativa OU categoria contendo "FUNCIONARIO", usa `1` como fallback. ID 1 pode pertencer a outra empresa (FK `id_viagem` em `financeiro_saidas` referenciava viagem de outra empresa) ou inexistente (FK violation). Os INSERTs em /pagamento (L644) e /fechar-mes (L744) usam esses IDs.
+- **Impacto:** Lancamentos de folha atribuidos a viagem/categoria de OUTRA empresa (quebra isolamento + confusao contabil) ou INSERT falha com FK violation.
+- **Fix sugerido:** Retornar 400 explicitamente ("empresa sem viagem ativa / categoria RH") e exigir que o usuario configure antes.
+- **Observacoes:**
+> _Padrao repetido em duas rotas (/pagamento, /fechar-mes)._
+
+---
+
+#### Issue #DB215 — cadastros.js /fechar-mes: sem transacao envolvendo 3 operacoes
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-web/server/routes/cadastros.js`
+- **Linha(s):** 709-762
+- **Problema:** /fechar-mes executa 3 INSERTs/UPDATEs sem `BEGIN/COMMIT`: (1) eventos_rh INSS, (2) financeiro_saidas FECHAMENTO, (3) UPDATE data_inicio_calculo. Se (2) falhar apos (1), INSS lancado mas pagamento nao — ciclo subsequente re-lanca INSS. Se (3) falhar apos (2), pagamento feito mas data_inicio nao avancou — ciclo seguinte re-paga.
+- **Impacto:** Duplicacao de lancamentos em falhas parciais. Diferencas de folha sem rastro.
+- **Fix sugerido:** Envolver em `client.query('BEGIN')` / `COMMIT` / `ROLLBACK` com `pool.connect()`.
 - **Observacoes:**
 > __
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB216 — financeiro.js /validar-admin: bcrypt em loop sem rate limit
+- [ ] **Concluido**
+- **Severidade:** ALTO
+- **Arquivo:** `naviera-web/server/routes/financeiro.js`
+- **Linha(s):** 506-528
+- **Problema:** Itera todos admins/gerentes da empresa chamando `bcrypt.compare` — N bcrypts por request. Sem rate limit no endpoint, um atacante com token de operador pode submeter tentativas de senha ilimitadas. Timing tambem varia com a posicao do admin cuja senha foi acertada (enumera quem aceitou).
+- **Impacto:** Brute-force sobre senhas de gerentes/admins; CPU burn (bcrypt ~100ms × N).
+- **Fix sugerido:** (a) rate limit (5 tentativas/minuto por operador); (b) nao iterar todos — exigir que o operador selecione o admin pelo nome/id e comparar apenas uma senha; (c) log de tentativas falhas.
+- **Observacoes:**
+> __
+
+---
+
+#### Issue #DB217 — financeiro.js /estornar frete: SET status_frete = NULL
+- [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/helpers/criarFrete.js`
-- **Linha(s):** 43-47
-- **Problema:** `vDevedor = vCalculado - vPago` sem `Math.max(0, ...)`. Se `valor_pago > valor_calculado` (overpayment), devedor fica negativo no banco.
-- **Impacto:** Calculos de estorno distorcidos downstream.
-- **Fix sugerido:** `Math.max(0, vCalculado - vPago)`
+- **Arquivo:** `naviera-web/server/routes/financeiro.js`
+- **Linha(s):** 558
+- **Problema:** `UPDATE fretes SET ... status_frete = NULL` — se a coluna `status_frete` tiver `NOT NULL` no schema atualizado (ver migrations recentes), INSERT/UPDATE falha com 23502. Inconsistente com passagens (PENDENTE) e encomendas (PENDENTE).
+- **Impacto:** Estorno de frete pode falhar dependendo do schema. Se nao falhar, valor semantico do NULL e ambiguo.
+- **Fix sugerido:** `status_frete = 'PENDENTE'` (ou definir valor padrao `ABERTO`, alinhado aos outros tipos).
 - **Observacoes:**
 > __
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB218 — cadastros.js /funcionarios/:id/pagamento + /desconto: aceita valor zero e negativo
+- [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-web/server/helpers/geminiParser.js`
-- **Linha(s):** 13
-- **Problema:** `GEMINI_API_KEY || GOOGLE_CLOUD_VISION_API_KEY` — keys sao diferentes. Usar key errada pode resultar em cobranca inesperada.
-- **Impacto:** Cobranca na conta errada ou falha silenciosa.
-- **Fix sugerido:** Remover fallback, lancar erro se GEMINI_API_KEY ausente.
+- **Arquivo:** `naviera-web/server/routes/cadastros.js`
+- **Linha(s):** 636, 691
+- **Problema:** `if (!descricao || !valor)` rejeita apenas falsy. `parseFloat("-50")` = -50 e passa. Valor negativo lancado como pagamento aumenta saldo devedor; valor negativo em desconto reduz saldo devido. Usuario pode explorar ou errar.
+- **Impacto:** Inconsistencia na folha; abuso por usuario malicioso.
+- **Fix sugerido:** `if (!descricao || !valor || Number(valor) <= 0) return 400`.
 - **Observacoes:**
 > __
 
 ---
 
-### API Spring Boot
-
-#### Issue #DB138 — BilheteService.comprar: sem filtro empresa_id (3 queries)
-- [x] **Concluido** _(corrigido 2026-04-15 — empresa_id em viagem, tarifa, passageiro, INSERT, validar)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-api/.../service/BilheteService.java`
-- **Linha(s):** 45-89
-- **Problema:** Viagem, tarifa e passageiro buscados sem filtro empresa_id. INSERT da passagem nao inclui empresa_id.
-- **Impacto:** Cliente de empresa A compra bilhete em viagem de empresa B. Passagem criada sem tenant.
-- **Fix sugerido:** Adicionar `AND empresa_id = ?` em todas as queries + incluir empresa_id no INSERT.
+#### Issue #DB219 — cadastros.js /fechar-mes: transicao de mes via getUTCDate (TZ UTC, nao BR)
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-web/server/routes/cadastros.js`
+- **Linha(s):** 749-753
+- **Problema:** `if (hoje.getUTCDate() >= 28)` decide se avanca para mes+1 com TZ UTC. Em BR (UTC-3), isso diverge nos dias de transicao — fechar mes em 28/06 23:30 BR = 29/06 02:30 UTC → seria tratado como "dia 29 UTC" mas o operador esta no dia 28. Comportamento imprevisivel.
+- **Impacto:** Bugs sutis em fechamento no fim do mes.
+- **Fix sugerido:** Usar timezone BR explicitamente (biblioteca `date-fns-tz` ou ajuste manual `-3h`).
 - **Observacoes:**
-> _Bug mais critico da API — quebra isolamento multi-tenant completamente._
+> __
 
 ---
 
-#### Issue #DB139 — PassagemService: cross-tenant em confirmarEmbarque/confirmarPagamento
-- [x] **Concluido** _(corrigido 2026-04-15 — empresa_id em todas queries + controller)_
-- **Severidade:** CRITICO
+### Modelos / Integridade de dados
+
+#### Issue #DB220 — UI FinanceiroCNPJ: saldo calculado usa valorNominal em vez de valorDevedor
+- [ ] **Concluido**
+- **Severidade:** MEDIO
+- **Arquivo:** `naviera-app/src/screens/FinanceiroCNPJ.jsx`
+- **Linha(s):** 63
+- **Problema:** `saldo = Math.max(0, valorNominal - valorPago)` — DTO `FreteDTO` inclui `valorDevedor` (valor_devedor do banco) que ja considera descontos. UI ignora e recalcula a partir de valorNominal. Se tem desconto previo, saldo exibido > saldo real. Cliente paga valor maior que o devedor no PIX.
+- **Impacto:** Cliente paga a mais; servidor registra e aplica desconto 10%, ficando com overpayment; precisa estorno.
+- **Fix sugerido:** `saldo = Number(pagando.valorDevedor) || Math.max(0, ...)` — preferir o campo do servidor.
+- **Observacoes:**
+> __
+
+---
+
+#### Issue #DB221 — PassagemService.comprar: jdbc.queryForObject pode retornar null (auto-unbox NPE)
+- [ ] **Concluido**
+- **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/.../service/PassagemService.java`
-- **Linha(s):** 54-173
-- **Problema:** `comprar()`, `confirmarEmbarque()`, `confirmarPagamento()`, `consultarParaEmbarque()` — nenhum filtra por empresa_id. Operador de empresa A pode confirmar embarque de passagem de empresa B.
-- **Impacto:** Operacoes cross-tenant de escrita.
-- **Fix sugerido:** Adicionar empresa_id em todas as queries.
+- **Linha(s):** 98-99, 118-126
+- **Problema:** `jdbc.queryForObject(..., Long.class, ...)` retorna `Long` ou null. Em L98-99, apos INSERT passageiro, busca por id — se a insercao tiver algum caso raro de commit e depois sumir (unlikely), queryForObject retorna null e auto-unbox para primitive falha. L118 `Long idPassagem = queryForObject(...)` com INSERT RETURNING: se RETURNING nao retornar linha (impossivel mas JDBC) → null → downstream NPE.
+- **Impacto:** 500 sem mensagem util em caso raro.
+- **Fix sugerido:** Usar `Optional.ofNullable(...)` ou validar null com throw.
 - **Observacoes:**
 > __
 
 ---
 
-#### Issue #DB140 — GpsService: registra posicao em embarcacao de outro tenant
-- [x] **Concluido** _(corrigido 2026-04-15 — validacao de ownership antes de INSERT)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-api/.../service/GpsService.java`
-- **Linha(s):** 18-24
-- **Problema:** Aceita `id_embarcacao` do body sem verificar que pertence a empresa do operador.
-- **Impacto:** Operador de empresa A pode postar GPS falso para embarcacao de empresa B.
-- **Fix sugerido:** Verificar `embarcacoes WHERE id = ? AND empresa_id = ?` antes de inserir.
-- **Observacoes:**
-> __
-
----
-
-#### Issue #DB141 — API: race condition MAX+1 em bilhete/frete/encomenda (3 services)
-- [x] **Concluido** _(corrigido 2026-04-15 — pg_advisory_xact_lock nos fallbacks)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-api/.../service/OpPassagemWriteService.java` L28, `OpFreteWriteService.java` L29, `OpEncomendaWriteService.java` L28, `BilheteService.java` L83
-- **Linha(s):** Ver acima
-- **Problema:** Fallback `MAX(...)+1` sem advisory lock quando sequence nao existe.
-- **Impacto:** Numeros duplicados em ambiente concorrente.
-- **Fix sugerido:** Advisory lock ou garantir sequences.
-- **Observacoes:**
-> __
-
----
-
-#### Issue #DB142 — OnboardingService/AdminService: NPE em keyHolder.getKey()
-- [x] **Concluido** _(corrigido 2026-04-15 — null check antes de longValue)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-api/.../service/OnboardingService.java` L122, `AdminService.java` L85
-- **Linha(s):** Ver acima
-- **Problema:** `keyHolder.getKey().longValue()` — getKey() retorna null se INSERT nao retornar key gerada. NPE apos INSERT commitado — row orfanada.
-- **Impacto:** Empresa/usuario criados mas ID nao capturado — operacao parcialmente concluida.
-- **Fix sugerido:** `if (keyHolder.getKey() == null) throw new RuntimeException(...)`
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-api/.../service/TarifaService.java` L13, `EmbarcacaoService.java` L13
-- **Linha(s):** Ver acima
-- **Problema:** `listarPorRota()` e `listarComStatus()` retornam dados de todas as empresas.
-- **Impacto:** Qualquer usuario autenticado ve tarifas e embarcacoes de todas as empresas.
-- **Fix sugerido:** Adicionar `WHERE empresa_id = ?` extraido do JWT.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-api/.../service/EncomendaService.java` L39, `FreteService.java` L36
-- **Linha(s):** Ver acima
-- **Problema:** `buscarPorCliente()` e `buscarPorRemetente()` — LIKE sem filtro empresa_id. Retornam dados de todas as empresas.
-- **Impacto:** Vazamento de dados entre empresas.
-- **Fix sugerido:** Adicionar `AND empresa_id = ?`.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-api/.../service/AuthOperadorService.java`
-- **Linha(s):** 30-33
-- **Problema:** Quando `empresa_id` e null, `findByLogin()` busca por nome/email sem filtrar empresa. Credencial de empresa A pode autenticar em empresa B se login for igual.
-- **Impacto:** Acesso cross-tenant nao autorizado.
-- **Fix sugerido:** Rejeitar login se empresa_id for null, ou sempre filtrar.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-api/.../controller/BilheteController.java`
-- **Linha(s):** 54-65
-- **Problema:** POST /bilhetes/validar acessivel por qualquer autenticado (inclusive cliente CPF). Sem verificacao de empresa_id no bilhete.
-- **Impacto:** Cliente CPF pode marcar bilhete de outro como EMBARCADO.
-- **Fix sugerido:** Restringir a ROLE_OPERADOR + filtrar empresa_id.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-api/.../service/OpViagemWriteService.java`
-- **Linha(s):** 21-23
-- **Problema:** `((Number) dados.get("id_viagem")).longValue()` — se campo ausente, get retorna null, cast NPE.
-- **Impacto:** 500 sem mensagem descritiva em input invalido.
-- **Fix sugerido:** Validar campos obrigatorios antes do cast.
-- **Observacoes:**
-> _Mesmo padrao em OpPassagemWriteService L34-35._
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
+#### Issue #DB222 — AsaasGateway: descontoAplicado pode ser null (subtract NPE)
+- [ ] **Concluido**
 - **Severidade:** MEDIO
-- **Arquivo:** `naviera-api/.../service/OnboardingService.java`
-- **Linha(s):** 151-195
-- **Problema:** Codigo `NAV-XXXX` (4 hex = 65535 possibilidades). Endpoint `/public/ativar/{codigo}` sem rate limiting. Retorna PII (nome, email, slug).
-- **Impacto:** Enumeracao de todas as empresas cadastradas em < 1 minuto.
-- **Fix sugerido:** Rate limiting no endpoint + aumentar entropia do codigo (8+ chars).
+- **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
+- **Linha(s):** 65-66
+- **Problema:** `req.valorBruto().subtract(req.descontoAplicado() != null ? req.descontoAplicado() : BigDecimal.ZERO)` — OK aqui. MAS `valorBruto()` nao tem null check. Se request montada incorretamente (null valorBruto), NPE. Contract do record CobrancaRequest nao tem `@NotNull`.
+- **Impacto:** 500 generico em caso de construcao errada.
+- **Fix sugerido:** Validar inputs no inicio do metodo: `Objects.requireNonNull(req.valorBruto(), "valorBruto obrigatorio")`.
+- **Observacoes:**
+> _Bug latente — todos call sites atuais passam valorBruto. Mas defesa em profundidade vale._
+
+---
+
+### SyncClient / Desktop
+
+#### Issue #DB223 — SyncClient.buscarRegistrosPendentes: tabela concatenada sem whitelist
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `src/gui/util/SyncClient.java`
+- **Linha(s):** 516
+- **Problema:** `"SELECT * FROM " + tabela + " WHERE ..."` — similar ao bug corrigido em ConfigurarSincronizacaoController.contarPendentes (commit 06eb610). Hoje o unico caller itera `TABELAS_SYNC` hardcoded (seguro), mas o metodo publico `sincronizarTabela(String)` aceita qualquer string, e a defesa em profundidade ainda nao foi aplicada.
+- **Impacto:** Injection latente se outro codigo chamar `sincronizarTabela` com input externo.
+- **Fix sugerido:** Usar `TABELAS_SYNC_PERMITIDAS` (mesmo Set do fix anterior) em `buscarRegistrosPendentes` e `marcarComoSincronizados`.
+- **Observacoes:**
+> _Consistencia com fix de 06eb610 — aplicar em todos os pontos de string-concat com nome de tabela._
+
+---
+
+### UI / App Mobile
+
+#### Issue #DB224 — Boletos.jsx / Financeiro.jsx: useEffect sem AbortController (race em filtros rapidos)
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `naviera-web/src/pages/Boletos.jsx` L13, `naviera-web/src/pages/Financeiro.jsx` (analogo)
+- **Linha(s):** Boletos.jsx:13
+- **Problema:** `useEffect(() => { api.get(...).then(setData) }, [deps])` — se usuario mudar filtro rapidamente, varios fetches sobrepostos; o ultimo a responder "ganha" mesmo que nao seja o mais recente requisitado.
+- **Impacto:** UI mostra dados stale intermitentemente.
+- **Fix sugerido:** `AbortController` + cleanup em useEffect.
 - **Observacoes:**
 > __
 
 ---
 
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-api/.../config/GlobalExceptionHandler.java`
-- **Linha(s):** 29
-- **Problema:** Stack trace completo em System.err. Vaza nomes de classes, queries SQL, estrutura de tabelas.
-- **Impacto:** Information disclosure em logs.
-- **Fix sugerido:** `log.error("...", e)` com logger.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-api/.../controller/PerfilController.java`
-- **Linha(s):** 71-72
-- **Problema:** Extensao extraida de `getOriginalFilename()` (user-controlled). Pode salvar como `.php` ou `.jsp`. Se diretorio de uploads servido diretamente, RCE possivel.
-- **Impacto:** Potencial execucao remota de codigo.
-- **Fix sugerido:** Whitelist de extensoes permitidas (`.jpg`, `.png`, `.webp`).
-- **Observacoes:**
-> __
-
----
-
-### naviera-ocr
-
-#### Issue #DB151 — OCR: JWT exposto como query param na URL da foto
-- [x] **Concluido** _(corrigido 2026-04-15 — fetchFoto com Authorization header)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-ocr/src/api.js`
-- **Linha(s):** 72-74
-- **Problema:** `?token=${token}` na URL. Token exposto em logs Nginx, historico do browser, header Referer.
-- **Impacto:** Token JWT vazado permite acesso total a conta do operador.
-- **Fix sugerido:** Usar fetch + createObjectURL ou cookie httpOnly.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-ocr/src/screens/CapturaScreen.jsx`
-- **Linha(s):** 40
-- **Problema:** `onOfflineAdd(blob, viagemId)` — assinatura espera 3 params (blob, viagemId, empresaId), mas so 2 passados. empresa_id fica undefined.
-- **Impacto:** Upload offline vai sem empresa_id — lancamento no tenant errado.
-- **Fix sugerido:** `onOfflineAdd(blob, viagemId, usuario.empresa_id)`
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-ocr/src/screens/RevisaoScreen.jsx`
-- **Linha(s):** 39-46
-- **Problema:** `setItens(d.itens || [])` — se IA retornar lista vazia, itens editados manualmente pelo operador sao perdidos sem confirmacao.
-- **Impacto:** Perda de trabalho do operador.
-- **Fix sugerido:** Confirmar com o usuario antes de sobrescrever: "A IA retornou X itens. Deseja substituir seus Y itens?"
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-ocr/src/components/CameraCapture.jsx`
-- **Linha(s):** 5-28
-- **Problema:** Sem `img.onerror`. Se arquivo corrompido, Promise fica pendente para sempre — UI trava.
-- **Impacto:** Tela de captura trava sem feedback.
-- **Fix sugerido:** Adicionar `img.onerror = () => reject(new Error("Imagem invalida"))`.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-ocr/src/hooks/useOfflineQueue.js`
-- **Linha(s):** 14-50
-- **Problema:** `useEffect` que registra evento 'online' nao tem `syncQueue` nas deps — captura versao stale da funcao. Flag `syncing` pode ser sempre false na closure.
-- **Impacto:** Multiplas sincronizacoes simultaneas ao voltar online.
-- **Fix sugerido:** Usar ref para syncing flag, ou adicionar syncQueue as deps do useEffect.
-- **Observacoes:**
-> __
-
----
-
-### naviera-app
-
-#### Issue #DB156 — App: WebSocket subscreve topico errado (usuario.id != empresa_id)
-- [x] **Concluido** _(corrigido 2026-04-15 — empresaId=null, app mobile nao subscreve tenant notifications)_
-- **Severidade:** CRITICO
-- **Arquivo:** `naviera-app/src/App.jsx`
-- **Linha(s):** 90-92
-- **Problema:** `empresaId: usuario?.id` usa ID do usuario cliente, nao empresa_id do tenant. Subscreve topico `/topic/empresa/{userId}/notifications` — nunca recebe notificacoes reais.
-- **Impacto:** Push notifications WebSocket nunca funcionam no app mobile.
-- **Fix sugerido:** Usar `usuario?.empresa_id` (requer que API retorne empresa_id no payload de login).
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-app/src/screens/BilheteScreen.jsx`
-- **Linha(s):** 14-19
-- **Problema:** UI diz "HMAC-SHA256 Anti-clone" mas usa hash djb2 trivial. Qualquer pessoa com numero_bilhete + relogio gera mesmo codigo.
-- **Impacto:** Falsa sensacao de seguranca — bilhetes falsificaveis.
-- **Fix sugerido:** Implementar HMAC-SHA256 real com secret do servidor, ou remover label enganosa.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
-- **Linha(s):** 82
-- **Problema:** `total = transporte + alimentacao - desconto` sem `Math.max(0, ...)`. Desconto maior que soma = valor negativo exibido ao usuario.
-- **Impacto:** Compra enviada ao servidor com valor negativo.
-- **Fix sugerido:** `Math.max(0, total)`.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** ALTO
-- **Arquivo:** Multiplas screens (AmigosCPF, PerfilScreen, PassagensCPF, TelaCadastro)
-- **Linha(s):** Multiplas
-- **Problema:** Chamadas `fetch()` diretas (fora de `useApi`) nao verificam 401/403. Token expirado = falha silenciosa sem logout.
-- **Impacto:** Usuario ve dados stale ou vazio sem saber que precisa relogar.
-- **Fix sugerido:** Centralizar fetch em useApi ou adicionar interceptor de 401.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-app/src/App.jsx`
-- **Linha(s):** 64-79
-- **Problema:** `useRef(false)` nao reseta quando usuario faz logout+login com outra conta. Token FCM do novo usuario nunca registrado.
-- **Impacto:** Novo usuario nao recebe push notifications.
-- **Fix sugerido:** Resetar ref no logout: `pushTokenEnviado.current = false`.
-- **Observacoes:**
-> __
-
----
-
-- [x] **Concluido** _(corrigido 2026-04-15)_
-- **Severidade:** MEDIO
-- **Arquivo:** `naviera-app/src/screens/HomeCNPJ.jsx`
-- **Linha(s):** 37
-- **Problema:** `fretes?.map(...) || fallback` — array vazio `[]` e truthy, renderiza secao vazia sem mensagem.
-- **Impacto:** UI confusa — secao "Fretes recentes" vazia sem explicacao.
-- **Fix sugerido:** `fretes?.length > 0 ? fretes.map(...) : <fallback>`.
+#### Issue #DB225 — VersaoChecker: fechamento forcado mesmo quando browse() falha em obrigatoria
+- [ ] **Concluido**
+- **Severidade:** BAIXO
+- **Arquivo:** `src/gui/util/VersaoChecker.java`
+- **Linha(s):** 235-244
+- **Problema:** Se `abrirLinkDownload` falhar (maquina sem default browser), a excecao e engolida e o codigo prossegue para `System.exit(0)`. Usuario fica sem forma de baixar E sem app aberto.
+- **Impacto:** Desktop fica inoperante sem feedback util.
+- **Fix sugerido:** Detectar falha no browse e exibir mensagem com URL textual antes de fechar.
 - **Observacoes:**
 > __
 
@@ -855,185 +411,108 @@
 
 | Area | Arquivo | Analisado | Issues |
 |------|---------|-----------|--------|
-| DAO | ViagemDAO.java | Sim | #DB101, #DB102 |
-| DAO | FreteDAO.java | Sim | #DB108 |
-| DAO | CaixaDAO.java | Sim | LIMPO |
-| DAO | UsuarioDAO.java | Sim | #DB104, #DB105, #DB106 |
-| DAO | EmpresaDAO.java | Sim | #DB107 |
-| DAO | ClienteEncomendaDAO.java | Sim | #DB103 |
-| DAO | ItemFreteDAO.java | Sim | LIMPO |
-| DAO | BalancoViagemDAO.java | Sim | (issues menores, subsumed) |
-| DAO | DAOUtils.java | Sim | LIMPO |
-| DAO | TenantContext.java | Sim | #DB113 |
-| DAO | PassagemDAO.java | Sim | Fixes anteriores verificados |
-| DAO | EncomendaDAO.java | Sim | Fixes anteriores verificados |
-| DAO | AgendaDAO.java | Sim | Fixes anteriores verificados |
-| DAO | AuxiliaresDAO.java | Sim | Fixes anteriores verificados |
-| DAO | ReciboQuitacaoPassageiroDAO.java | Sim | Fixes anteriores verificados |
-| DAO | ReciboAvulsoDAO.java | Sim | Fixes anteriores verificados |
-| DAO | TipoPassageiroDAO.java | Sim | Fixes anteriores verificados |
-| DAO | ItemEncomendaPadraoDAO.java | Sim | Fixes anteriores verificados |
-| DAO | DespesaDAO.java | Sim | Fixes anteriores verificados |
-| DAO | TarifaDAO.java | Sim | Fixes anteriores verificados |
-| DAO | PassageiroDAO.java | Sim | Fixes anteriores verificados |
-| DAO | FuncionarioDAO.java | Sim | Parcialmente (double) |
-| DAO | ConexaoBD.java | Sim | Parcial (#001, #002) |
-| Controller | VenderPassagemController.java | Sim | #DB114, #DB116 |
-| Controller | CadastroFreteController.java | Sim | #DB114 (3 locais) |
-| Controller | InserirEncomendaController.java | Sim | #DB114 (2 locais) |
-| Controller | TelaPrincipalController.java | Sim | #DB117 |
-| Controller | BalancoViagemController.java | Sim | #DB114 (2 locais) |
-| Controller | FinanceiroEncomendasController.java | Sim | LIMPO |
-| Controller | FinanceiroEntradaController.java | Sim | #DB114 |
-| Controller | FinanceiroSaidaController.java | Sim | #DB114 (5 locais) |
-| Controller | FinanceiroFretesController.java | Sim | Fixes anteriores verificados |
-| Controller | FinanceiroPassagensController.java | Sim | Fixes anteriores verificados |
-| Controller | GestaoFuncionariosController.java | Sim | Parcial (double) |
-| Controller | EstornoPagamentoController.java | Sim | Parcial (#066) |
-| Controller | ExtratoPassageiroController.java | Sim | Fixes anteriores verificados |
-| Controller | RelatorioFretesController.java | Sim | #DB114 (4 locais) |
-| Controller | RelatorioEncomendaGeralController.java | Sim | #DB114 (2 locais) |
-| Controller | BaixaPagamentoController.java | Sim | #DB115 |
-| Controller | QuitarDividaEncomendaTotalController.java | Sim | #DB115 |
-| Controller | HistoricoEstornosController.java | Sim | LIMPO |
-| Controller | HistoricoEstornosPassagensController.java | Sim | LIMPO |
-| Controller | ConfigurarSincronizacaoController.java | Sim | LIMPO |
-| Controller | AuditoriaExclusoesSaida.java | Sim | #DB114 (2 locais) |
-| Controller | GerarReciboAvulsoController.java | Sim | #DB114 |
-| Controller | ExtratoClienteEncomendaController.java | Sim | LIMPO |
-| Controller | TabelaPrecoFreteController.java | Sim | #DB114 |
-| Util | SyncClient.java | Sim | #DB109-#DB112, parciais |
-| Util | SessaoUsuario.java | Sim | Fixes anteriores verificados |
-| Model | Funcionario.java | Sim | #DB118 |
-| Model | PagamentoHistorico.java | Sim | #DB119 |
-| Model | Viagem.java | Sim | #DB120 |
-| Model | OpcaoViagem.java | Sim | #DB121 |
-| Model | TipoPassageiro.java | Sim | #DB122 |
-| Model | ItemEncomendaPadrao.java | Sim | #DB123 |
-| Model | EncomendaItem.java | Sim | #DB123 |
-| Model | EncomendaFinanceiro.java | Sim | #DB124 |
-| Model | FreteFinanceiro.java | Sim | #DB124 |
-| Model | Demais models (22) | Sim | LIMPOS |
-| BFF | routes/passagens.js | Sim | #DB127, #DB129 |
-| BFF | routes/encomendas.js | Sim | #DB128 |
-| BFF | routes/fretes.js | Sim | #DB129 (overpay) |
-| BFF | routes/financeiro.js | Sim | #DB131, #DB132 |
-| BFF | routes/estornos.js | Sim | #DB130 |
-| BFF | routes/viagens.js | Sim | #DB134 |
-| BFF | routes/auth.js | Sim | #DB133 |
-| BFF | routes/ocr.js | Sim | #DB125, #DB126 |
-| BFF | routes/admin.js | Sim | Menor |
-| BFF | helpers/criarFrete.js | Sim | #DB135, #DB136 |
-| BFF | helpers/geminiParser.js | Sim | #DB137 |
-| API | BilheteService.java | Sim | #DB138 |
-| API | PassagemService.java | Sim | #DB139 |
-| API | GpsService.java | Sim | #DB140 |
-| API | Op*WriteService.java | Sim | #DB141 |
-| API | OnboardingService.java | Sim | #DB142, #DB148 |
-| API | AdminService.java | Sim | #DB142 |
-| API | TarifaService.java | Sim | #DB143 |
-| API | EmbarcacaoService.java | Sim | #DB143 |
-| API | EncomendaService.java | Sim | #DB144 |
-| API | FreteService.java | Sim | #DB144 |
-| API | AuthOperadorService.java | Sim | #DB145 |
-| API | BilheteController.java | Sim | #DB146 |
-| API | OpViagemWriteService.java | Sim | #DB147 |
-| API | GlobalExceptionHandler.java | Sim | #DB149 |
-| API | PerfilController.java | Sim | #DB150 |
-| OCR | api.js | Sim | #DB151 |
-| OCR | CapturaScreen.jsx | Sim | #DB152 |
-| OCR | RevisaoScreen.jsx | Sim | #DB153 |
-| OCR | CameraCapture.jsx | Sim | #DB154 |
-| OCR | useOfflineQueue.js | Sim | #DB155 |
-| APP | App.jsx | Sim | #DB156, #DB160 |
-| APP | BilheteScreen.jsx | Sim | #DB157 |
-| APP | PassagensCPF.jsx | Sim | #DB158 |
-| APP | AmigosCPF/PerfilScreen | Sim | #DB159 |
-| APP | HomeCNPJ.jsx | Sim | #DB161 |
+| PSP | AsaasGateway.java | Sim | #DB204, #DB205, #DB207, #DB208, #DB209, #DB222 |
+| PSP | PspCobrancaService.java | Sim | (subsumed em #DB203) |
+| PSP | PspController.java | Sim | LIMPO |
+| PSP | AdminPspController.java | Sim | LIMPO |
+| PSP | EmpresaPspService.java | Sim | LIMPO (queryForList ok) |
+| PSP | PspCobranca.java (model) | Sim | LIMPO |
+| PSP | CobrancaRequest/SubcontaRequest/OnboardingRequest | Sim | LIMPO |
+| PSP | AsaasProperties.java | Sim | LIMPO |
+| API | PassagemService.java | Sim | #DB203, #DB206, #DB221 |
+| API | EncomendaService.java | Sim | #DB201, #DB203 |
+| API | FreteService.java | Sim | #DB201, #DB203 |
+| API | JwtFilter.java / JwtUtil.java | Sim | (interacao #DB200) |
+| API | SecurityConfig.java | Sim | LIMPO |
+| API | UsuarioRepository.java | Sim | #DB145 previamente resolvido — verificado |
+| BFF | admin.js | Sim | #DB200, #DB210, #DB212, #DB213 |
+| BFF | auth.js | Sim | #DB211 |
+| BFF | cadastros.js | Sim | #DB214, #DB215, #DB218, #DB219 |
+| BFF | financeiro.js | Sim | #DB202, #DB216, #DB217 |
+| BFF | fretes.js (edicoes recentes) | Sim | LIMPO (novas rotas ok) |
+| BFF | encomendas.js | Sim | Verificado fixes anteriores |
+| BFF | passagens.js | Sim | Verificado fixes anteriores |
+| BFF | ocr.js | Sim | Verificado fixes anteriores |
+| BFF | helpers/criarFrete.js | Sim | Verificado fixes anteriores |
+| BFF | middleware/auth.js | Sim | #DB200 (generateToken sem tipo) |
+| UI Web | AdminEmpresas.jsx | Sim | LIMPO (interacao com #DB200) |
+| UI Web | Boletos.jsx / Financeiro.jsx | Sim | #DB224 |
+| UI Web | GestaoFuncionarios.jsx | Sim | LIMPO (logica ok, soft points em cadastros.js) |
+| UI Web | FinanceiroBaixa.jsx | Sim | LIMPO |
+| UI Web | FinanceiroSaida.jsx | Sim | LIMPO |
+| UI Web | ListaFretes.jsx | Sim | LIMPO (redesign visual) |
+| UI Web | CadastroRecebimento.jsx | Sim | LIMPO |
+| UI Web | RelatorioFretes.jsx | Sim | LIMPO |
+| UI Web | Fretes.jsx (modal novo cliente) | Sim | LIMPO |
+| UI Web | api.js (delete com body) | Sim | LIMPO |
+| App Mobile | FinanceiroCNPJ.jsx | Sim | #DB220 |
+| App Mobile | EncomendaCPF.jsx | Sim | LIMPO |
+| App Mobile | PassagensCPF.jsx | Sim | LIMPO |
+| App Mobile | PagamentoArtefato.jsx | Sim | LIMPO |
+| Desktop | VersaoChecker.java | Sim | #DB225 |
+| Desktop | Launch.java / TelaPrincipalController.java | Sim | LIMPO |
+| Desktop | SetupWizardController.java | Sim | LIMPO (senhas candidatas + 12 chars ok) |
+| Desktop | ConexaoBD.java (wizard save) | Sim | LIMPO |
+| Desktop | ConfigurarSincronizacaoController.java | Sim | Fix de 06eb610 OK |
+| Desktop | RelatorioEncomendaGeralController.java | Sim | Fix de 06eb610 OK |
+| Desktop | SyncClient.java | Sim | #DB223 (inconsistencia) |
+| Desktop | UsuarioDAO.java (schema legado) | Sim | LIMPO (#DB104 resolvido verificado) |
+| Desktop | PassageiroDAO.java (typo fix) | Sim | LIMPO |
+| Desktop | ClienteFreteDAO.java (novo) | Sim | LIMPO |
+| Desktop | EncomendaDAO.java / EncomendaItemDAO.java | Sim | LIMPO (uppercase + advisory lock) |
+| Desktop | CadastroClienteController.java (novo) | Sim | LIMPO |
+| Desktop | GestaoFuncionariosController.java | Sim | #DB014/015 persiste (double) |
+| SQL | 028_pagamentos_app.sql, 029, 030_psp_cobrancas.sql | Sim | LIMPO (colunas novas + indexes corretos) |
 
 ---
 
 ## PLANO DE CORRECAO
 
-### Urgente (CRITICO — 14 issues) — **TODAS CORRIGIDAS 2026-04-15**
-- [x] #DB103 — ClienteEncomendaDAO ON CONFLICT cross-tenant — **CORRIGIDO**
-- [x] #DB115 — PreparedStatement anonimo leak (2 controllers) — **CORRIGIDO**
-- [x] #DB125 — OCR ia-review sem empresa_id (cross-tenant write) — **CORRIGIDO**
-- [x] #DB126 — OCR path traversal na rota foto — **CORRIGIDO**
-- [x] #DB127 — Race condition numero_bilhete — **CORRIGIDO** (pg_advisory_xact_lock)
-- [x] #DB128 — Race condition numero_encomenda — **CORRIGIDO** (pg_advisory_xact_lock)
-- [x] #DB138 — BilheteService sem empresa_id (3 queries) — **CORRIGIDO**
-- [x] #DB139 — PassagemService cross-tenant — **CORRIGIDO** (4 metodos)
-- [x] #DB140 — GpsService registra em embarcacao de outro tenant — **CORRIGIDO**
-- [x] #DB141 — Race condition MAX+1 na API (4 services) — **CORRIGIDO** (advisory locks)
-- [x] #DB142 — NPE keyHolder.getKey() — **CORRIGIDO**
-- [x] #DB151 — JWT exposto na URL da foto OCR — **CORRIGIDO** (fetchFoto + Authorization header)
-- [x] #DB156 — WebSocket topico errado no app — **CORRIGIDO** (empresaId=null)
+### Urgente (CRITICO — 5 issues)
+- [ ] #DB200 — BFF proxy admin PSP JWT sem tipo — **Esforco:** 15min (add `tipo: 'OPERADOR'` em generateToken)
+- [ ] #DB201 — Ownership fallback por nome vazio em Encomenda/Frete — **Esforco:** 30min
+- [ ] #DB202 — Estorno sem validacao real do admin — **Esforco:** 2h (token assinado curto)
+- [ ] #DB203 — PSP chamado dentro de @Transactional — **Esforco:** 3h (refatorar 3 services)
+- [ ] #DB204 — Webhook secret vazio aceita webhook — **Esforco:** 15min
 - **Notas:**
-> _Priorizar #DB125+#DB126 (encadeados: cross-tenant write + path traversal). Depois #DB138+#DB139 (isolamento multi-tenant na API). Race conditions (#DB127/#DB128/#DB141) sao criticos em producao com multiplos operadores._
+> _#DB200 e #DB202 sao de efeito imediato em producao. #DB201 pode ser explorado por qualquer cliente com acesso ao app. #DB204 depende de atacante saber URL do webhook (mas e trivialmente descobrivel em Asaas)._
 
-### Importante (ALTO — 28 issues)
-- [x] #DB101 — — **CORRIGIDO**
-- [x] #DB102 — — **CORRIGIDO**
-- [x] #DB104 — — **CORRIGIDO**
-- [x] #DB108 — — **CORRIGIDO**
-- [x] #DB109 — — **CORRIGIDO**
-- [x] #DB110 — — **CORRIGIDO**
-- [x] #DB111 — — **CORRIGIDO**
-- [x] #DB113 — — **CORRIGIDO**
-- [x] #DB114 — — **CORRIGIDO**
-- [x] #DB116 — — **CORRIGIDO**
-- [x] #DB117 — — **CORRIGIDO**
-- [x] #DB118 — — **CORRIGIDO**
-- [x] #DB119 — — **CORRIGIDO**
-- [x] #DB120 — — **CORRIGIDO**
-- [x] #DB121 — — **CORRIGIDO**
-- [x] #DB122 — — **CORRIGIDO**
-- [x] #DB123 — — **CORRIGIDO**
-- [x] #DB129 — — **CORRIGIDO**
-- [x] #DB130 — — **CORRIGIDO**
-- [x] #DB131 — — **CORRIGIDO**
-- [x] #DB135 — — **CORRIGIDO**
-- [x] #DB143 — — **CORRIGIDO**
-- [x] #DB144 — — **CORRIGIDO**
-- [x] #DB145 — — **CORRIGIDO**
-- [x] #DB146 — — **CORRIGIDO**
-- [x] #DB147 — — **CORRIGIDO**
-- [x] #DB152 — — **CORRIGIDO**
-- [x] #DB153 — — **CORRIGIDO**
-- [x] #DB155 — — **CORRIGIDO**
-- [x] #DB157 — — **CORRIGIDO**
-- [x] #DB158 — — **CORRIGIDO**
-- [x] #DB159 — — **CORRIGIDO**
+### Importante (ALTO — 6 issues)
+- [ ] #DB205 — HMAC nao timing-safe — **Esforco:** 10min
+- [ ] #DB206 — numero_bilhete timestamp%1M — **Esforco:** 30min (usar advisory lock)
+- [ ] #DB207 — cpfCnpj sem URL encoding — **Esforco:** 15min
+- [ ] #DB208 — RestTemplate sem timeout — **Esforco:** 15min
+- [ ] #DB210 — isAdminSubdomain prefix match frouxo — **Esforco:** 15min
+- [ ] #DB214 — Fallback viagemId/categoriaId=1 na folha — **Esforco:** 30min
+- [ ] #DB215 — /fechar-mes sem transacao — **Esforco:** 30min
+- [ ] #DB216 — /validar-admin bcrypt loop sem rate limit — **Esforco:** 1h
 
-### Importante (MEDIO — 15 issues)
-- [x] #DB105 — — **CORRIGIDO**
-- [x] #DB107 — — **CORRIGIDO**
-- [x] #DB112 — — **CORRIGIDO**
-- [x] #DB124 — — **CORRIGIDO**
-- [x] #DB132 — — **CORRIGIDO**
-- [x] #DB133 — — **CORRIGIDO**
-- [x] #DB134 — — **CORRIGIDO**
-- [x] #DB136 — — **CORRIGIDO**
-- [x] #DB137 — — **CORRIGIDO**
-- [x] #DB148 — — **CORRIGIDO**
-- [x] #DB149 — — **CORRIGIDO**
-- [x] #DB150 — — **CORRIGIDO**
-- [x] #DB154 — — **CORRIGIDO**
-- [x] #DB160 — — **CORRIGIDO**
-- [x] #DB161 — — **CORRIGIDO**
+### Importante (MEDIO — 10 issues)
+- [ ] #DB209 — LocalDate.now() TZ servidor — **Esforco:** 30min
+- [ ] #DB211 — x-tenant-slug=admin bypassa — **Esforco:** 20min
+- [ ] #DB212 — codigoAtivacao 4 hex — **Esforco:** 5min
+- [ ] #DB213 — PUT slug sem invalidacao — **Esforco:** 1h
+- [ ] #DB217 — status_frete = NULL em estorno — **Esforco:** 10min
+- [ ] #DB218 — pagamento/desconto negativo — **Esforco:** 10min
+- [ ] #DB219 — /fechar-mes TZ UTC — **Esforco:** 30min
+- [ ] #DB220 — UI usa valorNominal em vez de valorDevedor — **Esforco:** 10min
+- [ ] #DB221 — queryForObject null unbox — **Esforco:** 20min
+- [ ] #DB222 — CobrancaRequest sem validacao de nulls — **Esforco:** 15min
 
-### Menor (BAIXO — 1 issue)
-- [x] #DB106 — — **CORRIGIDO**
+### Menor (BAIXO — 3 issues)
+- [ ] #DB223 — SyncClient whitelist em buscarRegistrosPendentes — **Esforco:** 10min
+- [ ] #DB224 — useEffect sem AbortController — **Esforco:** 30min por tela
+- [ ] #DB225 — VersaoChecker obrigatoria exit mesmo com browse falha — **Esforco:** 15min
 
 ---
 
 ## NOTAS
-> - **Padrao mais recorrente:** ResultSet fora de try-with-resources (26 ocorrencias em controllers Desktop). Fix mecanico — aplicar em batch com busca por `stmt.executeQuery()` fora de TWR.
-> - **Risco mais critico:** Isolamento multi-tenant na API Spring Boot (#DB138-#DB145). Multiplos services sem filtro empresa_id permitem operacoes cross-tenant. Prioridade absoluta antes de producao multi-tenant.
-> - **Race conditions (MAX+1):** Presentes em 3 camadas (Desktop DAO, BFF Express, API Spring Boot). Solucao unificada: criar sequences PostgreSQL por empresa e usar `nextval()` em todas as camadas.
-> - **OCR encadeamento critico:** #DB125 (cross-tenant write) + #DB126 (path traversal) = atacante pode ler arquivos arbitrarios do servidor. Corrigir imediatamente.
-> - **Comparado com DEEP_BUGS V1.0:** 30/35 issues anteriores confirmadas como resolvidas. 5 parcialmente. 0 pendentes. V2.0 expandiu escopo para BFF, API, OCR e App, encontrando 98 novas issues (14 CRITICAS, 28 ALTAS, 15 MEDIAS, 1 BAIXA).
+> - **Foco desta rodada:** codigo novo adicionado apos 2026-04-14 (PSP, super-admin, pagamentos app, gestao funcionarios, hardenings). ~70 arquivos revisados linha por linha.
+> - **Fix-verificados da V2.0:** 161 issues previas confirmadas resolvidas (amostra representativa). Apenas #DB014/#DB015 permanece parcial (double em Funcionario — nao foi migrado para BigDecimal).
+> - **Padrao critico:** chamadas HTTP externas (PSP Asaas) dentro de @Transactional — afeta 3 services. Merece fix coordenado antes de habilitar PSP em prod.
+> - **Padrao critico 2:** Confianca em dados do cliente para decisoes de seguranca — `autorizador` em estorno, `empresa_id` implicito no header x-tenant-slug, ownership por nome contains. Backend deve derivar/validar, nao aceitar.
+> - **Integracao BFF → Spring admin:** O token gerado pelo BFF e incompativel com a exigencia do Spring `/admin/**`. Feature super-admin onboarding esta quebrada ate #DB200 ser corrigido. Testar manualmente antes de declarar resolvido.
+> - **RestTemplate + timeout + transacao:** combinacao explosiva. Qualquer lentidao no Asaas afeta toda a API. Essencial corrigir #DB203 + #DB208 juntos.
 
 ---
 *Gerado por Claude Code (Deep Audit) — Revisao humana obrigatoria*

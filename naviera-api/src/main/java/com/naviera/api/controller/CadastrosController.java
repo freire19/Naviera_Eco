@@ -117,11 +117,14 @@ public class CadastrosController {
     // --- WRITE: Usuarios ---
     @PostMapping("/usuarios")
     public ResponseEntity<?> criarUsuario(@RequestBody Map<String, Object> dados, Authentication auth) {
-        return ResponseEntity.ok(writeService.criarUsuario(TenantUtils.getEmpresaId(auth), dados));
+        return ResponseEntity.ok(writeService.criarUsuario(
+            TenantUtils.getEmpresaId(auth), TenantUtils.isAdmin(auth), dados));
     }
     @PutMapping("/usuarios/{id}")
     public ResponseEntity<?> atualizarUsuario(@PathVariable Integer id, @RequestBody Map<String, Object> dados, Authentication auth) {
-        return ResponseEntity.ok(writeService.atualizarUsuario(TenantUtils.getEmpresaId(auth), id, dados));
+        return ResponseEntity.ok(writeService.atualizarUsuario(
+            TenantUtils.getEmpresaId(auth), TenantUtils.getOperadorId(auth),
+            TenantUtils.isAdmin(auth), id, dados));
     }
 
     // --- WRITE: Tarifas ---

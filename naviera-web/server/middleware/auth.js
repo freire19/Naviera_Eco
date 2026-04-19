@@ -6,6 +6,22 @@ if (!SECRET) {
   process.exit(1)
 }
 
+// #DS5-405: rejeita secrets fracos no boot (comprimento + padroes previsiveis)
+const PADROES_FRACOS = ['dev', 'local', 'naviera', 'secret', 'changeme', 'default', 'test', '123', 'password']
+if (Buffer.byteLength(SECRET, 'utf8') < 32) {
+  console.error('[Auth] ERRO FATAL: JWT_SECRET muito curto (< 32 bytes). Use: openssl rand -base64 48')
+  process.exit(1)
+}
+{
+  const lower = SECRET.toLowerCase()
+  for (const p of PADROES_FRACOS) {
+    if (lower.includes(p)) {
+      console.error(`[Auth] ERRO FATAL: JWT_SECRET contem padrao previsivel ('${p}'). Gere um secret aleatorio real.`)
+      process.exit(1)
+    }
+  }
+}
+
 export function generateToken(user) {
   return jwt.sign(
     { id: user.id, login: user.login_usuario || user.nome || user.login, funcao: user.funcao, empresa_id: user.empresa_id },

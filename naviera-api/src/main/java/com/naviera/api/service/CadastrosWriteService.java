@@ -108,8 +108,10 @@ public class CadastrosWriteService {
     }
 
     // --- USUARIOS ---
+    // #DS5-002: apenas ADMIN pode criar usuarios. Operador nao-admin nem mesmo cria operadores comuns.
     @Transactional
-    public Map<String, Object> criarUsuario(Integer empresaId, Map<String, Object> dados) {
+    public Map<String, Object> criarUsuario(Integer empresaId, boolean isAdmin, Map<String, Object> dados) {
+        if (!isAdmin) throw ApiException.forbidden("Apenas administradores podem criar usuarios");
         jdbc.update("""
             INSERT INTO usuarios (nome, email, senha, funcao, permissao, empresa_id)
             VALUES (?, ?, ?, ?, ?, ?)""",
@@ -118,13 +120,28 @@ public class CadastrosWriteService {
         return Map.of("mensagem", "Usuario criado");
     }
 
+    // #DS5-001: operador nao-admin so atualiza proprio registro e nao pode mexer em funcao/permissao.
     @Transactional
-    public Map<String, Object> atualizarUsuario(Integer empresaId, Integer id, Map<String, Object> dados) {
-        int rows = jdbc.update("""
-            UPDATE usuarios SET nome = ?, email = ?, funcao = ?, permissao = ?
-            WHERE id = ? AND empresa_id = ?""",
-            dados.get("nome"), dados.get("email"), dados.get("funcao"), dados.get("permissao"),
-            id, empresaId);
+    public Map<String, Object> atualizarUsuario(Integer empresaId, Integer operadorId, boolean isAdmin,
+                                                Integer id, Map<String, Object> dados) {
+        boolean mudaRole = dados.containsKey("funcao") || dados.containsKey("permissao");
+        if (!isAdmin) {
+            if (mudaRole) throw ApiException.forbidden("Apenas administradores alteram funcao/permissao");
+            if (!operadorId.equals(id)) throw ApiException.forbidden("Operador nao-admin so altera proprio usuario");
+        }
+        int rows;
+        if (mudaRole) {
+            rows = jdbc.update("""
+                UPDATE usuarios SET nome = ?, email = ?, funcao = ?, permissao = ?
+                WHERE id = ? AND empresa_id = ?""",
+                dados.get("nome"), dados.get("email"), dados.get("funcao"), dados.get("permissao"),
+                id, empresaId);
+        } else {
+            rows = jdbc.update("""
+                UPDATE usuarios SET nome = ?, email = ?
+                WHERE id = ? AND empresa_id = ?""",
+                dados.get("nome"), dados.get("email"), id, empresaId);
+        }
         if (rows == 0) throw ApiException.notFound("Usuario nao encontrado");
         return Map.of("mensagem", "Usuario atualizado");
     }

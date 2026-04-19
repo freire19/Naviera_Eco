@@ -1,0 +1,15 @@
+# #DS5-404: evita copiar secrets, caches e metadados para a imagem
+.git
+.gitignore
+.dockerignore
+.env
+.env.*
+!.env.example
+target
+*.log
+*.iml
+.idea
+.vscode
+HELP.md
+README.md
+docs

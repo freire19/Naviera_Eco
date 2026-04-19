@@ -13,7 +13,10 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.stage.Stage;
 
 import java.net.URL;
+import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javafx.application.Platform;
 import gui.util.AlertHelper;
 import util.AppLogger;
@@ -26,6 +29,13 @@ public class LoginController implements Initializable {
     @FXML private Button btnSair;
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
+
+    // #DS5-203: rate-limit local por login (memoria do processo — sobrevive a janelas de login
+    // re-abertas no mesmo processo, mas nao entre reinicios da JVM). Lockout temporario apos 5 erros.
+    private static final int MAX_TENTATIVAS = 5;
+    private static final long LOCKOUT_MS = 15L * 60L * 1000L; // 15 min
+    private static final Map<String, AtomicInteger> TENTATIVAS = new ConcurrentHashMap<>();
+    private static final Map<String, Long> LOCKED_UNTIL = new ConcurrentHashMap<>();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -61,7 +71,20 @@ public class LoginController implements Initializable {
             return;
         }
 
+        // #DS5-203: checa lockout
+        String chave = login.toLowerCase();
+        Long until = LOCKED_UNTIL.get(chave);
+        if (until != null && System.currentTimeMillis() < until) {
+            long minutos = (until - System.currentTimeMillis()) / 60_000L + 1;
+            AlertHelper.show(AlertType.ERROR, "Conta Bloqueada",
+                "Muitas tentativas. Tente novamente em " + minutos + " minuto(s).");
+            return;
+        }
+
         if (realizarLogin(login, senha)) {
+            // reset contadores em login bem-sucedido
+            TENTATIVAS.remove(chave);
+            LOCKED_UNTIL.remove(chave);
             Usuario u = SessaoUsuario.getUsuarioLogado();
 
             // Verificar se precisa trocar a senha no primeiro login
@@ -80,7 +103,19 @@ public class LoginController implements Initializable {
             stageLogin.close();
             abrirTelaPrincipal();
         } else {
-            AlertHelper.show(AlertType.ERROR, "Acesso Negado", "Senha incorreta ou usuario inativo.");
+            // #DS5-203: incrementa tentativas + backoff progressivo + lockout apos N falhas
+            int n = TENTATIVAS.computeIfAbsent(chave, k -> new AtomicInteger()).incrementAndGet();
+            if (n >= MAX_TENTATIVAS) {
+                LOCKED_UNTIL.put(chave, System.currentTimeMillis() + LOCKOUT_MS);
+                TENTATIVAS.remove(chave);
+                AlertHelper.show(AlertType.ERROR, "Conta Bloqueada",
+                    "Limite de tentativas excedido. Conta bloqueada por 15 minutos.");
+            } else {
+                // backoff progressivo: 500ms, 1s, 1.5s, 2s (aplicado na thread FX — bloqueia UI intencionalmente)
+                try { Thread.sleep(Math.min(n * 500L, 3000L)); } catch (InterruptedException ignored) {}
+                AlertHelper.show(AlertType.ERROR, "Acesso Negado",
+                    "Senha incorreta ou usuario inativo. Tentativa " + n + " de " + MAX_TENTATIVAS + ".");
+            }
         }
     }
 
