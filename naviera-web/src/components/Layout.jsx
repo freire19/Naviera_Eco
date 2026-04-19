@@ -45,6 +45,8 @@ const HistoricoEstornos = lazy(() => import('../pages/HistoricoEstornos.jsx'))
 const ReciboAvulso = lazy(() => import('../pages/ReciboAvulso.jsx'))
 const GestaoFuncionarios = lazy(() => import('../pages/GestaoFuncionarios.jsx'))
 const Agenda = lazy(() => import('../pages/Agenda.jsx'))
+const GerenciarTarefas = lazy(() => import('../pages/GerenciarTarefas.jsx'))
+const GerarEscala = lazy(() => import('../pages/GerarEscala.jsx'))
 const ConfigurarApi = lazy(() => import('../pages/ConfigurarApi.jsx'))
 
 const PAGES = {
@@ -87,6 +89,8 @@ const PAGES = {
   'historico-estornos': { component: HistoricoEstornos, label: 'Historico Estornos', section: 'pagamentos' },
   'recibo-avulso': { component: ReciboAvulso, label: 'Recibo Avulso', section: 'recibos' },
   agenda: { component: Agenda, label: 'Agenda', section: 'sistema' },
+  'gerenciar-tarefas': { component: GerenciarTarefas, label: 'Gerenciar Tarefas', section: 'sistema' },
+  'gerar-escala': { component: GerarEscala, label: 'Gerar Escala Automatica', section: 'sistema' },
   'configurar-api': { component: ConfigurarApi, label: 'Configurar API', section: 'sistema' },
   'admin-empresas': { component: AdminEmpresas, label: 'Gestao de Empresas', section: 'admin' },
   'admin-metricas': { component: AdminMetricas, label: 'Metricas da Plataforma', section: 'admin' },

@@ -12,8 +12,8 @@ const QUICK_ACTIONS = [
   { key: 'nova-encomenda', icon: '\uD83D\uDCE6', label: 'Nova Encomenda' },
   { key: 'listar-encomendas', icon: '\uD83D\uDCCB', label: 'Lista Encomendas' },
   { key: 'lancar-frete', icon: '\uD83D\uDE9A', label: 'Lancar Frete' },
-  { key: '_ocr-app', icon: '\uD83D\uDCF7', label: 'Frete por Foto', external: true },
   { key: 'listar-fretes', icon: '\uD83D\uDCCB', label: 'Lista Fretes' },
+  { key: '_ocr-app', icon: '\uD83D\uDCF7', label: 'Frete por Foto', external: true },
   { key: 'review-ocr', icon: '\uD83D\uDD0D', label: 'Conferir OCR' },
   { key: 'cadastro-viagem', icon: '\u26F4', label: 'Cadastrar Viagem' },
   { key: 'balanco-viagem', icon: '\uD83D\uDCC8', label: 'Balanco Viagem' }

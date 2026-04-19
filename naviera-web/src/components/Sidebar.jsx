@@ -76,6 +76,8 @@ const NAV = [
     title: 'Sistema', sectionIcon: '\uD83D\uDD27',
     items: [
       { key: 'agenda', icon: '\uD83D\uDCC5', label: 'Agenda' },
+      { key: 'gerenciar-tarefas', icon: '\uD83D\uDCDD', label: 'Gerenciar Tarefas' },
+      { key: 'gerar-escala', icon: '\uD83D\uDDD3', label: 'Gerar Escala' },
       { key: 'recibo-avulso', icon: '\uD83E\uDDFE', label: 'Recibos' },
       { key: 'historico-estornos', icon: '\u21A9', label: 'Estornos' },
       { key: 'configurar-api', icon: '\u2699', label: 'Config. API' }
