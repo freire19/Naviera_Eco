@@ -13,6 +13,7 @@
 |--------|-----------|
 | Novos problemas encontrados (V5.0) | **125** (16 CRIT + 44 ALTO + 42 MED + 23 BAIXO) |
 | **CRITICOs fixados (2026-04-19)** | **16 / 16** — todos os criticos resolvidos |
+| **ALTOs fixados (2026-04-19)** | **3 / 44** — Lote 1: #DS5-410 (CVE multer+spring-boot) + colateral #DS5-012, #DS5-424 |
 | Issues V1.3 revalidadas AINDA ATIVAS | **23** (deduplicado entre camadas) |
 | Issues V1.3 revalidadas como FIXADAS | 2 (#114, #135) |
 | Issues V4.0 (pre-PSP) que regrediram | Cobertura estrutural das 43 issues V4.0 foi invalidada pela entrada de novos modulos (PSP Asaas, AdminPspController, Onboarding, FuncionarioController, OCR, Webhook) — categorias DS4 voltam a aparecer em formas novas (CSP, headers, idempotencia PSP, rate-limit endpoint publico, senhas em disco) |
@@ -67,7 +68,7 @@ Todos os 16 criticos resolvidos e marcados `[x] Concluido` nas suas secoes. Resu
 | jbcrypt | 0.4 | CVE-2015-0886 | — | JA FIXED na 0.4 (OK) — porem biblioteca stagnada desde 2014; considerar migrar para `spring-security-crypto` |
 | firebase-admin (java) | 9.3.0 | — | — | Sem CVE direto; monitorar guava/netty transitivos |
 
-**Top priority para atualizar:** `multer` (2x HIGH) → 2.0+; `spring-boot` 3.3.5 → 3.3.11+.
+**Top priority para atualizar:** `multer` (2x HIGH) → 2.0+; `spring-boot` 3.3.5 → 3.3.11+. **[x] FIXED 2026-04-19** — multer@2.1.1 + spring-boot@3.3.11.
 
 ---
 
@@ -764,7 +765,7 @@ http.headers(h -> h
 ---
 
 #### Issue #DS5-012 — `CorsConfig` `setAllowedHeaders("*")` com `allowCredentials=true` e combinacao problematica
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-19) — mitigado indiretamente pelo fix DS5-406: setAllowedHeaders(Authorization, Content-Type, X-Tenant-Slug, X-Requested-With)
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/CorsConfig.java`
@@ -1333,7 +1334,7 @@ private static String redact(String s) {
 ---
 
 #### Issue #DS5-410 — `multer@1.4.5-lts.1` com 2 CVEs HIGH (DoS + memory leak)
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-19) — upgraded to multer@2.1.1 + spring-boot@3.3.11 (CVE-2025-22235)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `naviera-web/package.json`
@@ -1546,7 +1547,7 @@ CREATE INDEX idx_embarcacao_gps_empresa_ts ON embarcacao_gps(empresa_id, timesta
 ---
 
 #### Issue #DS5-424 — Healthcheck API usa `wget` mas imagem `eclipse-temurin:17-jre-alpine` nao tem wget
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-19) — docker-compose.yml healthcheck trocado por TCP probe (/dev/tcp)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `docker-compose.yml`
