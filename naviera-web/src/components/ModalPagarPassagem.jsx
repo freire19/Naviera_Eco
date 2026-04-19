@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../api.js'
 
 function formatMoney(val) {
@@ -12,6 +12,13 @@ export default function ModalPagarPassagem({ passagem, caixas = [], onClose, onS
   const [cartao, setCartao] = useState('')
   const [idCaixa, setIdCaixa] = useState('')
   const [pagando, setPagando] = useState(false)
+
+  // Esc fecha o modal (mantém passagem salva como PENDENTE)
+  useEffect(() => {
+    const onEsc = (e) => { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [onClose])
 
   const vDinheiro = parseFloat(dinheiro) || 0
   const vPix = parseFloat(pix) || 0
@@ -60,6 +67,9 @@ export default function ModalPagarPassagem({ passagem, caixas = [], onClose, onS
           Bilhete: <strong>{passagem.numero_bilhete}</strong>
           {' \u2014 '}
           Restante: <strong style={{ color: 'var(--danger, #e74c3c)' }}>{formatMoney(restante)}</strong>
+        </p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 12, fontStyle: 'italic' }}>
+          A passagem ja foi criada e esta como PENDENTE. Use <strong>Pagar Depois</strong> se o cliente vai pagar no destino.
         </p>
 
         <form onSubmit={handlePagar}>
@@ -140,8 +150,9 @@ export default function ModalPagarPassagem({ passagem, caixas = [], onClose, onS
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={pagando}>
-              Cancelar
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={pagando}
+              title="Fecha este modal mantendo a passagem salva como PENDENTE (Esc)">
+              Pagar Depois
             </button>
             <button type="submit" className="btn-primary" disabled={pagando}>
               {pagando ? 'Processando...' : 'Confirmar Pagamento'}
