@@ -8,9 +8,11 @@ function formatViagem(v) {
 
 export default function TopBar({ label, viagens, viagemAtiva, onViagemChange }) {
   function handleChange(e) {
-    const id = parseInt(e.target.value)
-    const v = viagens.find(v => v.id_viagem === id)
+    // BIGINT do Postgres vem como string no node-pg — compara via String() para evitar mismatch
+    const id = e.target.value
+    const v = viagens.find(v => String(v.id_viagem) === id)
     if (v) onViagemChange(v)
+    else onViagemChange(null)
   }
 
   return (

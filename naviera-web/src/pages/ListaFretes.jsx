@@ -51,6 +51,11 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
 
   useEffect(() => { api.get('/viagens').then(setViagens).catch(() => {}) }, [])
 
+  // Sincroniza com viagem ativa global quando o usuario troca no topo
+  useEffect(() => {
+    if (viagemAtiva?.id_viagem) setFiltroViagem(String(viagemAtiva.id_viagem))
+  }, [viagemAtiva])
+
   const carregar = useCallback(() => {
     if (!filtroViagem) return
     setLoading(true)
@@ -292,6 +297,18 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
       {filtrosVisiveis && (
       <div style={{ width: 260, flexShrink: 0 }}>
         <div className="card" style={{ position: 'sticky', top: 60, padding: 14, overflowY: 'auto', maxHeight: 'calc(100vh - 80px)' }}>
+
+          {/* Filtro de Viagem */}
+          <label style={{ ...L, marginTop: 0 }}>Viagem:</label>
+          <select style={selI} value={filtroViagem} onChange={e => setFiltroViagem(e.target.value)}>
+            <option value="">Selecione...</option>
+            {viagens.map(v => (
+              <option key={v.id_viagem} value={v.id_viagem}>
+                {v.id_viagem} - {v.data_viagem}{v.ativa ? ' (ATIVA)' : ''}
+                {v.nome_rota ? ` (${v.nome_rota})` : ''}
+              </option>
+            ))}
+          </select>
 
           {/* Filtrar por Periodo */}
           <div style={toggleStyle} onClick={() => setPeriodoAberto(p => !p)}>

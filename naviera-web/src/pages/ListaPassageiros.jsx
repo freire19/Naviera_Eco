@@ -29,19 +29,31 @@ function calcIdade(dataNasc) {
 export default function ListaPassageiros({ viagemAtiva, onNavigate, onClose }) {
   const [passagens, setPassagens] = useState([])
   const [loading, setLoading] = useState(false)
+  const [viagens, setViagens] = useState([])
+  const [viagemSel, setViagemSel] = useState(null)
+
+  // Carrega lista de viagens + inicializa com ativa
+  useEffect(() => { api.get('/viagens').then(setViagens).catch(() => {}) }, [])
+  useEffect(() => { if (viagemAtiva) setViagemSel(viagemAtiva) }, [viagemAtiva])
 
   const carregar = useCallback(() => {
-    if (!viagemAtiva) return
+    if (!viagemSel) return
     setLoading(true)
-    api.get(`/passagens?viagem_id=${viagemAtiva.id_viagem}`)
+    api.get(`/passagens?viagem_id=${viagemSel.id_viagem}`)
       .then(setPassagens)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [viagemAtiva])
+  }, [viagemSel])
 
   useEffect(() => { carregar() }, [carregar])
 
-  if (!viagemAtiva) {
+  function handleViagemChange(e) {
+    const id = e.target.value
+    const v = viagens.find(v => String(v.id_viagem) === id)
+    setViagemSel(v || null)
+  }
+
+  if (!viagemAtiva && !viagemSel) {
     return (
       <div className="placeholder-page">
         <div className="ph-icon">👥</div>
@@ -51,18 +63,32 @@ export default function ListaPassageiros({ viagemAtiva, onNavigate, onClose }) {
     )
   }
 
-  const vData = formatDate(viagemAtiva.data_viagem)
-  const vCheg = formatDate(viagemAtiva.data_chegada)
-  const vHora = viagemAtiva.horario || '—'
-  const vEmb = viagemAtiva.nome_embarcacao || '—'
-  const vRota = viagemAtiva.nome_rota || [viagemAtiva.origem, viagemAtiva.destino].filter(Boolean).join(' - ')
+  const v = viagemSel || viagemAtiva
+  const vData = formatDate(v.data_viagem)
+  const vCheg = formatDate(v.data_chegada)
+  const vHora = v.horario || '—'
+  const vEmb = v.nome_embarcacao || '—'
 
   return (
     <div className="card">
       <h2 style={{ textAlign: 'center', marginBottom: 8 }}>Lista de Passageiros por Viagem</h2>
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: '0.85rem' }}>Filtrar Viagem:</strong>
+        <select value={viagemSel?.id_viagem || ''} onChange={handleViagemChange}
+          style={{ padding: '6px 10px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-soft)', color: 'var(--text)', fontSize: '0.85rem', minWidth: 280 }}>
+          <option value="">Selecione...</option>
+          {viagens.map(vi => (
+            <option key={vi.id_viagem} value={vi.id_viagem}>
+              {vi.id_viagem} - {vi.data_viagem}{vi.ativa ? ' (ATIVA)' : ''}
+              {vi.nome_rota ? ` (${vi.nome_rota})` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <p style={{ marginBottom: 16, fontSize: '0.85rem' }}>
-        <strong>Viagem Ativa:</strong>{' '}
+        <strong>Viagem:</strong>{' '}
         Embarcacao: {vEmb} | Saida: {vData} | Prev. Chegada: {vCheg} | Hora: {vHora}
       </p>
 
