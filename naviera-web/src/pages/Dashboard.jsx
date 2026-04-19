@@ -13,8 +13,8 @@ const QUICK_ACTIONS = [
   { key: 'listar-encomendas', icon: '\uD83D\uDCCB', label: 'Lista Encomendas' },
   { key: 'lancar-frete', icon: '\uD83D\uDE9A', label: 'Lancar Frete' },
   { key: 'listar-fretes', icon: '\uD83D\uDCCB', label: 'Lista Fretes' },
-  { key: '_ocr-app', icon: '\uD83D\uDCF7', label: 'Frete por Foto', external: true },
-  { key: 'review-ocr', icon: '\uD83D\uDD0D', label: 'Conferir OCR' },
+  { key: '_ocr-frete', icon: '\uD83D\uDCF7', label: 'Frete por Foto', external: true, query: 'tipo=frete' },
+  { key: '_ocr-encomenda', icon: '\uD83D\uDCF7', label: 'Encomenda por Foto', external: true, query: 'tipo=encomenda' },
   { key: 'cadastro-viagem', icon: '\u26F4', label: 'Cadastrar Viagem' },
   { key: 'balanco-viagem', icon: '\uD83D\uDCC8', label: 'Balanco Viagem' }
 ]
@@ -90,7 +90,7 @@ export default function Dashboard({ viagemAtiva, onNavigate }) {
           </div>
           <div className="quick-actions">
             {QUICK_ACTIONS.map(a => a.external ? (
-              <a key={a.key} className="quick-action" href={OCR_URL} target="_blank" rel="noopener noreferrer"
+              <a key={a.key} className="quick-action" href={a.query ? `${OCR_URL}/?${a.query}` : OCR_URL} target="_blank" rel="noopener noreferrer"
                 style={{ textDecoration: 'none', color: 'inherit' }}>
                 <span className="qa-icon">{a.icon}</span>
                 {a.label} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>&#8599;</span>

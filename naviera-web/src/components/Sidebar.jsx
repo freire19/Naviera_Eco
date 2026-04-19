@@ -23,6 +23,8 @@ const NAV = [
     items: [
       { key: 'nova-encomenda', icon: '\uD83D\uDCE6', label: 'Nova Encomenda' },
       { key: 'listar-encomendas', icon: '\uD83D\uDCCB', label: 'Listar Encomendas' },
+      { key: '_ocr-encomenda', icon: '\uD83D\uDCF7', label: 'Lancar por Foto', external: true, query: 'tipo=encomenda' },
+      { key: 'review-ocr-encomenda', icon: '\uD83D\uDD0D', label: 'Conferir OCR', alias: 'review-ocr' },
       { key: 'relatorio-encomendas', icon: '\uD83D\uDCCA', label: 'Relatorio' },
       { key: 'tabela-preco-encomenda', icon: '\uD83C\uDFF7', label: 'Tabela de Precos' },
       { key: 'cadastro-produto', icon: '\uD83D\uDC64', label: 'Clientes Encomenda' }
@@ -33,16 +35,11 @@ const NAV = [
     items: [
       { key: 'lancar-frete', icon: '\uD83D\uDE9A', label: 'Lancar Frete' },
       { key: 'listar-fretes', icon: '\uD83D\uDCCB', label: 'Lista Fretes' },
+      { key: '_ocr-frete', icon: '\uD83D\uDCF7', label: 'Lancar por Foto', external: true, query: 'tipo=frete' },
+      { key: 'review-ocr-frete', icon: '\uD83D\uDD0D', label: 'Conferir OCR', alias: 'review-ocr' },
       { key: 'relatorio-fretes', icon: '\uD83D\uDCCA', label: 'Relatorio' },
       { key: 'tabela-preco-frete', icon: '\uD83C\uDFF7', label: 'Tabela Precos' },
       { key: 'cadastro-contato-frete', icon: '\uD83D\uDC64', label: 'Clientes Frete' }
-    ]
-  },
-  {
-    title: 'OCR por Foto', sectionIcon: '\uD83D\uDCF7',
-    items: [
-      { key: '_ocr-app', icon: '\uD83D\uDCF1', label: 'Lancar por Foto', external: true },
-      { key: 'review-ocr-section', icon: '\uD83D\uDD0D', label: 'Conferir Lancamentos', alias: 'review-ocr' }
     ]
   },
   {
@@ -163,9 +160,10 @@ export default function Sidebar({ currentPage, onNavigate, pages }) {
             <div className="nav-section-items">
             {section.items.map(item => {
               if (item.external) {
-                const ocrUrl = window.location.hostname === 'localhost'
+                const ocrBase = window.location.hostname === 'localhost'
                   ? `http://${window.location.hostname}:5175`
                   : `https://ocr.${window.location.hostname.replace(/^[^.]+\./, '')}`
+                const ocrUrl = item.query ? `${ocrBase}/?${item.query}` : ocrBase
                 return (
                   <a key={item.key} className="nav-item nav-item-external" href={ocrUrl}
                     target="_blank" rel="noopener noreferrer"
