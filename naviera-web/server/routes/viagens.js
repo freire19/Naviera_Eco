@@ -72,42 +72,84 @@ router.get('/:id', async (req, res) => {
 })
 
 // POST /api/viagens
-router.post('/', validate({ id_embarcacao: 'required|integer', id_rota: 'required|integer', data_viagem: 'required|string', data_chegada: 'required|string', descricao: 'required|string' }), async (req, res) => {
+router.post('/', validate({ id_embarcacao: 'required|integer', id_rota: 'required|integer', data_viagem: 'required|string', data_chegada: 'required|string' }), async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const { id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida } = req.body
-    if (!id_embarcacao || !id_rota || !data_viagem || !data_chegada || !descricao) {
-      return res.status(400).json({ error: 'Campos obrigatorios: id_embarcacao, id_rota, data_viagem, data_chegada, descricao' })
+    const { id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida, ativa } = req.body
+    if (!id_embarcacao || !id_rota || !data_viagem || !data_chegada) {
+      return res.status(400).json({ error: 'Campos obrigatorios: id_embarcacao, id_rota, data_viagem, data_chegada' })
     }
-    const result = await pool.query(`
+    const marcarAtiva = ativa === true || ativa === 'true'
+
+    await client.query('BEGIN')
+    // Se vai criar ja ativa, desativa todas as outras primeiro (apenas 1 ativa por empresa)
+    if (marcarAtiva) {
+      await client.query('UPDATE viagens SET is_atual = FALSE, ativa = FALSE WHERE empresa_id = $1', [empresaId])
+    }
+    const result = await client.query(`
       INSERT INTO viagens (id_viagem, id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida, ativa, is_atual, empresa_id)
-      VALUES (nextval('seq_viagem'), $1, $2, $3, $4, $5, $6, TRUE, FALSE, $7)
+      VALUES (nextval('seq_viagem'), $1, $2, $3, $4, $5, $6, $7, $7, $8)
       RETURNING *
-    `, [id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida || null, empresaId])
+    `, [id_embarcacao, id_rota, data_viagem, data_chegada, descricao || null, id_horario_saida || null, marcarAtiva, empresaId])
+    await client.query('COMMIT')
     res.status(201).json(result.rows[0])
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('[Viagens] Erro ao criar:', err.message)
     res.status(500).json({ error: 'Erro ao criar viagem' })
+  } finally {
+    client.release()
   }
 })
 
 // PUT /api/viagens/:id
 router.put('/:id', async (req, res) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const { id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida } = req.body
-    const result = await pool.query(`
-      UPDATE viagens SET data_viagem = COALESCE($1, data_viagem), data_chegada = COALESCE($2, data_chegada),
-        descricao = COALESCE($3, descricao), id_embarcacao = COALESCE($4, id_embarcacao), id_rota = COALESCE($5, id_rota),
-        id_horario_saida = COALESCE($6, id_horario_saida)
+    const { id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida, ativa } = req.body
+    const marcarAtiva = ativa === true || ativa === 'true'
+    const desmarcarAtiva = ativa === false || ativa === 'false'
+
+    await client.query('BEGIN')
+    // Se vai marcar essa como ativa, desativa todas as outras primeiro
+    if (marcarAtiva) {
+      await client.query('UPDATE viagens SET is_atual = FALSE, ativa = FALSE WHERE empresa_id = $1 AND id_viagem != $2', [empresaId, req.params.id])
+    }
+    // descricao usa COALESCE com string vazia tratada como null (permite limpar)
+    const descParam = descricao === undefined ? null : (descricao || null)
+    const result = await client.query(`
+      UPDATE viagens SET
+        data_viagem = COALESCE($1, data_viagem),
+        data_chegada = COALESCE($2, data_chegada),
+        descricao = CASE WHEN $9::boolean THEN $3 ELSE COALESCE($3, descricao) END,
+        id_embarcacao = COALESCE($4, id_embarcacao),
+        id_rota = COALESCE($5, id_rota),
+        id_horario_saida = COALESCE($6, id_horario_saida),
+        ativa = CASE WHEN $10::boolean THEN $11 ELSE ativa END,
+        is_atual = CASE WHEN $10::boolean THEN $11 ELSE is_atual END
       WHERE id_viagem = $7 AND empresa_id = $8
       RETURNING *
-    `, [data_viagem, data_chegada, descricao, id_embarcacao, id_rota, id_horario_saida || null, req.params.id, empresaId])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Viagem nao encontrada' })
+    `, [
+      data_viagem, data_chegada, descParam, id_embarcacao, id_rota, id_horario_saida || null,
+      req.params.id, empresaId,
+      descricao !== undefined, // $9: permite limpar descricao
+      marcarAtiva || desmarcarAtiva, // $10: atualizar ativa
+      marcarAtiva // $11: novo valor (true se marcar, false se desmarcar)
+    ])
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Viagem nao encontrada' })
+    }
+    await client.query('COMMIT')
     res.json(result.rows[0])
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('[Viagens] Erro ao atualizar:', err.message)
     res.status(500).json({ error: 'Erro ao atualizar viagem' })
+  } finally {
+    client.release()
   }
 })
 

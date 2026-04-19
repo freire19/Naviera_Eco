@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useAuth } from '../App.jsx'
 import Sidebar from './Sidebar.jsx'
 import TopBar from './TopBar.jsx'
@@ -101,10 +101,19 @@ export default function Layout() {
   const [viagemAtiva, setViagemAtiva] = useState(null)
   const [sidebarVisible, setSidebarVisible] = useState(true)
 
-  useEffect(() => {
+  const recarregarViagens = useCallback(() => {
     api.get('/viagens').then(setViagens).catch(() => {})
-    api.get('/viagens/ativa').then(v => { if (v) setViagemAtiva(v) }).catch(() => {})
+    api.get('/viagens/ativa').then(v => setViagemAtiva(v || null)).catch(() => {})
   }, [])
+
+  useEffect(() => { recarregarViagens() }, [recarregarViagens])
+
+  // Recarrega quando o cadastro de viagem marca/muda a viagem ativa
+  useEffect(() => {
+    const handler = () => recarregarViagens()
+    window.addEventListener('viagem-ativa-changed', handler)
+    return () => window.removeEventListener('viagem-ativa-changed', handler)
+  }, [recarregarViagens])
 
   // Navegar para pagina — abre nova aba ou foca existente
   function navigateTo(page) {

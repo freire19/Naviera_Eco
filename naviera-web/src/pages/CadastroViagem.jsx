@@ -75,7 +75,7 @@ export default function CadastroViagem() {
 
   async function handleSalvar() {
     if (!form.id_embarcacao || !form.id_rota || !form.data_viagem || !form.data_chegada) {
-      showToast('Preencha todos os campos obrigatorios', 'error')
+      showToast('Preencha os campos obrigatorios (embarcacao, rota, datas)', 'error')
       return
     }
     setSalvando(true)
@@ -87,6 +87,10 @@ export default function CadastroViagem() {
       } else {
         await api.post('/viagens', payload)
         showToast('Viagem criada com sucesso')
+      }
+      // Se marcou como ativa, avisa o Layout pra recarregar viagemAtiva global
+      if (form.ativa) {
+        window.dispatchEvent(new CustomEvent('viagem-ativa-changed'))
       }
       handleNovo()
       carregar()
