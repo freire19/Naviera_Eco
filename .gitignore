@@ -63,3 +63,11 @@ Thumbs.db
 # PM2 ecosystem (contains production secrets)
 ecosystem.config.cjs
 ecosystem.config.js
+
+# Scripts temporarios de deploy/SSH com credenciais embutidas
+.deploy_tmp.py
+.vps_fetch.py
+.*_tmp.py
+
+# Claude Code local config (prompts, memory, command overrides)
+.claude/
