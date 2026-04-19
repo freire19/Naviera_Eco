@@ -10,6 +10,7 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import log from './logger.js'
+import pool from './db.js'
 import { rateLimit } from './middleware/rateLimit.js'
 import { tenantMiddleware, tenantInfoRoute } from './middleware/tenant.js'
 import authRoutes from './routes/auth.js'
@@ -88,6 +89,44 @@ app.get('/api/health', (req, res) => {
 
 // Centralized error handler — must be LAST middleware
 app.use(errorHandler)
+
+// Migracoes idempotentes executadas no startup
+async function runMigrations() {
+  try {
+    // 1. Adiciona coluna se nao existir
+    await pool.query(`ALTER TABLE financeiro_saidas ADD COLUMN IF NOT EXISTS mes_referencia DATE`)
+
+    // 2. Backfill: lancamentos de funcionarios sem mes_referencia
+    //    usam data_admissao como raiz do primeiro ciclo (so toca NULLs = idempotente)
+    await pool.query(`
+      UPDATE financeiro_saidas s
+      SET mes_referencia = f.data_admissao
+      FROM funcionarios f
+      WHERE s.funcionario_id IS NOT NULL
+        AND s.mes_referencia IS NULL
+        AND s.funcionario_id = f.id
+        AND f.data_admissao IS NOT NULL
+    `)
+
+    // 3. Backfill eventos_rh: faltas/descontos que usaram data_evento como referencia
+    //    (fallback antigo incorreto) — so toca registros nessa condicao = idempotente
+    await pool.query(`
+      UPDATE eventos_rh e
+      SET data_referencia = f.data_admissao
+      FROM funcionarios f
+      WHERE e.tipo IN ('FALTA', 'DESCONTO_MANUAL')
+        AND e.data_referencia = e.data_evento
+        AND e.funcionario_id = f.id
+        AND f.data_admissao IS NOT NULL
+        AND f.data_admissao < e.data_evento
+    `)
+
+    log.info('Migrations', 'mes_referencia + backfill funcionarios ok')
+  } catch (err) {
+    log.warn('Migrations', `falha ao aplicar migration mes_referencia: ${err.message}`)
+  }
+}
+runMigrations()
 
 const server = app.listen(PORT, () => {
   log.info('Server', `Naviera Web BFF running on http://localhost:${PORT}`)

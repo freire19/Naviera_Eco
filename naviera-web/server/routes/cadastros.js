@@ -620,17 +620,22 @@ router.get('/funcionarios/:id/historico', async (req, res, next) => {
     const mes = parseInt(req.query.mes) || (new Date().getMonth() + 1)
     const ano = parseInt(req.query.ano) || new Date().getFullYear()
 
+    // Filtro por mes do CICLO do funcionario:
+    //   - financeiro_saidas: usa mes_referencia (coluna dedicada), fallback data_pagamento
+    //   - eventos_rh: usa data_referencia (ja existe)
     const result = await pool.query(`
       SELECT data_pagamento AS data, descricao, valor_pago AS valor, forma_pagamento, 'FIN' AS origem
       FROM financeiro_saidas
       WHERE funcionario_id = $1 AND empresa_id = $2
       AND ((forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO') OR is_excluido = false)
-      AND EXTRACT(MONTH FROM data_pagamento) = $3 AND EXTRACT(YEAR FROM data_pagamento) = $4
+      AND EXTRACT(MONTH FROM COALESCE(mes_referencia, data_pagamento)) = $3
+      AND EXTRACT(YEAR FROM COALESCE(mes_referencia, data_pagamento)) = $4
       UNION ALL
       SELECT data_evento AS data, descricao, valor, NULL AS forma_pagamento, 'RH' AS origem
       FROM eventos_rh
       WHERE funcionario_id = $5 AND empresa_id = $6
-      AND EXTRACT(MONTH FROM data_evento) = $7 AND EXTRACT(YEAR FROM data_evento) = $8
+      AND EXTRACT(MONTH FROM COALESCE(data_referencia, data_evento)) = $7
+      AND EXTRACT(YEAR FROM COALESCE(data_referencia, data_evento)) = $8
       ORDER BY data
     `, [idFunc, empresaId, mes, ano, idFunc, empresaId, mes, ano])
 
@@ -658,13 +663,17 @@ router.post('/funcionarios/:id/pagamento', async (req, res, next) => {
 
     const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId, id_viagem)
 
+    // mes_referencia = inicio do ciclo atual (data_inicio_calculo ou data_admissao)
+    const fRes = await pool.query('SELECT data_inicio_calculo, data_admissao FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    const mesRef = fRes.rows[0]?.data_inicio_calculo || fRes.rows[0]?.data_admissao || null
+
     const hoje = new Date().toISOString().split('T')[0]
     await pool.query(`
       INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento,
-        status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, empresa_id)
-      VALUES ($1, $2, $3, $4, $5, 'PAGO', 'DINHEIRO', $6, $7, $8, false, $9)
+        status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, mes_referencia, empresa_id)
+      VALUES ($1, $2, $3, $4, $5, 'PAGO', 'DINHEIRO', $6, $7, $8, false, $9, $10)
     `, [descricao.toUpperCase(), parseFloat(valor), parseFloat(valor), hoje, hoje,
-        categoriaId, viagemId, idFunc, empresaId])
+        categoriaId, viagemId, idFunc, mesRef, empresaId])
 
     res.json({ ok: true })
   } catch (err) { next(err) }
@@ -685,13 +694,14 @@ router.post('/funcionarios/:id/falta', async (req, res, next) => {
     )
     if (parseInt(dup.rows[0].cnt) > 0) return res.status(400).json({ error: 'Ja existe falta registrada para esta data' })
 
-    const fRes = await pool.query('SELECT salario, nome, data_inicio_calculo FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    const fRes = await pool.query('SELECT salario, nome, data_inicio_calculo, data_admissao FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
     if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
     const salario = parseFloat(fRes.rows[0].salario) || 0
     const nome = fRes.rows[0].nome
     const valorDesconto = Math.round((salario / 30) * 100) / 100
     const descricao = `FALTA - ${nome.toUpperCase()} - ${dataFalta}`
-    const dataRef = fRes.rows[0].data_inicio_calculo || dataFalta
+    // data_referencia = inicio do ciclo atual, pra agrupar a falta no mes do ciclo
+    const dataRef = fRes.rows[0].data_inicio_calculo || fRes.rows[0].data_admissao || dataFalta
 
     await pool.query(
       `INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia, empresa_id)
@@ -711,10 +721,11 @@ router.post('/funcionarios/:id/desconto', async (req, res, next) => {
     const { descricao, valor } = req.body
     if (!descricao || !valor) return res.status(400).json({ error: 'descricao e valor obrigatorios' })
 
-    const fRes = await pool.query('SELECT data_inicio_calculo FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    const fRes = await pool.query('SELECT data_inicio_calculo, data_admissao FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
     if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
-    const dataRef = fRes.rows[0].data_inicio_calculo || new Date().toISOString().split('T')[0]
     const hoje = new Date().toISOString().split('T')[0]
+    // data_referencia = inicio do ciclo atual, pra agrupar no mes do ciclo
+    const dataRef = fRes.rows[0].data_inicio_calculo || fRes.rows[0].data_admissao || hoje
 
     await pool.query(
       `INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia, empresa_id)
@@ -759,22 +770,18 @@ router.post('/funcionarios/:id/fechar-mes', async (req, res, next) => {
     if (saldoParaPagar > 0) {
       const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId, id_viagem)
       const desc = `FECHAMENTO MENSAL ${(f.nome || '').toUpperCase()}`
+      // mes_referencia = inicio do ciclo que esta sendo fechado (dataInicio)
       await pool.query(`
         INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento,
-          status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, empresa_id)
-        VALUES ($1, $2, $3, $4, $5, 'PAGO', 'DINHEIRO', $6, $7, $8, false, $9)
-      `, [desc, saldoParaPagar, saldoParaPagar, hojeISO, hojeISO, categoriaId, viagemId, idFunc, empresaId])
+          status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, mes_referencia, empresa_id)
+        VALUES ($1, $2, $3, $4, $5, 'PAGO', 'DINHEIRO', $6, $7, $8, false, $9, $10)
+      `, [desc, saldoParaPagar, saldoParaPagar, hojeISO, hojeISO, categoriaId, viagemId, idFunc, dataInicio, empresaId])
     }
 
-    // Novo ciclo = mes calendario atual. Pagamentos anteriores ao fechamento
-    // sao separados pelo filtro `ultimo_fechamento` em calcFinanceiroFuncionario,
-    // entao a tela mostra os dias ja trabalhados do mes sem saldo negativo fantasma.
-    let novaData
-    if (hoje.getUTCDate() >= 28) {
-      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1, 1))
-    } else {
-      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1))
-    }
+    // Novo ciclo comeca no dia seguinte ao fechamento (zera contador).
+    // Os lancamentos do ciclo fechado aparecem no mes calendario do `mes_referencia`
+    // (inicio do ciclo que foi fechado), nao no mes do fechamento.
+    const novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() + 1))
     const novaDataISO = novaData.toISOString().split('T')[0]
 
     await pool.query(
