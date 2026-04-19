@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 import { printReciboEncomenda } from '../utils/print.js'
 import Autocomplete from '../components/Autocomplete.jsx'
+import MoneyInput from '../components/MoneyInput.jsx'
 
 function filtrarClientes(clientes, termo) {
   const t = (termo || '').trim().toLowerCase()
@@ -522,11 +523,11 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>V. Unit.</label>
-              <input style={{ ...I, textAlign: 'right' }} type="number" step="0.01" min="0" value={novoItem.valor_unitario} onChange={e => handleNovoItemChange('valor_unitario', e.target.value)} />
+              <MoneyInput value={novoItem.valor_unitario} onChange={v => handleNovoItemChange('valor_unitario', v)} />
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>Total</label>
-              <input style={{ ...RO, textAlign: 'right' }} value={novoItem.valor_total || '0.00'} readOnly />
+              <MoneyInput value={novoItem.valor_total} readOnly />
             </div>
             <button onClick={handleAdicionarItem} style={{ padding: '8px 16px', background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>Adicionar</button>
           </div>

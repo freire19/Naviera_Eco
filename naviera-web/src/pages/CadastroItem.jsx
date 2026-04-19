@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
+import MoneyInput from '../components/MoneyInput.jsx'
 
 function formatMoney(val) {
   return 'R$ ' + Number(val || 0).toFixed(2).replace('.', ',')
@@ -148,11 +149,11 @@ export default function CadastroItem() {
         <label>Nome do Item:</label>
         <input type="text" name="nome_item" value={form.nome_item} onChange={handleChange} />
 
-        <label>Valor Normal (R$):</label>
-        <input type="number" step="0.01" min="0" name="preco_normal" value={form.preco_normal} onChange={handleChange} placeholder="0.00" />
+        <label>Valor Normal:</label>
+        <MoneyInput value={form.preco_normal} onChange={v => setForm(prev => ({ ...prev, preco_normal: v }))} />
 
-        <label>Valor c/ Desconto (R$):</label>
-        <input type="number" step="0.01" min="0" name="preco_desconto" value={form.preco_desconto} onChange={handleChange} placeholder="0.00" />
+        <label>Valor c/ Desconto:</label>
+        <MoneyInput value={form.preco_desconto} onChange={v => setForm(prev => ({ ...prev, preco_desconto: v }))} />
 
         <label>Ativo:</label>
         <div>

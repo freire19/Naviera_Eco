@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
 import { printContent } from '../utils/print.js'
+import MoneyInput from '../components/MoneyInput.jsx'
 
 function formatMoney(val) {
   return 'R$ ' + Number(val || 0).toFixed(2).replace('.', ',')
@@ -199,8 +200,8 @@ export default function TabelaPrecoEncomenda() {
           </select>
         </div>
         <div>
-          <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Preco (R$):</label>
-          <input style={{ ...I, textAlign: 'right', fontFamily: 'Space Mono, monospace' }} type="number" step="0.01" min="0" value={formPreco} onChange={e => setFormPreco(e.target.value)} />
+          <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Preco:</label>
+          <MoneyInput value={formPreco} onChange={v => setFormPreco(v)} />
         </div>
         <button className="btn-primary" style={{ width: 'auto', padding: '8px 16px' }} onClick={handleSalvar} disabled={salvando}>
           {salvando ? 'Salvando...' : selecionado ? 'Atualizar' : 'Salvar'}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 import { printNotaFrete, printEtiquetaFrete } from '../utils/print.js'
 import Autocomplete from '../components/Autocomplete.jsx'
+import MoneyInput from '../components/MoneyInput.jsx'
 
 function filtrarContatos(contatos, termo) {
   const t = (termo || '').trim().toLowerCase()
@@ -506,8 +507,8 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
             </div>
           })()}
         </div>
-        <div><label style={{ ...L, fontSize: '0.65rem' }}>Preco Unit. (R$)</label><input style={{ ...I, textAlign: 'right', fontFamily: 'Space Mono, monospace' }} type="number" step="0.01" value={novoItem.valor_unitario} onChange={e => handleNovoItemChange('valor_unitario', e.target.value)} /></div>
-        <div><label style={{ ...L, fontSize: '0.65rem' }}>Subtotal (R$)</label><input style={{ ...RO, textAlign: 'right', fontFamily: 'Space Mono, monospace' }} value={novoItem.subtotal || '0.00'} readOnly /></div>
+        <div><label style={{ ...L, fontSize: '0.65rem' }}>Preco Unit.</label><MoneyInput value={novoItem.valor_unitario} onChange={v => handleNovoItemChange('valor_unitario', v)} /></div>
+        <div><label style={{ ...L, fontSize: '0.65rem' }}>Subtotal</label><MoneyInput value={novoItem.subtotal} readOnly /></div>
         <button onClick={handleAdicionarItem} style={{ padding: '8px 16px', background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>ADICIONAR</button>
       </div>
 
@@ -535,9 +536,9 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
                   onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'transparent'}
                   onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, descricao: e.target.value } : it))} /></td>
                 <td className="money">
-                  <input type="number" step="0.01" value={item.valor_unitario} style={{ width: 80, textAlign: 'right', background: 'transparent', border: '1px solid transparent', color: 'inherit', fontFamily: 'Space Mono, monospace' }}
-                    onFocus={e => e.target.style.borderColor = 'var(--primary)'} onBlur={e => e.target.style.borderColor = 'transparent'}
-                    onChange={e => { const v = parseFloat(e.target.value) || 0; setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: v, subtotal: ((parseInt(it.quantidade) || 1) * v).toFixed(2) } : it)) }} />
+                  <MoneyInput value={item.valor_unitario}
+                    style={{ width: 100, background: 'transparent', border: '1px solid transparent', color: 'inherit' }}
+                    onChange={v => setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: v, subtotal: ((parseInt(it.quantidade) || 1) * v).toFixed(2) } : it))} />
                 </td>
                 <td className="money" style={{ fontWeight: 700 }}>{formatMoney(item.subtotal)}</td>
                 <td><button className="btn-sm danger" onClick={() => setItens(prev => prev.filter((_, i) => i !== idx))} style={{ padding: '2px 6px' }}>×</button></td>

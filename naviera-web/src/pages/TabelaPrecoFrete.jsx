@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api.js'
 import { printContent } from '../utils/print.js'
+import MoneyInput from '../components/MoneyInput.jsx'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -109,14 +110,14 @@ export default function TabelaPrecoFrete() {
             <input style={I} value={nome} onChange={e => setNome(e.target.value)} />
           </div>
           <div>
-            <label style={L}>Preco Normal (R$):</label>
-            <input type="number" step="0.01" min="0" style={{ ...I, width: 140, textAlign: 'right', fontFamily: 'Space Mono, monospace', border: '1px solid var(--primary)' }}
-              value={precoNormal} onChange={e => setPrecoNormal(e.target.value)} />
+            <label style={L}>Preco Normal:</label>
+            <MoneyInput style={{ width: 140, border: '1px solid var(--primary)' }}
+              value={precoNormal} onChange={v => setPrecoNormal(v)} />
           </div>
           <div>
-            <label style={L}>Preco c/ Desc. (R$):</label>
-            <input type="number" step="0.01" min="0" style={{ ...I, width: 140, textAlign: 'right', fontFamily: 'Space Mono, monospace' }}
-              value={precoDesconto} onChange={e => setPrecoDesconto(e.target.value)} />
+            <label style={L}>Preco c/ Desc.:</label>
+            <MoneyInput style={{ width: 140 }}
+              value={precoDesconto} onChange={v => setPrecoDesconto(v)} />
           </div>
         </div>
 

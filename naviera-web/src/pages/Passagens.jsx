@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 import { printBilhete, printListaPassageiros } from '../utils/print.js'
 import Autocomplete from '../components/Autocomplete.jsx'
+import MoneyInput from '../components/MoneyInput.jsx'
 import ModalPagarPassagem from '../components/ModalPagarPassagem.jsx'
 
 function formatMoney(val) {
@@ -436,25 +437,27 @@ export default function Passagens({ viagemAtiva, onNavigate }) {
             { label: 'Cargas', name: 'valor_cargas' },
             { label: 'Desc.', name: 'valor_desconto_tarifa' }
           ].map(f => (
-            <div key={f.name} style={{ width: 80 }}>
+            <div key={f.name} style={{ width: 90 }}>
               <label style={{ ...L, fontSize: '0.62rem' }}>{f.label}</label>
-              <input style={MONO} type="number" step="0.01" min="0" name={f.name} value={form[f.name]} onChange={handleChange} />
+              <MoneyInput value={form[f.name]} onChange={v => setForm(prev => ({ ...prev, [f.name]: v }))} />
             </div>
           ))}
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-          <div style={{ width: 100 }}>
+          <div style={{ width: 110 }}>
             <label style={L}>Subtotal</label>
-            <input style={{ ...RO, textAlign: 'right', fontFamily: 'Space Mono, monospace' }} value={subtotal.toFixed(2)} readOnly tabIndex={-1} />
-          </div>
-          <div style={{ width: 100 }}>
-            <label style={{ ...L, color: 'var(--danger)' }}>Desconto</label>
-            <input style={{ ...MONO, color: 'var(--danger)' }} type="number" step="0.01" min="0" name="valor_desconto_geral" value={form.valor_desconto_geral} onChange={handleChange} />
+            <MoneyInput value={subtotal} readOnly tabIndex={-1} />
           </div>
           <div style={{ width: 110 }}>
+            <label style={{ ...L, color: 'var(--danger)' }}>Desconto</label>
+            <MoneyInput value={form.valor_desconto_geral} onChange={v => setForm(prev => ({ ...prev, valor_desconto_geral: v }))}
+              style={{ color: 'var(--danger)' }} />
+          </div>
+          <div style={{ width: 120 }}>
             <label style={{ ...L, color: 'var(--primary)', fontWeight: 700 }}>A PAGAR</label>
-            <input style={{ ...RO, textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary)' }} value={valorAPagar.toFixed(2)} readOnly tabIndex={-1} />
+            <MoneyInput value={valorAPagar} readOnly tabIndex={-1}
+              style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary)' }} />
           </div>
         </div>
 
