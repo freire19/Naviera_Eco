@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api.js'
 import { printReciboEncomenda } from '../utils/print.js'
+import Autocomplete from '../components/Autocomplete.jsx'
+
+function filtrarClientes(clientes, termo) {
+  const t = (termo || '').trim().toLowerCase()
+  if (!t) return []
+  return clientes.filter(c => (c.nome_cliente || '').toLowerCase().includes(t)).slice(0, 10)
+}
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -258,6 +265,10 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
   async function handleFinalizar() {
     if (!destinatario.trim()) { showToast('Informe o destinatario', 'error'); return }
 
+    // Salvar remetente/destinatario novos no cadastro (se o usuario digitou sem selecionar da lista)
+    if (remetente.trim()) await verificarSalvarCliente(remetente)
+    if (destinatario.trim()) await verificarSalvarCliente(destinatario)
+
     if (totalItens > 0) {
       const pagarAgora = window.confirm(`Total: ${formatMoney(totalItens)}\n\nDeseja registrar o pagamento agora?\n\n[OK] = Registrar pagamento\n[Cancelar] = Salvar como PENDENTE`)
       if (pagarAgora) {
@@ -401,19 +412,27 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
         <div style={{ width: 420, flexShrink: 0 }}>
           <div style={{ marginBottom: 8 }}>
             <label style={L}>Remetente:</label>
-            <select style={I} value={remetente} onChange={e => setRemetente(e.target.value)}>
-              <option value=""></option>
-              {clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente}>{c.nome_cliente}</option>)}
-            </select>
-            <input style={{ ...I, marginTop: 4 }} placeholder="Ou digite o nome..." value={remetente} onChange={e => setRemetente(e.target.value)} onBlur={() => verificarSalvarCliente(remetente)} />
+            <Autocomplete
+              value={remetente}
+              onChange={v => setRemetente(v)}
+              onSelect={c => { setRemetente(c.nome_cliente); verificarSalvarCliente(c.nome_cliente) }}
+              suggestions={filtrarClientes(clientes, remetente)}
+              placeholder="Digite o nome do remetente..."
+              emptyMessage="Nenhum cliente encontrado. Sera cadastrado como novo."
+              renderItem={c => <strong>{c.nome_cliente}</strong>}
+            />
           </div>
           <div style={{ marginBottom: 8 }}>
             <label style={L}>Destinatario:</label>
-            <select style={I} value={destinatario} onChange={e => setDestinatario(e.target.value)}>
-              <option value=""></option>
-              {clientes.map(c => <option key={c.id_cliente} value={c.nome_cliente}>{c.nome_cliente}</option>)}
-            </select>
-            <input style={{ ...I, marginTop: 4 }} placeholder="Ou digite o nome..." value={destinatario} onChange={e => setDestinatario(e.target.value)} onBlur={() => verificarSalvarCliente(destinatario)} />
+            <Autocomplete
+              value={destinatario}
+              onChange={v => setDestinatario(v)}
+              onSelect={c => { setDestinatario(c.nome_cliente); verificarSalvarCliente(c.nome_cliente) }}
+              suggestions={filtrarClientes(clientes, destinatario)}
+              placeholder="Digite o nome do destinatario..."
+              emptyMessage="Nenhum cliente encontrado. Sera cadastrado como novo."
+              renderItem={c => <strong>{c.nome_cliente}</strong>}
+            />
           </div>
           <div style={{ marginBottom: 8 }}>
             <label style={L}>Rota:</label>
