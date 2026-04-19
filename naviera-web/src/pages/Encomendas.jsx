@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { printReciboEncomenda, printEtiquetaEncomenda } from '../utils/print.js'
 import Autocomplete from '../components/Autocomplete.jsx'
 import MoneyInput from '../components/MoneyInput.jsx'
+import ModalSenhaAdmin from '../components/ModalSenhaAdmin.jsx'
 
 function filtrarClientes(clientes, termo) {
   const t = (termo || '').trim().toLowerCase()
@@ -324,16 +325,28 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
   }
 
   // Excluir
-  async function handleExcluir() {
+  const [modalExcluir, setModalExcluir] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
+  const [erroExcluir, setErroExcluir] = useState('')
+
+  function handleExcluir() {
     if (!selecionada) { showToast('Selecione uma encomenda', 'error'); return }
-    if (!window.confirm(`Excluir encomenda #${selecionada.numero_encomenda}?`)) return
+    setErroExcluir('')
+    setModalExcluir(true)
+  }
+
+  async function confirmarExclusao(payload) {
+    setExcluindo(true); setErroExcluir('')
     try {
-      await api.delete(`/encomendas/${selecionada.id_encomenda}`)
-      showToast('Encomenda excluida')
+      await api.delete(`/encomendas/${selecionada.id_encomenda}`, payload)
+      showToast(`Encomenda #${selecionada.numero_encomenda} excluida`)
+      setModalExcluir(false)
       limparForm()
       carregar()
     } catch (err) {
-      showToast(err.message || 'Erro ao excluir', 'error')
+      setErroExcluir(err.error || err.message || 'Erro ao excluir')
+    } finally {
+      setExcluindo(false)
     }
   }
 
@@ -641,6 +654,18 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
       </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+      {/* MODAL EXCLUIR COM SENHA ADMIN */}
+      {modalExcluir && (
+        <ModalSenhaAdmin
+          titulo="Excluir Encomenda"
+          mensagem={`Encomenda #${selecionada?.numero_encomenda}. A exclusao sera registrada no Historico de Estornos.`}
+          onConfirm={confirmarExclusao}
+          onClose={() => setModalExcluir(false)}
+          loading={excluindo}
+          erro={erroExcluir}
+        />
+      )}
 
       {/* MODAL PAGAMENTO */}
       {modalPagar && (

@@ -122,8 +122,14 @@ async function runMigrations() {
     `)
 
     log.info('Migrations', 'mes_referencia + backfill funcionarios ok')
+
+    // tipo_operacao em log_estornos_* (ESTORNO | EXCLUSAO)
+    await pool.query(`ALTER TABLE log_estornos_passagens ADD COLUMN IF NOT EXISTS tipo_operacao VARCHAR(20) DEFAULT 'ESTORNO'`)
+    await pool.query(`ALTER TABLE log_estornos_encomendas ADD COLUMN IF NOT EXISTS tipo_operacao VARCHAR(20) DEFAULT 'ESTORNO'`)
+    await pool.query(`ALTER TABLE log_estornos_fretes ADD COLUMN IF NOT EXISTS tipo_operacao VARCHAR(20) DEFAULT 'ESTORNO'`)
+    log.info('Migrations', 'tipo_operacao em log_estornos_* ok')
   } catch (err) {
-    log.warn('Migrations', `falha ao aplicar migration mes_referencia: ${err.message}`)
+    log.warn('Migrations', `falha ao aplicar migration: ${err.message}`)
   }
 }
 runMigrations()

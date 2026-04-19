@@ -1,26 +1,10 @@
 import { Router } from 'express'
-import bcrypt from 'bcryptjs'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { validarAutorizador } from '../utils/validarAutorizador.js'
 
 const router = Router()
 router.use(authMiddleware)
-
-// ── Helper: validar senha do autorizador ──
-async function validarAutorizador(login, senha, empresaId) {
-  const result = await pool.query(
-    `SELECT id, nome, senha FROM usuarios
-     WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1))
-       AND (excluido = FALSE OR excluido IS NULL)
-       AND empresa_id = $2`,
-    [login, empresaId]
-  )
-  if (result.rows.length === 0) return null
-  const user = result.rows[0]
-  const valida = await bcrypt.compare(senha, user.senha)
-  if (!valida) return null
-  return { id: user.id, nome: user.nome }
-}
 
 // ══════════════════════════════════════════
 // POST /api/estornos/passagem/:id
@@ -221,7 +205,7 @@ router.post('/frete/:id', async (req, res) => {
 router.get('/historico', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    const { tipo, data_inicio, data_fim, autorizador } = req.query
+    const { tipo, data_inicio, data_fim, autorizador, operacao } = req.query
 
     const queries = []
     const buildWhere = (baseParams) => {
@@ -231,13 +215,15 @@ router.get('/historico', async (req, res) => {
       if (data_inicio) { where += ` AND l.data_hora >= $${idx}`; params.push(data_inicio); idx++ }
       if (data_fim) { where += ` AND l.data_hora <= ($${idx}::date + INTERVAL '1 day')`; params.push(data_fim); idx++ }
       if (autorizador) { where += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`); idx++ }
+      if (operacao) { where += ` AND COALESCE(l.tipo_operacao, 'ESTORNO') = $${idx}`; params.push(operacao); idx++ }
       return { where, params }
     }
 
     if (!tipo || tipo === 'passagem') {
       const { where, params } = buildWhere([empresaId])
       queries.push(pool.query(
-        `SELECT l.*, 'passagem' AS tipo, p.numero_bilhete AS numero
+        `SELECT l.*, COALESCE(l.tipo_operacao, 'ESTORNO') AS tipo_operacao,
+                'passagem' AS tipo, p.numero_bilhete AS numero
          FROM log_estornos_passagens l
          LEFT JOIN passagens p ON l.id_passagem = p.id_passagem
          WHERE l.empresa_id = $1 ${where}
@@ -247,7 +233,8 @@ router.get('/historico', async (req, res) => {
     if (!tipo || tipo === 'encomenda') {
       const { where, params } = buildWhere([empresaId])
       queries.push(pool.query(
-        `SELECT l.*, 'encomenda' AS tipo, e.numero_encomenda AS numero
+        `SELECT l.*, COALESCE(l.tipo_operacao, 'ESTORNO') AS tipo_operacao,
+                'encomenda' AS tipo, e.numero_encomenda AS numero
          FROM log_estornos_encomendas l
          LEFT JOIN encomendas e ON l.id_encomenda = e.id_encomenda
          WHERE l.empresa_id = $1 ${where}
@@ -257,7 +244,8 @@ router.get('/historico', async (req, res) => {
     if (!tipo || tipo === 'frete') {
       const { where, params } = buildWhere([empresaId])
       queries.push(pool.query(
-        `SELECT l.*, 'frete' AS tipo, f.numero_frete AS numero
+        `SELECT l.*, COALESCE(l.tipo_operacao, 'ESTORNO') AS tipo_operacao,
+                'frete' AS tipo, f.numero_frete AS numero
          FROM log_estornos_fretes l
          LEFT JOIN fretes f ON l.id_frete = f.id_frete
          WHERE l.empresa_id = $1 ${where}

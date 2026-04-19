@@ -118,18 +118,31 @@ export default function HistoricoEstornos({ viagemAtiva }) {
             <thead>
               <tr>
                 <th>Data/Hora</th>
+                <th>Operacao</th>
                 <th>Tipo</th>
                 <th>Numero</th>
-                <th>Valor Estornado</th>
+                <th>Valor</th>
                 <th>Motivo</th>
                 <th>Forma Devolucao</th>
                 <th>Autorizador</th>
               </tr>
             </thead>
             <tbody>
-              {estornos.map((e, idx) => (
+              {estornos.map((e, idx) => {
+                const operacao = (e.tipo_operacao || 'ESTORNO').toUpperCase()
+                const isExclusao = operacao === 'EXCLUSAO'
+                return (
                 <tr key={e.id_log || idx}>
                   <td>{formatDateTime(e.data_hora)}</td>
+                  <td>
+                    <span style={{
+                      display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 700,
+                      color: '#fff',
+                      background: isExclusao ? 'var(--danger)' : 'var(--primary)'
+                    }}>
+                      {isExclusao ? 'EXCLUSAO' : 'ESTORNO'}
+                    </span>
+                  </td>
                   <td>
                     <span className={`badge ${TIPO_BADGE[e.tipo] || ''}`}>
                       {TIPO_LABEL[e.tipo] || e.tipo}
@@ -143,7 +156,7 @@ export default function HistoricoEstornos({ viagemAtiva }) {
                   <td>{e.forma_devolucao || '—'}</td>
                   <td>{e.nome_autorizador || '—'}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

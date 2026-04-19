@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { printNotaFrete, printEtiquetaFrete } from '../utils/print.js'
 import Autocomplete from '../components/Autocomplete.jsx'
 import MoneyInput from '../components/MoneyInput.jsx'
+import ModalSenhaAdmin from '../components/ModalSenhaAdmin.jsx'
 
 function filtrarContatos(contatos, termo) {
   const t = (termo || '').trim().toLowerCase()
@@ -316,6 +317,32 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
     }
   }
 
+  // EXCLUIR frete (com senha admin)
+  const [modalExcluir, setModalExcluir] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
+  const [erroExcluir, setErroExcluir] = useState('')
+
+  function handleExcluir() {
+    if (!selecionado) { showToast('Selecione um frete', 'error'); return }
+    setErroExcluir('')
+    setModalExcluir(true)
+  }
+
+  async function confirmarExclusao(payload) {
+    setExcluindo(true); setErroExcluir('')
+    try {
+      await api.delete(`/fretes/${selecionado.id_frete}`, payload)
+      showToast(`Frete ${selecionado.numero_frete} excluido`)
+      setModalExcluir(false)
+      limparForm()
+      carregar()
+    } catch (err) {
+      setErroExcluir(err.error || err.message || 'Erro ao excluir')
+    } finally {
+      setExcluindo(false)
+    }
+  }
+
   // Pagamento (chamado separadamente, nao no SALVAR)
   async function handleConfirmarPagamento() {
     const vDesc = parseFloat(pgDesconto) || 0
@@ -562,7 +589,7 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
           <button className="btn-sm primary" onClick={handleNovo}>Novo (F1)</button>
           <button className="btn-sm primary" onClick={() => {}}>Alterar (F2)</button>
           <button className="btn-sm primary" onClick={handleSalvar} disabled={!editando || salvando} style={{ fontWeight: 700 }}>SALVAR (F3)</button>
-          <button className="btn-sm danger" onClick={() => {}}>Excluir (F4)</button>
+          <button className="btn-sm danger" onClick={handleExcluir}>Excluir (F4)</button>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="btn-sm primary" onClick={() => onNavigate && onNavigate('listar-fretes')}>Lista de Fretes (F5)</button>
@@ -578,6 +605,18 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
       </div>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+      {/* MODAL EXCLUIR COM SENHA ADMIN */}
+      {modalExcluir && (
+        <ModalSenhaAdmin
+          titulo="Excluir Frete"
+          mensagem={`Frete #${selecionado?.numero_frete} (${selecionado?.destinatario || '\u2014'}). A exclusao sera registrada no Historico de Estornos.`}
+          onConfirm={confirmarExclusao}
+          onClose={() => setModalExcluir(false)}
+          loading={excluindo}
+          erro={erroExcluir}
+        />
+      )}
 
       {/* MODAL CADASTRAR NOVO CONTATO/CLIENTE */}
       {modalNovoContato && (

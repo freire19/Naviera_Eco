@@ -2,6 +2,7 @@ import { Router } from 'express'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
+import { validarAutorizador } from '../utils/validarAutorizador.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -301,23 +302,54 @@ router.post('/:id/pagar', async (req, res) => {
 })
 
 // DELETE /api/passagens/:id
-// DS4-032 fix: somente Administrador/Gerente pode deletar
+// Exige senha de um usuario autorizador + motivo. Grava log em
+// log_estornos_passagens com tipo_operacao='EXCLUSAO' antes de deletar.
 router.delete('/:id', async (req, res) => {
-  const funcao = (req.user.funcao || '').toLowerCase()
-  if (funcao !== 'administrador' && funcao !== 'admin' && funcao !== 'gerente') {
-    return res.status(403).json({ error: 'Somente Administrador ou Gerente pode excluir passagens' })
-  }
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const result = await pool.query(
-      'DELETE FROM passagens WHERE id_passagem = $1 AND empresa_id = $2 RETURNING id_passagem',
+    const { login_autorizador, senha_autorizador, motivo } = req.body || {}
+    if (!login_autorizador || !senha_autorizador) {
+      return res.status(400).json({ error: 'Login e senha do autorizador obrigatorios' })
+    }
+    if (!motivo || !motivo.trim()) {
+      return res.status(400).json({ error: 'Motivo da exclusao obrigatorio' })
+    }
+    const autorizador = await validarAutorizador(login_autorizador, senha_autorizador, empresaId)
+    if (!autorizador) return res.status(403).json({ error: 'Senha do autorizador invalida' })
+
+    await client.query('BEGIN')
+
+    const passRes = await client.query(
+      'SELECT valor_pago, valor_total FROM passagens WHERE id_passagem = $1 AND empresa_id = $2',
       [req.params.id, empresaId]
     )
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Passagem nao encontrada' })
-    res.json({ mensagem: 'Passagem excluida' })
+    if (passRes.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Passagem nao encontrada' })
+    }
+    const valorEstornado = parseFloat(passRes.rows[0].valor_pago) || 0
+
+    // Log antes de deletar
+    await client.query(
+      `INSERT INTO log_estornos_passagens
+       (id_passagem, valor_estornado, motivo, forma_devolucao, id_usuario_autorizou, nome_autorizador, data_hora, empresa_id, tipo_operacao)
+       VALUES ($1, $2, $3, NULL, $4, $5, NOW(), $6, 'EXCLUSAO')`,
+      [req.params.id, valorEstornado, motivo.trim(), autorizador.id, autorizador.nome, empresaId]
+    )
+
+    await client.query(
+      'DELETE FROM passagens WHERE id_passagem = $1 AND empresa_id = $2',
+      [req.params.id, empresaId]
+    )
+    await client.query('COMMIT')
+    res.json({ mensagem: 'Passagem excluida', autorizador: autorizador.nome })
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('[Passagens] Erro ao excluir:', err.message)
     res.status(500).json({ error: 'Erro ao excluir passagem' })
+  } finally {
+    client.release()
   }
 })
 

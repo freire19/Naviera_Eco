@@ -4,6 +4,7 @@ import { printBilhete, printListaPassageiros } from '../utils/print.js'
 import Autocomplete from '../components/Autocomplete.jsx'
 import MoneyInput from '../components/MoneyInput.jsx'
 import ModalPagarPassagem from '../components/ModalPagarPassagem.jsx'
+import ModalSenhaAdmin from '../components/ModalSenhaAdmin.jsx'
 
 function formatMoney(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
@@ -272,17 +273,30 @@ export default function Passagens({ viagemAtiva, onNavigate }) {
     }
   }
 
-  // EXCLUIR
-  async function handleExcluir() {
+  // EXCLUIR (abre modal de senha admin)
+  const [modalExcluir, setModalExcluir] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
+  const [erroExcluir, setErroExcluir] = useState('')
+
+  function handleExcluir() {
     if (!selecionada) { showToast('Selecione uma passagem', 'error'); return }
-    if (!window.confirm(`Excluir passagem ${selecionada.numero_bilhete}?`)) return
+    setErroExcluir('')
+    setModalExcluir(true)
+  }
+
+  async function confirmarExclusao(payload) {
+    setExcluindo(true)
+    setErroExcluir('')
     try {
-      await api.delete(`/passagens/${selecionada.id_passagem}`)
-      showToast('Passagem excluida')
+      await api.delete(`/passagens/${selecionada.id_passagem}`, payload)
+      showToast(`Passagem ${selecionada.numero_bilhete} excluida`)
+      setModalExcluir(false)
       setSelecionada(null)
       carregarPassagens()
     } catch (err) {
-      showToast(err.message || 'Erro ao excluir', 'error')
+      setErroExcluir(err.error || err.message || 'Erro ao excluir')
+    } finally {
+      setExcluindo(false)
     }
   }
 
@@ -557,6 +571,18 @@ export default function Passagens({ viagemAtiva, onNavigate }) {
           onClose={() => setModalPagar(null)}
           onSuccess={() => { setModalPagar(null); carregarPassagens() }}
           showToast={showToast}
+        />
+      )}
+
+      {/* MODAL EXCLUIR COM SENHA ADMIN */}
+      {modalExcluir && (
+        <ModalSenhaAdmin
+          titulo="Excluir Passagem"
+          mensagem={`Passagem #${selecionada?.numero_bilhete} (${selecionada?.nome_passageiro || '\u2014'}). A exclusao sera registrada no Historico de Estornos.`}
+          onConfirm={confirmarExclusao}
+          onClose={() => setModalExcluir(false)}
+          loading={excluindo}
+          erro={erroExcluir}
         />
       )}
     </div>
