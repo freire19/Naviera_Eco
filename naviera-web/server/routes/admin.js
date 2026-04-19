@@ -181,6 +181,44 @@ router.get('/empresas/:id/stats', async (req, res) => {
 })
 
 // ============================================================
+// PSP — onboarding de subconta Asaas em nome de qualquer empresa
+// ============================================================
+// Proxy para Spring API /api/admin/empresas/{id}/psp/...
+// adminOnly middleware ja garante ROLE_ADMIN.
+const SPRING_API_BASE_PSP = process.env.SPRING_API_BASE || 'http://localhost:8081/api'
+
+router.get('/empresas/:id/psp/status', async (req, res) => {
+  try {
+    const upstream = await fetch(`${SPRING_API_BASE_PSP}/admin/empresas/${req.params.id}/psp/status`, {
+      headers: { Authorization: req.headers.authorization }
+    })
+    const body = await upstream.text()
+    res.status(upstream.status).type('application/json').send(body)
+  } catch (err) {
+    console.error('[Admin] Erro proxy /psp/status:', err.message)
+    res.status(502).json({ error: 'Backend PSP indisponivel' })
+  }
+})
+
+router.post('/empresas/:id/psp/onboarding', async (req, res) => {
+  try {
+    const upstream = await fetch(`${SPRING_API_BASE_PSP}/admin/empresas/${req.params.id}/psp/onboarding`, {
+      method: 'POST',
+      headers: {
+        Authorization: req.headers.authorization,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(req.body || {})
+    })
+    const body = await upstream.text()
+    res.status(upstream.status).type('application/json').send(body)
+  } catch (err) {
+    console.error('[Admin] Erro proxy /psp/onboarding:', err.message)
+    res.status(502).json({ error: 'Backend PSP indisponivel' })
+  }
+})
+
+// ============================================================
 // METRICAS
 // ============================================================
 

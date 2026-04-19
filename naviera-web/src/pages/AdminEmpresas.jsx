@@ -10,6 +10,14 @@ const FORM_INICIAL = {
   operador_email: ''
 }
 
+const ONB_INICIAL = {
+  razaoSocial: '', cnpj: '', email: '', telefone: '', mobilePhone: '',
+  responsavelNome: '', responsavelCpf: '', birthDate: '',
+  companyType: 'LIMITED', incomeValue: '',
+  endereco: '', addressNumber: '', complemento: '', bairro: '',
+  cep: '', cidade: '', estado: ''
+}
+
 export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
   const [empresas, setEmpresas] = useState([])
   const [loading, setLoading] = useState(false)
@@ -20,6 +28,12 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
   const [toast, setToast] = useState(null)
   const [credenciais, setCredenciais] = useState(null)
 
+  // PSP
+  const [pspStatus, setPspStatus] = useState({})  // { [empresaId]: { status, subcontaId } }
+  const [onbEmpresa, setOnbEmpresa] = useState(null) // empresa escolhida pra onboarding
+  const [onbForm, setOnbForm] = useState(ONB_INICIAL)
+  const [onbEnviando, setOnbEnviando] = useState(false)
+
   function showToast(msg, type = 'success') {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3500)
@@ -28,7 +42,21 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
   const carregar = useCallback(() => {
     setLoading(true)
     api.get('/admin/empresas')
-      .then(setEmpresas)
+      .then(rows => {
+        setEmpresas(rows)
+        // Buscar status PSP de cada empresa em paralelo
+        Promise.all(
+          rows.map(e =>
+            api.get(`/admin/empresas/${e.id}/psp/status`)
+              .then(st => [e.id, st])
+              .catch(() => [e.id, { status: 'SEM_SUBCONTA' }])
+          )
+        ).then(results => {
+          const map = {}
+          results.forEach(([id, st]) => { map[id] = st })
+          setPspStatus(map)
+        })
+      })
       .catch(() => showToast('Erro ao carregar empresas', 'error'))
       .finally(() => setLoading(false))
   }, [])
@@ -50,6 +78,32 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
       logo_url: item.logo_url || ''
     })
     setModalAberto(true)
+  }
+
+  function abrirOnboarding(empresa) {
+    setOnbEmpresa(empresa)
+    setOnbForm({
+      ...ONB_INICIAL,
+      razaoSocial: empresa.nome || '',
+      cnpj: empresa.cnpj || ''
+    })
+  }
+
+  async function enviarOnboarding() {
+    if (!onbEmpresa) return
+    setOnbEnviando(true)
+    try {
+      const payload = { ...onbForm, incomeValue: onbForm.incomeValue ? Number(onbForm.incomeValue) : null }
+      const resp = await api.post(`/admin/empresas/${onbEmpresa.id}/psp/onboarding`, payload)
+      showToast(resp.mensagem || 'Subconta criada')
+      setOnbEmpresa(null)
+      setOnbForm(ONB_INICIAL)
+      carregar()
+    } catch (err) {
+      showToast(err.message || 'Erro no onboarding', 'error')
+    } finally {
+      setOnbEnviando(false)
+    }
   }
 
   function fecharModal() {
@@ -122,6 +176,7 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
               <th>Slug</th>
               <th>Cor</th>
               <th>Status</th>
+              <th>Asaas</th>
               <th>Usuarios</th>
               <th>Passagens</th>
               <th>Encomendas</th>
@@ -131,47 +186,62 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="9">Carregando...</td></tr>
+              <tr><td colSpan="10">Carregando...</td></tr>
             ) : empresas.length === 0 ? (
-              <tr><td colSpan="9">Nenhuma empresa cadastrada</td></tr>
-            ) : empresas.map(e => (
-              <tr key={e.id}>
-                <td>{e.nome}</td>
-                <td><code>{e.slug}</code></td>
-                <td>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: 20,
-                      height: 20,
-                      borderRadius: 4,
-                      backgroundColor: e.cor_primaria || '#ccc',
-                      verticalAlign: 'middle',
-                      border: '1px solid var(--border)'
-                    }}
-                  />
-                </td>
-                <td>
-                  <span className={`badge ${e.ativo ? 'success' : 'error'}`}>
-                    {e.ativo ? 'Ativa' : 'Inativa'}
-                  </span>
-                </td>
-                <td>{e.total_usuarios || 0}</td>
-                <td>{e.total_passagens || 0}</td>
-                <td>{e.total_encomendas || 0}</td>
-                <td>{e.total_fretes || 0}</td>
-                <td>
-                  <button className="btn-sm primary" onClick={() => abrirEditar(e)}>Editar</button>
-                  {' '}
-                  <button
-                    className={`btn-sm ${e.ativo ? 'danger' : 'success'}`}
-                    onClick={() => toggleAtivo(e)}
-                  >
-                    {e.ativo ? 'Desativar' : 'Ativar'}
-                  </button>
-                </td>
-              </tr>
-            ))}
+              <tr><td colSpan="10">Nenhuma empresa cadastrada</td></tr>
+            ) : empresas.map(e => {
+              const psp = pspStatus[e.id]
+              const pspAtiva = psp?.status === 'ATIVA'
+              return (
+                <tr key={e.id}>
+                  <td>{e.nome}</td>
+                  <td><code>{e.slug}</code></td>
+                  <td>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: 20,
+                        height: 20,
+                        borderRadius: 4,
+                        backgroundColor: e.cor_primaria || '#ccc',
+                        verticalAlign: 'middle',
+                        border: '1px solid var(--border)'
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <span className={`badge ${e.ativo ? 'success' : 'error'}`}>
+                      {e.ativo ? 'Ativa' : 'Inativa'}
+                    </span>
+                  </td>
+                  <td>
+                    {pspAtiva ? (
+                      <span className="badge success" title={psp.subcontaId} style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                        ✓ {psp.subcontaId ? psp.subcontaId.slice(0, 8) + '...' : 'Ativa'}
+                      </span>
+                    ) : (
+                      <button className="btn-sm primary" onClick={() => abrirOnboarding(e)}>
+                        Cadastrar
+                      </button>
+                    )}
+                  </td>
+                  <td>{e.total_usuarios || 0}</td>
+                  <td>{e.total_passagens || 0}</td>
+                  <td>{e.total_encomendas || 0}</td>
+                  <td>{e.total_fretes || 0}</td>
+                  <td>
+                    <button className="btn-sm primary" onClick={() => abrirEditar(e)}>Editar</button>
+                    {' '}
+                    <button
+                      className={`btn-sm ${e.ativo ? 'danger' : 'success'}`}
+                      onClick={() => toggleAtivo(e)}
+                    >
+                      {e.ativo ? 'Desativar' : 'Ativar'}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -221,6 +291,64 @@ export default function AdminEmpresas({ viagemAtiva, onNavigate }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {onbEmpresa && (
+        <div className="modal-overlay" onClick={() => setOnbEmpresa(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
+            <h3>Cadastrar subconta Asaas — {onbEmpresa.nome}</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-soft)', marginTop: 4, marginBottom: 16 }}>
+              Dados da empresa e responsavel pra abrir a subconta marketplace.
+            </p>
+            <div className="form-grid">
+              <div className="form-group"><label>Razao social</label>
+                <input type="text" value={onbForm.razaoSocial} onChange={e => setOnbForm({ ...onbForm, razaoSocial: e.target.value })} /></div>
+              <div className="form-group"><label>CNPJ</label>
+                <input type="text" value={onbForm.cnpj} onChange={e => setOnbForm({ ...onbForm, cnpj: e.target.value })} placeholder="Apenas numeros ou com pontuacao" /></div>
+              <div className="form-group"><label>Email</label>
+                <input type="email" value={onbForm.email} onChange={e => setOnbForm({ ...onbForm, email: e.target.value })} /></div>
+              <div className="form-group"><label>Tipo juridico</label>
+                <select value={onbForm.companyType} onChange={e => setOnbForm({ ...onbForm, companyType: e.target.value })}>
+                  <option value="LIMITED">LTDA</option>
+                  <option value="INDIVIDUAL">Empresario Individual</option>
+                  <option value="MEI">MEI</option>
+                  <option value="ASSOCIATION">Associacao</option>
+                </select></div>
+              <div className="form-group"><label>Telefone fixo</label>
+                <input type="text" value={onbForm.telefone} onChange={e => setOnbForm({ ...onbForm, telefone: e.target.value })} /></div>
+              <div className="form-group"><label>Celular</label>
+                <input type="text" value={onbForm.mobilePhone} onChange={e => setOnbForm({ ...onbForm, mobilePhone: e.target.value })} /></div>
+              <div className="form-group"><label>Responsavel</label>
+                <input type="text" value={onbForm.responsavelNome} onChange={e => setOnbForm({ ...onbForm, responsavelNome: e.target.value })} /></div>
+              <div className="form-group"><label>CPF do responsavel</label>
+                <input type="text" value={onbForm.responsavelCpf} onChange={e => setOnbForm({ ...onbForm, responsavelCpf: e.target.value })} /></div>
+              <div className="form-group"><label>Data nascimento</label>
+                <input type="date" value={onbForm.birthDate} onChange={e => setOnbForm({ ...onbForm, birthDate: e.target.value })} /></div>
+              <div className="form-group"><label>Faturamento mensal (R$)</label>
+                <input type="number" step="0.01" value={onbForm.incomeValue} onChange={e => setOnbForm({ ...onbForm, incomeValue: e.target.value })} placeholder="Estimativa" /></div>
+              <div className="form-group"><label>CEP</label>
+                <input type="text" value={onbForm.cep} onChange={e => setOnbForm({ ...onbForm, cep: e.target.value })} /></div>
+              <div className="form-group"><label>Endereco</label>
+                <input type="text" value={onbForm.endereco} onChange={e => setOnbForm({ ...onbForm, endereco: e.target.value })} placeholder="Rua / Av" /></div>
+              <div className="form-group"><label>Numero</label>
+                <input type="text" value={onbForm.addressNumber} onChange={e => setOnbForm({ ...onbForm, addressNumber: e.target.value })} /></div>
+              <div className="form-group"><label>Complemento</label>
+                <input type="text" value={onbForm.complemento} onChange={e => setOnbForm({ ...onbForm, complemento: e.target.value })} /></div>
+              <div className="form-group"><label>Bairro</label>
+                <input type="text" value={onbForm.bairro} onChange={e => setOnbForm({ ...onbForm, bairro: e.target.value })} /></div>
+              <div className="form-group"><label>Cidade</label>
+                <input type="text" value={onbForm.cidade} onChange={e => setOnbForm({ ...onbForm, cidade: e.target.value })} /></div>
+              <div className="form-group"><label>Estado</label>
+                <input type="text" value={onbForm.estado} maxLength={2} onChange={e => setOnbForm({ ...onbForm, estado: e.target.value.toUpperCase() })} placeholder="UF" /></div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setOnbEmpresa(null)}>Cancelar</button>
+              <button type="button" className="btn-primary" onClick={enviarOnboarding} disabled={onbEnviando}>
+                {onbEnviando ? 'Enviando...' : 'Criar subconta'}
+              </button>
+            </div>
           </div>
         </div>
       )}

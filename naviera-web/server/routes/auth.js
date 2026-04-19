@@ -19,9 +19,12 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Se o tenant foi resolvido pelo subdominio, filtrar por empresa_id
     const tenantId = req.tenant?.id || null
 
-    // OCR app (ocr.naviera.com.br) nao tem tenant — resolve empresa_id pelo proprio usuario
+    // OCR app e Admin console nao tem tenant — resolvem empresa_id pelo proprio usuario.
+    // adminOnly middleware valida funcao=Administrador nas rotas /api/admin.
     const origin = req.headers.origin || req.headers.referer || ''
+    const host = (req.headers.host || '').toLowerCase()
     const isOcrApp = /ocr\.naviera\.com\.br/.test(origin) || req.headers['x-tenant-slug'] === 'ocr'
+    const isAdminApp = /admin\.naviera\.com\.br/.test(origin) || /admin\.naviera\.com\.br/.test(host) || req.headers['x-tenant-slug'] === 'admin'
 
     let sql, params
     if (tenantId) {
@@ -33,8 +36,8 @@ router.post('/login', loginLimiter, async (req, res) => {
                AND (excluido = FALSE OR excluido IS NULL)
                AND empresa_id = $2`
       params = [login, tenantId]
-    } else if (isOcrApp) {
-      // OCR app: usuario resolve empresa_id pelo banco (sem filtro de tenant)
+    } else if (isOcrApp || isAdminApp) {
+      // OCR/Admin: usuario resolve empresa_id pelo banco (sem filtro de tenant)
       sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id,
                     COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha
              FROM usuarios
