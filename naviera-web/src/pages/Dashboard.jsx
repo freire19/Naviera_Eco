@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api.js'
+import CalendarioEventos from '../components/CalendarioEventos.jsx'
 
 const OCR_URL = window.location.hostname === 'localhost'
   ? `http://${window.location.hostname}:5175`
@@ -82,24 +83,28 @@ export default function Dashboard({ viagemAtiva, onNavigate }) {
         </>
       )}
 
-      <div className="card">
-        <div className="card-header">
-          <h3>Acesso Rapido</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(420px, 1.4fr)', gap: 16, alignItems: 'flex-start' }}>
+        <div className="card">
+          <div className="card-header">
+            <h3>Acesso Rapido</h3>
+          </div>
+          <div className="quick-actions">
+            {QUICK_ACTIONS.map(a => a.external ? (
+              <a key={a.key} className="quick-action" href={OCR_URL} target="_blank" rel="noopener noreferrer"
+                style={{ textDecoration: 'none', color: 'inherit' }}>
+                <span className="qa-icon">{a.icon}</span>
+                {a.label} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>&#8599;</span>
+              </a>
+            ) : (
+              <button key={a.key} className="quick-action" onClick={() => onNavigate(a.key)}>
+                <span className="qa-icon">{a.icon}</span>
+                {a.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="quick-actions">
-          {QUICK_ACTIONS.map(a => a.external ? (
-            <a key={a.key} className="quick-action" href={OCR_URL} target="_blank" rel="noopener noreferrer"
-              style={{ textDecoration: 'none', color: 'inherit' }}>
-              <span className="qa-icon">{a.icon}</span>
-              {a.label} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>&#8599;</span>
-            </a>
-          ) : (
-            <button key={a.key} className="quick-action" onClick={() => onNavigate(a.key)}>
-              <span className="qa-icon">{a.icon}</span>
-              {a.label}
-            </button>
-          ))}
-        </div>
+
+        <CalendarioEventos />
       </div>
     </div>
   )
