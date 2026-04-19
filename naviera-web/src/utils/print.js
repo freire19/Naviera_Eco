@@ -572,61 +572,85 @@ function gerarBarcodeSvg(value, opts = {}) {
 /**
  * Prints etiquetas de frete — uma etiqueta por volume, numeradas "X/N",
  * cada uma com codigo de barras Code128 contendo numero_frete-volume.
+ *
+ * formato:
+ *   'a4'   (default) — grade 3 colunas em folha A4, varias etiquetas por pagina
+ *   'rolo' — largura 80mm, etiquetas empilhadas uma abaixo da outra (impressora termica)
  */
-export function printEtiquetaFrete(frete) {
+export function printEtiquetaFrete(frete, formato = 'a4') {
   const totalVolumes = parseInt(frete.total_volumes) || 1
   const numeroFrete = String(frete.numero_frete || frete.id_frete || '')
   const destinatario = h(frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014')
   const rota = h(frete.nome_rota || frete.rota_temp || '\u2014')
   const remetente = h(frete.nome_remetente || frete.remetente_nome_temp || '\u2014')
+  const dataViagem = h(frete.data_viagem_fmt || frete.data_viagem || '')
+  const numNota = frete.num_notafiscal || frete.numero_nota_fiscal || ''
+  const valorNota = parseFloat(frete.valor_notafiscal || 0) || 0
+  const pesoNota = parseFloat(frete.peso_notafiscal || 0) || 0
+  const notaBloc = numNota
+    ? `<div class="nota">NF ${h(numNota)}${valorNota > 0 ? ' - R$ ' + valorNota.toFixed(2).replace('.', ',') : ''}${pesoNota > 0 ? ' - ' + pesoNota + 'kg' : ''}</div>`
+    : ''
 
   const etiquetas = []
   for (let i = 1; i <= totalVolumes; i++) {
     const barcodeValue = numeroFrete ? `${numeroFrete}-${i}` : `VOL-${i}`
-    const barcodeSvg = gerarBarcodeSvg(barcodeValue)
+    const barcodeSvg = gerarBarcodeSvg(barcodeValue, { height: 28, fontSize: 9, margin: 0 })
     etiquetas.push(`
       <div class="etiqueta">
-        <div class="header">NAVIERA</div>
+        <div class="top">
+          <span class="frete">Frete ${h(numeroFrete || '\u2014')}${dataViagem ? ' \u00B7 ' + dataViagem : ''}</span>
+          <span class="volume">${i}/${totalVolumes}</span>
+        </div>
         <div class="destinatario">${destinatario}</div>
         <div class="rota">${rota}</div>
-        <hr class="divider">
-        <div class="info"><strong>Frete:</strong> ${h(numeroFrete || '\u2014')}</div>
-        <div class="info volume-bloco"><strong>Volume ${i} / ${totalVolumes}</strong></div>
-        <div class="info"><strong>Remetente:</strong> ${remetente}</div>
+        <div class="remetente">De: ${remetente}</div>
+        ${notaBloc}
         <div class="barcode-wrap">${barcodeSvg}</div>
       </div>
     `)
   }
 
+  const isRolo = formato === 'rolo'
+  const pageCss = isRolo
+    ? '@page { size: 80mm auto; margin: 2mm; }'
+    : '@page { size: A4; margin: 8mm; }'
+  const gridCss = isRolo
+    ? '.grid { display: flex; flex-direction: column; gap: 2mm; }'
+    : '.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; }'
+
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Etiquetas Frete ${h(numeroFrete)} — ${totalVolumes} volumes</title>
+  <title>Etiquetas Frete ${h(numeroFrete)} - ${totalVolumes} volumes</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; padding: ${isRolo ? '0' : '5mm'}; }
+    ${gridCss}
     .etiqueta {
-      width: 72mm;
-      padding: 4mm 3mm;
-      text-align: center;
-      page-break-after: always;
+      border: 1px dashed #999;
+      padding: 2mm 2.5mm;
+      min-height: 40mm;
       page-break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      ${isRolo ? 'width: 76mm;' : ''}
     }
-    .etiqueta:last-child { page-break-after: auto; }
-    .header { font-size: 10px; font-weight: 700; color: #059669; margin-bottom: 4px; }
-    .destinatario { font-size: 14px; font-weight: 700; margin: 6px 0; word-break: break-word; }
-    .rota { font-size: 11px; margin-bottom: 4px; }
-    .divider { border: none; border-top: 1px dashed #ccc; margin: 4px 0; }
-    .info { font-size: 11px; margin-top: 2px; text-align: left; }
-    .volume-bloco { text-align: center; font-size: 13px; margin: 6px 0; padding: 3px; border: 1px solid #059669; border-radius: 3px; }
-    .barcode-wrap { margin-top: 6px; }
-    .barcode-wrap svg { width: 100%; height: 44px; }
-    @page { size: 80mm 60mm; margin: 2mm; }
+    .top { display: flex; justify-content: space-between; font-size: 9px; color: #555; font-weight: 600; gap: 3mm; }
+    .top .frete { word-break: break-word; }
+    .top .volume { background: #059669; color: #fff; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+    .destinatario { font-size: 11px; font-weight: 700; margin: 2mm 0 0; line-height: 1.1; word-break: break-word; }
+    .rota { font-size: 9px; color: #555; margin-top: 1mm; }
+    .remetente { font-size: 8px; color: #777; margin-top: 1mm; }
+    .nota { font-size: 8px; color: #333; margin-top: 1mm; font-weight: 600; }
+    .barcode-wrap { margin-top: auto; padding-top: 2mm; text-align: center; }
+    .barcode-wrap svg { max-width: 100%; height: 32px; }
+    ${pageCss}
   </style>
 </head>
 <body>
-  ${etiquetas.join('')}
+  <div class="grid">${etiquetas.join('')}</div>
   <script>window.onload = function() { setTimeout(function() { window.print() }, 100) }<\/script>
 </body>
 </html>`

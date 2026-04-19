@@ -567,7 +567,12 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="btn-sm primary" onClick={() => onNavigate && onNavigate('listar-fretes')}>Lista de Fretes (F5)</button>
           <button className="btn-sm primary" onClick={() => { if (selecionado) printNotaFrete(selecionado, viagemAtiva) }}>Imprimir (F6)</button>
-          <button className="btn-sm primary" onClick={() => { if (selecionado) printEtiquetaFrete(selecionado) }}>Etiqueta</button>
+          <button className="btn-sm primary" onClick={() => {
+            if (!selecionado) return
+            // OK = rolo (80mm, uma embaixo da outra) / Cancelar = A4 (varias por folha)
+            const rolo = window.confirm('Imprimir em impressora de rolo (80mm)?\n\n[OK] Rolo termico 80mm — uma etiqueta embaixo da outra\n[Cancelar] Folha A4 — varias etiquetas por pagina')
+            printEtiquetaFrete(selecionado, rolo ? 'rolo' : 'a4')
+          }}>Etiqueta</button>
           <button className="btn-sm" onClick={() => onClose ? onClose() : limparForm()}>SAIR (Esc)</button>
         </div>
       </div>

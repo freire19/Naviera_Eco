@@ -163,8 +163,11 @@ router.get('/', async (req, res) => {
       f.rota_temp AS rota, f.conferente_temp AS conferente,
       f.data_emissao, f.local_transporte, f.cidade_cobranca,
       f.num_notafiscal, f.valor_notafiscal, f.peso_notafiscal,
+      TO_CHAR(v.data_viagem, 'DD/MM/YYYY') AS data_viagem,
       COALESCE((SELECT SUM(fi.quantidade) FROM frete_itens fi WHERE fi.id_frete = f.id_frete), 0) AS total_volumes
-      FROM fretes f WHERE f.empresa_id = $1`
+      FROM fretes f
+      LEFT JOIN viagens v ON f.id_viagem = v.id_viagem
+      WHERE f.empresa_id = $1`
     const params = [empresaId]
     if (viagem_id) {
       sql += ' AND f.id_viagem = $2'
