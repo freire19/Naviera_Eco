@@ -130,7 +130,7 @@ export default function CalendarioEventos() {
             <button key={dia}
               onClick={() => setDiaSelecionado(dia)}
               style={{
-                minHeight: 74, padding: '4px 3px', position: 'relative',
+                minHeight: 82, padding: '4px 3px', position: 'relative',
                 background: isHoje ? 'var(--primary)' : (isSel ? 'var(--bg-accent)' : 'var(--bg-card)'),
                 color: isHoje ? '#fff' : 'var(--text)',
                 border: isSel && !isHoje ? '2px solid var(--primary)' : '1px solid var(--border)',
@@ -165,10 +165,28 @@ export default function CalendarioEventos() {
                   &#128221; {tarefasDia[0].descricao}{tarefasDia.length > 1 ? ` +${tarefasDia.length - 1}` : ''}
                 </div>
               )}
+              {temBoleto && (() => {
+                const b = boletosDia[0]
+                const desc = b.descricao || 'Boleto'
+                const valor = Number(b.valor_total || 0)
+                const label = valor > 0 ? `${desc} R$ ${valor.toFixed(2).replace('.', ',')}` : desc
+                const titulo = boletosDia.map(x => `${x.descricao || 'Boleto'} R$ ${Number(x.valor_total || 0).toFixed(2).replace('.', ',')}`).join(' | ')
+                return (
+                  <div style={{
+                    fontSize: 9, fontWeight: 700, lineHeight: 1.1,
+                    color: isHoje ? '#fff' : '#0EA5E9',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    maxWidth: '100%'
+                  }} title={titulo}>
+                    &#36; {label}{boletosDia.length > 1 ? ` +${boletosDia.length - 1}` : ''}
+                  </div>
+                )
+              })()}
               <div style={{ display: 'flex', gap: 3, marginTop: 'auto' }}>
                 {temViagem && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#DC2626' }} title="Viagem" />}
                 {temTarefa && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#7C3AED' }} title="Anotacao" />}
                 {feriadoNome && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B' }} title="Feriado" />}
+                {temBoleto && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#0EA5E9' }} title="Conta a pagar" />}
               </div>
             </button>
           )
@@ -179,8 +197,8 @@ export default function CalendarioEventos() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC2626' }} /> Viagem</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#7C3AED' }} /> Anotacao</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} /> Feriado</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0EA5E9' }} /> Conta a Pagar</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} /> Hoje</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>&#128221; Contas a Pagar</div>
       </div>
 
       {eventosDoDia.length > 0 && (
