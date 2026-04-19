@@ -1,5 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 
+const inputStyle = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '7px 10px',
+  fontSize: '0.85rem',
+  background: 'var(--bg-soft)',
+  border: '1px solid var(--border)',
+  borderRadius: 4,
+  color: 'var(--text)'
+}
+
 const dropdownStyle = {
   position: 'absolute',
   top: '100%',
@@ -11,14 +22,17 @@ const dropdownStyle = {
   maxHeight: 200,
   overflowY: 'auto',
   zIndex: 100,
-  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+  whiteSpace: 'normal'
 }
 
 const itemStyle = {
   padding: '8px 12px',
   cursor: 'pointer',
   borderBottom: '1px solid var(--border)',
-  fontSize: 13
+  fontSize: 13,
+  whiteSpace: 'normal',
+  wordBreak: 'break-word'
 }
 
 const loadingStyle = {
@@ -83,7 +97,7 @@ export default function Autocomplete({
   const showEmpty = showDropdown && suggestions.length === 0 && value.trim().length >= minChars && !loading
 
   return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
       <input
         value={value}
         onChange={handleChange}
@@ -91,6 +105,7 @@ export default function Autocomplete({
         placeholder={placeholder}
         required
         autoComplete="off"
+        style={inputStyle}
       />
       {loading && <div style={loadingStyle}>Buscando...</div>}
       {showSuggestions && (
