@@ -240,7 +240,7 @@ export async function printBilhete(passagem, viagem, empresaData) {
   let emp = empresaData || {}
   if (!emp.companhia) {
     try {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('naviera_token')
       const res = await fetch('/api/cadastros/empresa', { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) emp = await res.json()
     } catch {}
@@ -382,7 +382,7 @@ export async function printReciboEncomenda(encomenda, viagem) {
   let itensData = encomenda.itens || []
   if (!itensData.length && encomenda.id_encomenda) {
     try {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('naviera_token')
       const res = await fetch(`/api/encomendas/${encomenda.id_encomenda}/itens`, { headers: { Authorization: `Bearer ${token}` } })
       if (res.ok) itensData = await res.json()
     } catch {}
@@ -577,7 +577,9 @@ function gerarBarcodeSvg(value, opts = {}) {
  *   'a4'   (default) — grade 3 colunas em folha A4, varias etiquetas por pagina
  *   'rolo' — largura 80mm, etiquetas empilhadas uma abaixo da outra (impressora termica)
  */
-export function printEtiquetaFrete(frete, formato = 'a4') {
+export async function printEtiquetaFrete(frete, formato = 'a4') {
+  const empresa = await loadEmpresa()
+  const nomeBarco = h(empresa.nome_embarcacao || empresa.companhia || 'NAVIERA')
   const totalVolumes = parseInt(frete.total_volumes) || 1
   const numeroFrete = String(frete.numero_frete || frete.id_frete || '')
   const destinatario = h(frete.nome_destinatario || frete.destinatario_nome_temp || '\u2014')
@@ -597,6 +599,7 @@ export function printEtiquetaFrete(frete, formato = 'a4') {
     const barcodeSvg = gerarBarcodeSvg(barcodeValue, { height: 28, fontSize: 9, margin: 0 })
     etiquetas.push(`
       <div class="etiqueta">
+        <div class="barco">${nomeBarco}</div>
         <div class="top">
           <span class="frete">Frete ${h(numeroFrete || '\u2014')}${dataViagem ? ' \u00B7 ' + dataViagem : ''}</span>
           <span class="volume">${i}/${totalVolumes}</span>
@@ -630,18 +633,19 @@ export function printEtiquetaFrete(frete, formato = 'a4') {
     .etiqueta {
       border: 1px dashed #999;
       padding: 2mm 2.5mm;
-      min-height: 40mm;
+      min-height: 42mm;
       page-break-inside: avoid;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       ${isRolo ? 'width: 76mm;' : ''}
     }
+    .barco { text-align: center; font-size: 10px; font-weight: 700; color: #fff; background: #059669; padding: 1px 4px; border-radius: 3px; margin-bottom: 2mm; letter-spacing: 0.3px; text-transform: uppercase; word-break: break-word; }
     .top { display: flex; justify-content: space-between; font-size: 9px; color: #555; font-weight: 600; gap: 3mm; }
     .top .frete { word-break: break-word; }
     .top .volume { background: #059669; color: #fff; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
     .destinatario { font-size: 11px; font-weight: 700; margin: 2mm 0 0; line-height: 1.1; word-break: break-word; }
-    .rota { font-size: 9px; color: #555; margin-top: 1mm; }
+    .rota { font-size: 11px; font-weight: 700; color: #047857; margin-top: 1mm; text-transform: uppercase; letter-spacing: 0.3px; }
     .remetente { font-size: 8px; color: #777; margin-top: 1mm; }
     .nota { font-size: 8px; color: #333; margin-top: 1mm; font-weight: 600; }
     .barcode-wrap { margin-top: auto; padding-top: 2mm; text-align: center; }
@@ -665,7 +669,9 @@ export function printEtiquetaFrete(frete, formato = 'a4') {
  *
  * formato: 'a4' (default, grade 3 colunas) ou 'rolo' (80mm empilhado).
  */
-export function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva = null, formato = 'a4') {
+export async function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva = null, formato = 'a4') {
+  const empresa = await loadEmpresa()
+  const nomeBarco = h(empresa.nome_embarcacao || empresa.companhia || 'NAVIERA')
   const numeroEnc = String(encomenda.numero_encomenda || encomenda.id_encomenda || '')
   const destinatario = h(encomenda.destinatario || encomenda.nome_destinatario || '\u2014')
   const remetente = h(encomenda.remetente || encomenda.nome_remetente || '\u2014')
@@ -693,6 +699,7 @@ export function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva = null
     const barcodeSvg = gerarBarcodeSvg(barcodeValue, { height: 28, fontSize: 9, margin: 0 })
     return `
       <div class="etiqueta">
+        <div class="barco">${nomeBarco}</div>
         <div class="top">
           <span class="frete">Enc. ${h(numeroEnc || '\u2014')}${dataViagem ? ' \u00B7 ' + dataViagem : ''}</span>
           <span class="volume">${i}/${totalVolumes}</span>
@@ -726,18 +733,19 @@ export function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva = null
     .etiqueta {
       border: 1px dashed #999;
       padding: 2mm 2.5mm;
-      min-height: 40mm;
+      min-height: 42mm;
       page-break-inside: avoid;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       ${isRolo ? 'width: 76mm;' : ''}
     }
+    .barco { text-align: center; font-size: 10px; font-weight: 700; color: #fff; background: #059669; padding: 1px 4px; border-radius: 3px; margin-bottom: 2mm; letter-spacing: 0.3px; text-transform: uppercase; word-break: break-word; }
     .top { display: flex; justify-content: space-between; font-size: 9px; color: #555; font-weight: 600; gap: 3mm; }
     .top .frete { word-break: break-word; }
     .top .volume { background: #059669; color: #fff; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
     .destinatario { font-size: 11px; font-weight: 700; margin: 2mm 0 0; line-height: 1.1; word-break: break-word; }
-    .rota { font-size: 9px; color: #555; margin-top: 1mm; }
+    .rota { font-size: 11px; font-weight: 700; color: #047857; margin-top: 1mm; text-transform: uppercase; letter-spacing: 0.3px; }
     .remetente { font-size: 8px; color: #777; margin-top: 1mm; }
     .nota { font-size: 8px; color: #333; margin-top: 1mm; font-weight: 600; }
     .barcode-wrap { margin-top: auto; padding-top: 2mm; text-align: center; }
@@ -757,7 +765,7 @@ export function printEtiquetaEncomenda(encomenda, itens = [], viagemAtiva = null
 /** Helper: carrega dados da empresa para impressao */
 async function loadEmpresa() {
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('naviera_token')
     const res = await fetch('/api/cadastros/empresa', { headers: { Authorization: `Bearer ${token}` } })
     if (res.ok) return await res.json()
   } catch {}
