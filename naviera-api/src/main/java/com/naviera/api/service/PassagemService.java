@@ -2,21 +2,31 @@ package com.naviera.api.service;
 
 import com.naviera.api.config.ApiException;
 import com.naviera.api.dto.CompraPassagemRequest;
+import com.naviera.api.psp.AsaasProperties;
+import com.naviera.api.psp.CobrancaRequest;
+import com.naviera.api.psp.PspCobranca;
+import com.naviera.api.psp.PspCobrancaService;
 import com.naviera.api.repository.ClienteAppRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Service
 public class PassagemService {
     private final JdbcTemplate jdbc;
     private final ClienteAppRepository clienteRepo;
+    private final PspCobrancaService pspService;
+    private final AsaasProperties pspProps;
 
-    public PassagemService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo) {
+    public PassagemService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo,
+                           PspCobrancaService pspService, AsaasProperties pspProps) {
         this.jdbc = jdbc;
         this.clienteRepo = clienteRepo;
+        this.pspService = pspService;
+        this.pspProps = pspProps;
     }
 
     // DS4-024: cross-tenant intencional — CPF pode ter passagens em multiplas empresas
@@ -105,14 +115,15 @@ public class PassagemService {
         // PIX/CARTAO: PENDENTE_CONFIRMACAO ate operador ou PSP confirmar.
         String status = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
 
-        jdbc.update("""
+        Long idPassagem = jdbc.queryForObject("""
             INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao,
                 id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao,
                 valor_desconto_tarifa, valor_total, valor_a_pagar, valor_pago,
                 status_passagem, origem_emissao, id_cliente_app, observacoes, empresa_id,
                 forma_pagamento_app, desconto_app)
             VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'APP', ?, ?, ?, ?, ?)
-            """,
+            RETURNING id_passagem
+            """, Long.class,
             numBilhete, idPassageiro, req.idViagem(), idRota, req.idTipoPassagem(),
             transporte, alimentacao, desconto, total, valorAPagar, status,
             clienteId, "Compra via App - " + forma, empresaId, forma, descontoApp);
@@ -124,9 +135,48 @@ public class PassagemService {
         resp.put("valorAPagar", valorAPagar);
         resp.put("formaPagamento", forma);
         resp.put("status", status);
-        resp.put("mensagem", "BARCO".equals(forma)
-            ? "Passagem reservada! Pague diretamente no embarque."
-            : "Passagem emitida! Aguardando confirmacao de pagamento.");
+
+        // PSP: gera cobranca para PIX e CARTAO (BARCO nao passa pelo PSP)
+        if (!"BARCO".equals(forma)) {
+            String subcontaId = (String) jdbc.queryForMap(
+                "SELECT psp_subconta_id FROM empresas WHERE id = ?", empresaId).get("psp_subconta_id");
+            if (subcontaId == null || subcontaId.isBlank()) {
+                throw ApiException.badRequest(
+                    "Empresa nao possui subconta Asaas. Pagamento online indisponivel — use 'Pagar no barco'.");
+            }
+            CobrancaRequest pspReq = new CobrancaRequest(
+                empresaId,
+                subcontaId,
+                "PASSAGEM",
+                idPassagem,
+                clienteId,
+                forma,
+                valorAPagar,
+                BigDecimal.ZERO,
+                pspProps.getSplitNavieraPct(),
+                "Passagem " + numBilhete,
+                LocalDate.now().plusDays(1),
+                cliente.getDocumento(),
+                cliente.getNome(),
+                cliente.getEmail()
+            );
+            PspCobranca cob = pspService.criar(pspReq);
+            jdbc.update(
+                "UPDATE passagens SET id_transacao_psp = ?, qr_pix_payload = ? WHERE id_passagem = ?",
+                cob.getPspCobrancaId(), cob.getQrCodePayload(), idPassagem);
+
+            resp.put("pspCobrancaId", cob.getPspCobrancaId());
+            resp.put("qrCodePayload", cob.getQrCodePayload());
+            resp.put("qrCodeImageUrl", cob.getQrCodeImageUrl());
+            resp.put("boletoUrl", cob.getBoletoUrl());
+            resp.put("linhaDigitavel", cob.getLinhaDigitavel());
+            resp.put("checkoutUrl", cob.getCheckoutUrl());
+            resp.put("mensagem", "PIX".equals(forma)
+                ? "Passagem emitida! Escaneie o QR Code ou copie o codigo para pagar."
+                : "Passagem emitida! Conclua o pagamento no checkout.");
+        } else {
+            resp.put("mensagem", "Passagem reservada! Pague diretamente no embarque.");
+        }
         return resp;
     }
 

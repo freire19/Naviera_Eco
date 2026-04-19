@@ -7,6 +7,7 @@ import Cd from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ErrorRetry from "../components/ErrorRetry.jsx";
 import Toast from "../components/Toast.jsx";
+import PagamentoArtefato from "../components/PagamentoArtefato.jsx";
 import BilheteScreen from "./BilheteScreen.jsx";
 
 export default function PassagensCPF({ t, authHeaders }) {
@@ -57,9 +58,13 @@ export default function PassagensCPF({ t, authHeaders }) {
       <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri, marginTop: 4 }}>{resultado.numeroBilhete}</div>
       {Number(resultado.descontoApp) > 0 && <div style={{ fontSize: 11, color: t.ok, marginTop: 8 }}>Desconto PIX: - {money(resultado.descontoApp)}</div>}
       <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>{money(resultado.valorAPagar ?? resultado.valorTotal)}</div>
-      <div style={{ padding: "6px 12px", borderRadius: 8, background: t.warnBg, color: t.warnTx, fontSize: 11, marginTop: 8, display: "inline-block" }}>{resultado.formaPagamento === "BARCO" ? "Pagamento no embarque" : "Aguardando confirmacao do operador"}</div>
+      <div style={{ padding: "6px 12px", borderRadius: 8, background: t.warnBg, color: t.warnTx, fontSize: 11, marginTop: 8, display: "inline-block" }}>{resultado.formaPagamento === "BARCO" ? "Pagamento no embarque" : "Aguardando confirmacao"}</div>
       <div style={{ fontSize: 11, color: t.txMuted, marginTop: 8, lineHeight: 1.5 }}>{resultado.mensagem || "Apos confirmacao, seu bilhete digital ficara ativo."}</div>
     </Cd>
+    <PagamentoArtefato formaPagamento={resultado.formaPagamento}
+      qrCodePayload={resultado.qrCodePayload} qrCodeImageUrl={resultado.qrCodeImageUrl}
+      linhaDigitavel={resultado.linhaDigitavel} boletoUrl={resultado.boletoUrl}
+      checkoutUrl={resultado.checkoutUrl} t={t} />
     <button onClick={() => {
       setSelBilhete({ numero_bilhete: resultado.numeroBilhete, valor_total: resultado.valorTotal, status_passagem: resultado.status, embarcacao: compra?.embarcacao, origem: compra?.origem, destino: compra?.destino, data_viagem: compra?.dataViagem, totp_secret: resultado.numeroBilhete });
       setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); setFormaPag("PIX");

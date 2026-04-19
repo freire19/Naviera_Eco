@@ -6,6 +6,7 @@ import Cd from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ErrorRetry from "../components/ErrorRetry.jsx";
 import Toast from "../components/Toast.jsx";
+import PagamentoArtefato from "../components/PagamentoArtefato.jsx";
 
 export default function EncomendaCPF({ t, authHeaders }) {
   const { data: encomendas, loading, erro, refresh } = useApi("/encomendas/rastreio", authHeaders);
@@ -15,6 +16,7 @@ export default function EncomendaCPF({ t, authHeaders }) {
   const [enviando, setEnviando] = useState(false);
   const [toast, setToast] = useState(null);
   const [errPag, setErrPag] = useState("");
+  const [resultado, setResultado] = useState(null);
 
   const filtradas = encomendas?.filter(e => {
     if (!busca.trim()) return true;
@@ -34,12 +36,34 @@ export default function EncomendaCPF({ t, authHeaders }) {
       });
       const data = await res.json();
       if (!res.ok) { setErrPag(data.erro || data.message || "Erro ao pagar."); return; }
-      setToast(formaPag === "BARCO" ? "Reservado para pagar no embarque" : "Pagamento enviado. Aguardando confirmacao.");
-      setPagando(null); setFormaPag("PIX"); refresh();
+      if (formaPag === "BARCO") {
+        setToast("Reservado para pagar no embarque");
+        setPagando(null); setFormaPag("PIX"); refresh();
+      } else {
+        setResultado({ ...data, numeroEncomenda: pagando.numero_encomenda, destinatario: pagando.destinatario });
+        setPagando(null); refresh();
+      }
     } catch { setErrPag("Erro de conexao."); } finally { setEnviando(false); }
   };
 
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
+
+  // Tela de sucesso (apos pagar PIX/CARTAO) mostra QR/checkout
+  if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <button onClick={() => { setResultado(null); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h3>
+    <Cd t={t} style={{ padding: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{resultado.numeroEncomenda}</div>
+      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {resultado.destinatario || "-"}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 8 }}>{money(resultado.valorAPagar)}</div>
+      {Number(resultado.descontoApp) > 0 && <div style={{ fontSize: 11, color: t.ok, marginTop: 2 }}>Desconto PIX: -{money(resultado.descontoApp)}</div>}
+    </Cd>
+    <PagamentoArtefato formaPagamento={resultado.formaPagamento}
+      qrCodePayload={resultado.qrCodePayload} qrCodeImageUrl={resultado.qrCodeImageUrl}
+      linhaDigitavel={resultado.linhaDigitavel} boletoUrl={resultado.boletoUrl}
+      checkoutUrl={resultado.checkoutUrl} t={t} />
+    {toast && <Toast message={toast} t={t} onClose={() => setToast(null)} />}
+  </div>;
 
   // Modal de pagamento
   if (pagando) {

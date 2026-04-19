@@ -3,12 +3,17 @@ package com.naviera.api.service;
 import com.naviera.api.config.ApiException;
 import com.naviera.api.dto.EncomendaDTO;
 import com.naviera.api.model.ClienteApp;
+import com.naviera.api.psp.AsaasProperties;
+import com.naviera.api.psp.CobrancaRequest;
+import com.naviera.api.psp.PspCobranca;
+import com.naviera.api.psp.PspCobrancaService;
 import com.naviera.api.repository.ClienteAppRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +27,13 @@ import java.util.Map;
 public class EncomendaService {
     private final JdbcTemplate jdbc;
     private final ClienteAppRepository clienteRepo;
+    private final PspCobrancaService pspService;
+    private final AsaasProperties pspProps;
 
-    public EncomendaService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo) {
+    public EncomendaService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo,
+                            PspCobrancaService pspService, AsaasProperties pspProps) {
         this.jdbc = jdbc; this.clienteRepo = clienteRepo;
+        this.pspService = pspService; this.pspProps = pspProps;
     }
 
     // #DB144: empresaId parameter prevents cross-tenant LIKE scan
@@ -162,9 +171,42 @@ public class EncomendaService {
         resp.put("valorAPagar", valorAPagar);
         resp.put("formaPagamento", forma);
         resp.put("status", novoStatus);
-        resp.put("mensagem", "BARCO".equals(forma)
-            ? "Reservado para pagamento no embarque."
-            : "Pagamento enviado. Aguardando confirmacao.");
+
+        // PSP: gera cobranca para PIX e CARTAO (BARCO nao passa pelo PSP)
+        if (!"BARCO".equals(forma)) {
+            Integer empresaId = ((Number) enc.get("empresa_id")).intValue();
+            String subcontaId = (String) jdbc.queryForMap(
+                "SELECT psp_subconta_id FROM empresas WHERE id = ?", empresaId).get("psp_subconta_id");
+            if (subcontaId == null || subcontaId.isBlank()) {
+                throw ApiException.badRequest(
+                    "Empresa nao possui subconta Asaas. Pagamento online indisponivel — use 'Pagar no barco'.");
+            }
+            String numEncomenda = (String) jdbc.queryForMap(
+                "SELECT numero_encomenda FROM encomendas WHERE id_encomenda = ?", idEncomenda).get("numero_encomenda");
+            CobrancaRequest pspReq = new CobrancaRequest(
+                empresaId, subcontaId, "ENCOMENDA", idEncomenda, clienteId, forma,
+                valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),
+                "Encomenda " + (numEncomenda != null ? numEncomenda : idEncomenda),
+                LocalDate.now().plusDays(3),
+                cliente.getDocumento(), cliente.getNome(), cliente.getEmail()
+            );
+            PspCobranca cob = pspService.criar(pspReq);
+            jdbc.update(
+                "UPDATE encomendas SET id_transacao_psp = ?, qr_pix_payload = ? WHERE id_encomenda = ?",
+                cob.getPspCobrancaId(), cob.getQrCodePayload(), idEncomenda);
+
+            resp.put("pspCobrancaId", cob.getPspCobrancaId());
+            resp.put("qrCodePayload", cob.getQrCodePayload());
+            resp.put("qrCodeImageUrl", cob.getQrCodeImageUrl());
+            resp.put("boletoUrl", cob.getBoletoUrl());
+            resp.put("linhaDigitavel", cob.getLinhaDigitavel());
+            resp.put("checkoutUrl", cob.getCheckoutUrl());
+            resp.put("mensagem", "PIX".equals(forma)
+                ? "Escaneie o QR Code ou copie o codigo para pagar."
+                : "Conclua o pagamento no checkout.");
+        } else {
+            resp.put("mensagem", "Reservado para pagamento no embarque.");
+        }
         return resp;
     }
 }

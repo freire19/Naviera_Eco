@@ -6,6 +6,7 @@ import Cd from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ErrorRetry from "../components/ErrorRetry.jsx";
 import Toast from "../components/Toast.jsx";
+import PagamentoArtefato from "../components/PagamentoArtefato.jsx";
 
 export default function FinanceiroCNPJ({ t, authHeaders }) {
   const { data: fretes, loading, erro, refresh } = useApi("/fretes", authHeaders);
@@ -14,6 +15,7 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
   const [enviando, setEnviando] = useState(false);
   const [errPag, setErrPag] = useState("");
   const [toast, setToast] = useState(null);
+  const [resultado, setResultado] = useState(null);
 
   const confirmarPagamento = async () => {
     if (!pagando) return;
@@ -25,14 +27,36 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
       });
       const data = await res.json();
       if (!res.ok) { setErrPag(data.erro || data.message || "Erro ao pagar."); return; }
-      const msgs = { PIX: "Pagamento enviado. Aguardando confirmacao.", CARTAO: "Pagamento enviado. Aguardando confirmacao.", BOLETO: "Boleto sera enviado. Aguardando confirmacao.", BARCO: "Reservado para pagar no embarque." };
-      setToast(msgs[formaPag] || "Pagamento registrado");
-      setPagando(null); setFormaPag("PIX"); refresh();
+      if (formaPag === "BARCO") {
+        setToast("Reservado para pagar no embarque");
+        setPagando(null); setFormaPag("PIX"); refresh();
+      } else {
+        setResultado({ ...data, numeroFrete: pagando.numeroFrete || pagando.id, destinatario: pagando.destinatario, embarcacao: pagando.embarcacao });
+        setPagando(null); refresh();
+      }
     } catch { setErrPag("Erro de conexao."); } finally { setEnviando(false); }
   };
 
   if (loading) return <Skeleton t={t} height={70} count={4} />;
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
+
+  // Tela de sucesso com QR/boleto/checkout
+  if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <button onClick={() => { setResultado(null); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
+    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h3>
+    <Cd t={t} style={{ padding: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>FRT-{resultado.numeroFrete}</div>
+      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {resultado.destinatario || "-"}</div>
+      {resultado.embarcacao && <div style={{ fontSize: 12, color: t.txMuted }}>Embarcacao: {resultado.embarcacao}</div>}
+      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 8 }}>{money(resultado.valorAPagar)}</div>
+      {Number(resultado.descontoApp) > 0 && <div style={{ fontSize: 11, color: t.ok, marginTop: 2 }}>Desconto PIX: -{money(resultado.descontoApp)}</div>}
+    </Cd>
+    <PagamentoArtefato formaPagamento={resultado.formaPagamento}
+      qrCodePayload={resultado.qrCodePayload} qrCodeImageUrl={resultado.qrCodeImageUrl}
+      linhaDigitavel={resultado.linhaDigitavel} boletoUrl={resultado.boletoUrl}
+      checkoutUrl={resultado.checkoutUrl} t={t} />
+    {toast && <Toast message={toast} t={t} onClose={() => setToast(null)} />}
+  </div>;
 
   // Modal de pagamento
   if (pagando) {

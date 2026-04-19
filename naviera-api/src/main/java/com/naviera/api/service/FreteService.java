@@ -3,12 +3,17 @@ package com.naviera.api.service;
 import com.naviera.api.config.ApiException;
 import com.naviera.api.dto.FreteDTO;
 import com.naviera.api.model.ClienteApp;
+import com.naviera.api.psp.AsaasProperties;
+import com.naviera.api.psp.CobrancaRequest;
+import com.naviera.api.psp.PspCobranca;
+import com.naviera.api.psp.PspCobrancaService;
 import com.naviera.api.repository.ClienteAppRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +26,13 @@ import java.util.Map;
 public class FreteService {
     private final JdbcTemplate jdbc;
     private final ClienteAppRepository clienteRepo;
+    private final PspCobrancaService pspService;
+    private final AsaasProperties pspProps;
 
-    public FreteService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo) {
+    public FreteService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo,
+                        PspCobrancaService pspService, AsaasProperties pspProps) {
         this.jdbc = jdbc; this.clienteRepo = clienteRepo;
+        this.pspService = pspService; this.pspProps = pspProps;
     }
 
     /**
@@ -141,11 +150,45 @@ public class FreteService {
         resp.put("valorAPagar", valorAPagar);
         resp.put("formaPagamento", forma);
         resp.put("status", novoStatus);
-        String msg;
-        if ("BARCO".equals(forma)) msg = "Reservado para pagamento no embarque.";
-        else if ("BOLETO".equals(forma)) msg = "Boleto sera enviado. Aguardando confirmacao do pagamento.";
-        else msg = "Pagamento enviado. Aguardando confirmacao.";
-        resp.put("mensagem", msg);
+
+        // PSP: gera cobranca para PIX, CARTAO e BOLETO (BARCO nao passa pelo PSP)
+        if (!"BARCO".equals(forma)) {
+            Integer empresaId = ((Number) f.get("empresa_id")).intValue();
+            String subcontaId = (String) jdbc.queryForMap(
+                "SELECT psp_subconta_id FROM empresas WHERE id = ?", empresaId).get("psp_subconta_id");
+            if (subcontaId == null || subcontaId.isBlank()) {
+                throw ApiException.badRequest(
+                    "Empresa nao possui subconta Asaas. Pagamento online indisponivel — use 'Pagar no barco'.");
+            }
+            String numeroFrete = jdbc.queryForObject(
+                "SELECT numero_frete FROM fretes WHERE id_frete = ?", String.class, idFrete);
+            // Boleto: 3 dias pra pagar. PIX/Cartao: 1 dia.
+            LocalDate venc = "BOLETO".equals(forma) ? LocalDate.now().plusDays(3) : LocalDate.now().plusDays(1);
+            CobrancaRequest pspReq = new CobrancaRequest(
+                empresaId, subcontaId, "FRETE", idFrete, clienteId, forma,
+                valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),
+                "Frete " + (numeroFrete != null ? numeroFrete : idFrete),
+                venc, cliente.getDocumento(), cliente.getNome(), cliente.getEmail()
+            );
+            PspCobranca cob = pspService.criar(pspReq);
+            jdbc.update(
+                "UPDATE fretes SET id_transacao_psp = ?, qr_pix_payload = ?, boleto_url = ?, boleto_linha_digitavel = ? WHERE id_frete = ?",
+                cob.getPspCobrancaId(), cob.getQrCodePayload(), cob.getBoletoUrl(), cob.getLinhaDigitavel(), idFrete);
+
+            resp.put("pspCobrancaId", cob.getPspCobrancaId());
+            resp.put("qrCodePayload", cob.getQrCodePayload());
+            resp.put("qrCodeImageUrl", cob.getQrCodeImageUrl());
+            resp.put("boletoUrl", cob.getBoletoUrl());
+            resp.put("linhaDigitavel", cob.getLinhaDigitavel());
+            resp.put("checkoutUrl", cob.getCheckoutUrl());
+            String msg;
+            if ("PIX".equals(forma)) msg = "Escaneie o QR Code ou copie o codigo para pagar.";
+            else if ("BOLETO".equals(forma)) msg = "Boleto gerado. Pague no seu banco pela linha digitavel ou pelo link.";
+            else msg = "Conclua o pagamento no checkout.";
+            resp.put("mensagem", msg);
+        } else {
+            resp.put("mensagem", "Reservado para pagamento no embarque.");
+        }
         return resp;
     }
 }
