@@ -512,29 +512,41 @@ async function calcFinanceiroFuncionario(pool, idFunc, empresaId, f) {
   const salarioDiario = salario / 30
   const acumulado = Math.round(dias * salarioDiario * 100) / 100
 
-  // 5 queries independentes em paralelo
+  // Data do ultimo FECHAMENTO MENSAL — pagamentos/descontos anteriores ou iguais
+  // a essa data ficam "presos" no ciclo anterior e nao contam no atual.
+  const fechRes = await pool.query(
+    `SELECT MAX(data_pagamento) AS ultimo FROM financeiro_saidas
+     WHERE funcionario_id = $1 AND empresa_id = $2 AND is_excluido = false
+     AND UPPER(descricao) LIKE 'FECHAMENTO MENSAL%'`,
+    [idFunc, empresaId]
+  )
+  const ultimoFech = fechRes.rows[0].ultimo || '1900-01-01'
+
+  // 5 queries independentes em paralelo (filtradas pelo ultimo fechamento)
   const [pgRes, rhRes, lgRes, inssRH, inssLeg] = await Promise.all([
     pool.query(
       `SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas
-       WHERE funcionario_id = $1 AND empresa_id = $2 AND is_excluido = false AND data_pagamento >= $3
+       WHERE funcionario_id = $1 AND empresa_id = $2 AND is_excluido = false
+       AND data_pagamento >= $3 AND data_pagamento > $4
        AND (forma_pagamento IS NULL OR (forma_pagamento != 'DESCONTO' AND forma_pagamento != 'RETIDO'))`,
-      [idFunc, empresaId, dataInicio]),
+      [idFunc, empresaId, dataInicio, ultimoFech]),
     pool.query(
       `SELECT COALESCE(SUM(valor), 0) as total FROM eventos_rh
-       WHERE funcionario_id = $1 AND empresa_id = $2 AND data_referencia >= $3`,
-      [idFunc, empresaId, dataInicio]),
+       WHERE funcionario_id = $1 AND empresa_id = $2 AND data_referencia >= $3 AND data_evento > $4`,
+      [idFunc, empresaId, dataInicio, ultimoFech]),
     pool.query(
       `SELECT COALESCE(SUM(valor_pago), 0) as total FROM financeiro_saidas
-       WHERE funcionario_id = $1 AND empresa_id = $2 AND data_pagamento >= $3
+       WHERE funcionario_id = $1 AND empresa_id = $2 AND data_pagamento >= $3 AND data_pagamento > $4
        AND (forma_pagamento = 'DESCONTO' OR forma_pagamento = 'RETIDO')`,
-      [idFunc, empresaId, dataInicio]),
+      [idFunc, empresaId, dataInicio, ultimoFech]),
     pool.query(
-      `SELECT COUNT(*) as cnt FROM eventos_rh WHERE funcionario_id = $1 AND empresa_id = $2 AND data_referencia >= $3 AND tipo = 'INSS'`,
-      [idFunc, empresaId, dataInicio]),
+      `SELECT COUNT(*) as cnt FROM eventos_rh WHERE funcionario_id = $1 AND empresa_id = $2
+       AND data_referencia >= $3 AND data_evento > $4 AND tipo = 'INSS'`,
+      [idFunc, empresaId, dataInicio, ultimoFech]),
     pool.query(
       `SELECT COUNT(*) as cnt FROM financeiro_saidas WHERE funcionario_id = $1 AND UPPER(descricao) LIKE '%ENCARGOS%'
-       AND empresa_id = $2 AND data_pagamento >= $3 AND forma_pagamento = 'DESCONTO'`,
-      [idFunc, empresaId, dataInicio])
+       AND empresa_id = $2 AND data_pagamento >= $3 AND data_pagamento > $4 AND forma_pagamento = 'DESCONTO'`,
+      [idFunc, empresaId, dataInicio, ultimoFech])
   ])
 
   const pago = parseFloat(pgRes.rows[0].total) || 0
@@ -754,9 +766,15 @@ router.post('/funcionarios/:id/fechar-mes', async (req, res, next) => {
       `, [desc, saldoParaPagar, saldoParaPagar, hojeISO, hojeISO, categoriaId, viagemId, idFunc, empresaId])
     }
 
-    // atualizar data_inicio_calculo: dia seguinte ao fechamento
-    // (pagamentos/descontos de hoje ficam no ciclo antigo, novo ciclo zera)
-    const novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() + 1))
+    // Novo ciclo = mes calendario atual. Pagamentos anteriores ao fechamento
+    // sao separados pelo filtro `ultimo_fechamento` em calcFinanceiroFuncionario,
+    // entao a tela mostra os dias ja trabalhados do mes sem saldo negativo fantasma.
+    let novaData
+    if (hoje.getUTCDate() >= 28) {
+      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1, 1))
+    } else {
+      novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1))
+    }
     const novaDataISO = novaData.toISOString().split('T')[0]
 
     await pool.query(
