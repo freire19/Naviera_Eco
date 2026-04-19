@@ -3,12 +3,27 @@ import { useState, useEffect, useRef } from 'react'
 const inputStyle = {
   width: '100%',
   boxSizing: 'border-box',
-  padding: '7px 10px',
+  padding: '7px 28px 7px 10px', // espaço à direita pra seta
   fontSize: '0.85rem',
   background: 'var(--bg-soft)',
   border: '1px solid var(--border)',
   borderRadius: 4,
   color: 'var(--text)'
+}
+
+const arrowBtnStyle = {
+  position: 'absolute',
+  right: 4,
+  top: '50%',
+  transform: 'translateY(-50%)',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-muted)',
+  fontSize: 10,
+  padding: '4px 6px',
+  lineHeight: 1,
+  userSelect: 'none'
 }
 
 const dropdownStyle = {
@@ -42,8 +57,9 @@ const itemHighlightedStyle = {
 
 const loadingStyle = {
   position: 'absolute',
-  right: 8,
-  top: 34,
+  right: 24,
+  top: '50%',
+  transform: 'translateY(-50%)',
   fontSize: 11,
   color: 'var(--text-muted)'
 }
@@ -62,6 +78,7 @@ export default function Autocomplete({
   onSelect,
   onBlur,
   suggestions,
+  allItems,
   loading,
   placeholder = 'Digite para buscar...',
   emptyMessage = 'Nenhum resultado encontrado.',
@@ -69,27 +86,32 @@ export default function Autocomplete({
   minChars = 2
 }) {
   const [showDropdown, setShowDropdown] = useState(false)
+  const [browsing, setBrowsing] = useState(false) // true = listando allItems (sem filtro)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef(null)
+  const inputRef = useRef(null)
   const itemRefs = useRef([])
+
+  // Lista exibida: allItems (browse) ou suggestions filtradas
+  const displayed = browsing && Array.isArray(allItems) ? allItems : suggestions
+  const hasArrow = Array.isArray(allItems) && allItems.length > 0
 
   useEffect(() => {
     function handleClick(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setShowDropdown(false)
+        setBrowsing(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Reseta highlight quando sugestoes mudam
   useEffect(() => {
     setHighlightedIndex(-1)
-    itemRefs.current = itemRefs.current.slice(0, suggestions.length)
-  }, [suggestions])
+    itemRefs.current = itemRefs.current.slice(0, displayed.length)
+  }, [displayed])
 
-  // Rola item destacado para dentro do viewport do dropdown
   useEffect(() => {
     if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
       itemRefs.current[highlightedIndex].scrollIntoView({ block: 'nearest' })
@@ -98,6 +120,7 @@ export default function Autocomplete({
 
   function handleChange(e) {
     onChange(e.target.value)
+    setBrowsing(false) // digitou, volta a filtrar suggestions
     if (e.target.value.trim().length >= minChars) {
       setShowDropdown(true)
     } else {
@@ -112,43 +135,64 @@ export default function Autocomplete({
   function handleSelect(item) {
     onSelect(item)
     setShowDropdown(false)
+    setBrowsing(false)
     setHighlightedIndex(-1)
   }
 
+  function toggleBrowse() {
+    if (showDropdown && browsing) {
+      setShowDropdown(false)
+      setBrowsing(false)
+    } else {
+      setBrowsing(true)
+      setShowDropdown(true)
+      setHighlightedIndex(-1)
+      inputRef.current?.focus()
+    }
+  }
+
   function handleKeyDown(e) {
-    // Esc fecha dropdown mesmo sem itens
     if (e.key === 'Escape') {
       setShowDropdown(false)
+      setBrowsing(false)
       setHighlightedIndex(-1)
       return
     }
-    if (!showDropdown || suggestions.length === 0) return
+    // ArrowDown em input vazio OU Alt+ArrowDown abre lista completa
+    if (e.key === 'ArrowDown' && hasArrow && !showDropdown && (value.length === 0 || e.altKey)) {
+      e.preventDefault()
+      setBrowsing(true)
+      setShowDropdown(true)
+      setHighlightedIndex(0)
+      return
+    }
+    if (!showDropdown || displayed.length === 0) return
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setHighlightedIndex(i => (i < suggestions.length - 1 ? i + 1 : 0))
+      setHighlightedIndex(i => (i < displayed.length - 1 ? i + 1 : 0))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setHighlightedIndex(i => (i > 0 ? i - 1 : suggestions.length - 1))
+      setHighlightedIndex(i => (i > 0 ? i - 1 : displayed.length - 1))
     } else if (e.key === 'Enter') {
-      if (highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        e.preventDefault() // evita submit do form
-        handleSelect(suggestions[highlightedIndex])
+      if (highlightedIndex >= 0 && displayed[highlightedIndex]) {
+        e.preventDefault()
+        handleSelect(displayed[highlightedIndex])
       }
     } else if (e.key === 'Tab') {
-      // Tab seleciona item destacado (se houver) e segue para o proximo campo
-      if (highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        handleSelect(suggestions[highlightedIndex])
+      if (highlightedIndex >= 0 && displayed[highlightedIndex]) {
+        handleSelect(displayed[highlightedIndex])
       }
     }
   }
 
-  const showSuggestions = showDropdown && suggestions.length > 0
-  const showEmpty = showDropdown && suggestions.length === 0 && value.trim().length >= minChars && !loading
+  const showSuggestions = showDropdown && displayed.length > 0
+  const showEmpty = showDropdown && !browsing && displayed.length === 0 && value.trim().length >= minChars && !loading
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
       <input
+        ref={inputRef}
         value={value}
         onChange={handleChange}
         onFocus={handleFocus}
@@ -159,10 +203,20 @@ export default function Autocomplete({
         autoComplete="off"
         style={inputStyle}
       />
-      {loading && <div style={loadingStyle}>Buscando...</div>}
+      {loading && <div style={loadingStyle}>...</div>}
+      {hasArrow && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onMouseDown={e => e.preventDefault()} // evita blur ao clicar
+          onClick={toggleBrowse}
+          style={arrowBtnStyle}
+          title="Ver todos (↓ quando campo vazio)"
+        >▼</button>
+      )}
       {showSuggestions && (
         <div style={dropdownStyle}>
-          {suggestions.map((item, idx) => (
+          {displayed.map((item, idx) => (
             <div
               key={item.id || idx}
               ref={el => { itemRefs.current[idx] = el }}

@@ -392,6 +392,7 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
             onSelect={c => setRemetente(c.nome_razao_social)}
             onBlur={v => verificarSalvarContato(v)}
             suggestions={filtrarContatos(contatos, remetente)}
+            allItems={contatos}
             placeholder="Digite o nome do remetente..."
             emptyMessage="Nenhum contato encontrado. Sera cadastrado como novo."
             renderItem={c => (
@@ -414,6 +415,7 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
             onSelect={c => setDestinatario(c.nome_razao_social)}
             onBlur={v => verificarSalvarContato(v)}
             suggestions={filtrarContatos(contatos, destinatario)}
+            allItems={contatos}
             placeholder="Digite o nome do destinatario..."
             emptyMessage="Nenhum contato encontrado. Sera cadastrado como novo."
             renderItem={c => (

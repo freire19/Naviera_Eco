@@ -52,6 +52,7 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
   const [rotas, setRotas] = useState([])
   const [clientes, setClientes] = useState([])
   const [itensPadrao, setItensPadrao] = useState([])
+  const qtdRef = useRef(null)
   const [caixas, setCaixas] = useState([])
 
   // Dropdown itens customizado
@@ -417,6 +418,7 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
               onChange={v => setRemetente(v)}
               onSelect={c => { setRemetente(c.nome_cliente); verificarSalvarCliente(c.nome_cliente) }}
               suggestions={filtrarClientes(clientes, remetente)}
+              allItems={clientes}
               placeholder="Digite o nome do remetente..."
               emptyMessage="Nenhum cliente encontrado. Sera cadastrado como novo."
               renderItem={c => <strong>{c.nome_cliente}</strong>}
@@ -429,6 +431,7 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
               onChange={v => setDestinatario(v)}
               onSelect={c => { setDestinatario(c.nome_cliente); verificarSalvarCliente(c.nome_cliente) }}
               suggestions={filtrarClientes(clientes, destinatario)}
+              allItems={clientes}
               placeholder="Digite o nome do destinatario..."
               emptyMessage="Nenhum cliente encontrado. Sera cadastrado como novo."
               renderItem={c => <strong>{c.nome_cliente}</strong>}
@@ -436,7 +439,15 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
           </div>
           <div style={{ marginBottom: 8 }}>
             <label style={L}>Rota:</label>
-            <select style={I} value={idRota} onChange={e => setIdRota(e.target.value)}>
+            <select style={I} value={idRota} onChange={e => setIdRota(e.target.value)}
+              onKeyDown={e => {
+                // Tab sem Shift pula direto para Qtd do item (agiliza lancamento)
+                if (e.key === 'Tab' && !e.shiftKey && qtdRef.current) {
+                  e.preventDefault()
+                  qtdRef.current.focus()
+                  qtdRef.current.select?.()
+                }
+              }}>
               <option value=""></option>
               {rotas.map(r => <option key={r.id_rota} value={r.id_rota}>{r.origem} - {r.destino}</option>)}
             </select>
@@ -474,57 +485,40 @@ export default function Encomendas({ viagemAtiva, onNavigate, onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 90px 90px auto', gap: 10, padding: 10, background: 'rgba(5,150,105,0.05)', borderRadius: 6, border: '1px solid var(--primary)', marginBottom: 8, alignItems: 'end' }}>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>Qtd</label>
-              <input style={{ ...I, textAlign: 'center' }} type="number" min="1" value={novoItem.quantidade} onChange={e => handleNovoItemChange('quantidade', e.target.value)} />
+              <input ref={qtdRef} style={{ ...I, textAlign: 'center' }} type="number" min="1" value={novoItem.quantidade} onChange={e => handleNovoItemChange('quantidade', e.target.value)} />
             </div>
-            <div style={{ position: 'relative' }} ref={itemDropdownRef}>
-              <label style={{ ...L, fontSize: '0.65rem' }}>Descricao do Item (Enter busca)</label>
-              <input style={I} value={novoItem.descricao}
-                onChange={e => {
-                  handleNovoItemChange('descricao', e.target.value)
-                  setShowItemList(true)
+            <div>
+              <label style={{ ...L, fontSize: '0.65rem' }}>Descricao do Item</label>
+              <Autocomplete
+                value={novoItem.descricao}
+                onChange={v => handleNovoItemChange('descricao', v)}
+                onSelect={ip => {
+                  const preco = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
+                  setNovoItem(prev => ({
+                    ...prev,
+                    descricao: ip.nome_item,
+                    valor_unitario: preco,
+                    valor_total: ((parseInt(prev.quantidade) || 1) * preco).toFixed(2)
+                  }))
                 }}
-                onFocus={() => setShowItemList(true)}
-                placeholder="Digite ou selecione um item..." />
-              {showItemList && (() => {
-                const q = (novoItem.descricao || '').toLowerCase()
-                const filtered = itensPadrao.filter(ip => !q || (ip.nome_item || '').toLowerCase().includes(q))
-                if (filtered.length === 0) return null
-                return (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                    background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4,
-                    maxHeight: 220, overflowY: 'auto', boxShadow: 'var(--shadow-lg)'
-                  }}>
-                    {filtered.map((ip, idx) => {
-                      const preco = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
-                      return (
-                        <div key={ip.id || ip.id_item_encomenda || idx}
-                          onMouseDown={() => {
-                            setNovoItem(prev => ({
-                              ...prev,
-                              descricao: ip.nome_item,
-                              valor_unitario: preco,
-                              valor_total: ((parseInt(prev.quantidade) || 1) * preco).toFixed(2)
-                            }))
-                            setShowItemList(false)
-                          }}
-                          style={{
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            padding: '8px 12px', cursor: 'pointer', fontSize: '0.85rem',
-                            background: idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)',
-                            borderBottom: '1px solid var(--border)'
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.color = '#fff' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'var(--bg-soft)'; e.currentTarget.style.color = '' }}
-                        >
-                          <span style={{ fontWeight: 600 }}>{ip.nome_item}</span>
-                          <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.82rem' }}>R$ {preco.toFixed(2)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
+                suggestions={(() => {
+                  const q = (novoItem.descricao || '').trim().toLowerCase()
+                  if (!q) return []
+                  return itensPadrao.filter(ip => (ip.nome_item || '').toLowerCase().includes(q)).slice(0, 15)
+                })()}
+                allItems={itensPadrao}
+                placeholder="Digite ou selecione um item..."
+                emptyMessage="Nenhum item no catalogo. Sera salvo ao adicionar."
+                renderItem={ip => {
+                  const preco = Number(ip.preco_padrao || ip.preco_unitario_padrao || 0)
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600 }}>{ip.nome_item}</span>
+                      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.82rem', marginLeft: 12 }}>R$ {preco.toFixed(2)}</span>
+                    </div>
+                  )
+                }}
+              />
             </div>
             <div>
               <label style={{ ...L, fontSize: '0.65rem' }}>V. Unit.</label>
