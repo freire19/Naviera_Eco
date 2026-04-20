@@ -237,8 +237,18 @@ public class SyncClient {
             return false;
         }
 
+        // API exige empresa_id: lido do db.properties via TenantContext/DAOUtils
+        int empresaIdAuth;
+        try {
+            empresaIdAuth = dao.DAOUtils.empresaId();
+        } catch (Exception e) {
+            AppLogger.warn(TAG, "empresa_id indisponivel no contexto — login sem empresa_id pode falhar.");
+            empresaIdAuth = 0;
+        }
         String jsonBody = "{\"login\":\"" + escapeJson(login)
-            + "\",\"senha\":\"" + escapeJson(senha) + "\"}";
+            + "\",\"senha\":\"" + escapeJson(senha) + "\""
+            + (empresaIdAuth > 0 ? ",\"empresa_id\":" + empresaIdAuth : "")
+            + "}";
 
         HttpURLConnection conn = null;
         try {
