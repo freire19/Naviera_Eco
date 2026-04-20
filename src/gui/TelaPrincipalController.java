@@ -294,6 +294,7 @@ public class TelaPrincipalController implements Initializable {
                 if (node instanceof MenuButton || node instanceof Button) {
                     node.setStyle("-fx-background-color: transparent; -fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: white;");
                 }
+                aplicarTintIcone(node, true);
             }
         } else {
             hboxMenuSuperior.setStyle("-fx-background-color: white; -fx-padding: 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);");
@@ -301,7 +302,28 @@ public class TelaPrincipalController implements Initializable {
                 if (node instanceof MenuButton || node instanceof Button) {
                     node.setStyle("-fx-background-color: transparent; -fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: black;");
                 }
+                aplicarTintIcone(node, false);
             }
+        }
+    }
+
+    /**
+     * No modo escuro, clarea o icone (ImageView) do MenuButton/Button para ficar
+     * legivel no fundo verde-escuro. No modo claro, remove o efeito.
+     */
+    private void aplicarTintIcone(Node node, boolean escuro) {
+        javafx.scene.Node graphic = null;
+        if (node instanceof MenuButton) graphic = ((MenuButton) node).getGraphic();
+        else if (node instanceof Button) graphic = ((Button) node).getGraphic();
+        if (!(graphic instanceof javafx.scene.image.ImageView)) return;
+
+        if (escuro) {
+            javafx.scene.effect.ColorAdjust clarear = new javafx.scene.effect.ColorAdjust();
+            clarear.setBrightness(1.0);   // maximo brilho -> icone vira branco
+            clarear.setSaturation(-1.0);  // remove cor saturada (preto -> branco puro)
+            graphic.setEffect(clarear);
+        } else {
+            graphic.setEffect(null);
         }
     }
 
