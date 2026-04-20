@@ -196,7 +196,7 @@ public class LancarPorFotoController implements Initializable {
         }
         boolean ok = bff.login(loginFinal, senha);
         if (!ok) {
-            AlertHelper.error("Falha no login do BFF. Verifique as credenciais.");
+            AlertHelper.error("Falha no login OCR", "Detalhe: " + bff.getLastError());
             return false;
         }
         return true;

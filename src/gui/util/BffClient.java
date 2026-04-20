@@ -29,8 +29,9 @@ public class BffClient {
     private static final String TAG = "BffClient";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    // URL padrao. Pode ser alterada por configuracao futura.
-    private volatile String baseUrl = "https://api.naviera.com.br";
+    // O BFF Node (porta 3003 atras do nginx) responde no subdominio do tenant.
+    // A API Spring (Java) responde em api.naviera.com.br — NAO e o que usamos aqui.
+    private volatile String baseUrl = "https://deus-de-alianca.naviera.com.br";
     // Tenant slug do subdominio; lido de db.properties se existir, senao default.
     private volatile String tenantSlug = "deus-de-alianca";
     private volatile String jwtToken = "";
@@ -58,14 +59,18 @@ public class BffClient {
         }
     }
 
+    private volatile String lastError = "";
+
     public String getBaseUrl() { return baseUrl; }
     public String getTenantSlug() { return tenantSlug; }
     public boolean isAuthenticated() { return jwtToken != null && !jwtToken.isEmpty(); }
+    public String getLastError() { return lastError; }
 
     /**
      * Faz login no BFF. Retorna true se autenticou.
      */
     public boolean login(String loginOuEmail, String senha) {
+        lastError = "";
         String jsonBody = "{\"login\":\"" + escapeJson(loginOuEmail) + "\",\"senha\":\"" + escapeJson(senha) + "\"}";
         HttpURLConnection conn = null;
         try {
@@ -84,11 +89,15 @@ public class BffClient {
                     AppLogger.info(TAG, "Login BFF OK");
                     return true;
                 }
+                lastError = "Resposta 200 sem token: " + resp;
+            } else {
+                lastError = "HTTP " + code + " @ " + baseUrl + "/api/auth/login (slug=" + tenantSlug + "): " + resp;
             }
-            AppLogger.warn(TAG, "Login BFF falhou HTTP " + code + ": " + resp);
+            AppLogger.warn(TAG, "Login BFF falhou: " + lastError);
             return false;
         } catch (Exception e) {
-            AppLogger.error(TAG, "Erro no login BFF: " + e.getMessage(), e);
+            lastError = "Excecao: " + e.getClass().getSimpleName() + " - " + e.getMessage();
+            AppLogger.error(TAG, "Erro no login BFF: " + lastError, e);
             return false;
         } finally {
             if (conn != null) conn.disconnect();
