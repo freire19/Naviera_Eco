@@ -37,11 +37,22 @@
         
         <HBox spacing="15" alignment="CENTER_LEFT">
             <VBox spacing="5" HBox.hgrow="ALWAYS">
-                <Label text="Token de Autenticação (opcional):" styleClass="field-label"/>
-                <PasswordField fx:id="txtToken" promptText="Token JWT" styleClass="sync-textfield"/>
+                <Label text="Login do Operador:" styleClass="field-label"/>
+                <TextField fx:id="txtLoginSync" promptText="seu-email@dominio.com" styleClass="sync-textfield"/>
+            </VBox>
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="Senha:" styleClass="field-label"/>
+                <PasswordField fx:id="txtSenhaSync" promptText="Digite a senha" styleClass="sync-textfield"/>
             </VBox>
         </HBox>
-        
+
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="Token JWT (opcional — use só se tiver um token gerado manualmente):" styleClass="field-label"/>
+                <PasswordField fx:id="txtToken" promptText="Deixe em branco para usar login/senha acima" styleClass="sync-textfield"/>
+            </VBox>
+        </HBox>
+
         <Label fx:id="lblStatusConexao" text="" styleClass="status-label"/>
     </VBox>
     

@@ -68,6 +68,12 @@ ecosystem.config.js
 .deploy_tmp.py
 .vps_fetch.py
 .*_tmp.py
+_tmp_*.py
+_tmp_*.sql
+
+# Dumps de banco (podem conter dados sensiveis)
+backups/
+*.dump
 
 # Claude Code local config (prompts, memory, command overrides)
 .claude/

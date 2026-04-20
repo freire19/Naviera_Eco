@@ -22,6 +22,8 @@ import java.util.ResourceBundle;
 public class ConfigurarSincronizacaoController implements Initializable, SyncClient.SyncListener {
 
     @FXML private TextField txtServerUrl;
+    @FXML private TextField txtLoginSync;
+    @FXML private PasswordField txtSenhaSync;
     @FXML private PasswordField txtToken;
     @FXML private CheckBox chkAutoSync;
     @FXML private Spinner<Integer> spnIntervalo;
@@ -61,6 +63,16 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
     
     private void carregarConfiguracoes() {
         txtServerUrl.setText(syncClient.getServerUrl());
+        // Pre-preenche login. Se vazio no SyncClient, usa o do usuario logado (email) como sugestao.
+        String loginPersistido = syncClient.getLogin();
+        if (loginPersistido == null || loginPersistido.isEmpty()) {
+            model.Usuario u = gui.util.SessaoUsuario.getUsuarioLogado();
+            if (u != null && u.getEmail() != null && !u.getEmail().isEmpty()) {
+                loginPersistido = u.getEmail();
+            }
+        }
+        txtLoginSync.setText(loginPersistido == null ? "" : loginPersistido);
+        // Senha e token nunca sao persistidos (DS5-204) — deixar em branco
         chkAutoSync.setSelected(syncClient.isAutoSyncEnabled());
         spnIntervalo.getValueFactory().setValue(syncClient.getSyncIntervalMinutes());
         
@@ -92,8 +104,9 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
             return;
         }
         
-        syncClient.setServerUrl(novaUrl);
-        
+        // Aplica credenciais da UI antes de testar — se token preenchido, usa token; senao login+senha
+        aplicarCredenciaisUi(novaUrl);
+
         syncClient.testarConexao().thenAccept(sucesso -> {
             Platform.runLater(() -> {
                 btnTestarConexao.setDisable(false);
@@ -216,11 +229,12 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
     
     @FXML
     private void salvarConfiguracoes() {
-        syncClient.setServerUrl(txtServerUrl.getText().trim());
+        String novaUrl = txtServerUrl.getText().trim();
+        aplicarCredenciaisUi(novaUrl);
         syncClient.setAutoSyncEnabled(chkAutoSync.isSelected());
         syncClient.setSyncIntervalMinutes(spnIntervalo.getValue());
         syncClient.salvarConfiguracoes();
-        
+
         log("Configurações salvas com sucesso.");
         
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -230,6 +244,32 @@ public class ConfigurarSincronizacaoController implements Initializable, SyncCli
         alert.showAndWait();
     }
     
+    /**
+     * Le credenciais da UI e aplica no SyncClient.
+     * Prioriza token JWT se preenchido; senao usa login+senha.
+     * Senha e token sao mantidos apenas em memoria (DS5-204).
+     */
+    private void aplicarCredenciaisUi(String url) {
+        String token = txtToken.getText();
+        String login = txtLoginSync.getText().trim();
+        String senha = txtSenhaSync.getText();
+        if (token != null && !token.isEmpty()) {
+            syncClient.configurar(url, token);
+            if (login != null && !login.isEmpty()) {
+                syncClient.setLogin(login); // persiste o login como identificador
+                syncClient.salvarConfiguracoes();
+            }
+        } else if (login != null && !login.isEmpty() && senha != null && !senha.isEmpty()) {
+            syncClient.configurar(url, login, senha);
+        } else {
+            // Nem token nem credenciais — apenas aplica a URL
+            syncClient.setServerUrl(url);
+            if (login != null && !login.isEmpty()) {
+                syncClient.setLogin(login);
+            }
+        }
+    }
+
     @FXML
     private void fechar() {
         syncClient.removeListener(this);
