@@ -1100,6 +1100,31 @@ public class TelaPrincipalController implements Initializable {
     @FXML private void handleClientesEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Cadastro de Clientes")) abrirTelaModal("/gui/CadastroClientesEncomenda.fxml", "Clientes", false); }
     @FXML private void handleClientesFrete(ActionEvent e) { if (PermissaoService.exigirOperacional("Cadastro de Clientes Frete")) abrirTelaModal("/gui/CadastroCliente.fxml", "Clientes de Frete", false); }
     @FXML private void handleCadastroPassageiros(ActionEvent e) { if (PermissaoService.exigirOperacional("Cadastro de Passageiros")) abrirTelaLivre("/gui/ListarPassageirosViagem.fxml", "Passageiros"); }
+
+    @FXML private void handleLancarPorFotoEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Lancar Encomenda por Foto")) abrirTelaOcr("encomenda"); }
+    @FXML private void handleLancarPorFotoFrete(ActionEvent e) { if (PermissaoService.exigirOperacional("Lancar Frete por Foto")) abrirTelaOcr("frete"); }
+
+    private void abrirTelaOcr(String tipo) {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/gui/LancarPorFoto.fxml"));
+            javafx.scene.Parent root = loader.load();
+            LancarPorFotoController ctrl = loader.getController();
+            ctrl.setTipoInicial(tipo);
+            try {
+                model.Viagem va = viagemDAO.buscarViagemAtiva();
+                if (va != null && va.getId() != null) ctrl.setIdViagemAtiva(va.getId().intValue());
+            } catch (Exception ignore) {}
+            Stage stg = new Stage();
+            stg.setTitle("Lancar por Foto (OCR) — " + ("frete".equals(tipo) ? "Frete" : "Encomenda"));
+            javafx.scene.Scene scene = new javafx.scene.Scene(root);
+            aplicarTema(scene);
+            stg.setScene(scene);
+            stg.show();
+        } catch (Exception ex) {
+            AppLogger.error("TelaPrincipalController", "Erro ao abrir tela OCR: " + ex.getMessage(), ex);
+            AlertHelper.show(Alert.AlertType.ERROR, "Erro", "Nao foi possivel abrir a tela de OCR: " + ex.getMessage());
+        }
+    }
     @FXML private void handleTabelaPrecoFrete(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Frete")) abrirTelaModal("/gui/TabelaPrecoFrete.fxml", "Tabela de Preços", false); }
     @FXML private void handlePrecoEncomenda(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Encomenda")) abrirTelaModal("/gui/TabelaPrecosEncomenda.fxml", "Tabela de Preços", false); }
     
