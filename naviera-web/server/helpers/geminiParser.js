@@ -42,16 +42,31 @@ B. DETECCAO DE MARCA-TEXTO: Verifique se existe um RISCO DE MARCADOR DE TEXTO (h
 ` : ''
 
   const prompt = `Voce e um assistente especializado em logistica fluvial na Amazonia.
-Analise ${imagePath ? 'a IMAGEM e o texto extraido por OCR' : 'o texto extraido por OCR'} de uma nota fiscal, cupom ou caderno e extraia os PRODUTOS para lancamento de frete.
+Analise ${imagePath ? 'a IMAGEM e o texto extraido por OCR' : 'o texto extraido por OCR'} de uma nota fiscal, NFC-e, cupom fiscal, DANFE ou protocolo manuscrito e extraia os PRODUTOS para lancamento de frete.
 ${instrucaoImagem}
 REGRAS IMPORTANTES:
-1. Extraia APENAS produtos/mercadorias. Ignore cabecalhos, CNPJs, enderecos, rodapes, chaves de acesso.
-2. O "preco_unitario" deve ser o PRECO DE FRETE (transporte), NAO o preco do produto na nota.
-3. Se existir tabela de precos de frete, use o preco da tabela. Senao, deixe preco_unitario = 0.
+1. SEMPRE extraia os PRODUTOS/MERCADORIAS listados no documento. NFC-e, cupom fiscal e DANFE
+   sao documentos validos — eles tem itens sim, geralmente numa tabela com colunas
+   CODIGO, DESCRICAO/PRODUTO, QTD/UND, PRECO. NAO retorne itens: [] se houver produtos visiveis.
+2. Ignore apenas: cabecalhos da empresa (razao social repetida), CNPJs isolados,
+   enderecos, rodapes, chaves de acesso de 44 digitos, totais gerais.
+3. O "preco_unitario" na resposta deve ser o PRECO DE FRETE (transporte) — NAO o preco do
+   produto na nota. Se existir tabela de precos de frete abaixo, use o preco da tabela.
+   Senao, deixe preco_unitario = 0 (mas AINDA ASSIM extraia o item).
 4. Agrupe itens duplicados (some quantidades).
-5. Corrija erros de OCR nos nomes (ex: "REQUEI JAO" → "Requeijao", "MACARRAD" → "Macarrao").
+5. Corrija erros de OCR nos nomes (ex: "REQUEI JAO" -> "Requeijao", "MACARRAD" -> "Macarrao").
 6. Para items em KG com peso fracionado (ex: 0,440 KG), considere quantidade = 1 volume.
-7. Extraia o nome do estabelecimento/remetente se visivel.
+7. remetente = nome do estabelecimento emissor (geralmente no topo, ex: "ATACADAO DO TRIGO").
+8. destinatario = nome do cliente comprador (procure por "CLIENTE", "NOME", ou similar).
+9. rota = destino/cidade do cliente se visivel (ex: "TONANTINS", "MANAUS - TONANTINS"),
+   ou observacao sobre barcos/transporte que indique rota.
+10. numero_nota = numero da venda/NF (ex: "VENDA N 000884" -> "000884").
+11. Se houver observacao mencionando nome de barco ou rota, replique em observacoes.
+
+EXEMPLO (NFC-e/cupom): dado texto com "ATACADAO DO TRIGO" + "NOME: A NASCIMENTO" +
+"CIDADE: TONANTINS" + "60 CNT MARMITEX C/ 100UN 56,00 3.360,00" + "BARCOS: DEUS DE ALIANCA",
+a resposta deve ter remetente="ATACADAO DO TRIGO", destinatario="A NASCIMENTO",
+rota="TONANTINS", itens=[{nome_item:"Marmitex C/ 100UN", quantidade:60, preco_unitario:0}].
 ${tabelaPrecos}
 Texto OCR:
 """
