@@ -289,7 +289,7 @@ public class TelaPrincipalController implements Initializable {
         if (hboxMenuSuperior == null) return;
 
         if (isModoEscuro) {
-            hboxMenuSuperior.setStyle("-fx-background-color: #333333; -fx-padding: 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 5, 0, 0, 2);");
+            hboxMenuSuperior.setStyle("-fx-background-color: #0A1F18; -fx-padding: 5; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 5, 0, 0, 2);");
             for (Node node : hboxMenuSuperior.getChildren()) {
                 if (node instanceof MenuButton || node instanceof Button) {
                     node.setStyle("-fx-background-color: transparent; -fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: white;");
@@ -1209,12 +1209,20 @@ public class TelaPrincipalController implements Initializable {
         sobre.setTitle("Sobre o Naviera");
         sobre.setHeaderText(null);
         
+        // Cores condicionais ao tema
+        String bg = isModoEscuro ? "#0A1F18" : "white";
+        String textoPrincipal = isModoEscuro ? "#ffffff" : "#333";
+        String textoSecundario = isModoEscuro ? "#9CA3AF" : "#666";
+        String textoTerciario = isModoEscuro ? "#6B7280" : "#999";
+        String textoQuaternario = isModoEscuro ? "#6EE7B7" : "#aaa";
+        String corTitulo = isModoEscuro ? "#34D399" : "#047857";
+
         // Criar conteúdo personalizado
         VBox content = new VBox(15);
         content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(20));
-        content.setStyle("-fx-background-color: white;");
-        
+        content.setStyle("-fx-background-color: " + bg + ";");
+
         // Logo/Ícone do sistema (se existir)
         try {
             ImageView logo = new ImageView(new Image(getClass().getResourceAsStream("/gui/icons/logo_icon.png")));
@@ -1224,45 +1232,45 @@ public class TelaPrincipalController implements Initializable {
         } catch (Exception ex) {
             // Sem logo, usar texto
         }
-        
+
         // Nome do Sistema
         Label lblNome = new Label("Naviera - Navegação Fluvial");
-        lblNome.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #047857;");
-        
+        lblNome.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + corTitulo + ";");
+
         // Versão
         Label lblVersao = new Label("Versão 1.0");
-        lblVersao.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #666;");
-        
+        lblVersao.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: " + textoSecundario + ";");
+
         // Separador
         Separator sep = new Separator();
         sep.setPrefWidth(250);
-        
+
         // Créditos
         Label lblCreditos = new Label("Desenvolvido por Jessica");
-        lblCreditos.setStyle("-fx-font-size: 13px; -fx-text-fill: #333;");
-        
+        lblCreditos.setStyle("-fx-font-size: 13px; -fx-text-fill: " + textoPrincipal + ";");
+
         // Ano
         Label lblAno = new Label("© " + LocalDate.now().getYear() + " - Todos os direitos reservados");
-        lblAno.setStyle("-fx-font-size: 11px; -fx-text-fill: #999;");
-        
+        lblAno.setStyle("-fx-font-size: 11px; -fx-text-fill: " + textoTerciario + ";");
+
         // Separador
         Separator sep2 = new Separator();
         sep2.setPrefWidth(250);
-        
+
         // Suporte
         Label lblSuporte = new Label("📧 Suporte Técnico");
-        lblSuporte.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #333;");
-        
+        lblSuporte.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: " + textoPrincipal + ";");
+
         Label lblContatoSuporte = new Label("Para dúvidas ou problemas, entre em\ncontato com o suporte técnico.");
-        lblContatoSuporte.setStyle("-fx-font-size: 11px; -fx-text-fill: #666; -fx-text-alignment: center;");
+        lblContatoSuporte.setStyle("-fx-font-size: 11px; -fx-text-fill: " + textoSecundario + "; -fx-text-alignment: center;");
         lblContatoSuporte.setWrapText(true);
-        
+
         // Informações do ambiente
         Label lblAmbiente = new Label(
-            "Java: " + System.getProperty("java.version") + 
+            "Java: " + System.getProperty("java.version") +
             " | JavaFX | PostgreSQL 17"
         );
-        lblAmbiente.setStyle("-fx-font-size: 10px; -fx-text-fill: #aaa;");
+        lblAmbiente.setStyle("-fx-font-size: 10px; -fx-text-fill: " + textoQuaternario + ";");
         
         content.getChildren().addAll(
             lblNome, lblVersao, sep, 
