@@ -1060,6 +1060,7 @@ public class TelaPrincipalController implements Initializable {
     @FXML private void handleProductos(ActionEvent e) { if (PermissaoService.exigirAdmin("Cadastro de Itens")) abrirTelaModal("/gui/CadastroItem.fxml", "Itens", false); }
     @FXML private void handleTabelasAuxiliares(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabelas Auxiliares")) abrirTelaModal("/gui/TabelasAuxiliares.fxml", "Auxiliares", false); }
     @FXML private void handleClientesEncomenda(ActionEvent e) { if (PermissaoService.exigirOperacional("Cadastro de Clientes")) abrirTelaModal("/gui/CadastroClientesEncomenda.fxml", "Clientes", false); }
+    @FXML private void handleClientesFrete(ActionEvent e) { if (PermissaoService.exigirOperacional("Cadastro de Clientes Frete")) abrirTelaModal("/gui/CadastroCliente.fxml", "Clientes de Frete", false); }
     @FXML private void handleTabelaPrecoFrete(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Frete")) abrirTelaModal("/gui/TabelaPrecoFrete.fxml", "Tabela de Preços", false); }
     @FXML private void handlePrecoEncomenda(ActionEvent e) { if (PermissaoService.exigirAdmin("Tabela de Preços Encomenda")) abrirTelaModal("/gui/TabelaPrecosEncomenda.fxml", "Tabela de Preços", false); }
     

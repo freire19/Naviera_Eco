@@ -62,6 +62,40 @@ public class AlertHelper {
         show(AlertType.ERROR, "Erro", "Ocorreu um erro ao " + contexto.toLowerCase() + ". Tente novamente ou contate o suporte.");
     }
 
+    // Aliases compat usados em controllers mais antigos.
+    public static void showInfo(String message) { info(message); }
+    public static void showWarning(String message) { warn(message); }
+
+    /**
+     * Exibe um alerta de confirmacao (OK/Cancelar). Retorna true se usuario confirmou.
+     */
+    public static boolean showConfirmation(String message) {
+        if (!Platform.isFxApplicationThread()) {
+            final boolean[] ret = new boolean[]{false};
+            final Object lock = new Object();
+            Platform.runLater(() -> {
+                synchronized (lock) {
+                    ret[0] = exibirConfirmacao(message);
+                    lock.notifyAll();
+                }
+            });
+            synchronized (lock) {
+                try { lock.wait(); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            }
+            return ret[0];
+        }
+        return exibirConfirmacao(message);
+    }
+
+    private static boolean exibirConfirmacao(String message) {
+        Alert alert = new Alert(AlertType.CONFIRMATION);
+        alert.setTitle("Confirmacao");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        java.util.Optional<javafx.scene.control.ButtonType> resultado = alert.showAndWait();
+        return resultado.isPresent() && resultado.get() == javafx.scene.control.ButtonType.OK;
+    }
+
     private static void exibir(AlertType type, String title, String message) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
