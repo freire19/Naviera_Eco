@@ -30,12 +30,12 @@ function escapeHtml(s) {
 // ==============================================================
 function blocoA4(recibo, empresa, preenchido) {
   const numero = preenchido && recibo.id_recibo ? recibo.id_recibo : '____'
-  const nome = preenchido ? escapeHtml(recibo.nome_pagador || '') : ''
-  const extenso = preenchido ? escapeHtml(valorPorExtenso(recibo.valor)) : ''
-  const ref = preenchido ? escapeHtml(recibo.referente_a || '') : ''
+  const nome = preenchido ? escapeHtml((recibo.nome_pagador || '').toUpperCase()) : ''
+  const extenso = preenchido ? escapeHtml(valorPorExtenso(recibo.valor).toUpperCase()) : ''
+  const ref = preenchido ? escapeHtml((recibo.referente_a || '').toUpperCase()) : ''
   const valorTxt = preenchido ? formatarValor(recibo.valor) : ''
   const dataTxt = preenchido ? formatarData(recibo.data_emissao) : ''
-  const cidade = escapeHtml(empresa.endereco || '')
+  const cidade = escapeHtml((empresa.cidade || '').toUpperCase())
 
   return `
   <div class="recibo-a4">
@@ -66,7 +66,7 @@ function blocoA4(recibo, empresa, preenchido) {
 
     <div class="footer">
       <div class="data-assin">
-        <div class="local-data">${cidade}${preenchido ? ', ' + dataTxt : ','}</div>
+        <div class="local-data"><b>${cidade}${preenchido ? ', ' + dataTxt : ','}</b></div>
         <div class="sub">Cidade e Data</div>
       </div>
       <div class="assin">
@@ -151,10 +151,11 @@ function cssTermica() {
 
 function blocoTermica(recibo, empresa) {
   const num = recibo.id_recibo || '____'
+  const cidade = (empresa.cidade || '').toUpperCase()
   return `
   <div class="termica">
     ${empresa.path_logo ? `<img src="${empresa.path_logo}" alt="logo" class="logo"/>` : ''}
-    <div class="emp">${escapeHtml(empresa.nome || '')}</div>
+    <div class="emp">${escapeHtml((empresa.nome || '').toUpperCase())}</div>
     <div class="small">CNPJ: ${escapeHtml(empresa.cnpj || '')}</div>
     <div class="small">${escapeHtml(empresa.endereco || '')}</div>
     ${empresa.telefone ? `<div class="small">Tel: ${escapeHtml(empresa.telefone)}</div>` : ''}
@@ -162,20 +163,20 @@ function blocoTermica(recibo, empresa) {
     <div class="titulo">RECIBO Nº ${num}</div>
     <div class="bloco">
       <b>PAGADOR:</b>
-      <div>${escapeHtml(recibo.nome_pagador || '')}</div>
+      <div>${escapeHtml((recibo.nome_pagador || '').toUpperCase())}</div>
     </div>
     <div class="sep">- - - - - - - - - - - - - - -</div>
     <div class="bloco">
       <div class="valor">VALOR: ${formatarValor(recibo.valor)}</div>
-      <div class="extenso">(${escapeHtml(valorPorExtenso(recibo.valor))})</div>
+      <div class="extenso">(${escapeHtml(valorPorExtenso(recibo.valor).toUpperCase())})</div>
     </div>
     <div class="sep">- - - - - - - - - - - - - - -</div>
     <div class="bloco">
       <b>REFERENTE:</b>
-      <div>${escapeHtml(recibo.referente_a || '')}</div>
+      <div>${escapeHtml((recibo.referente_a || '').toUpperCase())}</div>
     </div>
     <div class="footer">
-      <div>${escapeHtml(empresa.endereco || '')}${recibo.data_emissao ? ', ' + formatarData(recibo.data_emissao) : ''}</div>
+      <div><b>${escapeHtml(cidade)}${recibo.data_emissao ? ', ' + formatarData(recibo.data_emissao) : ''}</b></div>
       <div class="linha-assin"></div>
       <div>Assinatura</div>
       <div style="margin-top:8px;">Impresso em: ${new Date().toLocaleString('pt-BR')}</div>

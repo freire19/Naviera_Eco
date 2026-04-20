@@ -9,10 +9,15 @@ function formatarValorBR(v) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function formatarDataBR(iso) {
-  if (!iso) return ''
-  const d = new Date(iso.substring(0, 10) + 'T12:00:00')
-  return d.toLocaleDateString('pt-BR')
+function formatarDataBR(val) {
+  if (!val) return ''
+  const s = String(val)
+  // Endpoint /api/viagens ja retorna "DD/MM/YYYY". /api/recibos retorna "YYYY-MM-DD..." ou Date ISO.
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) return s.substring(0, 10)
+  const iso = s.substring(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''
+  const d = new Date(iso + 'T12:00:00')
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR')
 }
 
 function parseValor(str) {
@@ -34,6 +39,7 @@ export default function ReciboAvulso({ viagemAtiva }) {
   const [filtroViagem, setFiltroViagem] = useState(viagemAtiva?.id_viagem || '')
   const [toast, setToast] = useState(null)
   const [salvando, setSalvando] = useState(false)
+  const [reimpressaoAberta, setReimpressaoAberta] = useState(null) // recibo para reimpressao
 
   useEffect(() => {
     api.get('/cadastros/empresa').then(setEmpresa).catch(() => {})
@@ -106,8 +112,12 @@ export default function ReciboAvulso({ viagemAtiva }) {
     imprimirRecibo('A4_BRANCO', { nome_pagador: '', valor: 0 }, empresaParaPrint())
   }
 
-  async function reimprimir(recibo) {
-    imprimirRecibo(recibo.tipo_recibo === 'TERMICA' ? 'TERMICA' : 'A4_PREENCHIDO', recibo, empresaParaPrint())
+  function abrirReimpressao(recibo) { setReimpressaoAberta(recibo) }
+  function fecharReimpressao() { setReimpressaoAberta(null) }
+  function reimprimirModal(tipo) {
+    if (!reimpressaoAberta) return
+    imprimirRecibo(tipo, reimpressaoAberta, empresaParaPrint())
+    fecharReimpressao()
   }
 
   async function excluirRecibo(id) {
@@ -203,7 +213,7 @@ export default function ReciboAvulso({ viagemAtiva }) {
                 <td style={TD}>{r.referente_a || '—'}</td>
                 <td style={{ ...TD, textAlign: 'right' }}>{formatarValorBR(r.valor)}</td>
                 <td style={{ ...TD, textAlign: 'center' }}>
-                  <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.78rem' }} onClick={() => reimprimir(r)} title="Reimprimir">🖨</button>
+                  <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.78rem' }} onClick={() => abrirReimpressao(r)} title="Reimprimir">🖨</button>
                   <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.78rem', marginLeft: 4, color: 'var(--danger)' }} onClick={() => excluirRecibo(r.id_recibo)} title="Excluir">×</button>
                 </td>
               </tr>
@@ -212,10 +222,34 @@ export default function ReciboAvulso({ viagemAtiva }) {
         </table>
       </div>
 
+      {reimpressaoAberta && (
+        <div style={MODAL_BG} onClick={fecharReimpressao}>
+          <div style={MODAL_BOX} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ margin: 0 }}>Reimpressao</h3>
+              <button onClick={fecharReimpressao} style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text)' }}>×</button>
+            </div>
+            <div style={{ marginBottom: 12, fontSize: '0.9rem' }}>Opcoes de Impressao para Recibo Nº <b>{reimpressaoAberta.id_recibo}</b></div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 14 }}>Selecione o modelo:</div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <button className="btn-primary" onClick={() => reimprimirModal('A4_PREENCHIDO')}>🧾 A4 Economico (Padrao)</button>
+              <button className="btn-primary" style={{ background: '#10b981' }} onClick={() => reimprimirModal('A4_BRANCO')}>📄 A4 em Branco (2 vias)</button>
+              <button className="btn-primary" style={{ background: '#047857' }} onClick={() => reimprimirModal('TERMICA')}>🧾 Cupom Termico</button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+              <button className="btn-secondary" onClick={fecharReimpressao}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
     </div>
   )
 }
+
+const MODAL_BG = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }
+const MODAL_BOX = { background: 'var(--bg)', color: 'var(--text)', padding: 22, borderRadius: 6, minWidth: 320, maxWidth: 400, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }
 
 const BRAND_GREEN = '#059669'
 const TH = { textAlign: 'left', padding: '10px 12px', color: 'white', fontWeight: 700, fontSize: '0.82rem' }

@@ -110,27 +110,27 @@ router.get('/empresa', async (req, res, next) => {
 router.put('/empresa', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
-    const { companhia, nome_embarcacao, comandante, proprietario, origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone, frase_relatorio, recomendacoes_bilhete } = req.body
+    const { companhia, nome_embarcacao, comandante, proprietario, origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, cidade, telefone, frase_relatorio, recomendacoes_bilhete } = req.body
     const exists = await pool.query('SELECT id_config FROM configuracao_empresa WHERE empresa_id = $1', [empresaId])
     let result
     if (exists.rows.length > 0) {
       result = await pool.query(`
         UPDATE configuracao_empresa SET companhia=$1, nome_embarcacao=$2, comandante=$3, proprietario=$4,
           origem_padrao=$5, gerente=$6, linha_rio_padrao=$7, cnpj=$8, ie=$9, endereco=$10, cep=$11,
-          telefone=$12, frase_relatorio=$13, recomendacoes_bilhete=$14
-        WHERE empresa_id = $15 RETURNING *
+          telefone=$12, frase_relatorio=$13, recomendacoes_bilhete=$14, cidade=$15
+        WHERE empresa_id = $16 RETURNING *
       `, [companhia||null, nome_embarcacao||null, comandante||null, proprietario||null,
           origem_padrao||null, gerente||null, linha_rio_padrao||null, cnpj||null, ie||null,
-          endereco||null, cep||null, telefone||null, frase_relatorio||null, recomendacoes_bilhete||null, empresaId])
+          endereco||null, cep||null, telefone||null, frase_relatorio||null, recomendacoes_bilhete||null, cidade||null, empresaId])
     } else {
       result = await pool.query(`
         INSERT INTO configuracao_empresa (id_config, companhia, nome_embarcacao, comandante, proprietario,
-          origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, telefone,
+          origem_padrao, gerente, linha_rio_padrao, cnpj, ie, endereco, cep, cidade, telefone,
           frase_relatorio, recomendacoes_bilhete, empresa_id)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *
       `, [empresaId, companhia||null, nome_embarcacao||null, comandante||null, proprietario||null,
           origem_padrao||null, gerente||null, linha_rio_padrao||null, cnpj||null, ie||null,
-          endereco||null, cep||null, telefone||null, frase_relatorio||null, recomendacoes_bilhete||null, empresaId])
+          endereco||null, cep||null, cidade||null, telefone||null, frase_relatorio||null, recomendacoes_bilhete||null, empresaId])
     }
     res.json(result.rows[0])
   } catch (err) {
