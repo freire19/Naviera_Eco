@@ -28,6 +28,7 @@ import agendaRoutes from './routes/agenda.js'
 import estornoRoutes from './routes/estornos.js'
 import ocrRoutes from './routes/ocr.js'
 import documentosRoutes from './routes/documentos.js'
+import reciboRoutes from './routes/recibos.js'
 import errorHandler from './middleware/errorHandler.js'
 
 const app = express()
@@ -82,6 +83,7 @@ app.use('/api/agenda', agendaRoutes)
 app.use('/api/estornos', estornoRoutes)
 app.use('/api/ocr', ocrRoutes)
 app.use('/api/documentos', documentosRoutes)
+app.use('/api/recibos', reciboRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
