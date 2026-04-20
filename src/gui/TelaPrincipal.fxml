@@ -58,7 +58,6 @@
                     </graphic>
                     <items>
                         <MenuItem fx:id="menuCadastrarFrete" onAction="#handleCadastrarFrete" text="Lançar Frete" />
-                        <MenuItem fx:id="menuLancarFotoFrete" onAction="#handleLancarPorFotoFrete" text="Lançar por Foto (OCR)" />
                         <MenuItem fx:id="menuListaFretes" onAction="#handleListaFrete" text="Listar Fretes" />
                         <MenuItem fx:id="menuRelFretes" onAction="#handleRelatorioFrete" text="Relatório" />
                         <MenuItem fx:id="menuTabelaPrecoFrete" onAction="#handleTabelaPrecoFrete" text="Tabela de Preços" />
@@ -92,7 +91,6 @@
                     </graphic>
                     <items>
                         <MenuItem fx:id="menuInserirEncomenda" onAction="#handleInserirEncomenda" text="Nova Encomenda" />
-                        <MenuItem fx:id="menuLancarFotoEncomenda" onAction="#handleLancarPorFotoEncomenda" text="Lançar por Foto (OCR)" />
                         <MenuItem fx:id="menuListaEncomendas" onAction="#handleListaEncomenda" text="Listar Encomendas" />
                         <MenuItem fx:id="menuRelEncomendas" onAction="#handleRelatorioEncomenda" text="Relatório" />
                         <MenuItem fx:id="menuPrecoEncomenda" onAction="#handlePrecoEncomenda" text="Tabela de Preços" />
