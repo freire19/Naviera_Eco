@@ -58,7 +58,7 @@
 }
 
 .main-tab-pane .tab-close-button {
-    -fx-background-color: #aaaaaa !important;
+    -fx-background-color: #6EE7B7 !important;
     -fx-shape: "M 0,0 H1 L 4,3 7,0 H8 V1 L 5,4 8,7 V8 H7 L 4,5 1,8 H0 V7 L 3,4 0,1 Z";
     -fx-background-insets: 0;
     -fx-padding: 4;
@@ -88,14 +88,14 @@
 }
 
 .split-pane > .split-pane-divider {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 /* --- 3. BOTÕES --- */
 .button-acesso-rapido {
     -fx-background-color: #0A1F18 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-border-color: #333 !important;
+    -fx-border-color: #0F2D24 !important;
     -fx-font-size: 14px !important;
     -fx-font-weight: bold !important;
     -fx-background-radius: 5px;
@@ -107,9 +107,9 @@
     -fx-cursor: hand;
 }
 .button {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: white !important;
-    -fx-border-color: #555 !important;
+    -fx-border-color: #1F6450 !important;
     -fx-font-weight: bold !important;
     -fx-font-size: 13px !important;
 }
@@ -121,29 +121,29 @@
 /* --- DASHBOARD CARDS --- */
 .dashboard-card {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333 !important;
+    -fx-border-color: #0F2D24 !important;
     -fx-border-radius: 5 !important;
     -fx-padding: 15 !important;
     -fx-alignment: center !important;
 }
 .dashboard-card-title {
-    -fx-text-fill: #888888 !important;
+    -fx-text-fill: #A7F3D0 !important;
     -fx-font-size: 14px !important;
 }
 .dashboard-card-value {
     -fx-font-size: 24px !important;
     -fx-font-weight: bold !important;
-    -fx-fill: #aaaaaa !important;
+    -fx-fill: #6EE7B7 !important;
 }
 
 /* --- 4. CALENDÁRIO (SEM AZUL NAS BORDAS) --- */
 .calendar-grid {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333333 !important; /* Cinza escuro discreto */
+    -fx-border-color: #0F2D24 !important; /* Cinza escuro discreto */
 }
 .vbox-calendario {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333333 !important; /* Cinza escuro discreto */
+    -fx-border-color: #0F2D24 !important; /* Cinza escuro discreto */
 }
 .vbox-calendario:hover { 
     -fx-background-color: #0F2D24 !important; 
@@ -152,7 +152,7 @@
 /* --- 5. TABELAS --- */
 .table-view {
     -fx-background-color: #040D0A !important;
-    -fx-border-color: #333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* Cabeçalho da Tabela - AZUL */
@@ -174,7 +174,7 @@
 /* Células da Tabela */
 .table-row-cell {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: transparent transparent #333 transparent !important;
+    -fx-border-color: transparent transparent #0F2D24 transparent !important;
     -fx-text-fill: white !important;
 }
 
@@ -187,7 +187,7 @@
 }
 
 .table-row-cell:hover {
-    -fx-background-color: #2a2a2a !important;
+    -fx-background-color: #0A1F18 !important;
 }
 
 /* Células individuais */
@@ -216,7 +216,7 @@
 }
 
 .table-view .placeholder .label {
-    -fx-text-fill: #999999 !important;
+    -fx-text-fill: #9CA3AF !important;
 }
 
 /* --- 6. CAMPOS DE ENTRADA (CINZA ESCURO) --- */
@@ -230,14 +230,14 @@
     -fx-background: #0F2D24 !important;
     -fx-control-inner-background: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-width: 1px !important;
-    -fx-prompt-text-fill: #9e9e9e !important;
+    -fx-prompt-text-fill: #9CA3AF !important;
 }
 
 /* Campos desabilitados */
 .text-field:disabled, .combo-box:disabled, .date-picker:disabled {
-    -fx-background-color: #1a1a1a !important;
+    -fx-background-color: #040D0A !important;
     -fx-text-fill: #666666 !important;
     -fx-opacity: 0.6 !important;
 }
@@ -246,7 +246,7 @@
 .text-field:focused, .combo-box:focused, .date-picker:focused {
     -fx-border-color: #34D399 !important;
     -fx-border-width: 2px !important;
-    -fx-background-color: #2d2d30 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 /* ComboBox - Editor interno */
@@ -258,7 +258,7 @@
 /* ComboBox - Dropdown */
 .combo-box .list-view {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
 }
 
 .combo-box .list-cell {
@@ -267,13 +267,13 @@
 }
 
 .combo-box .list-cell:hover, .combo-box .list-cell:selected {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
 }
 
 /* ComboBox - Seta */
 .combo-box .arrow-button {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .combo-box .arrow {
@@ -298,7 +298,7 @@
 /* --- 8. MENUS E CONTEXTOS --- */
 .menu-bar {
     -fx-background-color: #040D0A !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 .menu-bar .label {
@@ -314,12 +314,12 @@
 }
 
 .menu-item:hover, .menu:hover {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .context-menu {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
 }
 
 /* ========================================================================= */
@@ -334,13 +334,13 @@
 .painel-cabecalho, .painel-lateral {
     -fx-background-color: #0A1F18 !important;
     -fx-effect: none !important;
-    -fx-border-color: #333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* Painel de Filtros */
 .painel-filtros {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333 !important;
+    -fx-border-color: #0F2D24 !important;
     -fx-border-width: 1px !important;
 }
 
@@ -354,7 +354,7 @@
 
 /* Labels Cinza Claro para subtítulos */
 .painel-lateral .label-subtitle {
-    -fx-text-fill: #bbbbbb !important;
+    -fx-text-fill: #9CA3AF !important;
 }
 
 /* Card Total Gasto */
@@ -374,7 +374,7 @@
 .painel-filtros .date-picker .text-field,
 .painel-filtros .text-field {
     -fx-background-color: #0F2D24 !important; 
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-text-fill: #ffffff !important;
 }
 
@@ -396,18 +396,18 @@
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: #444444 !important;
+    -fx-background-color: #164B3C !important;
 }
 
 .scroll-bar .thumb:hover {
-    -fx-background-color: #555555 !important;
+    -fx-background-color: #1F6450 !important;
 }
 
 /* Botões Específicos */
 .botao-busca {
     -fx-background-color: #059669 !important;
     -fx-text-fill: white !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
 }
 
 .botao-limpar {
@@ -417,8 +417,8 @@
 
 /* Separadores */
 .separator, .separator .line {
-    -fx-background-color: #333333 !important;
-    -fx-border-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
+    -fx-border-color: #0F2D24 !important;
     -fx-border-width: 1px !important;
 }
 
@@ -430,7 +430,7 @@
 
 .radio-button .radio {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #888888 !important;
+    -fx-border-color: #A7F3D0 !important;
     -fx-border-width: 2px;
     -fx-border-radius: 50%;
     -fx-background-radius: 50%;
@@ -442,7 +442,7 @@
 
 .check-box .box {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #888888 !important;
+    -fx-border-color: #A7F3D0 !important;
     -fx-border-width: 2px;
 }
 
@@ -496,19 +496,19 @@
 .tooltip {
     -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
 }
 
 /* --- 12. SIDEBAR E PAINÉIS LATERAIS --- */
 .sidebar-panel {
     -fx-background-color: #040D0A !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* --- 13. FOOTER --- */
 .footer-panel {
     -fx-background-color: #040D0A !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* ================================================================== */
@@ -519,7 +519,7 @@
 TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
     -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
 }
 
 /* Sobrescrever TODOS os estilos inline com cores claras */
@@ -548,7 +548,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 *[style*="-fx-border-color: #cfd8dc"],
 *[style*="border-color: #b2dfdb"],
 *[style*="border-color: #ffe0b2"] {
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
 }
 
 /* Forçar texto preto para branco */
@@ -568,7 +568,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Lista de células (List View) */
 .list-view {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
 }
 
 .list-cell {
@@ -577,7 +577,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 }
 
 .list-cell:hover {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .list-cell:selected {
@@ -606,7 +606,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 }
 
 .tab:selected {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
 }
 
 .tab-pane .tab-content-area {
@@ -642,7 +642,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .text-input {
     -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-prompt-text-fill: #9e9e9e !important;
+    -fx-prompt-text-fill: #9CA3AF !important;
 }
 
 /* Região genérica */
@@ -659,7 +659,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .info-panel {
     -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-radius: 5px !important;
     -fx-padding: 10px !important;
 }
@@ -668,7 +668,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .input-panel {
     -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-radius: 5px !important;
     -fx-padding: 10px !important;
 }
@@ -677,15 +677,15 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .totals-panel {
     -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px 5px 0 0 !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-padding: 8px 20px !important;
 }
 
 /* Painel de botões */
 .buttons-panel {
-    -fx-background-color: #1a1a1a !important;
+    -fx-background-color: #040D0A !important;
     -fx-background-radius: 0 0 5px 5px !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-width: 1px 0 0 0 !important;
     -fx-padding: 10px !important;
 }
@@ -702,13 +702,13 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Painel de cabeçalho */
 .painel-cabecalho {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* Painel de filtros */
 .painel-filtros {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-radius: 5px !important;
     -fx-padding: 10px !important;
 }
@@ -716,20 +716,20 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Painel lateral */
 .painel-lateral {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* Cards de informação */
 .card-info {
     -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 8px !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-width: 1px !important;
 }
 
 /* Card de total/destaque */
 .card-total {
-    -fx-background-color: #2d2d30 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 8px !important;
     -fx-border-color: #DC2626 !important;
     -fx-border-width: 0 0 0 6 !important;
@@ -739,22 +739,22 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Painel de totais (rodapé) */
 .painel-totais {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
     -fx-border-width: 1px 0 0 0 !important;
 }
 
 /* Botões de categoria/ação */
 .botao-categoria {
-    -fx-background-color: #333333 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
-    -fx-border-color: #555555 !important;
+    -fx-border-color: #1F6450 !important;
     -fx-border-radius: 6px !important;
     -fx-background-radius: 6px !important;
     -fx-font-weight: bold !important;
 }
 
 .botao-categoria:hover {
-    -fx-background-color: #444444 !important;
+    -fx-background-color: #164B3C !important;
     -fx-border-color: #34D399 !important;
 }
 
@@ -771,18 +771,18 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Botão de limpar */
 .botao-limpar {
-    -fx-background-color: #444444 !important;
+    -fx-background-color: #164B3C !important;
     -fx-text-fill: #ffffff !important;
     -fx-font-weight: bold !important;
 }
 
 .botao-limpar:hover {
-    -fx-background-color: #555555 !important;
+    -fx-background-color: #1F6450 !important;
 }
 
 /* Campo de valor com destaque */
 .campo-valor {
-    -fx-background-color: #2d2d30 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-border-color: #F59E0B !important;
     -fx-border-width: 2px !important;
     -fx-font-weight: bold !important;
@@ -793,13 +793,13 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 .painel-formulario {
     -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 5px !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-radius: 5px !important;
 }
 
 /* Campo de destaque (somente leitura) */
 .campo-destaque {
-    -fx-background-color: #2d2d30 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
     -fx-font-weight: bold !important;
 }
@@ -807,27 +807,27 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 /* Painel de taxas */
 .painel-taxas {
     -fx-background-color: #0F2D24 !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-radius: 4px !important;
 }
 
 /* Barra de pesquisa */
 .barra-pesquisa {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* Painel de rodapé */
 .painel-rodape {
     -fx-background-color: #0A1F18 !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 /* Painel de login */
 .painel-login {
     -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 10px !important;
-    -fx-border-color: #444444 !important;
+    -fx-border-color: #164B3C !important;
     -fx-border-radius: 10px !important;
 }
 
@@ -840,7 +840,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel info pagamento */
 .painel-info-pagamento {
-    -fx-background-color: #2d2d30 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-padding: 10px !important;
     -fx-background-radius: 5px !important;
     -fx-border-color: #34D399 !important;
@@ -848,13 +848,13 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Botão cancelar */
 .botao-cancelar {
-    -fx-background-color: #444444 !important;
+    -fx-background-color: #164B3C !important;
     -fx-text-fill: #ffffff !important;
     -fx-cursor: hand !important;
 }
 
 .botao-cancelar:hover {
-    -fx-background-color: #555555 !important;
+    -fx-background-color: #1F6450 !important;
 }
 
 /* Dialog estorno */
@@ -887,14 +887,14 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Painel resumo pagamento */
 .painel-resumo-pagamento {
-    -fx-background-color: #2d2d30 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-background-radius: 8px !important;
     -fx-border-color: #059669 !important;
 }
 
 /* Campo destaque viagem */
 .campo-destaque-viagem {
-    -fx-background-color: #2d2d30 !important;
+    -fx-background-color: #0F2D24 !important;
     -fx-text-fill: #ffffff !important;
     -fx-border-color: #34D399 !important;
     -fx-border-width: 2px !important;
@@ -909,13 +909,13 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 /* Botão secundário */
 .botao-secundario {
-    -fx-background-color: #444444 !important;
+    -fx-background-color: #164B3C !important;
     -fx-text-fill: #34D399 !important;
     -fx-font-weight: bold !important;
 }
 
 .botao-secundario:hover {
-    -fx-background-color: #555555 !important;
+    -fx-background-color: #1F6450 !important;
 }
 
 /* ========================================================================= */
@@ -941,12 +941,12 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: #444444 !important;
+    -fx-background-color: #164B3C !important;
     -fx-background-radius: 5px !important;
 }
 
 .scroll-bar .thumb:hover {
-    -fx-background-color: #555555 !important;
+    -fx-background-color: #1F6450 !important;
 }
 
 .scroll-bar .thumb:pressed {
@@ -969,7 +969,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 
 .list-view {
     -fx-background-color: #040D0A !important;
-    -fx-border-color: #333333 !important;
+    -fx-border-color: #0F2D24 !important;
 }
 
 .list-cell {
@@ -987,7 +987,7 @@ TextField, TextArea, ComboBox, DatePicker, ChoiceBox, Spinner {
 }
 
 .list-cell:hover {
-    -fx-background-color: #2a2a2a !important;
+    -fx-background-color: #0A1F18 !important;
 }
 
 /* ========================================================================= */

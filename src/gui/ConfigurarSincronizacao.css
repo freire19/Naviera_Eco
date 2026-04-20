@@ -39,7 +39,7 @@
 
 /* Separador */
 .sync-separator {
-    -fx-background-color: #ddd;
+    -fx-background-color: #9CA3AF;
 }
 
 /* Seções */
@@ -53,12 +53,12 @@
 .section-title {
     -fx-font-size: 16px;
     -fx-font-weight: bold;
-    -fx-text-fill: #333;
+    -fx-text-fill: #0F2D24;
 }
 
 /* Labels */
 .field-label {
-    -fx-text-fill: #555;
+    -fx-text-fill: #1F6450;
     -fx-font-size: 13px;
 }
 
@@ -74,7 +74,7 @@
 /* TextFields */
 .sync-textfield {
     -fx-background-color: white;
-    -fx-border-color: #ddd;
+    -fx-border-color: #9CA3AF;
     -fx-border-radius: 5;
     -fx-background-radius: 5;
     -fx-padding: 8;
@@ -87,12 +87,12 @@
 
 /* CheckBox */
 .sync-checkbox {
-    -fx-text-fill: #333;
+    -fx-text-fill: #0F2D24;
 }
 
 .sync-checkbox .box {
     -fx-background-color: white;
-    -fx-border-color: #ddd;
+    -fx-border-color: #9CA3AF;
 }
 
 .sync-checkbox:selected .mark {
@@ -106,7 +106,7 @@
 
 .sync-spinner .text-field {
     -fx-background-color: white;
-    -fx-border-color: #ddd;
+    -fx-border-color: #9CA3AF;
 }
 
 /* Status Cards */
@@ -135,10 +135,10 @@
     -fx-font-family: 'Consolas', 'Courier New', monospace;
     -fx-font-size: 12px;
     -fx-background-color: #f9f9f9;
-    -fx-border-color: #ddd;
+    -fx-border-color: #9CA3AF;
     -fx-border-radius: 5;
     -fx-background-radius: 5;
-    -fx-text-fill: #333;
+    -fx-text-fill: #0F2D24;
 }
 
 /* Botões */
@@ -163,7 +163,7 @@
 }
 
 .btn-atualizar:hover {
-    -fx-background-color: #546E7A;
+    -fx-background-color: #047857;
 }
 
 .btn-sincronizar {
@@ -193,7 +193,7 @@
 }
 
 .btn-fechar {
-    -fx-background-color: #9E9E9E;
+    -fx-background-color: #9CA3AF;
     -fx-text-fill: white;
     -fx-font-size: 14px;
     -fx-padding: 12 30;
@@ -202,7 +202,7 @@
 }
 
 .btn-fechar:hover {
-    -fx-background-color: #757575;
+    -fx-background-color: #6B7280;
 }
 
 /* ============================================
@@ -212,7 +212,7 @@
 .dark-mode .sync-scroll,
 .dark-mode .sync-scroll > .viewport,
 .dark-mode .sync-container {
-    -fx-background-color: #1a1a1a;
+    -fx-background-color: #040D0A;
 }
 
 .dark-mode .sync-title {
@@ -220,15 +220,15 @@
 }
 
 .dark-mode .sync-subtitle {
-    -fx-text-fill: #aaa;
+    -fx-text-fill: #6EE7B7;
 }
 
 .dark-mode .sync-separator {
-    -fx-background-color: #444;
+    -fx-background-color: #164B3C;
 }
 
 .dark-mode .sync-section {
-    -fx-background-color: #2d2d2d;
+    -fx-background-color: #0F2D24;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 3);
 }
 
@@ -237,7 +237,7 @@
 }
 
 .dark-mode .field-label {
-    -fx-text-fill: #ccc;
+    -fx-text-fill: #D1FAE5;
 }
 
 .dark-mode .ultima-sync-label {
@@ -245,8 +245,8 @@
 }
 
 .dark-mode .sync-textfield {
-    -fx-background-color: #3a3a3a;
-    -fx-border-color: #555;
+    -fx-background-color: #0F2D24;
+    -fx-border-color: #1F6450;
     -fx-text-fill: #fff;
 }
 
@@ -259,8 +259,8 @@
 }
 
 .dark-mode .sync-checkbox .box {
-    -fx-background-color: #3a3a3a;
-    -fx-border-color: #555;
+    -fx-background-color: #0F2D24;
+    -fx-border-color: #1F6450;
 }
 
 .dark-mode .sync-checkbox:selected .mark {
@@ -268,23 +268,23 @@
 }
 
 .dark-mode .sync-spinner {
-    -fx-background-color: #3a3a3a;
+    -fx-background-color: #0F2D24;
 }
 
 .dark-mode .sync-spinner .text-field {
-    -fx-background-color: #3a3a3a;
-    -fx-border-color: #555;
+    -fx-background-color: #0F2D24;
+    -fx-border-color: #1F6450;
     -fx-text-fill: #fff;
 }
 
 .dark-mode .stat-label {
-    -fx-text-fill: #aaa;
+    -fx-text-fill: #6EE7B7;
 }
 
 .dark-mode .sync-log {
-    -fx-background-color: #1e1e1e;
-    -fx-border-color: #444;
-    -fx-text-fill: #ddd;
+    -fx-background-color: #040D0A;
+    -fx-border-color: #164B3C;
+    -fx-text-fill: #9CA3AF;
 }
 
 .dark-mode .btn-testar {
@@ -296,7 +296,7 @@
 }
 
 .dark-mode .btn-atualizar {
-    -fx-background-color: #546E7A;
+    -fx-background-color: #047857;
 }
 
 .dark-mode .btn-atualizar:hover {
