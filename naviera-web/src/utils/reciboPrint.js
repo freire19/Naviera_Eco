@@ -66,7 +66,7 @@ function blocoA4(recibo, empresa, preenchido) {
 
     <div class="footer">
       <div class="data-assin">
-        <div class="local-data"><b>${cidade}${preenchido ? ', ' + dataTxt : ','}</b></div>
+        <div class="local-data"><b>${[cidade, preenchido ? dataTxt : ''].filter(Boolean).join(', ')}</b></div>
         <div class="sub">Cidade e Data</div>
       </div>
       <div class="assin">
@@ -143,7 +143,8 @@ function cssTermica() {
     .termica .valor { font-weight: bold; font-size: 12pt; }
     .termica .extenso { font-size: 8pt; }
     .termica .footer { margin-top: 10mm; text-align: center; font-size: 8pt; }
-    .termica .linha-assin { border-top: 1px solid #000; width: 55mm; margin: 12px auto 2px; }
+    .termica .footer .cidade-data { margin-bottom: 28px; }
+    .termica .linha-assin { border-top: 1px solid #000; width: 55mm; margin: 18px auto 2px; }
     @media print { body { margin: 0; } }
     @page { size: 80mm auto; margin: 2mm; }
   `
@@ -176,10 +177,10 @@ function blocoTermica(recibo, empresa) {
       <div>${escapeHtml((recibo.referente_a || '').toUpperCase())}</div>
     </div>
     <div class="footer">
-      <div><b>${escapeHtml(cidade)}${recibo.data_emissao ? ', ' + formatarData(recibo.data_emissao) : ''}</b></div>
+      <div class="cidade-data"><b>${[escapeHtml(cidade), recibo.data_emissao ? formatarData(recibo.data_emissao) : ''].filter(Boolean).join(', ')}</b></div>
       <div class="linha-assin"></div>
       <div>Assinatura</div>
-      <div style="margin-top:8px;">Impresso em: ${new Date().toLocaleString('pt-BR')}</div>
+      <div style="margin-top:10px;">Impresso em: ${new Date().toLocaleString('pt-BR')}</div>
     </div>
   </div>`
 }
