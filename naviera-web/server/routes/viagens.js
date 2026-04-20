@@ -71,48 +71,58 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// POST /api/viagens/escala — gera viagens recorrentes em lote
-// body: { id_embarcacao, id_rota, data_inicio, data_fim, frequencia_dias, id_horario_saida?, dias_duracao? }
+// POST /api/viagens/escala — cria lembretes de saidas recorrentes na agenda
+// NAO cria registros na tabela viagens; apenas anotacoes em agenda_anotacoes (calendario).
+// body: { id_embarcacao, id_rota, data_inicio, data_fim, frequencia_dias }
 router.post('/escala', async (req, res) => {
   const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
-    const { id_embarcacao, id_rota, data_inicio, data_fim, frequencia_dias, id_horario_saida, dias_duracao } = req.body
+    const { id_embarcacao, id_rota, data_inicio, data_fim, frequencia_dias } = req.body
     if (!id_embarcacao || !id_rota || !data_inicio || !data_fim || !frequencia_dias) {
       return res.status(400).json({ error: 'Campos obrigatorios: id_embarcacao, id_rota, data_inicio, data_fim, frequencia_dias' })
     }
     const freq = parseInt(frequencia_dias)
     if (freq < 1) return res.status(400).json({ error: 'frequencia_dias deve ser >= 1' })
-    const duracao = parseInt(dias_duracao) || 3 // chegada = saida + N dias (padrao 3)
 
     const inicio = new Date(data_inicio + 'T12:00:00Z')
     const fim = new Date(data_fim + 'T12:00:00Z')
     if (fim < inicio) return res.status(400).json({ error: 'data_fim anterior a data_inicio' })
 
-    await client.query('BEGIN')
     const datas = []
     for (let d = new Date(inicio); d <= fim; d.setUTCDate(d.getUTCDate() + freq)) {
       datas.push(new Date(d))
     }
     if (datas.length > 500) {
-      await client.query('ROLLBACK')
-      return res.status(400).json({ error: 'Limite de 500 viagens por escala. Reduza o periodo ou aumente a frequencia.' })
+      return res.status(400).json({ error: 'Limite de 500 lembretes por escala. Reduza o periodo ou aumente a frequencia.' })
     }
+
+    await client.query('BEGIN')
+
+    const emb = await client.query(
+      'SELECT nome FROM embarcacoes WHERE id_embarcacao = $1 AND empresa_id = $2',
+      [id_embarcacao, empresaId]
+    )
+    const rot = await client.query(
+      'SELECT origem, destino FROM rotas WHERE id = $1 AND empresa_id = $2',
+      [id_rota, empresaId]
+    )
+    const nomeEmb = emb.rows[0]?.nome || ''
+    const nomeRota = rot.rows[0] ? `${rot.rows[0].origem} - ${rot.rows[0].destino}` : ''
+    const descricao = `Saida recorrente: ${nomeRota}${nomeEmb ? ' - ' + nomeEmb : ''}`.trim()
+
     const criadas = []
     for (const saida of datas) {
-      const chegada = new Date(saida)
-      chegada.setUTCDate(chegada.getUTCDate() + duracao)
       const saidaISO = saida.toISOString().substring(0, 10)
-      const chegadaISO = chegada.toISOString().substring(0, 10)
       const r = await client.query(`
-        INSERT INTO viagens (id_viagem, id_embarcacao, id_rota, data_viagem, data_chegada, descricao, id_horario_saida, ativa, is_atual, empresa_id)
-        VALUES (nextval('seq_viagem'), $1, $2, $3, $4, $5, $6, FALSE, FALSE, $7)
-        RETURNING id_viagem, data_viagem
-      `, [id_embarcacao, id_rota, saidaISO, chegadaISO, 'Escala automatica', id_horario_saida || null, empresaId])
+        INSERT INTO agenda_anotacoes (data_evento, descricao, empresa_id)
+        VALUES ($1, $2, $3)
+        RETURNING id_anotacao, data_evento
+      `, [saidaISO, descricao, empresaId])
       criadas.push(r.rows[0])
     }
     await client.query('COMMIT')
-    res.status(201).json({ total: criadas.length, viagens: criadas })
+    res.status(201).json({ total: criadas.length, anotacoes: criadas })
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {})
     console.error('[Viagens] Erro ao gerar escala:', err.message)

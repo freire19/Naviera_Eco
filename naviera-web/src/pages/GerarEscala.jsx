@@ -19,29 +19,24 @@ function addMesesISO(n) {
 export default function GerarEscala({ onClose }) {
   const [embarcacoes, setEmbarcacoes] = useState([])
   const [rotas, setRotas] = useState([])
-  const [horarios, setHorarios] = useState([])
 
   const [idEmbarcacao, setIdEmbarcacao] = useState('')
   const [idRota, setIdRota] = useState('')
-  const [idHorario, setIdHorario] = useState('')
   const [dataInicio, setDataInicio] = useState(todayISO())
   const [dataFim, setDataFim] = useState(addMesesISO(6))
   const [frequencia, setFrequencia] = useState(14)
-  const [diasDuracao, setDiasDuracao] = useState(3)
   const [gerando, setGerando] = useState(false)
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
     api.get('/embarcacoes').then(setEmbarcacoes).catch(() => {})
     api.get('/rotas').then(setRotas).catch(() => {})
-    api.get('/cadastros/horarios-saida').then(setHorarios).catch(() => {})
   }, [])
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type }); setTimeout(() => setToast(null), 3500)
   }
 
-  // Preview de quantidade de viagens
   const previewTotal = (() => {
     if (!dataInicio || !dataFim || !frequencia) return 0
     const ini = new Date(dataInicio + 'T12:00:00Z')
@@ -56,9 +51,9 @@ export default function GerarEscala({ onClose }) {
       showToast('Preencha todos os campos obrigatorios', 'error'); return
     }
     if (previewTotal > 500) {
-      showToast('Mais de 500 viagens. Reduza o periodo ou aumente a frequencia.', 'error'); return
+      showToast('Mais de 500 lembretes. Reduza o periodo ou aumente a frequencia.', 'error'); return
     }
-    if (!window.confirm(`Sera(ao) criada(s) ${previewTotal} viagem(ns). Confirmar?`)) return
+    if (!window.confirm(`Sera(ao) adicionado(s) ${previewTotal} lembrete(s) na agenda. Confirmar?`)) return
 
     setGerando(true)
     try {
@@ -67,12 +62,9 @@ export default function GerarEscala({ onClose }) {
         id_rota: parseInt(idRota),
         data_inicio: dataInicio,
         data_fim: dataFim,
-        frequencia_dias: parseInt(frequencia),
-        id_horario_saida: idHorario ? parseInt(idHorario) : null,
-        dias_duracao: parseInt(diasDuracao)
+        frequencia_dias: parseInt(frequencia)
       })
-      showToast(`${res.total} viagem(ns) criada(s) com sucesso!`)
-      window.dispatchEvent(new CustomEvent('viagem-ativa-changed')) // recarrega dropdown global
+      showToast(`${res.total} lembrete(s) adicionado(s) na agenda!`)
       if (onClose) setTimeout(onClose, 1500)
     } catch (err) {
       showToast(err.error || err.message || 'Erro ao gerar escala', 'error')
@@ -86,9 +78,9 @@ export default function GerarEscala({ onClose }) {
 
   return (
     <div className="card" style={{ padding: 18, maxWidth: 600, margin: '0 auto' }}>
-      <h2 style={{ marginTop: 0, marginBottom: 6, fontSize: '1.1rem' }}>Agendar Saidas Recorrentes</h2>
+      <h2 style={{ marginTop: 0, marginBottom: 6, fontSize: '1.1rem' }}>Lembretes de Saidas Recorrentes</h2>
       <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 18 }}>
-        Cria varias viagens de uma vez conforme a frequencia escolhida (aparecem no calendario da tela inicial).
+        Adiciona lembretes na agenda (calendario) com as datas das proximas saidas. NAO cria viagens cadastradas.
       </p>
 
       <div style={{ display: 'grid', gap: 14 }}>
@@ -106,13 +98,6 @@ export default function GerarEscala({ onClose }) {
             {rotas.map(r => <option key={r.id_rota} value={r.id_rota}>{r.origem} - {r.destino}</option>)}
           </select>
         </div>
-        <div>
-          <label style={L}>Horario de Saida (opcional):</label>
-          <select style={I} value={idHorario} onChange={e => setIdHorario(e.target.value)}>
-            <option value="">Nenhum</option>
-            {horarios.map(h => <option key={h.id_horario_saida} value={h.id_horario_saida}>{h.descricao_horario_saida}</option>)}
-          </select>
-        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={L}>Data Inicio:</label>
@@ -123,22 +108,15 @@ export default function GerarEscala({ onClose }) {
             <input type="date" style={I} value={dataFim} onChange={e => setDataFim(e.target.value)} />
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 12 }}>
-          <div>
-            <label style={L}>Frequencia:</label>
-            <select style={I} value={frequencia} onChange={e => setFrequencia(e.target.value)}>
-              {FREQS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={L}>Duracao (dias):</label>
-            <input type="number" min="1" style={I} value={diasDuracao} onChange={e => setDiasDuracao(e.target.value)}
-              title="Dias entre data de saida e data de chegada (default: 3)" />
-          </div>
+        <div>
+          <label style={L}>Frequencia:</label>
+          <select style={I} value={frequencia} onChange={e => setFrequencia(e.target.value)}>
+            {FREQS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
         </div>
 
         <div style={{ padding: 10, background: 'var(--bg-soft)', borderRadius: 4, border: '1px solid var(--border)', fontSize: '0.88rem' }}>
-          <strong>Preview:</strong> serao criadas <strong style={{ color: 'var(--primary)', fontSize: '1rem' }}>{previewTotal}</strong> viagem(ns)
+          <strong>Preview:</strong> serao adicionados <strong style={{ color: 'var(--primary)', fontSize: '1rem' }}>{previewTotal}</strong> lembrete(s) na agenda
           {previewTotal > 500 && <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: 4 }}>&#9888; Limite de 500. Reduza o periodo ou aumente a frequencia.</div>}
         </div>
       </div>
@@ -147,7 +125,7 @@ export default function GerarEscala({ onClose }) {
         {onClose && <button className="btn-secondary" onClick={onClose} disabled={gerando}>Cancelar (Esc)</button>}
         <button className="btn-primary" style={{ padding: '10px 24px', width: 'auto' }} onClick={gerar}
           disabled={gerando || previewTotal === 0 || previewTotal > 500}>
-          {gerando ? 'Gerando...' : 'OK - Gerar Escala'}
+          {gerando ? 'Adicionando...' : 'OK - Adicionar na Agenda'}
         </button>
       </div>
 
