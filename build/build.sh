@@ -31,7 +31,7 @@ INSTALLER_DIR="$BUILD_DIR/installer"
 
 # Application metadata
 APP_NAME="Naviera"
-APP_VERSION="1.0.0"
+APP_VERSION="1.0.0" # x-release-please-version
 APP_VENDOR="Naviera Eco"
 APP_DESCRIPTION="Sistema de Gestao Naviera"
 JAR_NAME="naviera-desktop.jar"

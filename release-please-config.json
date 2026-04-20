@@ -1,0 +1,62 @@
+{
+    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+    "include-component-in-tag": true,
+    "separate-pull-requests": true,
+    "packages": {
+        "naviera-api": {
+            "release-type": "maven",
+            "component": "api",
+            "package-name": "naviera-api",
+            "changelog-path": "CHANGELOG.md"
+        },
+        "naviera-web": {
+            "release-type": "node",
+            "component": "web",
+            "package-name": "naviera-web",
+            "changelog-path": "CHANGELOG.md"
+        },
+        "naviera-app": {
+            "release-type": "node",
+            "component": "app",
+            "package-name": "naviera-app",
+            "changelog-path": "CHANGELOG.md"
+        },
+        "naviera-ocr": {
+            "release-type": "node",
+            "component": "ocr",
+            "package-name": "naviera-ocr",
+            "changelog-path": "CHANGELOG.md"
+        },
+        "naviera-site": {
+            "release-type": "node",
+            "component": "site",
+            "package-name": "naviera-site",
+            "changelog-path": "CHANGELOG.md"
+        },
+        "build": {
+            "release-type": "simple",
+            "component": "desktop",
+            "package-name": "naviera-desktop",
+            "changelog-path": "CHANGELOG.md",
+            "extra-files": [
+                {
+                    "type": "generic",
+                    "path": "build/build.sh"
+                }
+            ]
+        }
+    },
+    "changelog-sections": [
+        { "type": "feat", "section": "Features" },
+        { "type": "fix", "section": "Bug Fixes" },
+        { "type": "perf", "section": "Performance" },
+        { "type": "refactor", "section": "Refactoring" },
+        { "type": "docs", "section": "Documentation" },
+        { "type": "revert", "section": "Reverts" },
+        { "type": "chore", "hidden": true },
+        { "type": "test", "hidden": true },
+        { "type": "style", "hidden": true },
+        { "type": "build", "hidden": true },
+        { "type": "ci", "hidden": true }
+    ]
+}
