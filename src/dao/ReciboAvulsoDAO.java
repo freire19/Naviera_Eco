@@ -17,6 +17,35 @@ import util.AppLogger;
 
 public class ReciboAvulsoDAO {
 
+    /**
+     * Verifica se ja existe um recibo identico (mesma viagem, nome, valor, data) salvo
+     * nos ultimos minutosAtras minutos. Usado para prevenir duplicatas acidentais
+     * por duplo-clique ou re-clique no botao Salvar e Imprimir.
+     */
+    public ReciboAvulso buscarIdenticoRecente(int idViagem, String nomePagador, java.math.BigDecimal valor, LocalDate dataEmissao) {
+        String sql = "SELECT id_recibo, id_viagem, nome_pagador, referente_a, valor, data_emissao, tipo_recibo "
+                   + "FROM recibos_avulsos "
+                   + "WHERE empresa_id = ? AND id_viagem = ? AND nome_pagador = ? "
+                   + "AND valor = ? AND data_emissao = ? "
+                   + "ORDER BY id_recibo DESC LIMIT 1";
+        try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, DAOUtils.empresaId());
+            stmt.setInt(2, idViagem);
+            stmt.setString(3, nomePagador);
+            stmt.setBigDecimal(4, valor);
+            stmt.setDate(5, Date.valueOf(dataEmissao));
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    detectarColunas(rs);
+                    return montarObjeto(rs);
+                }
+            }
+        } catch (SQLException e) {
+            AppLogger.warn("ReciboAvulsoDAO", "Erro ao buscar identico: " + e.getMessage());
+        }
+        return null;
+    }
+
     public boolean salvar(ReciboAvulso r) {
         String sql = "INSERT INTO recibos_avulsos (id_viagem, nome_pagador, referente_a, valor, data_emissao, tipo_recibo, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection con = ConexaoBD.getConnection(); PreparedStatement stmt = con.prepareStatement(sql)) {

@@ -329,6 +329,32 @@ public class GerarReciboAvulsoController implements Initializable {
     }
 
     private void salvarEImprimir(ReciboAvulso r, Runnable acaoImprimir) {
+        // Anti-duplicata: se ja existe recibo identico (viagem+nome+valor+data),
+        // pergunta antes de salvar novo. Previne duplo-clique e re-clique acidental.
+        ReciboAvulso existente = dao.buscarIdenticoRecente(
+            r.getIdViagem(), r.getNomePagador(), r.getValor(), r.getDataEmissao()
+        );
+        if (existente != null) {
+            Alert confirm = new Alert(AlertType.CONFIRMATION);
+            confirm.setTitle("Recibo ja existe");
+            confirm.setHeaderText("Ja existe um recibo identico (Nº " + existente.getId() + ")");
+            confirm.setContentText("Deseja apenas reimprimir o existente (recomendado) ou emitir um novo recibo duplicado?");
+            ButtonType btnReimprimir = new ButtonType("Reimprimir existente");
+            ButtonType btnNovo = new ButtonType("Emitir novo");
+            ButtonType btnCancelar = new ButtonType("Cancelar", ButtonData.CANCEL_CLOSE);
+            confirm.getButtonTypes().setAll(btnReimprimir, btnNovo, btnCancelar);
+            java.util.Optional<ButtonType> resp = confirm.showAndWait();
+            if (resp.isEmpty() || resp.get() == btnCancelar) return;
+            if (resp.get() == btnReimprimir) {
+                // Apenas imprime o existente, sem criar novo registro
+                r.setId(existente.getId());
+                acaoImprimir.run();
+                txtNome.clear(); txtValor.clear(); txtReferente.clear();
+                return;
+            }
+            // btnNovo: cai no fluxo normal de salvar
+        }
+
         boolean salvo = dao.salvar(r);
         if (!salvo) {
             Alert alert = new Alert(AlertType.ERROR);
