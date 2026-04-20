@@ -43,14 +43,23 @@ function compressImage(file, maxSize = 2048) {
   })
 }
 
+// Le ?tipo=encomenda|frete da URL (enviado pelo Naviera web)
+function getTipoInicial() {
+  try {
+    const p = new URLSearchParams(window.location.search).get('tipo')
+    return p === 'encomenda' ? 'encomenda' : 'frete'
+  } catch { return 'frete' }
+}
+
 export default function CapturaScreen({ t, onResult, showToast }) {
   const [viagens, setViagens] = useState([])
   const [viagemId, setViagemId] = useState('')
-  const [tipo, setTipo] = useState('frete')
+  const [tipo, setTipo] = useState(getTipoInicial)
   const [lote, setLote] = useState(false)
   const [fotoBlob, setFotoBlob] = useState(null)
   const [fotoName, setFotoName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [numNota, setNumNota] = useState('')
 
   // Multi-foto para fretes
   const [fotosExtras, setFotosExtras] = useState([]) // [{ blob, name, preview }]
@@ -123,7 +132,8 @@ export default function CapturaScreen({ t, onResult, showToast }) {
         files = mainFile // single file
       }
 
-      const result = await uploadFoto(files, viagemId || null, tipo)
+      const extra = tipo === 'frete' && numNota ? { num_notafiscal: numNota.trim() } : {}
+      const result = await uploadFoto(files, viagemId || null, tipo, undefined, extra)
       if (result) {
         const msg = result.tipo === 'lote'
           ? `${result.lancamentos.length} encomendas extraidas! Revise.`
@@ -159,6 +169,22 @@ export default function CapturaScreen({ t, onResult, showToast }) {
         <button style={tabStyle(tipo === 'frete')} onClick={() => { setTipo('frete'); setLote(false) }}>Frete</button>
         <button style={tabStyle(tipo === 'encomenda' || tipo === 'lote')} onClick={() => setTipo(lote ? 'lote' : 'encomenda')}>Encomenda</button>
       </div>
+
+      {/* Numero da Nota Fiscal — so para frete */}
+      {tipo === 'frete' && (
+        <Card t={t}>
+          <label style={{ color: t.txSoft, fontSize: '0.85rem', fontWeight: 500, marginBottom: 6, display: 'block' }}>
+            Numero da Nota Fiscal
+          </label>
+          <input
+            className="input"
+            value={numNota}
+            onChange={e => setNumNota(e.target.value)}
+            placeholder="Ex: 12345"
+            style={{ background: t.card, color: t.tx, borderColor: t.border, width: '100%' }}
+          />
+        </Card>
+      )}
 
       {/* Toggle Lote — dentro de encomenda */}
       {(tipo === 'encomenda' || tipo === 'lote') && (

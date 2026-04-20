@@ -92,7 +92,7 @@ router.post('/upload', uploadLimiter, uploadMulti, async (req, res) => {
   }
 
   const empresaId = req.user.empresa_id
-  const { viagem_id, tipo, client_uuid } = req.body
+  const { viagem_id, tipo, client_uuid, num_notafiscal } = req.body
   const tipoLanc = ['encomenda', 'lote'].includes(tipo) ? tipo : 'frete'
 
   // Para backward compat, req.file aponta para o primeiro arquivo
@@ -236,6 +236,12 @@ router.post('/upload', uploadLimiter, uploadMulti, async (req, res) => {
       } else {
         dados = parseOcrText('', padrao.rows)
       }
+    }
+
+    // Numero da nota informado manualmente pelo usuario prevalece sobre o detectado via OCR
+    if (tipoLanc === 'frete' && num_notafiscal && String(num_notafiscal).trim()) {
+      if (!dados || typeof dados !== 'object') dados = {}
+      dados.numero_nota = String(num_notafiscal).trim()
     }
 
     // Salvar no banco (com idempotencia via client_uuid)

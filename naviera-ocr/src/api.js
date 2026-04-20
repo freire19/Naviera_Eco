@@ -51,7 +51,7 @@ export const apiPost = api.post
 export const apiPut = api.put
 
 /* ═══ Domain-specific: OCR photo upload (single ou multiplas fotos) ═══ */
-export async function uploadFoto(fileOrFiles, viagemId, tipo, clientUuid) {
+export async function uploadFoto(fileOrFiles, viagemId, tipo, clientUuid, extra = {}) {
   const form = new FormData()
   // Suporte a multiplas fotos: Array<File> ou File unico
   const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles]
@@ -62,6 +62,7 @@ export async function uploadFoto(fileOrFiles, viagemId, tipo, clientUuid) {
   }
   if (viagemId) form.append('viagem_id', viagemId)
   if (tipo) form.append('tipo', tipo)
+  if (extra.num_notafiscal) form.append('num_notafiscal', extra.num_notafiscal)
   // Idempotencia: UUID gerado no cliente para evitar duplicatas em retry/refresh
   form.append('client_uuid', clientUuid || crypto.randomUUID())
 
