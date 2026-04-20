@@ -305,6 +305,22 @@ public class TelaPrincipalController implements Initializable {
                 aplicarTintIcone(node, false);
             }
         }
+        // Aplica tambem em todos os ImageView de Buttons/MenuButtons da cena
+        // (cards de Acesso Rapido e outros). Precisa percorrer recursivamente.
+        if (rootPane != null) aplicarTintIconesRecursivo(rootPane, isModoEscuro);
+    }
+
+    /**
+     * Percorre a arvore de nodes e aplica/remove o efeito de clarear
+     * em todos os ImageView usados como 'graphic' de Button/MenuButton.
+     */
+    private void aplicarTintIconesRecursivo(Node raiz, boolean escuro) {
+        aplicarTintIcone(raiz, escuro);
+        if (raiz instanceof javafx.scene.Parent) {
+            for (Node filho : ((javafx.scene.Parent) raiz).getChildrenUnmodifiable()) {
+                aplicarTintIconesRecursivo(filho, escuro);
+            }
+        }
     }
 
     /**

@@ -114,7 +114,7 @@
     -fx-font-size: 13px !important;
 }
 .button:hover {
-    -fx-background-color: #059669 !important;
+    -fx-background-color: #10B981 !important;
     -fx-border-color: white !important;
 }
 
@@ -155,15 +155,15 @@
     -fx-border-color: #0F2D24 !important;
 }
 
-/* Cabeçalho da Tabela - AZUL */
+/* Cabeçalho da Tabela — verde vivo (igual web) */
 .table-view .column-header-background {
-    -fx-background-color: #059669 !important;
-    -fx-border-bottom-color: #059669 !important;
+    -fx-background-color: #10B981 !important;
+    -fx-border-bottom-color: #10B981 !important;
 }
 
 .table-view .column-header {
-    -fx-background-color: #059669 !important;
-    -fx-border-color: #059669 !important;
+    -fx-background-color: #10B981 !important;
+    -fx-border-color: #10B981 !important;
 }
 
 .table-view .column-header .label {
