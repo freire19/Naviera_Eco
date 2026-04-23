@@ -136,6 +136,10 @@ public class EncomendaService {
             if (donoFk != null) {
                 if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Encomenda nao pertence a este cliente");
             } else {
+                // #DB201: fallback por nome exige nome nao-vazio — String.contains("") e sempre true.
+                if (cliente.getNome() == null || cliente.getNome().isBlank()) {
+                    throw ApiException.forbidden("Encomenda nao pertence a este cliente");
+                }
                 String destinatario = (String) enc.get("destinatario");
                 if (destinatario == null || !destinatario.toUpperCase().contains(cliente.getNome().toUpperCase())) {
                     throw ApiException.forbidden("Encomenda nao pertence a este cliente");

@@ -112,6 +112,10 @@ public class FreteService {
             if (donoFk != null) {
                 if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Frete nao pertence a este cliente");
             } else {
+                // #DB201: fallback por nome exige nome nao-vazio — String.contains("") e sempre true.
+                if (cliente.getNome() == null || cliente.getNome().isBlank()) {
+                    throw ApiException.forbidden("Frete nao pertence a este cliente");
+                }
                 String remetente = (String) f.get("remetente_nome_temp");
                 String destinatario = (String) f.get("destinatario_nome_temp");
                 String nomeUpper = cliente.getNome().toUpperCase();
