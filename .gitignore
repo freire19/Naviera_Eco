@@ -77,3 +77,7 @@ backups/
 
 # Claude Code local config (prompts, memory, command overrides)
 .claude/
+
+# Dumps temporarios do skill audit-2-scan (#DM079)
+docs/audits/temp/
+docs/audits/temp_*/
