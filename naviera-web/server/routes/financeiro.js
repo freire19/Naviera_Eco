@@ -91,68 +91,67 @@ router.get('/balanco', async (req, res) => {
   }
 })
 
-// GET /api/financeiro/dashboard — UNION de passagens+encomendas+fretes com filtros (igual desktop)
+// GET /api/financeiro/dashboard — agregados de passagens+encomendas+fretes com filtros
+// #403/#DP071: UNION antes era sem LIMIT e filtros viravam filter() em JS apos trazer
+//   todas as linhas da empresa; agora a agregacao acontece no Postgres e o handler
+//   recebe 1 row com as somas.
 router.get('/dashboard', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { viagem_id, categoria, forma_pagto, caixa } = req.query
 
-    let sql = `
-      SELECT 'ENCOMENDA' AS origem, e.total_a_pagar AS total, e.valor_pago AS pago,
-             COALESCE(e.forma_pagamento, 'PENDENTE') AS pgto, COALESCE(ue.nome, '') AS usuario
-      FROM encomendas e
-      LEFT JOIN usuarios ue ON e.id_caixa = ue.id
-      WHERE e.empresa_id = $1 ${viagem_id ? 'AND e.id_viagem = $2' : ''}
-      UNION ALL
-      SELECT 'FRETE' AS origem, f.valor_frete_calculado AS total, f.valor_pago AS pago,
-             COALESCE(f.tipo_pagamento, 'PENDENTE') AS pgto, COALESCE(f.nome_caixa, '') AS usuario
-      FROM fretes f WHERE f.empresa_id = $1 ${viagem_id ? 'AND f.id_viagem = $2' : ''}
-      UNION ALL
-      SELECT 'PASSAGEM' AS origem, p.valor_total AS total, p.valor_pago AS pago,
-             COALESCE(afp.nome_forma_pagamento, 'DINHEIRO') AS pgto, COALESCE(up.nome, 'SISTEMA') AS usuario
-      FROM passagens p
-      LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento
-      LEFT JOIN usuarios up ON p.id_usuario_emissor = up.id
-      WHERE p.empresa_id = $1 ${viagem_id ? 'AND p.id_viagem = $2' : ''}
+    const params = [empresaId]
+    const viagemClause = viagem_id ? (params.push(viagem_id), ` AND id_viagem = $${params.length}`) : ''
+    const categoriaClause = categoria && categoria !== 'Todas'
+      ? (params.push(categoria.toUpperCase()), ` AND origem = $${params.length}`) : ''
+    const caixaClause = caixa && caixa !== 'Todos'
+      ? (params.push(caixa.toUpperCase()), ` AND UPPER(usuario) = $${params.length}`) : ''
+    const formaClause = forma_pagto && forma_pagto !== 'Todas'
+      ? (params.push(`%${forma_pagto.toUpperCase()}%`), ` AND UPPER(pgto) LIKE $${params.length}`) : ''
+
+    const sql = `
+      WITH lancamentos AS (
+        SELECT 'ENCOMENDA' AS origem, e.id_viagem, e.total_a_pagar AS total, e.valor_pago AS pago,
+               COALESCE(e.forma_pagamento, 'PENDENTE') AS pgto, COALESCE(ue.nome, '') AS usuario
+        FROM encomendas e
+        LEFT JOIN usuarios ue ON e.id_caixa = ue.id
+        WHERE e.empresa_id = $1
+        UNION ALL
+        SELECT 'FRETE', f.id_viagem, f.valor_frete_calculado, f.valor_pago,
+               COALESCE(f.tipo_pagamento, 'PENDENTE'), COALESCE(f.nome_caixa, '')
+        FROM fretes f WHERE f.empresa_id = $1
+        UNION ALL
+        SELECT 'PASSAGEM', p.id_viagem, p.valor_total, p.valor_pago,
+               COALESCE(afp.nome_forma_pagamento, 'DINHEIRO'), COALESCE(up.nome, 'SISTEMA')
+        FROM passagens p
+        LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento
+        LEFT JOIN usuarios up ON p.id_usuario_emissor = up.id
+        WHERE p.empresa_id = $1
+      )
+      SELECT
+        COUNT(*)::int AS registros,
+        COALESCE(SUM(total), 0) AS total_geral,
+        COALESCE(SUM(pago), 0) AS total_recebido,
+        COALESCE(SUM(CASE WHEN origem = 'PASSAGEM' THEN total ELSE 0 END), 0) AS soma_passagem,
+        COALESCE(SUM(CASE WHEN origem = 'ENCOMENDA' THEN total ELSE 0 END), 0) AS soma_encomenda,
+        COALESCE(SUM(CASE WHEN origem = 'FRETE' THEN total ELSE 0 END), 0) AS soma_frete,
+        COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) LIKE '%PIX%' THEN pago ELSE 0 END), 0) AS soma_pix,
+        COALESCE(SUM(CASE WHEN pago > 0 AND (UPPER(pgto) LIKE '%CART%' OR UPPER(pgto) LIKE '%CREDITO%' OR UPPER(pgto) LIKE '%DEBITO%') THEN pago ELSE 0 END), 0) AS soma_cartao,
+        COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) NOT LIKE '%PIX%' AND UPPER(pgto) NOT LIKE '%CART%' AND UPPER(pgto) NOT LIKE '%CREDITO%' AND UPPER(pgto) NOT LIKE '%DEBITO%' THEN pago ELSE 0 END), 0) AS soma_dinheiro
+      FROM lancamentos
+      WHERE TRUE${viagemClause}${categoriaClause}${caixaClause}${formaClause}
     `
-    const params = viagem_id ? [empresaId, viagem_id] : [empresaId]
     const result = await pool.query(sql, params)
-
-    // Filtrar em JS (como o desktop faz)
-    let rows = result.rows
-    if (categoria && categoria !== 'Todas') rows = rows.filter(r => r.origem === categoria.toUpperCase())
-    if (forma_pagto && forma_pagto !== 'Todas') rows = rows.filter(r => (r.pgto || '').toUpperCase().includes(forma_pagto.toUpperCase()))
-    if (caixa && caixa !== 'Todos') rows = rows.filter(r => (r.usuario || '').toUpperCase() === caixa.toUpperCase())
-
-    // Agregar
-    let totalGeral = 0, totalRecebido = 0
-    let somaPassagem = 0, somaEncomenda = 0, somaFrete = 0
-    let somaDinheiro = 0, somaPix = 0, somaCartao = 0
-
-    for (const r of rows) {
-      const t = parseFloat(r.total) || 0
-      const p = parseFloat(r.pago) || 0
-      totalGeral += t
-      totalRecebido += p
-      if (r.origem === 'PASSAGEM') somaPassagem += t
-      if (r.origem === 'ENCOMENDA') somaEncomenda += t
-      if (r.origem === 'FRETE') somaFrete += t
-      // Formas de pagamento (so do recebido)
-      if (p > 0) {
-        const pgto = (r.pgto || '').toUpperCase()
-        if (pgto.includes('PIX')) somaPix += p
-        else if (pgto.includes('CART') || pgto.includes('CREDITO') || pgto.includes('DEBITO')) somaCartao += p
-        else somaDinheiro += p
-      }
-    }
+    const r = result.rows[0]
+    const n = (v) => Math.round(parseFloat(v || 0) * 100) / 100
 
     res.json({
-      totalGeral: Math.round(totalGeral * 100) / 100,
-      totalRecebido: Math.round(totalRecebido * 100) / 100,
-      pendente: Math.round((totalGeral - totalRecebido) * 100) / 100,
-      categorias: { passagens: Math.round(somaPassagem * 100) / 100, encomendas: Math.round(somaEncomenda * 100) / 100, fretes: Math.round(somaFrete * 100) / 100 },
-      formasPagamento: { dinheiro: Math.round(somaDinheiro * 100) / 100, pix: Math.round(somaPix * 100) / 100, cartao: Math.round(somaCartao * 100) / 100 },
-      registros: rows.length
+      totalGeral: n(r.total_geral),
+      totalRecebido: n(r.total_recebido),
+      pendente: n(r.total_geral - r.total_recebido),
+      categorias: { passagens: n(r.soma_passagem), encomendas: n(r.soma_encomenda), fretes: n(r.soma_frete) },
+      formasPagamento: { dinheiro: n(r.soma_dinheiro), pix: n(r.soma_pix), cartao: n(r.soma_cartao) },
+      registros: r.registros
     })
   } catch (err) {
     console.error('[Financeiro] Erro dashboard:', err.message)
