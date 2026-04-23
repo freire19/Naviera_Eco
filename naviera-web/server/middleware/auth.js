@@ -23,8 +23,10 @@ if (Buffer.byteLength(SECRET, 'utf8') < 32) {
 }
 
 export function generateToken(user) {
+  // #DB200: claim `tipo` obrigatoria — Spring JwtFilter so concede ROLE_OPERADOR/ROLE_ADMIN
+  // quando tipo === 'OPERADOR'; sem ela, proxy para /admin/** e /op/** cai em ROLE_CPF e retorna 403.
   return jwt.sign(
-    { id: user.id, login: user.login_usuario || user.nome || user.login, funcao: user.funcao, empresa_id: user.empresa_id },
+    { id: user.id, login: user.login_usuario || user.nome || user.login, tipo: 'OPERADOR', funcao: user.funcao, empresa_id: user.empresa_id },
     SECRET,
     { expiresIn: '8h' }
   )
