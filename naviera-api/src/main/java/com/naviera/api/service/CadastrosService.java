@@ -20,21 +20,21 @@ public class CadastrosService {
     }
 
     public List<Map<String, Object>> listarConferentes(Integer empresaId) {
-        return jdbc.queryForList("SELECT * FROM conferentes WHERE empresa_id = ? ORDER BY nome", empresaId);
+        return jdbc.queryForList("SELECT * FROM conferentes WHERE empresa_id = ? ORDER BY nome_conferente", empresaId);
     }
 
     public List<Map<String, Object>> listarCaixas(Integer empresaId) {
-        return jdbc.queryForList("SELECT * FROM caixas WHERE empresa_id = ? ORDER BY nome", empresaId);
+        return jdbc.queryForList("SELECT * FROM caixas WHERE empresa_id = ? ORDER BY nome_caixa", empresaId);
     }
 
     public List<Map<String, Object>> listarTarifas(Integer empresaId) {
         return jdbc.queryForList("""
-            SELECT t.*, r.origem, r.destino, tp.nome AS nome_tipo_passageiro
+            SELECT t.*, r.origem, r.destino, tp.nome_tipo_passagem AS nome_tipo_passageiro
             FROM tarifas t
-            LEFT JOIN rotas r ON t.id_rota = r.id_rota
-            LEFT JOIN tipo_passageiro tp ON t.id_tipo_passageiro = tp.id_tipo_passageiro
+            LEFT JOIN rotas r ON t.id_rota = r.id
+            LEFT JOIN aux_tipos_passagem tp ON t.id_tipo_passagem = tp.id_tipo_passagem
             WHERE t.empresa_id = ?
-            ORDER BY r.origem, tp.nome""", empresaId);
+            ORDER BY r.origem, tp.nome_tipo_passagem""", empresaId);
     }
 
     public List<Map<String, Object>> listarTiposPassageiro(Integer empresaId) {

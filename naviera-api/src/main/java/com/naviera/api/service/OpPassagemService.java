@@ -14,20 +14,16 @@ public class OpPassagemService {
     }
 
     public List<Map<String, Object>> listar(Integer empresaId, Long viagemId) {
-        if (viagemId != null) {
-            return jdbc.queryForList("""
-                SELECT p.*, pas.nome AS nome_passageiro, pas.numero_doc
-                FROM passagens p
-                LEFT JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro
-                WHERE p.empresa_id = ? AND p.id_viagem = ?
-                ORDER BY p.num_bilhete DESC""", empresaId, viagemId);
-        }
-        return jdbc.queryForList("""
-            SELECT p.*, pas.nome AS nome_passageiro, pas.numero_doc
+        String sql = """
+            SELECT p.*, pas.nome_passageiro, pas.numero_documento
             FROM passagens p
             LEFT JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro
-            WHERE p.empresa_id = ?
-            ORDER BY p.num_bilhete DESC""", empresaId);
+            WHERE p.empresa_id = ?"""
+            + (viagemId != null ? " AND p.id_viagem = ?" : "")
+            + " ORDER BY p.numero_bilhete DESC";
+        return viagemId != null
+            ? jdbc.queryForList(sql, empresaId, viagemId)
+            : jdbc.queryForList(sql, empresaId);
     }
 
     public Map<String, Object> resumo(Integer empresaId, Long viagemId) {

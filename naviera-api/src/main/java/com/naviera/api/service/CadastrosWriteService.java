@@ -17,6 +17,10 @@ public class CadastrosWriteService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    private static Object nomeCompat(Map<String, Object> dados, String canonical) {
+        return dados.getOrDefault(canonical, dados.get("nome"));
+    }
+
     // --- ROTAS ---
     @Transactional
     public Map<String, Object> criarRota(Integer empresaId, Map<String, Object> dados) {
@@ -27,7 +31,7 @@ public class CadastrosWriteService {
 
     @Transactional
     public Map<String, Object> atualizarRota(Integer empresaId, Long id, Map<String, Object> dados) {
-        int rows = jdbc.update("UPDATE rotas SET origem = ?, destino = ? WHERE id_rota = ? AND empresa_id = ?",
+        int rows = jdbc.update("UPDATE rotas SET origem = ?, destino = ? WHERE id = ? AND empresa_id = ?",
             dados.get("origem"), dados.get("destino"), id, empresaId);
         if (rows == 0) throw ApiException.notFound("Rota nao encontrada");
         return Map.of("mensagem", "Rota atualizada");
@@ -58,15 +62,15 @@ public class CadastrosWriteService {
     // --- CONFERENTES ---
     @Transactional
     public Map<String, Object> criarConferente(Integer empresaId, Map<String, Object> dados) {
-        jdbc.update("INSERT INTO conferentes (nome, empresa_id) VALUES (?, ?)",
-            dados.get("nome"), empresaId);
+        jdbc.update("INSERT INTO conferentes (nome_conferente, empresa_id) VALUES (?, ?)",
+            nomeCompat(dados, "nome_conferente"), empresaId);
         return Map.of("mensagem", "Conferente criado");
     }
 
     @Transactional
     public Map<String, Object> atualizarConferente(Integer empresaId, Long id, Map<String, Object> dados) {
-        int rows = jdbc.update("UPDATE conferentes SET nome = ? WHERE id = ? AND empresa_id = ?",
-            dados.get("nome"), id, empresaId);
+        int rows = jdbc.update("UPDATE conferentes SET nome_conferente = ? WHERE id_conferente = ? AND empresa_id = ?",
+            nomeCompat(dados, "nome_conferente"), id, empresaId);
         if (rows == 0) throw ApiException.notFound("Conferente nao encontrado");
         return Map.of("mensagem", "Conferente atualizado");
     }
@@ -74,15 +78,15 @@ public class CadastrosWriteService {
     // --- CAIXAS ---
     @Transactional
     public Map<String, Object> criarCaixa(Integer empresaId, Map<String, Object> dados) {
-        jdbc.update("INSERT INTO caixas (nome, empresa_id) VALUES (?, ?)",
-            dados.get("nome"), empresaId);
+        jdbc.update("INSERT INTO caixas (nome_caixa, empresa_id) VALUES (?, ?)",
+            nomeCompat(dados, "nome_caixa"), empresaId);
         return Map.of("mensagem", "Caixa criado");
     }
 
     @Transactional
     public Map<String, Object> atualizarCaixa(Integer empresaId, Long id, Map<String, Object> dados) {
-        int rows = jdbc.update("UPDATE caixas SET nome = ? WHERE id_caixa = ? AND empresa_id = ?",
-            dados.get("nome"), id, empresaId);
+        int rows = jdbc.update("UPDATE caixas SET nome_caixa = ? WHERE id_caixa = ? AND empresa_id = ?",
+            nomeCompat(dados, "nome_caixa"), id, empresaId);
         if (rows == 0) throw ApiException.notFound("Caixa nao encontrado");
         return Map.of("mensagem", "Caixa atualizado");
     }
