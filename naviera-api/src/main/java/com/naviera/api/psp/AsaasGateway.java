@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -45,7 +46,11 @@ public class AsaasGateway implements PspGateway {
     public AsaasGateway(AsaasProperties props, Environment env) {
         this.props = props;
         this.env = env;
-        this.rest = new RestTemplate();
+        // #300: sem timeout, um slowloris upstream trava a thread + conexao indefinidamente.
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(15_000);
+        this.rest = new RestTemplate(factory);
     }
 
     @Override
@@ -239,7 +244,7 @@ public class AsaasGateway implements PspGateway {
             HttpMethod.POST,
             new HttpEntity<>(body, headers()),
             String.class);
-        return mapper.readTree(res.getBody());
+        return parseBody(res, path);
     }
 
     private JsonNode get(String path) throws Exception {
@@ -248,7 +253,16 @@ public class AsaasGateway implements PspGateway {
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
-        return mapper.readTree(res.getBody());
+        return parseBody(res, path);
+    }
+
+    // #DR260: resposta sem body vira NPE em readTree — tratar como erro upstream.
+    private JsonNode parseBody(ResponseEntity<String> res, String path) throws Exception {
+        String body = res.getBody();
+        if (body == null || body.isBlank()) {
+            throw new RuntimeException("Resposta Asaas vazia em " + path + " (status=" + res.getStatusCode() + ")");
+        }
+        return mapper.readTree(body);
     }
 
     private HttpHeaders headers() {
