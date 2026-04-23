@@ -21,6 +21,7 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
 
   // Estorno
   const [modalEstorno, setModalEstorno] = useState(null)
+  const [loginAdmin, setLoginAdmin] = useState('')
   const [senhaAdmin, setSenhaAdmin] = useState('')
   const [motivoEstorno, setMotivoEstorno] = useState('')
   const [estornando, setEstornando] = useState(false)
@@ -125,26 +126,25 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
     }
   }
 
-  // Estornar pagamento
+  // Estornar pagamento via /api/estornos/{tipo}/:id (estorno integral — valor total pago)
   async function estornar() {
     if (!modalEstorno) return
     if (!motivoEstorno.trim()) { setErroSenha('Informe o motivo do estorno'); return }
-    if (!senhaAdmin.trim()) { setErroSenha('Informe a senha do administrador'); return }
+    if (!loginAdmin.trim()) { setErroSenha('Informe o login do autorizador'); return }
+    if (!senhaAdmin.trim()) { setErroSenha('Informe a senha do autorizador'); return }
     setEstornando(true); setErroSenha('')
     try {
-      // 1. Validar senha admin
-      const auth = await api.post('/financeiro/validar-admin', { senha: senhaAdmin })
-      if (!auth.valido) { setErroSenha('Senha de administrador invalida'); setEstornando(false); return }
-      // 2. Executar estorno
       const tipoMap = { passagens: 'passagem', encomendas: 'encomenda', fretes: 'frete' }
-      await api.post('/financeiro/estornar', {
-        tipo: tipoMap[tipo],
-        id: modalEstorno[cfg.idKey],
+      const valorTotal = parseFloat(modalEstorno[cfg.pagoKey]) || 0
+      if (valorTotal <= 0) { setErroSenha('Nao ha valor pago para estornar'); setEstornando(false); return }
+      await api.post(`/estornos/${tipoMap[tipo]}/${modalEstorno[cfg.idKey]}`, {
+        valor: valorTotal,
         motivo: motivoEstorno.trim(),
-        autorizador: auth.autorizador
+        login_autorizador: loginAdmin.trim(),
+        senha_autorizador: senhaAdmin,
       })
-      showToast(`Estorno realizado! Autorizado por: ${auth.autorizador}`)
-      setModalEstorno(null); setSenhaAdmin(''); setMotivoEstorno('')
+      showToast(`Estorno de ${formatMoney(valorTotal)} realizado!`)
+      setModalEstorno(null); setLoginAdmin(''); setSenhaAdmin(''); setMotivoEstorno('')
       carregar()
     } catch (err) {
       setErroSenha(err.message || 'Erro ao estornar')
@@ -220,7 +220,7 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
                         )}
                         {isPago && (
                           <button style={{ padding: '3px 10px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: 3, fontWeight: 700, cursor: 'pointer', fontSize: '0.68rem' }}
-                            onClick={() => { setModalEstorno(r); setSenhaAdmin(''); setMotivoEstorno(''); setErroSenha('') }}>
+                            onClick={() => { setModalEstorno(r); setLoginAdmin(''); setSenhaAdmin(''); setMotivoEstorno(''); setErroSenha('') }}>
                             Estornar
                           </button>
                         )}
@@ -293,8 +293,11 @@ export default function FinanceiroBaixa({ viagemAtiva, onNavigate, onClose, tipo
             <label style={L}>Motivo do estorno: *</label>
             <textarea style={{ ...I, minHeight: 60 }} placeholder="Descreva o motivo do estorno..." value={motivoEstorno} onChange={e => setMotivoEstorno(e.target.value)} />
 
-            <label style={L}>Senha do Administrador: *</label>
-            <input style={I} type="password" placeholder="Digite a senha do admin/gerente" value={senhaAdmin} onChange={e => { setSenhaAdmin(e.target.value); setErroSenha('') }} />
+            <label style={L}>Login do Autorizador: *</label>
+            <input style={I} type="text" autoComplete="off" placeholder="Login/email do usuario autorizador" value={loginAdmin} onChange={e => { setLoginAdmin(e.target.value); setErroSenha('') }} />
+
+            <label style={L}>Senha do Autorizador: *</label>
+            <input style={I} type="password" autoComplete="new-password" placeholder="Digite a senha" value={senhaAdmin} onChange={e => { setSenhaAdmin(e.target.value); setErroSenha('') }} />
 
             {erroSenha && <p style={{ color: '#DC2626', fontSize: '0.78rem', margin: '6px 0 0' }}>{erroSenha}</p>}
 
