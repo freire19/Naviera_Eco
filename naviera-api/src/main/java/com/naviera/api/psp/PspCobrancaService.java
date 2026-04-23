@@ -2,6 +2,7 @@ package com.naviera.api.psp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -24,11 +25,13 @@ public class PspCobrancaService {
     private final PspGateway gateway;
     private final PspCobrancaRepository repo;
     private final AsaasProperties props;
+    private final JdbcTemplate jdbc;
 
-    public PspCobrancaService(PspGateway gateway, PspCobrancaRepository repo, AsaasProperties props) {
+    public PspCobrancaService(PspGateway gateway, PspCobrancaRepository repo, AsaasProperties props, JdbcTemplate jdbc) {
         this.gateway = gateway;
         this.repo = repo;
         this.props = props;
+        this.jdbc = jdbc;
     }
 
     /**
@@ -102,8 +105,8 @@ public class PspCobrancaService {
     }
 
     /**
-     * Atualiza status local apos recebimento de webhook do PSP.
-     * Usado na Fase 3.4 pelo WebhookController.
+     * Atualiza status local + propaga para tabelas de negocio (passagens/fretes/encomendas).
+     * #DL033: CONFIRMADA aqui libera embarque/entrega na origem relacionada.
      */
     @Transactional
     public void atualizarStatus(String provider, String pspCobrancaId, String novoStatus) {
@@ -113,7 +116,76 @@ public class PspCobrancaService {
                 c.setDataConfirmacao(LocalDateTime.now());
             }
             repo.save(c);
-            log.info("[PspCobrancaService] Status cobranca {} atualizado para {}", pspCobrancaId, novoStatus);
+            propagarStatusParaOrigem(c, novoStatus);
+            log.info("[PspCobrancaService] Status cobranca {} atualizado para {} (origem {}:{})",
+                pspCobrancaId, novoStatus, c.getTipoOrigem(), c.getOrigemId());
         });
+    }
+
+    /** Retorna o status aplicado ou null se o evento nao for mapeado. */
+    public String processarEvento(String provider, String eventType, String pspCobrancaId) {
+        String novoStatus = mapearEvento(eventType);
+        if (novoStatus == null) {
+            log.info("[PspCobrancaService] Evento {} ignorado (sem mapeamento)", eventType);
+            return null;
+        }
+        atualizarStatus(provider, pspCobrancaId, novoStatus);
+        return novoStatus;
+    }
+
+    private static String mapearEvento(String eventType) {
+        if (eventType == null) return null;
+        return switch (eventType) {
+            case "PAYMENT_RECEIVED", "PAYMENT_CONFIRMED" -> "CONFIRMADA";
+            case "PAYMENT_OVERDUE" -> "VENCIDA";
+            case "PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE" -> "ESTORNADA";
+            case "PAYMENT_DELETED", "PAYMENT_RESTORED" -> "CANCELADA";
+            default -> null;
+        };
+    }
+
+    private void propagarStatusParaOrigem(PspCobranca c, String novoStatus) {
+        if (!"CONFIRMADA".equals(novoStatus) && !"ESTORNADA".equals(novoStatus)) return;
+        String tipo = c.getTipoOrigem();
+        Long origemId = c.getOrigemId();
+        if (tipo == null || origemId == null) return;
+
+        if ("CONFIRMADA".equals(novoStatus)) {
+            switch (tipo) {
+                case "PASSAGEM" -> jdbc.update("""
+                    UPDATE passagens
+                    SET status_passagem = 'CONFIRMADA',
+                        valor_pago = valor_a_pagar,
+                        valor_devedor = 0
+                    WHERE id_passagem = ? AND status_passagem = 'PENDENTE_CONFIRMACAO'""",
+                    origemId);
+                case "FRETE" -> jdbc.update("""
+                    UPDATE fretes
+                    SET status_pagamento = 'PAGO',
+                        status_frete = 'PAGO',
+                        valor_pago = valor_frete_calculado - COALESCE(desconto, 0),
+                        valor_devedor = 0
+                    WHERE id_frete = ? AND status_pagamento = 'PENDENTE_CONFIRMACAO'""",
+                    origemId);
+                case "ENCOMENDA" -> jdbc.update("""
+                    UPDATE encomendas
+                    SET status_pagamento = 'PAGO',
+                        valor_pago = total_a_pagar - COALESCE(desconto, 0) - COALESCE(desconto_app, 0)
+                    WHERE id_encomenda = ? AND status_pagamento = 'PENDENTE_CONFIRMACAO'""",
+                    origemId);
+            }
+        } else {
+            switch (tipo) {
+                case "PASSAGEM" -> jdbc.update(
+                    "UPDATE passagens SET status_passagem = 'CANCELADA' WHERE id_passagem = ? AND status_passagem IN ('PENDENTE_CONFIRMACAO','CONFIRMADA')",
+                    origemId);
+                case "FRETE" -> jdbc.update(
+                    "UPDATE fretes SET status_pagamento = 'ESTORNADO' WHERE id_frete = ? AND status_pagamento IN ('PENDENTE_CONFIRMACAO','PAGO')",
+                    origemId);
+                case "ENCOMENDA" -> jdbc.update(
+                    "UPDATE encomendas SET status_pagamento = 'ESTORNADO' WHERE id_encomenda = ? AND status_pagamento IN ('PENDENTE_CONFIRMACAO','PAGO')",
+                    origemId);
+            }
+        }
     }
 }

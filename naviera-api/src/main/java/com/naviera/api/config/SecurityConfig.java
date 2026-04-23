@@ -24,7 +24,7 @@ public class SecurityConfig {
         http.cors(c -> {}).csrf(c -> c.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a
-                .requestMatchers("/auth/**", "/public/**", "/ws/**").permitAll()
+                .requestMatchers("/auth/**", "/public/**", "/ws/**", "/webhooks/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/embarcacoes/*/gps", "/viagens/*/rastreio", "/viagens/publicas", "/gps/embarcacoes").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/gps/**").hasAuthority("ROLE_OPERADOR")

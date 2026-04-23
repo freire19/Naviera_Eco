@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -36,11 +38,13 @@ public class AsaasGateway implements PspGateway {
     private static final String PROVIDER = "asaas";
 
     private final AsaasProperties props;
+    private final Environment env;
     private final RestTemplate rest;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public AsaasGateway(AsaasProperties props) {
+    public AsaasGateway(AsaasProperties props, Environment env) {
         this.props = props;
+        this.env = env;
         this.rest = new RestTemplate();
     }
 
@@ -191,7 +195,11 @@ public class AsaasGateway implements PspGateway {
     public boolean validarAssinaturaWebhook(String payload, String assinatura) {
         String secret = props.getAsaas().getWebhookSecret();
         if (isBlank(secret)) {
-            log.warn("[AsaasGateway] webhook-secret nao configurado — aceitando webhook sem validacao (NAO usar em prod)");
+            if (env.acceptsProfiles(Profiles.of("prod"))) {
+                log.error("[AsaasGateway] webhook-secret nao configurado em prod — rejeitando webhook");
+                return false;
+            }
+            log.warn("[AsaasGateway] webhook-secret nao configurado — aceitando webhook sem validacao (dev only)");
             return true;
         }
         if (isBlank(assinatura)) return false;
