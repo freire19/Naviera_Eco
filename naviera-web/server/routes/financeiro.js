@@ -91,23 +91,28 @@ router.get('/balanco', async (req, res) => {
   }
 })
 
-// GET /api/financeiro/dashboard — agregados de passagens+encomendas+fretes com filtros
-// #403/#DP071: UNION antes era sem LIMIT e filtros viravam filter() em JS apos trazer
-//   todas as linhas da empresa; agora a agregacao acontece no Postgres e o handler
-//   recebe 1 row com as somas.
+// GET /api/financeiro/dashboard — agregados de passagens+encomendas+fretes com filtros.
+// Agregacao no Postgres; filtros vao no WHERE, nao em Array.filter() pos-query.
 router.get('/dashboard', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const { viagem_id, categoria, forma_pagto, caixa } = req.query
 
     const params = [empresaId]
-    const viagemClause = viagem_id ? (params.push(viagem_id), ` AND id_viagem = $${params.length}`) : ''
-    const categoriaClause = categoria && categoria !== 'Todas'
-      ? (params.push(categoria.toUpperCase()), ` AND origem = $${params.length}`) : ''
-    const caixaClause = caixa && caixa !== 'Todos'
-      ? (params.push(caixa.toUpperCase()), ` AND UPPER(usuario) = $${params.length}`) : ''
-    const formaClause = forma_pagto && forma_pagto !== 'Todas'
-      ? (params.push(`%${forma_pagto.toUpperCase()}%`), ` AND UPPER(pgto) LIKE $${params.length}`) : ''
+    const addParam = (v) => {
+      params.push(v)
+      return `$${params.length}`
+    }
+
+    // Pre-filtro por origem dentro de cada branch — permite que o planner elimine
+    // branches inteiras quando categoria esta fixada (evita LEFT JOINs desnecessarios).
+    const catFilter = (origem) =>
+      categoria && categoria !== 'Todas' && origem !== categoria.toUpperCase() ? 'FALSE' : 'TRUE'
+
+    let outerWhere = 'TRUE'
+    if (viagem_id) outerWhere += ` AND id_viagem = ${addParam(viagem_id)}`
+    if (caixa && caixa !== 'Todos') outerWhere += ` AND UPPER(usuario) = ${addParam(caixa.toUpperCase())}`
+    if (forma_pagto && forma_pagto !== 'Todas') outerWhere += ` AND UPPER(pgto) LIKE ${addParam(`%${forma_pagto.toUpperCase()}%`)}`
 
     const sql = `
       WITH lancamentos AS (
@@ -115,18 +120,18 @@ router.get('/dashboard', async (req, res) => {
                COALESCE(e.forma_pagamento, 'PENDENTE') AS pgto, COALESCE(ue.nome, '') AS usuario
         FROM encomendas e
         LEFT JOIN usuarios ue ON e.id_caixa = ue.id
-        WHERE e.empresa_id = $1
+        WHERE e.empresa_id = $1 AND ${catFilter('ENCOMENDA')}
         UNION ALL
         SELECT 'FRETE', f.id_viagem, f.valor_frete_calculado, f.valor_pago,
                COALESCE(f.tipo_pagamento, 'PENDENTE'), COALESCE(f.nome_caixa, '')
-        FROM fretes f WHERE f.empresa_id = $1
+        FROM fretes f WHERE f.empresa_id = $1 AND ${catFilter('FRETE')}
         UNION ALL
         SELECT 'PASSAGEM', p.id_viagem, p.valor_total, p.valor_pago,
                COALESCE(afp.nome_forma_pagamento, 'DINHEIRO'), COALESCE(up.nome, 'SISTEMA')
         FROM passagens p
         LEFT JOIN aux_formas_pagamento afp ON p.id_forma_pagamento = afp.id_forma_pagamento
         LEFT JOIN usuarios up ON p.id_usuario_emissor = up.id
-        WHERE p.empresa_id = $1
+        WHERE p.empresa_id = $1 AND ${catFilter('PASSAGEM')}
       )
       SELECT
         COUNT(*)::int AS registros,
@@ -139,7 +144,7 @@ router.get('/dashboard', async (req, res) => {
         COALESCE(SUM(CASE WHEN pago > 0 AND (UPPER(pgto) LIKE '%CART%' OR UPPER(pgto) LIKE '%CREDITO%' OR UPPER(pgto) LIKE '%DEBITO%') THEN pago ELSE 0 END), 0) AS soma_cartao,
         COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) NOT LIKE '%PIX%' AND UPPER(pgto) NOT LIKE '%CART%' AND UPPER(pgto) NOT LIKE '%CREDITO%' AND UPPER(pgto) NOT LIKE '%DEBITO%' THEN pago ELSE 0 END), 0) AS soma_dinheiro
       FROM lancamentos
-      WHERE TRUE${viagemClause}${categoriaClause}${caixaClause}${formaClause}
+      WHERE ${outerWhere}
     `
     const result = await pool.query(sql, params)
     const r = result.rows[0]

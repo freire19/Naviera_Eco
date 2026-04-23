@@ -4,6 +4,8 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,7 @@ import java.util.Map;
 
 @Service
 public class PushService {
+    private static final Logger log = LoggerFactory.getLogger(PushService.class);
     private final JdbcTemplate jdbc;
 
     public PushService(JdbcTemplate jdbc) {
@@ -56,10 +59,9 @@ public class PushService {
                     .build();
                 FirebaseMessaging.getInstance().send(msg);
             } catch (Exception e) {
-                // DS4-039 fix: truncar token no log (antes: token completo = device identifier exposto)
+                // DS4-039: trunca token no log (device identifier nao vaza stdout).
                 String tokenTrunc = token != null && token.length() > 10 ? token.substring(0, 10) + "..." : "null";
-                System.err.println("[Push] Erro ao enviar para " + tokenTrunc + ": " + e.getMessage());
-                // Token inválido — desativar
+                log.warn("[Push] Erro ao enviar para {}: {}", tokenTrunc, e.getMessage());
                 jdbc.update("UPDATE dispositivos_push SET ativo = FALSE WHERE token_fcm = ?", token);
             }
         }

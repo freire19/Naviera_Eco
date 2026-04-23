@@ -2,6 +2,7 @@ package com.naviera.api.psp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.naviera.api.config.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
@@ -260,7 +261,7 @@ public class AsaasGateway implements PspGateway {
     private JsonNode parseBody(ResponseEntity<String> res, String path) throws Exception {
         String body = res.getBody();
         if (body == null || body.isBlank()) {
-            throw new RuntimeException("Resposta Asaas vazia em " + path + " (status=" + res.getStatusCode() + ")");
+            throw ApiException.badGateway("Resposta Asaas vazia em " + path + " (status=" + res.getStatusCode() + ")");
         }
         return mapper.readTree(body);
     }
