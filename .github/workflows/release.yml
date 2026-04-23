@@ -13,6 +13,20 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: googleapis/release-please-action@v4
+              id: release
               with:
                   config-file: release-please-config.json
                   manifest-file: .release-please-manifest.json
+
+            # Marca cada PR criado/atualizado para auto-merge (squash + branch delete).
+            # Sem branch protection, GitHub mergeia na hora; com protection, espera os checks.
+            - name: Enable auto-merge on release PRs
+              if: steps.release.outputs.prs_created == 'true' || steps.release.outputs.prs != '[]'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  PRS_JSON: ${{ steps.release.outputs.prs }}
+              run: |
+                  echo "$PRS_JSON" | jq -r '.[].number' | while read -r pr; do
+                    echo "Enabling auto-merge on PR #$pr"
+                    gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --auto --squash --delete-branch || true
+                  done
