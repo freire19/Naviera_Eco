@@ -3,6 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import { readFile, unlink } from 'fs/promises'
 import { existsSync, mkdirSync } from 'fs'
+import { randomUUID } from 'crypto'
 import jwt from 'jsonwebtoken'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
@@ -124,12 +125,12 @@ router.post('/upload', uploadLimiter, uploadMulti, async (req, res) => {
 
       // Criar N lancamentos — 1 por encomenda
       const fotoRelPath = path.relative(UPLOAD_PATH, primaryFile.path)
-      const loteUuid = crypto.randomUUID()
+      const loteUuid = randomUUID()
       const lancamentos = []
 
       for (let i = 0; i < loteResult.encomendas.length; i++) {
         const enc = loteResult.encomendas[i]
-        const encUuid = crypto.randomUUID()
+        const encUuid = randomUUID()
         const encDados = { ...enc, rota: enc.rota || loteResult.rota || '' }
 
         const result = await pool.query(`
@@ -246,7 +247,7 @@ router.post('/upload', uploadLimiter, uploadMulti, async (req, res) => {
 
     // Salvar no banco (com idempotencia via client_uuid)
     const fotoRelPath = path.relative(UPLOAD_PATH, primaryFile.path)
-    const uuid = client_uuid || crypto.randomUUID()
+    const uuid = client_uuid || randomUUID()
 
     // ON CONFLICT: se o mesmo uuid ja existe, retorna o registro existente sem duplicar
     const result = await pool.query(`
