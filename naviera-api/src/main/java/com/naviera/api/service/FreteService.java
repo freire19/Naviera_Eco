@@ -10,7 +10,7 @@ import com.naviera.api.psp.PspCobrancaService;
 import com.naviera.api.repository.ClienteAppRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -28,11 +28,14 @@ public class FreteService {
     private final ClienteAppRepository clienteRepo;
     private final PspCobrancaService pspService;
     private final AsaasProperties pspProps;
+    private final TransactionTemplate tx;
 
     public FreteService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo,
-                        PspCobrancaService pspService, AsaasProperties pspProps) {
+                        PspCobrancaService pspService, AsaasProperties pspProps,
+                        TransactionTemplate tx) {
         this.jdbc = jdbc; this.clienteRepo = clienteRepo;
         this.pspService = pspService; this.pspProps = pspProps;
+        this.tx = tx;
     }
 
     /**
@@ -88,107 +91,122 @@ public class FreteService {
      *  - Ownership por FK id_cliente_app_pagador quando existir, senao por
      *    match de nome (remetente ou destinatario) como fallback legado.
      */
-    @Transactional
+    // #205: chamada HTTP ao PSP nunca dentro de @Transactional.
     public Map<String, Object> pagar(Long clienteId, Long idFrete, String formaPagamento) {
         ClienteApp cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
 
         String forma = formaPagamento != null ? formaPagamento : "PIX";
 
-        var rows = jdbc.queryForList(
-            "SELECT id_frete, valor_frete_calculado, desconto, valor_pago, status_pagamento, " +
-            "remetente_nome_temp, destinatario_nome_temp, id_cliente_app_pagador, empresa_id " +
-            "FROM fretes WHERE id_frete = ?",
-            idFrete);
-        if (rows.isEmpty()) throw ApiException.notFound("Frete nao encontrado");
-        var f = rows.get(0);
+        Map<String, Object> resp = tx.execute(status -> {
+            var rows = jdbc.queryForList(
+                "SELECT id_frete, valor_frete_calculado, desconto, valor_pago, status_pagamento, " +
+                "remetente_nome_temp, destinatario_nome_temp, id_cliente_app_pagador, empresa_id, numero_frete " +
+                "FROM fretes WHERE id_frete = ?",
+                idFrete);
+            if (rows.isEmpty()) throw ApiException.notFound("Frete nao encontrado");
+            var f = rows.get(0);
 
-        Long donoFk = f.get("id_cliente_app_pagador") != null
-            ? ((Number) f.get("id_cliente_app_pagador")).longValue() : null;
-        if (donoFk != null) {
-            if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Frete nao pertence a este cliente");
-        } else {
-            String remetente = (String) f.get("remetente_nome_temp");
-            String destinatario = (String) f.get("destinatario_nome_temp");
-            String nomeUpper = cliente.getNome().toUpperCase();
-            boolean match = (remetente != null && remetente.toUpperCase().contains(nomeUpper))
-                         || (destinatario != null && destinatario.toUpperCase().contains(nomeUpper));
-            if (!match) throw ApiException.forbidden("Frete nao pertence a este cliente");
-        }
-
-        String statusAtual = (String) f.get("status_pagamento");
-        if ("PAGO".equalsIgnoreCase(statusAtual)) throw ApiException.conflict("Frete ja esta pago");
-        if ("PENDENTE_CONFIRMACAO".equalsIgnoreCase(statusAtual))
-            throw ApiException.conflict("Pagamento ja enviado, aguardando confirmacao");
-
-        BigDecimal total = (BigDecimal) f.get("valor_frete_calculado");
-        if (total == null) total = BigDecimal.ZERO;
-        BigDecimal descontoBase = (BigDecimal) f.get("desconto");
-        if (descontoBase == null) descontoBase = BigDecimal.ZERO;
-        BigDecimal valorPago = (BigDecimal) f.get("valor_pago");
-        if (valorPago == null) valorPago = BigDecimal.ZERO;
-
-        BigDecimal saldo = total.subtract(descontoBase).subtract(valorPago).max(BigDecimal.ZERO);
-        BigDecimal descontoApp = "PIX".equals(forma)
-            ? saldo.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
-        BigDecimal valorAPagar = saldo.subtract(descontoApp);
-
-        String novoStatus = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
-
-        jdbc.update(
-            "UPDATE fretes SET forma_pagamento_app = ?, desconto_app = ?, " +
-            "status_pagamento = ?, tipo_pagamento = ?, " +
-            "id_cliente_app_pagador = COALESCE(id_cliente_app_pagador, ?) " +
-            "WHERE id_frete = ?",
-            forma, descontoApp, novoStatus, forma, clienteId, idFrete);
-
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("idFrete", idFrete);
-        resp.put("saldoOriginal", saldo);
-        resp.put("descontoApp", descontoApp);
-        resp.put("valorAPagar", valorAPagar);
-        resp.put("formaPagamento", forma);
-        resp.put("status", novoStatus);
-
-        // PSP: gera cobranca para PIX, CARTAO e BOLETO (BARCO nao passa pelo PSP)
-        if (!"BARCO".equals(forma)) {
-            Integer empresaId = ((Number) f.get("empresa_id")).intValue();
-            String subcontaId = (String) jdbc.queryForMap(
-                "SELECT psp_subconta_id FROM empresas WHERE id = ?", empresaId).get("psp_subconta_id");
-            if (subcontaId == null || subcontaId.isBlank()) {
-                throw ApiException.badRequest(
-                    "Empresa nao possui subconta Asaas. Pagamento online indisponivel — use 'Pagar no barco'.");
+            Long donoFk = f.get("id_cliente_app_pagador") != null
+                ? ((Number) f.get("id_cliente_app_pagador")).longValue() : null;
+            if (donoFk != null) {
+                if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Frete nao pertence a este cliente");
+            } else {
+                String remetente = (String) f.get("remetente_nome_temp");
+                String destinatario = (String) f.get("destinatario_nome_temp");
+                String nomeUpper = cliente.getNome().toUpperCase();
+                boolean match = (remetente != null && remetente.toUpperCase().contains(nomeUpper))
+                             || (destinatario != null && destinatario.toUpperCase().contains(nomeUpper));
+                if (!match) throw ApiException.forbidden("Frete nao pertence a este cliente");
             }
-            String numeroFrete = jdbc.queryForObject(
-                "SELECT numero_frete FROM fretes WHERE id_frete = ?", String.class, idFrete);
-            // Boleto: 3 dias pra pagar. PIX/Cartao: 1 dia.
-            LocalDate venc = "BOLETO".equals(forma) ? LocalDate.now().plusDays(3) : LocalDate.now().plusDays(1);
-            CobrancaRequest pspReq = new CobrancaRequest(
-                empresaId, subcontaId, "FRETE", idFrete, clienteId, forma,
-                valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),
-                "Frete " + (numeroFrete != null ? numeroFrete : idFrete),
-                venc, cliente.getDocumento(), cliente.getNome(), cliente.getEmail()
-            );
-            PspCobranca cob = pspService.criar(pspReq);
-            jdbc.update(
-                "UPDATE fretes SET id_transacao_psp = ?, qr_pix_payload = ?, boleto_url = ?, boleto_linha_digitavel = ? WHERE id_frete = ?",
-                cob.getPspCobrancaId(), cob.getQrCodePayload(), cob.getBoletoUrl(), cob.getLinhaDigitavel(), idFrete);
 
-            resp.put("pspCobrancaId", cob.getPspCobrancaId());
-            resp.put("qrCodePayload", cob.getQrCodePayload());
-            resp.put("qrCodeImageUrl", cob.getQrCodeImageUrl());
-            resp.put("boletoUrl", cob.getBoletoUrl());
-            resp.put("linhaDigitavel", cob.getLinhaDigitavel());
-            resp.put("checkoutUrl", cob.getCheckoutUrl());
-            String msg;
-            if ("PIX".equals(forma)) msg = "Escaneie o QR Code ou copie o codigo para pagar.";
-            else if ("BOLETO".equals(forma)) msg = "Boleto gerado. Pague no seu banco pela linha digitavel ou pelo link.";
-            else msg = "Conclua o pagamento no checkout.";
-            resp.put("mensagem", msg);
-        } else {
+            String statusAtual = (String) f.get("status_pagamento");
+            if ("PAGO".equalsIgnoreCase(statusAtual)) throw ApiException.conflict("Frete ja esta pago");
+            if ("PENDENTE_CONFIRMACAO".equalsIgnoreCase(statusAtual))
+                throw ApiException.conflict("Pagamento ja enviado, aguardando confirmacao");
+
+            BigDecimal total = (BigDecimal) f.get("valor_frete_calculado");
+            if (total == null) total = BigDecimal.ZERO;
+            BigDecimal descontoBase = (BigDecimal) f.get("desconto");
+            if (descontoBase == null) descontoBase = BigDecimal.ZERO;
+            BigDecimal valorPago = (BigDecimal) f.get("valor_pago");
+            if (valorPago == null) valorPago = BigDecimal.ZERO;
+
+            BigDecimal saldo = total.subtract(descontoBase).subtract(valorPago).max(BigDecimal.ZERO);
+            BigDecimal descontoApp = "PIX".equals(forma)
+                ? saldo.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+            BigDecimal valorAPagar = saldo.subtract(descontoApp);
+            String novoStatus = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
+
+            jdbc.update(
+                "UPDATE fretes SET forma_pagamento_app = ?, desconto_app = ?, " +
+                "status_pagamento = ?, tipo_pagamento = ?, " +
+                "id_cliente_app_pagador = COALESCE(id_cliente_app_pagador, ?) " +
+                "WHERE id_frete = ?",
+                forma, descontoApp, novoStatus, forma, clienteId, idFrete);
+
+            String subcontaId = null;
+            if (!"BARCO".equals(forma)) {
+                Integer empresaId = ((Number) f.get("empresa_id")).intValue();
+                subcontaId = (String) jdbc.queryForMap(
+                    "SELECT psp_subconta_id FROM empresas WHERE id = ?", empresaId).get("psp_subconta_id");
+                if (subcontaId == null || subcontaId.isBlank()) {
+                    throw ApiException.badRequest(
+                        "Empresa nao possui subconta Asaas. Pagamento online indisponivel — use 'Pagar no barco'.");
+                }
+            }
+
+            Map<String, Object> r = new HashMap<>();
+            r.put("idFrete", idFrete);
+            r.put("empresaId", f.get("empresa_id"));
+            r.put("subcontaId", subcontaId);
+            r.put("numeroFrete", f.get("numero_frete"));
+            r.put("saldoOriginal", saldo);
+            r.put("descontoApp", descontoApp);
+            r.put("valorAPagar", valorAPagar);
+            r.put("formaPagamento", forma);
+            r.put("status", novoStatus);
+            return r;
+        });
+
+        if ("BARCO".equals(forma)) {
+            resp.remove("empresaId");
+            resp.remove("subcontaId");
+            resp.remove("numeroFrete");
             resp.put("mensagem", "Reservado para pagamento no embarque.");
+            return resp;
         }
+
+        Integer empresaId = ((Number) resp.remove("empresaId")).intValue();
+        String subcontaId = (String) resp.remove("subcontaId");
+        String numeroFrete = (String) resp.remove("numeroFrete");
+        BigDecimal valorAPagar = (BigDecimal) resp.get("valorAPagar");
+
+        LocalDate venc = "BOLETO".equals(forma) ? LocalDate.now().plusDays(3) : LocalDate.now().plusDays(1);
+        CobrancaRequest pspReq = new CobrancaRequest(
+            empresaId, subcontaId, "FRETE", idFrete, clienteId, forma,
+            valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),
+            "Frete " + (numeroFrete != null ? numeroFrete : idFrete),
+            venc, cliente.getDocumento(), cliente.getNome(), cliente.getEmail()
+        );
+        PspCobranca cob = pspService.criar(pspReq);
+
+        tx.executeWithoutResult(s -> jdbc.update(
+            "UPDATE fretes SET id_transacao_psp = ?, qr_pix_payload = ?, boleto_url = ?, boleto_linha_digitavel = ? WHERE id_frete = ?",
+            cob.getPspCobrancaId(), cob.getQrCodePayload(), cob.getBoletoUrl(), cob.getLinhaDigitavel(), idFrete));
+
+        resp.put("pspCobrancaId", cob.getPspCobrancaId());
+        resp.put("qrCodePayload", cob.getQrCodePayload());
+        resp.put("qrCodeImageUrl", cob.getQrCodeImageUrl());
+        resp.put("boletoUrl", cob.getBoletoUrl());
+        resp.put("linhaDigitavel", cob.getLinhaDigitavel());
+        resp.put("checkoutUrl", cob.getCheckoutUrl());
+        String msg;
+        if ("PIX".equals(forma)) msg = "Escaneie o QR Code ou copie o codigo para pagar.";
+        else if ("BOLETO".equals(forma)) msg = "Boleto gerado. Pague no seu banco pela linha digitavel ou pelo link.";
+        else msg = "Conclua o pagamento no checkout.";
+        resp.put("mensagem", msg);
         return resp;
     }
 }

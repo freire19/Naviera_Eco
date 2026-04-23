@@ -10,6 +10,7 @@ import com.naviera.api.repository.ClienteAppRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,13 +21,16 @@ public class PassagemService {
     private final ClienteAppRepository clienteRepo;
     private final PspCobrancaService pspService;
     private final AsaasProperties pspProps;
+    private final TransactionTemplate tx;
 
     public PassagemService(JdbcTemplate jdbc, ClienteAppRepository clienteRepo,
-                           PspCobrancaService pspService, AsaasProperties pspProps) {
+                           PspCobrancaService pspService, AsaasProperties pspProps,
+                           TransactionTemplate tx) {
         this.jdbc = jdbc;
         this.clienteRepo = clienteRepo;
         this.pspService = pspService;
         this.pspProps = pspProps;
+        this.tx = tx;
     }
 
     // DS4-024: cross-tenant intencional — CPF pode ter passagens em multiplas empresas
@@ -60,123 +64,125 @@ public class PassagemService {
         return jdbc.queryForList(sql, cliente.getDocumento());
     }
 
+    // #205: chamada HTTP ao PSP nunca dentro de @Transactional — trava conexao DB durante a requisicao.
+    //   Fluxo: TX1 (valida + INSERT passagem) -> HTTP PSP sem tx -> TX2 (UPDATE dados PSP).
+    //   PspCobrancaService.criar e idempotente; retry do cliente reaproveita a cobranca existente.
     // TODO DM069: Return typed DTO (e.g. CompraPassagemResponse) instead of Map<String, Object>
-    //   Fields: numeroBilhete, valorTotal, formaPagamento, status, mensagem
-    @Transactional
     public Map<String, Object> comprar(Long clienteId, CompraPassagemRequest req) {
         var cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
 
-        // Derivar empresaId da viagem (server-side) — nunca do request
-        var viagem = jdbc.queryForList(
-            "SELECT v.id_viagem, v.id_rota, v.id_embarcacao, v.empresa_id FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE",
-            req.idViagem());
-        if (viagem.isEmpty()) throw ApiException.badRequest("Viagem nao disponivel para compra");
-
-        Integer empresaId = ((Number) viagem.get(0).get("empresa_id")).intValue();
-        Long idRota = (Long) viagem.get(0).get("id_rota");
-
-        // Buscar tarifa, filtrando por empresa_id
-        var tarifas = jdbc.queryForList(
-            "SELECT valor_transporte, valor_alimentacao, valor_desconto FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ? AND empresa_id = ?",
-            idRota, req.idTipoPassagem(), empresaId);
-        if (tarifas.isEmpty()) throw ApiException.badRequest("Tarifa nao encontrada para este tipo de passagem");
-
-        var tarifa = tarifas.get(0);
-        var transporte = (BigDecimal) tarifa.get("valor_transporte");
-        var alimentacao = (BigDecimal) tarifa.get("valor_alimentacao");
-        var desconto = (BigDecimal) tarifa.get("valor_desconto");
-        var total = transporte.add(alimentacao).subtract(desconto);
-
-        // Criar ou buscar passageiro, filtrando por empresa_id
-        var passageiros = jdbc.queryForList(
-            "SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?", cliente.getDocumento(), empresaId);
-        Long idPassageiro;
-        if (passageiros.isEmpty()) {
-            jdbc.update("INSERT INTO passageiros (nome_passageiro, numero_documento, empresa_id) VALUES (?, ?, ?)",
-                cliente.getNome(), cliente.getDocumento(), empresaId);
-            idPassageiro = jdbc.queryForObject("SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?",
-                Long.class, cliente.getDocumento(), empresaId);
-        } else {
-            idPassageiro = ((Number) passageiros.get(0).get("id_passageiro")).longValue();
-        }
-
-        // Gerar numero bilhete
+        String forma = req.formaPagamento() != null ? req.formaPagamento() : "PIX";
         String numBilhete = "APP-" + String.format("%06d", System.currentTimeMillis() % 1000000);
 
-        // Forma de pagamento: PIX aplica 10% desconto; CARTAO e BARCO sem desconto.
-        String forma = req.formaPagamento() != null ? req.formaPagamento() : "PIX";
-        BigDecimal descontoApp = "PIX".equals(forma)
-            ? total.multiply(new BigDecimal("0.10")).setScale(2, java.math.RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
-        BigDecimal valorAPagar = total.subtract(descontoApp);
+        Map<String, Object> resp = tx.execute(status -> {
+            var viagem = jdbc.queryForList(
+                "SELECT v.id_viagem, v.id_rota, v.id_embarcacao, v.empresa_id FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE",
+                req.idViagem());
+            if (viagem.isEmpty()) throw ApiException.badRequest("Viagem nao disponivel para compra");
 
-        // BARCO: pagamento presencial, permanece PENDENTE ate operador bater caixa.
-        // PIX/CARTAO: PENDENTE_CONFIRMACAO ate operador ou PSP confirmar.
-        String status = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
+            Integer empresaId = ((Number) viagem.get(0).get("empresa_id")).intValue();
+            Long idRota = (Long) viagem.get(0).get("id_rota");
 
-        Long idPassagem = jdbc.queryForObject("""
-            INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao,
-                id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao,
-                valor_desconto_tarifa, valor_total, valor_a_pagar, valor_pago,
-                status_passagem, origem_emissao, id_cliente_app, observacoes, empresa_id,
-                forma_pagamento_app, desconto_app)
-            VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'APP', ?, ?, ?, ?, ?)
-            RETURNING id_passagem
-            """, Long.class,
-            numBilhete, idPassageiro, req.idViagem(), idRota, req.idTipoPassagem(),
-            transporte, alimentacao, desconto, total, valorAPagar, status,
-            clienteId, "Compra via App - " + forma, empresaId, forma, descontoApp);
+            var tarifas = jdbc.queryForList(
+                "SELECT valor_transporte, valor_alimentacao, valor_desconto FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ? AND empresa_id = ?",
+                idRota, req.idTipoPassagem(), empresaId);
+            if (tarifas.isEmpty()) throw ApiException.badRequest("Tarifa nao encontrada para este tipo de passagem");
 
-        Map<String, Object> resp = new java.util.HashMap<>();
-        resp.put("numeroBilhete", numBilhete);
-        resp.put("valorTotal", total);
-        resp.put("descontoApp", descontoApp);
-        resp.put("valorAPagar", valorAPagar);
-        resp.put("formaPagamento", forma);
-        resp.put("status", status);
+            var tarifa = tarifas.get(0);
+            var transporte = (BigDecimal) tarifa.get("valor_transporte");
+            var alimentacao = (BigDecimal) tarifa.get("valor_alimentacao");
+            var desconto = (BigDecimal) tarifa.get("valor_desconto");
+            var total = transporte.add(alimentacao).subtract(desconto);
 
-        // PSP: gera cobranca para PIX e CARTAO (BARCO nao passa pelo PSP)
-        if (!"BARCO".equals(forma)) {
-            String subcontaId = (String) jdbc.queryForMap(
-                "SELECT psp_subconta_id FROM empresas WHERE id = ?", empresaId).get("psp_subconta_id");
-            if (subcontaId == null || subcontaId.isBlank()) {
-                throw ApiException.badRequest(
-                    "Empresa nao possui subconta Asaas. Pagamento online indisponivel — use 'Pagar no barco'.");
+            var passageiros = jdbc.queryForList(
+                "SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?", cliente.getDocumento(), empresaId);
+            Long idPassageiro;
+            if (passageiros.isEmpty()) {
+                jdbc.update("INSERT INTO passageiros (nome_passageiro, numero_documento, empresa_id) VALUES (?, ?, ?)",
+                    cliente.getNome(), cliente.getDocumento(), empresaId);
+                idPassageiro = jdbc.queryForObject("SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?",
+                    Long.class, cliente.getDocumento(), empresaId);
+            } else {
+                idPassageiro = ((Number) passageiros.get(0).get("id_passageiro")).longValue();
             }
-            CobrancaRequest pspReq = new CobrancaRequest(
-                empresaId,
-                subcontaId,
-                "PASSAGEM",
-                idPassagem,
-                clienteId,
-                forma,
-                valorAPagar,
-                BigDecimal.ZERO,
-                pspProps.getSplitNavieraPct(),
-                "Passagem " + numBilhete,
-                LocalDate.now().plusDays(1),
-                cliente.getDocumento(),
-                cliente.getNome(),
-                cliente.getEmail()
-            );
-            PspCobranca cob = pspService.criar(pspReq);
-            jdbc.update(
-                "UPDATE passagens SET id_transacao_psp = ?, qr_pix_payload = ? WHERE id_passagem = ?",
-                cob.getPspCobrancaId(), cob.getQrCodePayload(), idPassagem);
 
-            resp.put("pspCobrancaId", cob.getPspCobrancaId());
-            resp.put("qrCodePayload", cob.getQrCodePayload());
-            resp.put("qrCodeImageUrl", cob.getQrCodeImageUrl());
-            resp.put("boletoUrl", cob.getBoletoUrl());
-            resp.put("linhaDigitavel", cob.getLinhaDigitavel());
-            resp.put("checkoutUrl", cob.getCheckoutUrl());
-            resp.put("mensagem", "PIX".equals(forma)
-                ? "Passagem emitida! Escaneie o QR Code ou copie o codigo para pagar."
-                : "Passagem emitida! Conclua o pagamento no checkout.");
-        } else {
+            BigDecimal descontoApp = "PIX".equals(forma)
+                ? total.multiply(new BigDecimal("0.10")).setScale(2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+            BigDecimal valorAPagar = total.subtract(descontoApp);
+            String statusPassagem = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
+
+            Long idPassagem = jdbc.queryForObject("""
+                INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao,
+                    id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao,
+                    valor_desconto_tarifa, valor_total, valor_a_pagar, valor_pago,
+                    status_passagem, origem_emissao, id_cliente_app, observacoes, empresa_id,
+                    forma_pagamento_app, desconto_app)
+                VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'APP', ?, ?, ?, ?, ?)
+                RETURNING id_passagem
+                """, Long.class,
+                numBilhete, idPassageiro, req.idViagem(), idRota, req.idTipoPassagem(),
+                transporte, alimentacao, desconto, total, valorAPagar, statusPassagem,
+                clienteId, "Compra via App - " + forma, empresaId, forma, descontoApp);
+
+            String subcontaId = null;
+            if (!"BARCO".equals(forma)) {
+                subcontaId = (String) jdbc.queryForMap(
+                    "SELECT psp_subconta_id FROM empresas WHERE id = ?", empresaId).get("psp_subconta_id");
+                if (subcontaId == null || subcontaId.isBlank()) {
+                    throw ApiException.badRequest(
+                        "Empresa nao possui subconta Asaas. Pagamento online indisponivel — use 'Pagar no barco'.");
+                }
+            }
+
+            Map<String, Object> r = new java.util.HashMap<>();
+            r.put("idPassagem", idPassagem);
+            r.put("empresaId", empresaId);
+            r.put("subcontaId", subcontaId);
+            r.put("numeroBilhete", numBilhete);
+            r.put("valorTotal", total);
+            r.put("descontoApp", descontoApp);
+            r.put("valorAPagar", valorAPagar);
+            r.put("formaPagamento", forma);
+            r.put("status", statusPassagem);
+            return r;
+        });
+
+        if ("BARCO".equals(forma)) {
+            resp.remove("idPassagem");
+            resp.remove("empresaId");
+            resp.remove("subcontaId");
             resp.put("mensagem", "Passagem reservada! Pague diretamente no embarque.");
+            return resp;
         }
+
+        Long idPassagem = (Long) resp.remove("idPassagem");
+        Integer empresaId = (Integer) resp.remove("empresaId");
+        String subcontaId = (String) resp.remove("subcontaId");
+        BigDecimal valorAPagar = (BigDecimal) resp.get("valorAPagar");
+
+        CobrancaRequest pspReq = new CobrancaRequest(
+            empresaId, subcontaId, "PASSAGEM", idPassagem, clienteId, forma,
+            valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),
+            "Passagem " + numBilhete, LocalDate.now().plusDays(1),
+            cliente.getDocumento(), cliente.getNome(), cliente.getEmail()
+        );
+        PspCobranca cob = pspService.criar(pspReq);
+
+        tx.executeWithoutResult(s -> jdbc.update(
+            "UPDATE passagens SET id_transacao_psp = ?, qr_pix_payload = ? WHERE id_passagem = ?",
+            cob.getPspCobrancaId(), cob.getQrCodePayload(), idPassagem));
+
+        resp.put("pspCobrancaId", cob.getPspCobrancaId());
+        resp.put("qrCodePayload", cob.getQrCodePayload());
+        resp.put("qrCodeImageUrl", cob.getQrCodeImageUrl());
+        resp.put("boletoUrl", cob.getBoletoUrl());
+        resp.put("linhaDigitavel", cob.getLinhaDigitavel());
+        resp.put("checkoutUrl", cob.getCheckoutUrl());
+        resp.put("mensagem", "PIX".equals(forma)
+            ? "Passagem emitida! Escaneie o QR Code ou copie o codigo para pagar."
+            : "Passagem emitida! Conclua o pagamento no checkout.");
         return resp;
     }
 
