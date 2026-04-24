@@ -37,6 +37,10 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
   const [valorPagar, setValorPagar] = useState('')
   const [salvando, setSalvando] = useState(false)
 
+  // Selecao multipla — Set de chaves 'tipo:id_original'
+  const [selecionados, setSelecionados] = useState(new Set())
+  const keyOf = (it) => `${it.tipo}:${it.id_original}`
+
   function showToast(msg, type = 'success') { setToast({ msg, type }); setTimeout(() => setToast(null), 3500) }
 
   // Carrega lista de clientes (autocomplete)
@@ -104,19 +108,19 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
     }
   }
 
-  async function quitarTudo() {
-    const devedores = itens.filter(it => Number(it.saldo_devedor) > 0.01)
-    if (devedores.length === 0) { showToast('Nada em aberto', 'error'); return }
-    const total = devedores.reduce((s, it) => s + Number(it.saldo_devedor), 0)
-    if (!window.confirm(`Confirma quitar ${devedores.length} lançamento(s) totalizando ${formatMoney(total)}?`)) return
+  async function quitarLote(itensAlvo, labelAcao = 'quitar') {
+    if (itensAlvo.length === 0) { showToast('Nada em aberto', 'error'); return }
+    const total = itensAlvo.reduce((s, it) => s + Number(it.saldo_devedor), 0)
+    if (!window.confirm(`Confirma ${labelAcao} ${itensAlvo.length} lançamento(s) totalizando ${formatMoney(total)}?`)) return
     setLoading(true)
     try {
       const r = await api.post('/extrato-cliente/quitar-tudo', {
-        itens: devedores.map(it => ({
+        itens: itensAlvo.map(it => ({
           tipo: it.tipo, id_original: it.id_original, valor: Number(it.saldo_devedor),
         })),
       })
       showToast(`${r.sucesso} lançamento(s) quitado(s)`)
+      setSelecionados(new Set())
       buscar()
     } catch (err) {
       showToast(err?.message || 'Erro ao quitar', 'error')
@@ -124,6 +128,45 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
       setLoading(false)
     }
   }
+
+  function quitarTudo() {
+    const devedores = itens.filter(it => Number(it.saldo_devedor) > 0.01)
+    quitarLote(devedores, 'quitar')
+  }
+
+  function quitarSelecionados() {
+    const alvo = itens.filter(it => selecionados.has(keyOf(it)) && Number(it.saldo_devedor) > 0.01)
+    quitarLote(alvo, 'dar baixa em')
+  }
+
+  function toggleSelecionado(it) {
+    const k = keyOf(it)
+    const novo = new Set(selecionados)
+    if (novo.has(k)) novo.delete(k); else novo.add(k)
+    setSelecionados(novo)
+  }
+
+  function toggleTodos() {
+    const devedores = itens.filter(it => Number(it.saldo_devedor) > 0.01)
+    if (selecionados.size >= devedores.length && devedores.every(it => selecionados.has(keyOf(it)))) {
+      setSelecionados(new Set())
+    } else {
+      setSelecionados(new Set(devedores.map(keyOf)))
+    }
+  }
+
+  // Limpa selecao quando itens mudam (nova busca)
+  useEffect(() => { setSelecionados(new Set()) }, [itens])
+
+  const totalSelecionado = useMemo(() => {
+    return itens
+      .filter(it => selecionados.has(keyOf(it)))
+      .reduce((s, it) => s + Number(it.saldo_devedor || 0), 0)
+  }, [itens, selecionados])
+
+  const devedoresCount = itens.filter(it => Number(it.saldo_devedor) > 0.01).length
+  const todosDevedoresSelecionados = devedoresCount > 0 && selecionados.size === devedoresCount
+    && itens.filter(it => Number(it.saldo_devedor) > 0.01).every(it => selecionados.has(keyOf(it)))
 
   const S = {
     label: { fontSize: '0.75rem', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 3 },
@@ -211,6 +254,11 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
           <table>
             <thead>
               <tr>
+                <th style={{ width: 32, textAlign: 'center' }}>
+                  <input type="checkbox" checked={todosDevedoresSelecionados} onChange={toggleTodos}
+                    disabled={devedoresCount === 0}
+                    title={todosDevedoresSelecionados ? 'Desmarcar todos' : 'Marcar todos pendentes'} />
+                </th>
                 <th>Tipo</th>
                 <th>Número</th>
                 <th>Data Viagem</th>
@@ -226,13 +274,20 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
             </thead>
             <tbody>
               {itens.length === 0 ? (
-                <tr><td colSpan="11" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 30 }}>
+                <tr><td colSpan="12" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 30 }}>
                   {loading ? 'Carregando...' : 'Selecione um cliente e clique em Buscar'}
                 </td></tr>
               ) : itens.map((it, idx) => {
                 const devedor = Number(it.saldo_devedor) > 0.01
+                const k = keyOf(it)
+                const checked = selecionados.has(k)
                 return (
-                  <tr key={`${it.tipo}-${it.id_original}-${idx}`}>
+                  <tr key={k + '-' + idx} style={checked ? { background: 'var(--bg-accent)' } : undefined}>
+                    <td style={{ textAlign: 'center' }}>
+                      {devedor && (
+                        <input type="checkbox" checked={checked} onChange={() => toggleSelecionado(it)} />
+                      )}
+                    </td>
                     <td><span style={{ fontWeight: 700, color: 'var(--text-soft)' }}>{it.tipo_label}</span></td>
                     <td>{it.numero || '—'}</td>
                     <td>{fmtDate(it.data_viagem)}</td>
@@ -250,7 +305,7 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
                     <td>
                       {devedor && (
                         <button className="btn-sm primary" onClick={() => { setModalPagar(it); setValorPagar(String(it.saldo_devedor).replace('.', ',')) }}>
-                          Dar Baixa
+                          Baixa
                         </button>
                       )}
                     </td>
@@ -261,12 +316,27 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
           </table>
         </div>
 
-        {itens.length > 0 && totais.saldo > 0.01 && (
-          <div style={{ marginTop: 16, textAlign: 'right' }}>
-            <button style={{ ...S.btn, background: 'var(--warning)', color: '#fff', borderColor: 'var(--warning)' }}
-              onClick={quitarTudo} disabled={loading}>
-              💰 Quitar Tudo em Aberto ({formatMoney(totais.saldo)})
-            </button>
+        {itens.length > 0 && (
+          <div style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+            {selecionados.size > 0 ? (
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-soft)' }}>
+                <strong>{selecionados.size}</strong> selecionado(s) · Total: <strong style={{ color: 'var(--danger)' }}>{formatMoney(totalSelecionado)}</strong>
+              </div>
+            ) : <div />}
+            <div style={{ display: 'flex', gap: 10 }}>
+              {selecionados.size > 0 && (
+                <button style={{ ...S.btn, background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)' }}
+                  onClick={quitarSelecionados} disabled={loading}>
+                  ✓ Dar Baixa nos Selecionados ({selecionados.size})
+                </button>
+              )}
+              {totais.saldo > 0.01 && (
+                <button style={{ ...S.btn, background: 'var(--warning)', color: '#fff', borderColor: 'var(--warning)' }}
+                  onClick={quitarTudo} disabled={loading}>
+                  💰 Quitar Tudo em Aberto ({formatMoney(totais.saldo)})
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -9,22 +9,12 @@ import pool from '../db.js'
 
 const router = express.Router()
 
-// Permissoes: apenas financeiro/admin
-function exigirFinanceiro(req, res) {
-  const papel = req.user?.papel
-  if (papel !== 'admin' && papel !== 'financeiro') {
-    res.status(403).json({ error: 'Acesso restrito ao financeiro' })
-    return false
-  }
-  return true
-}
-
 /**
  * GET /api/extrato-cliente/clientes
  * Lista nomes unicos: destinatarios (frete + encomenda) + passageiros.
+ * Acesso: qualquer usuario autenticado (mesmo padrao das outras rotas financeiras).
  */
 router.get('/clientes', async (req, res) => {
-  if (!exigirFinanceiro(req, res)) return
   try {
     const empresaId = req.user.empresa_id
     const sql = `
@@ -56,7 +46,6 @@ router.get('/clientes', async (req, res) => {
  *   status (todos | devedores | pagos — default: todos)
  */
 router.get('/buscar', async (req, res) => {
-  if (!exigirFinanceiro(req, res)) return
   try {
     const empresaId = req.user.empresa_id
     const cliente = (req.query.cliente || '').trim()
@@ -226,7 +215,6 @@ async function buscarPassagens(empresaId, cliente, viagemId, apenasDevedores) {
  * Body: { tipo: 'FRETE'|'ENCOMENDA'|'PASSAGEM', id_original: number, valor: number }
  */
 router.post('/baixa', async (req, res) => {
-  if (!exigirFinanceiro(req, res)) return
   try {
     const empresaId = req.user.empresa_id
     const { tipo, id_original, valor } = req.body || {}
@@ -269,7 +257,6 @@ router.post('/baixa', async (req, res) => {
  * Usado pra botao "Quitar Tudo em Aberto" no front.
  */
 router.post('/quitar-tudo', async (req, res) => {
-  if (!exigirFinanceiro(req, res)) return
   const { itens } = req.body || {}
   if (!Array.isArray(itens) || itens.length === 0) return res.status(400).json({ error: 'itens vazio' })
   const client = await pool.connect()
