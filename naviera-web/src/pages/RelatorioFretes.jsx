@@ -93,46 +93,70 @@ export default function RelatorioFretes({ viagemAtiva }) {
 
   // ====== IMPRESSAO ======
   const baseStyle = `
-    body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #333; }
-    table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-    th { background: #047857; color: white; padding: 6px 8px; text-align: left; font-size: 11px; }
-    td { padding: 5px 8px; border-bottom: 1px solid #ddd; font-size: 11px; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #0F2620; }
+    table { width: 100%; border-collapse: collapse; margin: 0; }
+    /* Cabecalho da tabela: sem fundo pintado, bordas verdes + texto escuro bold */
+    th {
+      background: #fff;
+      color: #047857;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border-top: 2px solid #047857;
+      border-bottom: 2px solid #047857;
+    }
+    td { padding: 6px 10px; border-bottom: 1px solid #E5E7EB; font-size: 11px; }
     .money { text-align: right; font-family: 'Courier New', monospace; }
-    .header { text-align: center; margin-bottom: 12px; }
-    .header h2 { margin: 0; color: #047857; font-size: 16px; }
-    .header p { margin: 2px 0; font-size: 11px; color: #666; }
-    .summary { margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px; }
-    .summary div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #047857; }
+    .header h2 { margin: 0; color: #047857; font-size: 17px; letter-spacing: 0.02em; }
+    .header p { margin: 3px 0 0; font-size: 11px; color: #3D6B56; }
     .bold { font-weight: 700; }
-    .green { color: #059669; }
-    .red { color: #DC2626; }
+    .green { color: #047857; font-weight: 700; }
+    .red { color: #DC2626; font-weight: 700; }
     .signature { margin-top: 30px; border-top: 1px solid #333; width: 200px; text-align: center; font-size: 10px; padding-top: 4px; }
-    .frete-header { background: #047857; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .frete-footer { background: #f5f5f5; padding: 6px 12px; display: flex; justify-content: space-between; border-radius: 0 0 6px 6px; font-size: 11px; margin-bottom: 4px; }
-    /* Impressao: remove todos os fundos coloridos, usa so texto preto + bordas */
+    /* Cabecalho de cada frete: sem fundo pintado — barra lateral + borda verde */
+    .frete-header {
+      background: #fff;
+      color: #047857;
+      padding: 8px 12px;
+      margin-top: 14px;
+      border-left: 4px solid #047857;
+      border-top: 1px solid #047857;
+      border-right: 1px solid #047857;
+      border-radius: 0 4px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+    }
+    .frete-footer {
+      background: transparent;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      margin-bottom: 6px;
+      border-left: 4px solid #047857;
+      border-right: 1px solid #047857;
+      border-bottom: 1px solid #047857;
+    }
+    /* Resumo financeiro: borda verde em vez de fundo cinza */
+    .summary {
+      margin-top: 14px;
+      padding: 10px 12px;
+      background: transparent;
+      border: 1px solid #047857;
+      border-left: 4px solid #047857;
+      border-radius: 0 4px 4px 0;
+    }
+    .summary div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
+    /* Impressao: forca que o navegador imprima as cores (border verde, texto verde) */
     @media print {
-      body { margin: 0; color: #000; }
-      -webkit-print-color-adjust: economy; print-color-adjust: economy;
-      .header h2 { color: #000 !important; }
-      th {
-        background: #fff !important;
-        color: #000 !important;
-        border-top: 2px solid #000 !important;
-        border-bottom: 2px solid #000 !important;
-      }
-      td { color: #000 !important; }
-      .summary { background: #fff !important; border: 1px solid #000 !important; }
-      .frete-header {
-        background: #fff !important;
-        color: #000 !important;
-        border: 1px solid #000 !important;
-        border-bottom: none !important;
-        font-weight: 700;
-      }
-      .frete-footer { background: #fff !important; border: 1px solid #000 !important; }
-      .green { color: #000 !important; font-weight: 700 !important; }
-      .red { color: #000 !important; font-weight: 700 !important; }
-      .status-pago, .status-falta { background: #fff !important; color: #000 !important; border: 1px solid #000 !important; }
+      body { margin: 0; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   `
 
@@ -212,20 +236,21 @@ export default function RelatorioFretes({ viagemAtiva }) {
     for (const fr of fretesGeral) {
       const devedor = Math.max(0, (parseFloat(fr.valor_total_itens) || 0) - (parseFloat(fr.valor_pago) || 0))
       const statusBadge = devedor <= 0.01
-        ? '<span style="background:#4ADE80;color:#000;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700">PAGO</span>'
-        : '<span style="background:#F59E0B;color:#000;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700">FALTA PAGAR</span>'
+        ? '<span style="border:1.5px solid #059669;color:#059669;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.03em">PAGO</span>'
+        : '<span style="border:1.5px solid #DC2626;color:#DC2626;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.03em">FALTA PAGAR</span>'
       const itens = itensPorFrete[fr.numero_frete] || []
 
       fretesHtml += `
-        <div style="background:#047857;color:white;padding:8px 12px;border-radius:6px 6px 0 0;margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+        <div class="frete-header">
           <div><strong style="font-size:14px">Frete #${fr.numero_frete}</strong> &nbsp; <span>${fr.remetente || ''}</span> &rarr; <span>${fr.destinatario || ''}</span></div>
           ${statusBadge}
         </div>
-        <table style="margin:0"><thead><tr><th style="width:8%">QTD</th><th style="width:52%">DESCRICAO</th><th style="width:20%">VL UNIT</th><th style="width:20%">VL TOTAL</th></tr></thead>
-        <tbody>${itens.map(i => `<tr><td>${i.quantidade}</td><td>${i.item}</td><td class="money">${formatMoney(i.preco_unitario)}</td><td class="money">${formatMoney(i.total_item)}</td></tr>`).join('')}
-        ${itens.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:#999">Sem itens</td></tr>' : ''}
-        </tbody></table>
-        <div style="background:#f5f5f5;padding:6px 12px;display:flex;justify-content:space-between;border-radius:0 0 6px 6px;font-size:11px;margin-bottom:4px">
+        <table style="margin:0;border-left:4px solid #047857;border-right:1px solid #047857">
+          <thead><tr><th style="width:8%">QTD</th><th style="width:52%">DESCRICAO</th><th style="width:20%">VL UNIT</th><th style="width:20%">VL TOTAL</th></tr></thead>
+          <tbody>${itens.map(i => `<tr><td>${i.quantidade}</td><td>${i.item}</td><td class="money">${formatMoney(i.preco_unitario)}</td><td class="money">${formatMoney(i.total_item)}</td></tr>`).join('')}
+          ${itens.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:#999">Sem itens</td></tr>' : ''}
+          </tbody></table>
+        <div class="frete-footer">
           <div style="border-top:1px solid #333;width:150px;text-align:center;font-size:9px;padding-top:3px">Assinatura</div>
           <div style="text-align:right">
             <span>Total: <strong>${formatMoney(fr.valor_total_itens)}</strong></span>
@@ -276,7 +301,7 @@ export default function RelatorioFretes({ viagemAtiva }) {
     for (const [rem, itens] of Object.entries(porRemetente)) {
       const sub = itens.reduce((s, i) => s + (parseFloat(i.total_item) || 0), 0)
       const vol = itens.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
-      body += `<div style="background:#e0e0e0;padding:4px 8px;font-weight:700;margin-top:8px">${rem}</div>`
+      body += `<div style="padding:4px 8px;font-weight:700;margin-top:8px;color:#047857;border-bottom:1.5px solid #047857">${rem}</div>`
       body += itens.map(i => `<div style="padding:2px 8px;font-size:9px">&nbsp; ${i.quantidade}x ${i.item} <span style="float:right">${formatMoney(i.total_item)}</span></div>`).join('')
       body += `<div style="padding:2px 8px;font-size:9px;font-weight:700">&nbsp; Subtotal: ${formatMoney(sub)} (${vol} vol)</div><hr style="margin:4px 0"/>`
     }
