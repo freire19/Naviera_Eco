@@ -22,6 +22,7 @@ import net.sourceforge.tess4j.Tesseract;
 import org.vosk.Model;
 import org.vosk.Recognizer;
 
+import gui.util.AutoCompleteHelper;
 import gui.util.PermissaoService;
 import dao.ClienteEncomendaDAO;
 import dao.EmpresaDAO;
@@ -47,10 +48,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.Side;
 import javafx.print.Printer;
 import javafx.print.PrinterJob;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -60,7 +59,6 @@ import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.CustomMenuItem;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -78,12 +76,8 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
-import javafx.animation.PauseTransition;
-import javafx.util.Duration;
 import javafx.scene.transform.Scale;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
@@ -157,27 +151,7 @@ public class InserirEncomendaController implements Initializable {
     
     private Viagem viagemAtiva;
     private Encomenda encomendaEmEdicao;
-    
-    private ContextMenu menuSugestoesProdutos;
-    private ContextMenu menuSugestoesRemetente;
-    private ContextMenu menuSugestoesDestinatario;
-    private ContextMenu menuSugestoesRota;
 
-    private List<Rota> sugestoesRotaAtuais = new ArrayList<>();
-    private List<String> sugestoesRemetenteAtuais = new ArrayList<>();
-    private List<String> sugestoesDestinatarioAtuais = new ArrayList<>();
-    private List<ItemEncomendaPadrao> sugestoesProdutoAtuais = new ArrayList<>();
-
-    private int indexRemetenteSelecionado = -1;
-    private int indexDestinatarioSelecionado = -1;
-    private int indexRotaSelecionado = -1;
-    private int indexProdutoSelecionado = -1;
-
-    // DP028: debounce para autocomplete (evita stream filter a cada keystroke)
-    private PauseTransition debounceClientes;
-    private PauseTransition debounceRotas;
-    private PauseTransition debounceProdutos;
-    
     private boolean isSelecionandoViaEnter = false;
 
     @Override
@@ -195,20 +169,29 @@ public class InserirEncomendaController implements Initializable {
         this.obsListaItens = FXCollections.observableArrayList();
         this.listaMestraClientes = FXCollections.observableArrayList();
         this.listaMestraProdutosObjetos = new ArrayList<>();
-        
-        this.menuSugestoesProdutos = criarMenuConfigurado();
-        this.menuSugestoesRemetente = criarMenuConfigurado();
-        this.menuSugestoesDestinatario = criarMenuConfigurado();
-        this.menuSugestoesRota = criarMenuConfigurado();
 
         configurarTabela();
         configurarListenersDeCampos();
         configurarValidacaoFocoClientes();
 
-        configurarAutocompleteGenerico(cmbRemetente, menuSugestoesRemetente, "R");
-        configurarAutocompleteGenerico(cmbDestinatario, menuSugestoesDestinatario, "D");
-        configurarAutoCompleteRota(cmbRota);
-        configurarAutocompleteProdutosNoTextField();
+        AutoCompleteHelper.install(cmbRemetente, () -> listaMestraClientes,
+            () -> Platform.runLater(cmbDestinatario::requestFocus));
+        AutoCompleteHelper.install(cmbDestinatario, () -> listaMestraClientes,
+            () -> Platform.runLater(cmbRota::requestFocus));
+        AutoCompleteHelper.installGeneric(cmbRota, () -> obsListaRotas,
+            r -> (r == null ? "" : r.toString()),
+            r -> Platform.runLater(txtQuantidade::requestFocus));
+        AutoCompleteHelper.install(cmbDescricao,
+            () -> listaMestraProdutosObjetos.stream().map(ItemEncomendaPadrao::getNomeItem).collect(Collectors.toList()),
+            selecionado -> {
+                for (ItemEncomendaPadrao p : listaMestraProdutosObjetos) {
+                    if (p.getNomeItem().equalsIgnoreCase(selecionado)) {
+                        txtValorUnit.setText(p.getPrecoUnit().toString().replace(".", ","));
+                        break;
+                    }
+                }
+                Platform.runLater(() -> { txtValorUnit.requestFocus(); txtValorUnit.selectAll(); });
+            });
 
         aplicarEstiloBotoes();
 
@@ -887,243 +870,6 @@ public class InserirEncomendaController implements Initializable {
 
     private void imprimirCupomTermico(Encomenda encomenda) {
         EncomendaPrintHelper.imprimirCupomTermico(encomenda);
-    }
-
-    private ContextMenu criarMenuConfigurado() {
-        ContextMenu menu = new ContextMenu();
-        menu.setAutoHide(true); menu.setHideOnEscape(true);
-        return menu;
-    }
-    
-    private void configurarAutocompleteGenerico(ComboBox<String> cmb, ContextMenu menu, String tipo) {
-         cmb.getEditor().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            if (event.getCode() == KeyCode.ENTER) {
-                if (menu.isShowing()) {
-                    List<String> lista = (tipo.equals("R")) ? sugestoesRemetenteAtuais : sugestoesDestinatarioAtuais;
-                    int idx = (tipo.equals("R")) ? indexRemetenteSelecionado : indexDestinatarioSelecionado;
-                    if(!lista.isEmpty() && idx >= 0 && idx < lista.size()){
-                        cmb.setValue(lista.get(idx));
-                        menu.hide();
-                    }
-                    event.consume();
-                    Platform.runLater(() -> { if(tipo.equals("R")) cmbDestinatario.requestFocus(); else cmbRota.requestFocus(); });
-                } else {
-                    event.consume();
-                    Platform.runLater(() -> { if(tipo.equals("R")) cmbDestinatario.requestFocus(); else cmbRota.requestFocus(); });
-                }
-            } else if (event.getCode() == KeyCode.DOWN) { navegarMenu(menu, 1, tipo); event.consume(); }
-              else if (event.getCode() == KeyCode.UP) { navegarMenu(menu, -1, tipo); event.consume(); }
-              else if (event.getCode() == KeyCode.ESCAPE) { menu.hide(); }
-         });
-         // DP028: debounce 250ms para evitar stream filter a cada keystroke
-         if (debounceClientes == null) debounceClientes = new PauseTransition(Duration.millis(250));
-         final PauseTransition db = debounceClientes;
-         cmb.getEditor().setOnKeyReleased(e -> {
-             if(isNavegacaoKey(e.getCode())) return;
-             db.setOnFinished(ev -> {
-                 String txt = cmb.getEditor().getText().toUpperCase();
-                 List<String> achados = listaMestraClientes.stream().filter(c -> c.contains(txt)).collect(Collectors.toList());
-                 if(!achados.isEmpty()) {
-                     menu.getItems().clear();
-                     if(tipo.equals("R")) sugestoesRemetenteAtuais = achados; else sugestoesDestinatarioAtuais = achados;
-                     for(String s : achados) {
-                         MenuItem mi = new MenuItem(s);
-                         mi.setOnAction(ev2 -> { cmb.setValue(s); menu.hide(); });
-                         menu.getItems().add(mi);
-                     }
-                     menu.show(cmb, Side.BOTTOM, 0,0);
-                 } else menu.hide();
-             });
-             db.playFromStart();
-         });
-    }
-
-    private void configurarAutoCompleteRota(ComboBox<Rota> cmb) {
-         cmb.getEditor().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            if (event.getCode() == KeyCode.ENTER) {
-                if (menuSugestoesRota.isShowing() && !sugestoesRotaAtuais.isEmpty()) {
-                    if (indexRotaSelecionado >= 0 && indexRotaSelecionado < sugestoesRotaAtuais.size()) {
-                        cmb.setValue(sugestoesRotaAtuais.get(indexRotaSelecionado));
-                        menuSugestoesRota.hide();
-                    }
-                    event.consume();
-                    Platform.runLater(() -> txtQuantidade.requestFocus());
-                } else {
-                    event.consume();
-                    Platform.runLater(() -> txtQuantidade.requestFocus());
-                }
-            } else if (event.getCode() == KeyCode.DOWN) { navegarMenu(menuSugestoesRota, 1, "ROTA"); event.consume(); }
-              else if (event.getCode() == KeyCode.UP) { navegarMenu(menuSugestoesRota, -1, "ROTA"); event.consume(); }
-              else if (event.getCode() == KeyCode.ESCAPE) { menuSugestoesRota.hide(); }
-         });
-         // DP028: debounce 250ms para rotas
-         if (debounceRotas == null) debounceRotas = new PauseTransition(Duration.millis(250));
-         cmb.getEditor().setOnKeyReleased(e -> {
-             if(isNavegacaoKey(e.getCode())) return;
-             debounceRotas.setOnFinished(ev -> {
-                 String txt = cmb.getEditor().getText().toUpperCase();
-                 List<Rota> achados = obsListaRotas.stream().filter(r -> r.toString().toUpperCase().contains(txt)).collect(Collectors.toList());
-                 if(!achados.isEmpty()) {
-                     menuSugestoesRota.getItems().clear();
-                     sugestoesRotaAtuais = achados;
-                     for(Rota r : achados) {
-                         MenuItem mi = new MenuItem(r.toString());
-                         mi.setOnAction(ev2 -> { cmb.setValue(r); menuSugestoesRota.hide(); txtQuantidade.requestFocus(); });
-                         menuSugestoesRota.getItems().add(mi);
-                     }
-                     menuSugestoesRota.show(cmb, Side.BOTTOM, 0,0);
-                 } else menuSugestoesRota.hide();
-             });
-             debounceRotas.playFromStart();
-         });
-    }
-    
-    private void configurarAutocompleteProdutosNoTextField() {
-        // Popular ComboBox com itens padrão formatados com preço
-        ObservableList<String> itensDescricao = FXCollections.observableArrayList();
-        for(ItemEncomendaPadrao item : listaMestraProdutosObjetos) {
-            String itemFormatado = String.format("%-50s R$ %8.2f", item.getNomeItem(), item.getPrecoUnit());
-            itensDescricao.add(itemFormatado);
-        }
-        cmbDescricao.setItems(itensDescricao);
-        
-        // Configurar estilo da fonte para monoespaçado no dropdown com linhas zebradas
-        cmbDescricao.setCellFactory(lv -> new javafx.scene.control.ListCell<String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    // Linhas zebradas - alternar cores entre linhas pares e ímpares
-                    String corFundo = (getIndex() % 2 == 0) ? "#f0f0f0" : "#ffffff";
-                    setStyle("-fx-font-family: 'Consolas', 'Courier New', monospace; " +
-                             "-fx-font-size: 14px; " +
-                             "-fx-font-weight: bold; " +
-                             "-fx-background-color: " + corFundo + "; " +
-                             "-fx-padding: 8px;");
-                }
-            }
-        });
-        
-        cmbDescricao.getEditor().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            if (event.getCode() == KeyCode.ENTER) {
-                if (menuSugestoesProdutos.isShowing() && !sugestoesProdutoAtuais.isEmpty()) {
-                    if (indexProdutoSelecionado >= 0 && indexProdutoSelecionado < sugestoesProdutoAtuais.size()) {
-                         ItemEncomendaPadrao p = sugestoesProdutoAtuais.get(indexProdutoSelecionado);
-                         cmbDescricao.getEditor().setText(p.getNomeItem());
-                         txtValorUnit.setText(p.getPrecoUnit().toString().replace(".", ","));
-                         menuSugestoesProdutos.hide();
-                    }
-                    event.consume();
-                    Platform.runLater(() -> { txtValorUnit.requestFocus(); txtValorUnit.selectAll(); });
-                } else {
-                    event.consume();
-                    Platform.runLater(() -> { txtValorUnit.requestFocus(); txtValorUnit.selectAll(); });
-                }
-            } else if (event.getCode() == KeyCode.DOWN) { navegarMenu(menuSugestoesProdutos, 1, "PROD"); event.consume(); }
-              else if (event.getCode() == KeyCode.UP) { navegarMenu(menuSugestoesProdutos, -1, "PROD"); event.consume(); }
-              else if (event.getCode() == KeyCode.ESCAPE) { menuSugestoesProdutos.hide(); }
-        });
-         // DP028: debounce 250ms para produtos
-         if (debounceProdutos == null) debounceProdutos = new PauseTransition(Duration.millis(250));
-         cmbDescricao.getEditor().setOnKeyReleased(e -> {
-             if(isNavegacaoKey(e.getCode())) return;
-             debounceProdutos.setOnFinished(ev -> {
-                 String txt = cmbDescricao.getEditor().getText().toUpperCase();
-                 if(txt.isEmpty()) { menuSugestoesProdutos.hide(); return; }
-                 List<ItemEncomendaPadrao> achados = listaMestraProdutosObjetos.stream().filter(p -> p.getNomeItem().contains(txt)).collect(Collectors.toList());
-                 if(!achados.isEmpty()) {
-                     menuSugestoesProdutos.getItems().clear();
-                     sugestoesProdutoAtuais = achados;
-                     for(ItemEncomendaPadrao p : achados) {
-                         MenuItem mi = new MenuItem(p.getNomeItem() + " - " + p.getPrecoUnit());
-                         mi.setOnAction(ev2 -> {
-                             cmbDescricao.getEditor().setText(p.getNomeItem());
-                             txtValorUnit.setText(p.getPrecoUnit().toString().replace(".", ","));
-                             menuSugestoesProdutos.hide();
-                             txtValorUnit.requestFocus();
-                         });
-                         menuSugestoesProdutos.getItems().add(mi);
-                     }
-                     menuSugestoesProdutos.show(cmbDescricao, Side.BOTTOM, 0,0);
-                 } else menuSugestoesProdutos.hide();
-             });
-             debounceProdutos.playFromStart();
-         });
-         
-         // Listener para quando selecionar item do ComboBox
-         cmbDescricao.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-             if(newVal != null && !newVal.trim().isEmpty()) {
-                 // Extrair apenas o nome do item (antes do R$)
-                 String nomeItem = newVal.split("R\\$")[0].trim();
-                 cmbDescricao.getEditor().setText(nomeItem);
-                 
-                 for(ItemEncomendaPadrao p : listaMestraProdutosObjetos) {
-                     if(p.getNomeItem().equals(nomeItem)) {
-                         txtValorUnit.setText(p.getPrecoUnit().toString().replace(".", ","));
-                         Platform.runLater(() -> { txtValorUnit.requestFocus(); txtValorUnit.selectAll(); });
-                         break;
-                     }
-                 }
-             }
-         });
-    }
-
-    private void navegarMenu(ContextMenu menu, int dir, String tipo) {
-        int size = menu.getItems().size();
-        if(size == 0) return;
-        int idx = -1;
-        if (tipo.equals("R")) idx = indexRemetenteSelecionado;
-        else if (tipo.equals("D")) idx = indexDestinatarioSelecionado;
-        else if (tipo.equals("ROTA")) idx = indexRotaSelecionado;
-        else idx = indexProdutoSelecionado;
-        if (idx < 0) idx = 0;
-        idx += dir;
-        if (idx < 0) idx = 0;
-        if (idx >= size) idx = size - 1;
-        if (tipo.equals("R")) indexRemetenteSelecionado = idx;
-        else if (tipo.equals("D")) indexDestinatarioSelecionado = idx;
-        else if (tipo.equals("ROTA")) indexRotaSelecionado = idx;
-        else indexProdutoSelecionado = idx;
-        atualizarVisualMenu(menu, idx);
-    }
-
-    private void atualizarVisualMenu(ContextMenu menu, int selectedIndex) {
-        for (int i = 0; i < menu.getItems().size(); i++) {
-            MenuItem item = menu.getItems().get(i);
-            if (item instanceof CustomMenuItem) {
-                Node content = ((CustomMenuItem) item).getContent();
-                if (content instanceof HBox) {
-                    HBox box = (HBox) content;
-                    Label lbl = (Label) box.getChildren().get(0);
-                    estilizarItem((CustomMenuItem) item, lbl, i == selectedIndex);
-                }
-            }
-        }
-    }
-
-    private void estilizarItem(CustomMenuItem item, Label label, boolean isSelected) {
-        HBox box = new HBox(label);
-        box.setPadding(new Insets(5, 10, 5, 10));
-        box.setPrefWidth(400); 
-        HBox.setHgrow(box, Priority.ALWAYS);
-        if (isSelected) {
-            box.setStyle("-fx-background-color: #059669;");
-            label.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
-        } else {
-            box.setStyle("-fx-background-color: white;");
-            label.setStyle("-fx-text-fill: black; -fx-font-size: 14px;");
-        }
-        item.setContent(box);
-    }
-
-    private boolean isNavegacaoKey(KeyCode code) {
-        return code == KeyCode.ENTER || code == KeyCode.TAB || code == KeyCode.ESCAPE || 
-               code == KeyCode.UP || code == KeyCode.DOWN || code == KeyCode.LEFT || code == KeyCode.RIGHT;
     }
 
     @FXML

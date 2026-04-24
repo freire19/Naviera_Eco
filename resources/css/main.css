@@ -1,8 +1,22 @@
 /* ================================================================== */
 /* 1. CONFIGURAÇÃO GERAL DA PÁGINA                                    */
 /* ================================================================== */
+/* Tokens espelhando naviera-web/src/styles/global.css (:root light)
+   --bg        #F7FBF9
+   --bg-card   #FFFFFF
+   --bg-soft   #EEF7F2   (inputs, selects, textarea)
+   --bg-accent #E6F5ED
+   --text      #0F2620
+   --text-soft #3D6B56
+   --text-muted #7BA393
+   --primary   #059669
+   --primary-hover #047857
+   --primary-light #34D399
+   --border    rgba(5,150,105,0.12)
+   --warning   #F59E0B (botao secundario laranja)
+*/
 .root {
-    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-family: "Segoe UI", "Inter", Arial, sans-serif;
     -fx-font-size: 14px;
     -fx-background-color: #F7FBF9;
     -fx-base: #F7FBF9;
@@ -11,46 +25,50 @@
 /* ================================================================== */
 /* 1.1 SISTEMA DE ABAS PRINCIPAL                                      */
 /* ================================================================== */
+/* Abas estilo .tab-nav do web: texto colorido com underline no ativo */
 .main-tab-pane {
     -fx-background-color: #F7FBF9;
 }
 
 .main-tab-pane .tab-header-area {
-    -fx-background-color: #047857;
-    -fx-padding: 0;
+    -fx-background-color: #F7FBF9;
+    -fx-padding: 0 16 0 16;
 }
 
 .main-tab-pane .tab-header-background {
-    -fx-background-color: #047857;
+    -fx-background-color: #F7FBF9;
+    -fx-border-color: rgba(5, 150, 105, 0.12);
+    -fx-border-width: 0 0 2 0;
 }
 
 .main-tab-pane .tab {
-    -fx-background-color: #059669;
-    -fx-background-radius: 5 5 0 0;
-    -fx-padding: 8 20 8 20;
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-padding: 8 16 8 16;
     -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 2 0;
 }
 
 .main-tab-pane .tab .tab-label {
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
+    -fx-text-fill: #7BA393;
+    -fx-font-weight: normal;
     -fx-font-size: 13px;
 }
 
 .main-tab-pane .tab:selected {
-    -fx-background-color: #ffffff;
+    -fx-background-color: transparent;
+    -fx-border-color: #059669;
+    -fx-border-width: 0 0 2 0;
 }
 
 .main-tab-pane .tab:selected .tab-label {
-    -fx-text-fill: #047857;
+    -fx-text-fill: #059669;
+    -fx-font-weight: bold;
 }
 
-.main-tab-pane .tab:hover {
-    -fx-background-color: #059669;
-}
-
-.main-tab-pane .tab:selected:hover {
-    -fx-background-color: #ffffff;
+.main-tab-pane .tab:hover .tab-label {
+    -fx-text-fill: #3D6B56;
 }
 
 .main-tab-pane .tab-close-button {
@@ -91,10 +109,11 @@
     -fx-text-fill: #047857; /* Atualizado para o azul de destaque */
 }
 
+/* Label base: texto principal, nao bold por padrao (web usa weight normal em .label default) */
 .label {
     -fx-text-fill: #0F2620;
-    -fx-font-weight: bold;
-    -fx-font-size: 14px;
+    -fx-font-weight: normal;
+    -fx-font-size: 13px;
 }
 
 .label-subtitle {
@@ -102,18 +121,25 @@
 }
 
 .label-small {
-    -fx-text-fill: #666;
+    -fx-text-fill: #7BA393;
     -fx-font-size: 11px;
+    -fx-font-weight: normal;
 }
 
+/* Label de campo (Remetente:, Destinatario:, etc.) — match web .form-group label
+   font-size: 0.78rem (~12.5px), weight 700, color var(--text) #0F2620 */
 .label-small-bold {
     -fx-font-weight: bold;
-    -fx-font-size: 11px;
-    -fx-text-fill: #333;
+    -fx-font-size: 12px;
+    -fx-text-fill: #0F2620;
 }
 
+/* Titulo de secao (ex: "Lancamento de Frete") — match web h1/h2
+   size ~1.1rem, weight 700, text #0F2620 */
 .label-header {
-    -fx-text-fill: #047857;
+    -fx-text-fill: #0F2620;
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
 }
 
 /* Campos de Destaque (Totais) */
@@ -145,82 +171,114 @@
 /* 3. ESTILOS DOS CAMPOS (TEXTFIELD, COMBOBOX, TEXTAREA)              */
 /* ================================================================== */
 
-/* Altura padronizada */
+/* Altura padronizada — match web form input (padding 10px 14px + fonte 14px) */
 .text-field,
 .combo-box,
 .h-compound {
-    -fx-min-height: 30px;
-    -fx-pref-height: 30px;
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
 }
 
-/* Campos de texto padrão */
+/* === INPUTS: tokens EXATOS do web (1 unica borda, igual ao web) ===
+   Truque: JavaFX por padrao empilha 2-3 backgrounds (base + focus ring + control).
+   Zeramos com -fx-background-insets: 0 e -fx-focus-color: transparent.
+*/
 .text-field,
 .text-area,
 .text-input {
-    -fx-background-color: #FFFFFF !important;
-    -fx-border-color: #7BA393 !important;
-    -fx-border-width: 1px;
-    -fx-border-radius: 3px;
-    -fx-background-radius: 3px;
-    -fx-padding: 6px;
-    -fx-font-weight: 600;
-    -fx-text-fill: #000000 !important;
+    -fx-background-color: #EEF7F2 !important;
+    -fx-background-insets: 0 !important;
+    -fx-background-radius: 8 !important;
+    -fx-border-color: rgba(5, 150, 105, 0.12) !important;
+    -fx-border-width: 1 !important;
+    -fx-border-radius: 8 !important;
+    -fx-padding: 10px 14px;
+    -fx-font-weight: normal;
+    -fx-text-fill: #0F2620 !important;
     -fx-font-size: 14px;
-    -fx-prompt-text-fill: #3D6B56 !important;
+    -fx-prompt-text-fill: #111111 !important;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
 }
 
-/* COMBOBOX FLAT / CLEAN */
+/* TextArea tem camada interna .content que precisa zerar tambem */
+.text-area {
+    -fx-padding: 0 !important;
+}
+.text-area .content {
+    -fx-background-color: #EEF7F2 !important;
+    -fx-background-radius: 8 !important;
+    -fx-border-color: transparent !important;
+    -fx-padding: 10px 14px !important;
+}
+.text-area:focused .content {
+    -fx-background-color: #EEF7F2 !important;
+}
+
+/* ComboBox: remove as camadas internas (arrow-button tinha fundo proprio) */
 .combo-box {
-    -fx-background-color: #FFFFFF !important;
-    -fx-border-color: #7BA393 !important;
-    -fx-border-width: 1px;
-    -fx-border-radius: 3px;
-    -fx-background-radius: 3px;
-    -fx-padding: 0 2px 0 2px;
+    -fx-background-color: #EEF7F2 !important;
+    -fx-background-insets: 0 !important;
+    -fx-background-radius: 8 !important;
+    -fx-border-color: rgba(5, 150, 105, 0.12) !important;
+    -fx-border-width: 1 !important;
+    -fx-border-radius: 8 !important;
+    -fx-padding: 0 !important;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
 }
 
 .combo-box .list-cell {
-    -fx-text-fill: #000000;
-    -fx-font-weight: 600;
+    -fx-text-fill: #0F2620 !important;
+    -fx-font-weight: normal;
     -fx-font-size: 14px;
+    -fx-background-color: transparent !important;
+    -fx-padding: 10px 14px !important;
 }
 
 .combo-box .text-field {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-padding: 4px 6px;
-    -fx-font-weight: 600;
-    -fx-text-fill: #000000 !important;
+    -fx-background-color: transparent !important;
+    -fx-background-insets: 0 !important;
+    -fx-border-color: transparent !important;
+    -fx-border-width: 0 !important;
+    -fx-padding: 10px 14px !important;
+    -fx-font-size: 14px;
+    -fx-font-weight: normal;
+    -fx-focus-color: transparent;
 }
 
 .combo-box .arrow-button {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
+    -fx-background-color: transparent !important;
+    -fx-background-insets: 0 !important;
+    -fx-border-color: transparent !important;
+    -fx-padding: 0 8 0 0 !important;
 }
 
 .combo-box .arrow {
-    -fx-background-color: #3D6B56;
+    -fx-background-color: #7BA393;
     -fx-padding: 3px;
+    -fx-shape: "M 0 0 L 6 6 L 12 0 z";
 }
 
-/* Hover e Focus */
+/* Hover: sem mudanca de borda (web tem apenas focus visivel) */
 .text-field:hover,
 .combo-box:hover,
 .text-area:hover {
-    -fx-border-color: #3D6B56 !important;
+    -fx-border-color: rgba(5, 150, 105, 0.18) !important;
 }
 .combo-box:hover .arrow {
-    -fx-background-color: #0F2620;
+    -fx-background-color: #3D6B56;
 }
 
+/* Focus: borda verde + "box-shadow: 0 0 0 3px rgba(5,150,105,0.12)" do web */
 .text-field:focused,
 .combo-box:focused,
 .text-area:focused,
 .text-input:focused {
-    -fx-background-color: #FFFFFF !important;
-    -fx-border-color: #047857 !important;
-    -fx-border-width: 2px;
-    -fx-effect: none;
+    -fx-background-color: #EEF7F2 !important;
+    -fx-border-color: #059669 !important;
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(gaussian, rgba(5, 150, 105, 0.25), 6, 0.4, 0, 0);
 }
 
 /* Popup do Combobox */
@@ -241,10 +299,10 @@
 .combo-box:disabled .text-field,
 .text-area:disabled {
     -fx-opacity: 1.0;
-    -fx-text-fill: #000000 !important;
-    -fx-background-color: #F5F5F5 !important;
-    -fx-border-color: #A7F3D0 !important;
-    -fx-font-weight: 600;
+    -fx-text-fill: #3D6B56 !important;
+    -fx-background-color: #EEF7F2 !important;
+    -fx-border-color: rgba(5, 150, 105, 0.10) !important;
+    -fx-font-weight: 500;
 }
 
 .combo-box:disabled .arrow {
@@ -257,37 +315,38 @@
     -fx-alignment: CENTER;
 }
 
-/* Combo Viagem Específico (Amarelo) */
+/* Combo Viagem Específico — destaque sutil em verde mais forte */
 .combo-box.combo-viagem,
-.combo-box.combo-viagem:focused,
-.combo-box.combo-viagem:disabled {
-    -fx-background-color: #FEF3C7 !important;
-    -fx-border-color: #FBBF24 !important;
-    -fx-border-width: 2px;
-    -fx-font-weight: 800;
+.combo-box.combo-viagem:focused {
+    -fx-background-color: #E6F5ED !important;
+    -fx-border-color: rgba(5, 150, 105, 0.30) !important;
+    -fx-border-width: 1px;
+    -fx-font-weight: 700;
 }
 .combo-box.combo-viagem .list-cell,
 .combo-box.combo-viagem .text-field {
-    -fx-background-color: transparent;
-    -fx-text-fill: #000000;
-    -fx-font-weight: 800;
+    -fx-background-color: transparent !important;
+    -fx-text-fill: #0F2620;
+    -fx-font-weight: 700;
 }
 .combo-box.combo-viagem .arrow {
-    -fx-background-color: #F59E0B;
+    -fx-background-color: #059669;
 }
 
 /* ================================================================== */
-/* 4. BOTÕES                                                          */
+/* 4. BOTÕES — clean flat como no web                                 */
 /* ================================================================== */
+/* Botao primario — solid verde Naviera, flat, bold (match web) */
 .button {
-    -fx-background-radius: 4px;
-    -fx-padding: 10px 24px 10px 24px !important;
+    -fx-background-radius: 8px;
+    -fx-padding: 10px 20px 10px 20px !important;
     -fx-cursor: hand;
     -fx-font-weight: bold;
-    -fx-font-size: 14px;
-    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-text-fill: white !important;
     -fx-background-color: #059669;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 2, 0, 1, 1);
+    -fx-effect: none;
+    -fx-border-width: 0;
     -fx-min-width: -1 !important;
     -fx-pref-width: -1 !important;
     -fx-alignment: CENTER;
@@ -295,12 +354,17 @@
 
 .button:hover {
     -fx-background-color: #047857;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 4, 0, 2, 2);
 }
 .button:pressed {
-    -fx-background-color: #052E22;
-    -fx-effect: none;
-    -fx-translate-y: 2px;
+    -fx-background-color: #065F46;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Disabled: mantem a cor mas com opacidade (legivel, nao "apagado") */
+.button:disabled {
+    -fx-opacity: 0.45;
+    -fx-cursor: default;
 }
 
 /* Variações de Botão */
@@ -318,19 +382,87 @@
     -fx-text-fill: white;
 }
 
-.button-acesso-rapido {
-    -fx-background-color: #f9f9f9;
-    -fx-border-color: #ddd;
-    -fx-border-radius: 5;
-    -fx-text-fill: #333;
+/* Botão de ação secundária — laranja como no web (ADICIONAR item) */
+.button-warning {
+    -fx-background-color: #F59E0B !important;
+    -fx-text-fill: white !important;
+}
+.button-warning:hover {
+    -fx-background-color: #D97706 !important;
+    -fx-effect: dropshadow(three-pass-box, rgba(245, 158, 11, 0.35), 6, 0, 0, 2);
+}
+
+/* Botão outline danger (Excluir F4) — border vermelho + texto vermelho + fundo branco */
+.button-outline-danger {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #EF4444 !important;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: #EF4444 !important;
+    -fx-effect: none;
+}
+.button-outline-danger:hover {
+    -fx-background-color: rgba(239, 68, 68, 0.08) !important;
+}
+.button-outline-danger:disabled {
+    -fx-opacity: 0.40;
+    -fx-cursor: default;
+}
+
+/* Botão neutro (SAIR Esc) — cinza claro, texto escuro */
+.button-outline {
+    -fx-background-color: #F3F4F6 !important;
+    -fx-border-color: rgba(0, 0, 0, 0.10) !important;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: #374151 !important;
+    -fx-effect: none;
+}
+.button-outline:hover {
+    -fx-background-color: #E5E7EB !important;
+}
+.button-outline:disabled {
+    -fx-opacity: 0.45;
+    -fx-cursor: default;
+}
+
+/* Botao do menu superior (Recibos) — fundo transparente, texto escuro */
+.nav-icon-button {
+    -fx-background-color: transparent !important;
+    -fx-text-fill: #0F2620 !important;
     -fx-font-weight: bold;
+    -fx-font-size: 12px;
     -fx-cursor: hand;
-    -fx-padding: 10px;
-    -fx-effect: none; /* Remove sombra padrão */
+    -fx-effect: none;
+    -fx-border-width: 0;
+    -fx-padding: 8 12 8 12;
+}
+.nav-icon-button:hover {
+    -fx-background-color: rgba(5, 150, 105, 0.08) !important;
+    -fx-text-fill: #047857 !important;
+}
+
+/* Quick-action card (Acesso Rapido) — match web .quick-action */
+.button-acesso-rapido {
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: rgba(5, 150, 105, 0.12) !important;
+    -fx-border-width: 1px;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-text-fill: #0F2620 !important;
+    -fx-font-weight: 500;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+    -fx-padding: 14px 16px;
+    -fx-effect: none;
 }
 .button-acesso-rapido:hover {
-    -fx-background-color: #E6F5ED;
-    -fx-border-color: #059669;
+    -fx-background-color: #FFFFFF !important;
+    -fx-border-color: #059669 !important;
+    -fx-text-fill: #0F2620 !important;
+    -fx-effect: dropshadow(gaussian, rgba(5, 150, 105, 0.15), 6, 0.3, 0, 0);
 }
 
 .theme-button {
@@ -353,61 +485,72 @@
 /* ================================================================== */
 /* 5. TABELAS (UNIFICADO)                                             */
 /* ================================================================== */
+/* Tabela — match web:
+   th: font-weight 600, size 0.72rem (~11px), text-muted #7BA393, uppercase, padding 10px 12px
+   td: padding 10px 12px, text-soft #3D6B56, border-bottom 1px rgba(5,150,105,0.12)
+*/
 .table-view {
-    -fx-background-color: white;
-    -fx-border-color: #7BA393;
-    -fx-font-size: 14px;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-font-size: 13px;
 }
 
-/* Cabeçalho - Forçando azul em todas as tabelas */
 .table-view .column-header,
 .table-view .column-header-background .filler {
-    -fx-background-color: #059669 !important;
-    -fx-size: 35px;
-    -fx-border-color: transparent;
+    -fx-background-color: transparent !important;
+    -fx-size: 36px;
+    -fx-border-color: rgba(5, 150, 105, 0.12);
+    -fx-border-width: 0 0 2 0;
 }
 
 .table-view .column-header-background {
-    -fx-background-color: #059669 !important;
+    -fx-background-color: transparent !important;
 }
 
-/* Texto do Cabeçalho - Forçando branco e negrito */
 .table-view .column-header .label {
-    -fx-text-fill: white !important;
+    -fx-text-fill: #7BA393 !important;
     -fx-font-weight: bold !important;
-    -fx-font-size: 13px !important;
-    -fx-alignment: CENTER;
+    -fx-font-size: 11px !important;
+    -fx-alignment: CENTER-LEFT;
 }
 
-/* Células e Linhas */
+/* Células e Linhas — match web: linha transparente com border-bottom sutil */
 .table-row-cell {
-    -fx-cell-size: 35px;
-    -fx-border-color: transparent transparent #F7FBF9 transparent;
+    -fx-cell-size: 36px;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent rgba(5, 150, 105, 0.12) transparent;
+    -fx-border-width: 0 0 1 0;
 }
 
-/* Linhas zebradas - Índice par (Branco) */
 .table-row-cell:filled:even {
-    -fx-background-color: white;
+    -fx-background-color: transparent;
 }
-
-/* Linhas zebradas - Índice ímpar (Cinza claro) */
 .table-row-cell:filled:odd {
-    -fx-background-color: #f5f5f5;
+    -fx-background-color: rgba(255, 255, 255, 0.02);
 }
 
 .table-view .table-cell {
     -fx-font-size: 13px;
-    -fx-padding: 5px;
+    -fx-padding: 10px 12px;
     -fx-alignment: CENTER-LEFT;
-    -fx-text-fill: #000000;
-    -fx-font-weight: bold;
+    -fx-text-fill: #111111;
+    -fx-font-weight: normal;
+    -fx-border-color: transparent;
 }
 
-/* Seleção - Azul claro para melhor visualização */
-.table-view:focused .table-row-cell:filled:selected, 
+/* Hover de linha — var(--bg-soft) */
+.table-view .table-row-cell:filled:hover {
+    -fx-background-color: #EEF7F2;
+}
+
+/* Linha selecionada — primary verde com texto branco */
+.table-view:focused .table-row-cell:filled:selected,
 .table-view .table-row-cell:filled:selected {
-    -fx-background-color: #E6F5ED !important;
-    -fx-text-fill: #000000 !important;
+    -fx-background-color: #059669 !important;
+}
+.table-view:focused .table-row-cell:filled:selected .table-cell,
+.table-view .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #FFFFFF !important;
 }
 
 .table-view:focused .table-row-cell:selected .table-cell {
@@ -483,39 +626,66 @@
 .custom-split-pane { -fx-background-color: transparent; }
 .main-background { -fx-background-color: #F7FBF9; }
 
+/* Header da aplicacao — match web topbar (var(--bg-card) branco + border-bottom) */
 .header-panel {
-    -fx-background-color: #E6F5ED;
-    -fx-border-color: #A7F3D0;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: rgba(5, 150, 105, 0.12);
     -fx-border-width: 0 0 1 0;
 }
 
+/* Card — match web .card: bg white, border rgba, radius 12, shadow sutil */
 .content-panel {
-    -fx-background-color: white;
-    -fx-background-radius: 5;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(5, 150, 105, 0.12);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 3, 0, 0, 1);
 }
 
 .bordered-panel {
-    -fx-border-color: #ddd;
-    -fx-border-radius: 4;
-}
-
-.table-container-border {
-    -fx-border-color: #A7F3D0;
-    -fx-border-radius: 4;
+    -fx-border-color: rgba(5, 150, 105, 0.12);
+    -fx-background-color: #FFFFFF;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
     -fx-border-width: 1;
 }
 
+.table-container-border {
+    -fx-border-color: rgba(5, 150, 105, 0.12);
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-border-width: 1;
+}
+
+/* Caixa destacada para a linha de adicionar item (Qtd/Item/Preco/Subtotal/ADICIONAR)
+   match web: bordered box com fundo levemente mais claro */
 .table-header-panel {
-    -fx-background-color: #E6F5ED;
-    -fx-border-color: #A7F3D0;
-    -fx-border-width: 0 0 1 0;
+    -fx-background-color: #F7FBF9;
+    -fx-border-color: rgba(5, 150, 105, 0.25);
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10 !important;
 }
 
 .footer-panel {
-    -fx-background-color: #f5f5f5;
-    -fx-border-color: #ddd;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: rgba(5, 150, 105, 0.12);
     -fx-border-width: 1 0 0 0;
+    -fx-background-radius: 0 0 8 8;
+}
+
+/* Separators: linha sutil como no web (rgba verde 0.12) separando secoes */
+.separator *.line {
+    -fx-border-color: transparent;
+    -fx-background-color: rgba(5, 150, 105, 0.15);
+}
+.separator:horizontal *.line {
+    -fx-border-width: 0;
+    -fx-background-color: rgba(5, 150, 105, 0.15);
+    -fx-pref-height: 1;
+    -fx-padding: 6 0 6 0;
 }
 
 .background-embarque {
@@ -983,4 +1153,27 @@ VBox, HBox, AnchorPane, BorderPane, StackPane, GridPane {
 .radio-button:hover .radio {
     -fx-border-color: #059669;
     -fx-effect: dropshadow(gaussian, rgba(5,150,105,0.4), 4, 0, 0, 0);
+}
+/* ============================================================
+   AutoComplete dropdown — override hover azul do JavaFX nativo
+   ============================================================ */
+.autocomplete-menu {
+    -fx-background-color: white;
+    -fx-border-color: #d1d5db;
+    -fx-border-width: 1;
+    -fx-padding: 2;
+}
+.autocomplete-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.autocomplete-menu .menu-item:hover,
+.autocomplete-menu .menu-item:focused,
+.autocomplete-menu .menu-item:selected {
+    -fx-background-color: #047857;
+}
+.autocomplete-menu .menu-item:hover .label,
+.autocomplete-menu .menu-item:focused .label,
+.autocomplete-menu .menu-item:selected .label {
+    -fx-text-fill: white;
 }

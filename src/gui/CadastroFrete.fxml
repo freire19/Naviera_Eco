@@ -95,45 +95,18 @@
 
                 <Separator />
 
-                <HBox spacing="10.0" prefHeight="70.0">
-                   <children>
-                      <VBox spacing="2.0" HBox.hgrow="ALWAYS" styleClass="bordered-panel" style="-fx-padding: 5;">
-                          <children>
-                              <HBox alignment="CENTER_LEFT" spacing="10.0">
-                                  <children>
-                                      <Label text="Nota Fiscal?" styleClass="label-highlight"><font><Font name="System Bold" size="12.0" /></font></Label>
-                                      <RadioButton fx:id="rbSim" text="Sim"><toggleGroup><ToggleGroup fx:id="notaFiscalToggleGroup" /></toggleGroup></RadioButton>
-                                      <RadioButton fx:id="rbNao" selected="true" text="Não" toggleGroup="$notaFiscalToggleGroup" />
-                                      <Separator orientation="VERTICAL" />
-                                      <Button fx:id="btnFotoNota" onAction="#handleFotoNota" style="-fx-font-size: 11px; -fx-padding: 2 8 2 8;" text="📷 Foto" />
-                                      <Button fx:id="btnCodXml" onAction="#handleCodXml" style="-fx-font-size: 11px; -fx-padding: 2 8 2 8;" text="📄 XML" />
-                                      <Button fx:id="btnAudio" onAction="#handleAudio" style="-fx-font-size: 11px; -fx-padding: 2 8 2 8;" text="🎤 Áudio" />
-                                  </children>
-                              </HBox>
-                              <HBox spacing="10.0" alignment="CENTER_LEFT">
-                                  <children>
-                                      <VBox HBox.hgrow="ALWAYS"><Label text="Nº Nota:" styleClass="label-small" /><TextField fx:id="txtNumNota" /></VBox>
-                                      <VBox HBox.hgrow="ALWAYS"><Label text="Valor (R$):" styleClass="label-small" /><TextField fx:id="txtValorNota" /></VBox>
-                                      <VBox HBox.hgrow="ALWAYS"><Label text="Peso (kg):" styleClass="label-small" /><TextField fx:id="txtPesoNota" /></VBox>
-                                  </children>
-                              </HBox>
-                          </children>
-                      </VBox>
-
-                      <VBox spacing="2.0" prefWidth="450.0" styleClass="bordered-panel" style="-fx-padding: 5;">
-                          <children>
-                              <HBox alignment="CENTER_LEFT" spacing="10.0">
-                                  <Label text="Observações:" styleClass="label-small-bold"/>
-                                  <Region HBox.hgrow="ALWAYS" />
-                                  <Label text="Preço:" styleClass="label-small-bold" />
-                                  <RadioButton fx:id="rbNormal" selected="true" text="Normal" style="-fx-font-size: 11px;"><toggleGroup><ToggleGroup fx:id="precoToggleGroup" /></toggleGroup></RadioButton>
-                                  <RadioButton fx:id="rbComDesconto" text="Desc." toggleGroup="$precoToggleGroup" style="-fx-font-size: 11px;" />
-                              </HBox>
-                              <TextArea fx:id="txtObs" VBox.vgrow="ALWAYS" wrapText="true" style="-fx-font-size: 11px;" />
-                          </children>
-                      </VBox>
-                   </children>
-                </HBox>
+                <VBox spacing="4.0" prefHeight="95.0" minHeight="90.0" styleClass="bordered-panel" style="-fx-padding: 5;">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0" minHeight="28.0">
+                            <Label text="Observações:" styleClass="label-small-bold"/>
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Label text="Preço:" styleClass="label-small-bold" />
+                            <RadioButton fx:id="rbNormal" selected="true" text="Normal" style="-fx-font-size: 11px;"><toggleGroup><ToggleGroup fx:id="precoToggleGroup" /></toggleGroup></RadioButton>
+                            <RadioButton fx:id="rbComDesconto" text="Desc." toggleGroup="$precoToggleGroup" style="-fx-font-size: 11px;" />
+                        </HBox>
+                        <TextArea fx:id="txtObs" VBox.vgrow="ALWAYS" wrapText="true" style="-fx-font-size: 11px;" />
+                    </children>
+                </VBox>
 
                 <Separator />
 
@@ -162,12 +135,12 @@
                                 </VBox>
                                 
                                 <VBox alignment="BOTTOM_CENTER" prefWidth="110.0" style="-fx-padding: 5 5 5 0;">
-                                    <Button fx:id="btnInserir" maxWidth="Infinity" onAction="#adicionarItemTabela" style="-fx-background-color: #047857; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;" text="ADICIONAR" />
+                                    <Button fx:id="btnInserir" maxWidth="Infinity" onAction="#adicionarItemTabela" styleClass="button,button-warning" text="ADICIONAR" />
                                 </VBox>
                             </children>
                         </HBox>
 
-                        <TableView fx:id="tabelaItens" VBox.vgrow="ALWAYS" style="-fx-font-size: 13px;">
+                        <TableView fx:id="tabelaItens" VBox.vgrow="ALWAYS" prefHeight="300.0" style="-fx-font-size: 13px;">
                             <columns>
                                 <TableColumn fx:id="colQuantidade" prefWidth="70.0" style="-fx-alignment: CENTER;" text="Qtd" />
                                 <TableColumn fx:id="colItem" prefWidth="500.0" text="Descrição do Item" />
@@ -200,7 +173,7 @@
                                 <Button fx:id="btnNovo" onAction="#handleNovoFrete" prefHeight="35.0" prefWidth="100.0" text="Novo (F1)" />
                                 <Button fx:id="btnAlterar" onAction="#handleAlterarFrete" prefHeight="35.0" prefWidth="100.0" text="Alterar (F2)" />
                                 <Button fx:id="btnSalvar" onAction="#handleSalvarFrete" prefHeight="35.0" prefWidth="100.0" styleClass="button-success" text="SALVAR (F3)" />
-                                <Button fx:id="btnExcluir" onAction="#handleExcluirFrete" prefHeight="35.0" prefWidth="100.0" styleClass="button-danger" text="Excluir (F4)" />
+                                <Button fx:id="btnExcluir" onAction="#handleExcluirFrete" prefHeight="35.0" prefWidth="100.0" styleClass="button-outline-danger" text="Excluir (F4)" />
                             </children>
                         </HBox>
                         
@@ -208,7 +181,7 @@
                         <Button fx:id="btnImprimirNota" onAction="#imprimirNotaFretePersonalizada" prefHeight="35.0" text="Imprimir (F6)" />
                         <Button fx:id="btnImprimirEtiqueta" onAction="#handleImprimirEtiqueta" prefHeight="35.0" text="Etiqueta" />
                         <Button fx:id="btnImprimirRecibo" onAction="#imprimirReciboPersonalizado" prefHeight="35.0" text="Recibo" />
-                        <Button fx:id="btnSair" cancelButton="true" onAction="#handleSair" prefHeight="40.0" prefWidth="100.0" styleClass="button-cancel" text="SAIR (Esc)" />
+                        <Button fx:id="btnSair" cancelButton="true" onAction="#handleSair" prefHeight="35.0" prefWidth="100.0" styleClass="button-outline" text="SAIR (Esc)" />
                     </children>
                 </HBox>
             </children>

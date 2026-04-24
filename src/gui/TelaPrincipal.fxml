@@ -127,7 +127,7 @@
                     </items>
                 </MenuButton>
 
-                <Button contentDisplay="TOP" mnemonicParsing="false" onAction="#handleReciboAvulso" style="-fx-background-color: transparent; -fx-font-weight: bold; -fx-cursor: hand;" text="Recibos">
+                <Button contentDisplay="TOP" mnemonicParsing="false" onAction="#handleReciboAvulso" styleClass="nav-icon-button" text="Recibos">
                     <graphic>
                         <ImageView fitHeight="32.0" fitWidth="32.0" pickOnBounds="true" preserveRatio="true">
                             <image>

@@ -1,6 +1,7 @@
 package gui;
 
 import dao.PassageiroDAO;
+import gui.util.AutoCompleteHelper;
 import gui.util.PermissaoService;
 import dao.PassagemDAO;
 import dao.TarifaDAO;
@@ -76,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.ResourceBundle;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -824,274 +826,52 @@ public class VenderPassagemController implements Initializable {
     private void configurarAutoCompleteComboBox(ComboBox<String> comboBox, ObservableList<String> items, boolean customAction) {
         if (comboBox == null || items == null) return;
 
-        comboBox.setEditable(true);
+        // Popula items para que setValue/seleção programática funcione (ex: setViagemAtiva)
         comboBox.setItems(items);
 
-        final ObservableList<String> itemsOriginal = FXCollections.observableArrayList(items);
-        final boolean[] isFiltering = {false};
-        final boolean[] userNavigated = {false};
-
-        // =====================================================================
-        // NAVEGACAO COM SETAS — para TODOS os ComboBoxes editaveis
-        // Intercepta UP/DOWN antes do editor (TextField) mover o cursor.
-        // =====================================================================
-        comboBox.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, arrowEvent -> {
-            if (arrowEvent.getCode() == KeyCode.DOWN || arrowEvent.getCode() == KeyCode.UP) {
-                arrowEvent.consume(); // Impede o editor de mover o cursor
-                userNavigated[0] = true;
-                if (!comboBox.isShowing()) {
-                    comboBox.show();
-                }
-                if (!comboBox.getItems().isEmpty()) {
-                    int currentIndex = comboBox.getSelectionModel().getSelectedIndex();
-                    int newIndex;
-                    if (arrowEvent.getCode() == KeyCode.DOWN) {
-                        newIndex = (currentIndex < comboBox.getItems().size() - 1) ? currentIndex + 1 : 0;
-                    } else {
-                        newIndex = (currentIndex > 0) ? currentIndex - 1 : comboBox.getItems().size() - 1;
-                    }
-                    isUpdatingFromCode = true;
-                    comboBox.getSelectionModel().select(newIndex);
-                    String selected = comboBox.getItems().get(newIndex);
-                    comboBox.getEditor().setText(selected);
-                    comboBox.getEditor().positionCaret(selected.length());
-                    isUpdatingFromCode = false;
-                }
-            }
-        });
-
-        // =====================================================================
-        // INTERCEPTORES DE ESPAÇO — SOMENTE para o campo de passageiro
-        // O skin do ComboBox ao receber SPACE confirma o item destacado.
-        // Para os outros combos (rota, sexo, etc.) isso não é problema.
-        // =====================================================================
-        if (comboBox == cmbPassageiroAuto) {
-            // KEY_PRESSED: consumir SPACE + inserir manualmente (unica insercao).
-            comboBox.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, spaceEvent -> {
-                if (spaceEvent.getCode() == KeyCode.SPACE && !spaceEvent.isControlDown() && !spaceEvent.isAltDown()) {
-                    spaceEvent.consume();
-                    TextField editor = comboBox.getEditor();
-                    String textoAtual = editor.getText();
-                    int pos = editor.getCaretPosition();
-                    // Evitar espacos consecutivos
-                    if (pos > 0 && textoAtual != null && pos <= textoAtual.length()
-                            && textoAtual.charAt(pos - 1) == ' ') {
-                        return;
-                    }
-                    isUpdatingFromCode = true;
-                    editor.insertText(pos, " ");
-                    isUpdatingFromCode = false;
-                }
-            });
-
-            // KEY_TYPED: apenas consumir para impedir processamento nativo (sem insercao)
-            comboBox.addEventFilter(javafx.scene.input.KeyEvent.KEY_TYPED, keyEvent -> {
-                if (" ".equals(keyEvent.getCharacter())) {
-                    keyEvent.consume();
-                }
-            });
-        }
-
-        // =====================================================================
-        // LISTENER DE TEXTO: filtra com debounce (#037)
-        // =====================================================================
-        final javafx.animation.PauseTransition debounce = new javafx.animation.PauseTransition(javafx.util.Duration.millis(150));
-        comboBox.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
-            if (isUpdatingFromCode || isFiltering[0]) return;
-            if (userNavigated[0]) return;
-
-            final String textoDigitado;
-
-            // DETECÇÃO ANTI-SKIN (só para passageiro):
-            // Se o texto pulou de "JOAO" para "JOAO GUILHERME" (>1 char e é item da lista),
-            // o skin interferiu. Reverter para oldValue + espaço.
-            if (comboBox == cmbPassageiroAuto && oldValue != null && newValue != null
-                    && newValue.length() > oldValue.length() + 1) {
-                boolean skinInterferiu = false;
-                for (String item : itemsOriginal) {
-                    if (item.equalsIgnoreCase(newValue)) {
-                        skinInterferiu = true;
-                        break;
-                    }
-                }
-                if (skinInterferiu) {
-                    String textoCorreto = oldValue.endsWith(" ") ? oldValue : oldValue + " ";
-                    textoDigitado = textoCorreto;
-                    isUpdatingFromCode = true;
-                    comboBox.getEditor().setText(textoCorreto);
-                    comboBox.getEditor().positionCaret(textoCorreto.length());
-                    isUpdatingFromCode = false;
-                } else {
-                    textoDigitado = newValue;
-                }
-            } else {
-                textoDigitado = (newValue != null) ? newValue : "";
-            }
-
-            // #037: debounce — adia filtragem 150ms para evitar lag com listas grandes
-            debounce.setOnFinished(evt -> {
-                if (isUpdatingFromCode || isFiltering[0]) return;
-
-                isFiltering[0] = true;
-                try {
-                    comboBox.getSelectionModel().clearSelection();
-
-                    if (textoDigitado.isEmpty()) {
-                        comboBox.setItems(FXCollections.observableArrayList(itemsOriginal));
-                    } else {
-                        String filtro = textoDigitado.toLowerCase();
-                        ObservableList<String> filtrados = FXCollections.observableArrayList();
-                        for (String item : itemsOriginal) {
-                            if (item.toLowerCase().contains(filtro)) {
-                                filtrados.add(item);
-                            }
-                        }
-                        comboBox.setItems(filtrados);
-                    }
-
-                    if (!textoDigitado.equals(comboBox.getEditor().getText())) {
-                        isUpdatingFromCode = true;
-                        comboBox.getEditor().setText(textoDigitado);
-                        comboBox.getEditor().positionCaret(textoDigitado.length());
-                        isUpdatingFromCode = false;
-                    } else {
-                        comboBox.getEditor().positionCaret(textoDigitado.length());
-                    }
-
-                } finally {
-                    isFiltering[0] = false;
-                }
-
-                if (comboBox.isFocused() || comboBox.getEditor().isFocused()) {
-                    if (!comboBox.getItems().isEmpty()) {
-                        if (!comboBox.isShowing()) {
-                            comboBox.show();
-                        }
-                    } else {
-                        comboBox.hide();
-                    }
-                }
-            });
-            debounce.playFromStart();
-        });
-
-        // =====================================================================
-        // ENTER/TAB
-        // =====================================================================
-        comboBox.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ENTER || event.getCode() == KeyCode.TAB) {
-                String selectedItem = comboBox.getSelectionModel().getSelectedItem();
-
-                // Para o passageiro: só preencher se o usuário navegou com setas
-                // Para os outros combos: comportamento normal (qualquer seleção vale)
-                boolean deveUsarSelecao;
-                if (comboBox == cmbPassageiroAuto) {
-                    deveUsarSelecao = userNavigated[0] && selectedItem != null && !selectedItem.isEmpty();
-                } else {
-                    deveUsarSelecao = selectedItem != null && !selectedItem.isEmpty();
-                }
-
-                if (deveUsarSelecao) {
-                    isUpdatingFromCode = true;
-                    comboBox.getEditor().setText(selectedItem);
-                    comboBox.setValue(selectedItem);
-                    isUpdatingFromCode = false;
-                    if (customAction && comboBox == cmbPassageiroAuto) {
-                        preencherPassageiroPorNome(selectedItem);
-                    }
-                } else if (comboBox != cmbPassageiroAuto) {
-                    // Para combos nao-passageiro: commitar o texto digitado como valor
-                    String editorText = comboBox.getEditor().getText();
-                    if (editorText != null && !editorText.trim().isEmpty()) {
-                        isUpdatingFromCode = true;
-                        comboBox.setValue(editorText.trim());
-                        isUpdatingFromCode = false;
-                    }
-                } else if (customAction && comboBox == cmbPassageiroAuto) {
-                    String textoDigitado = comboBox.getEditor().getText();
-                    if (textoDigitado != null && !textoDigitado.trim().isEmpty()) {
-                        String nomeTrimmed = textoDigitado.trim();
-                        boolean existe = todosOsPassageiros.stream()
-                            .anyMatch(p -> p.getNome().equalsIgnoreCase(nomeTrimmed));
-                        if (existe) {
-                            preencherPassageiroPorNome(nomeTrimmed);
-                        } else {
-                            Alert alertNovo = new Alert(AlertType.CONFIRMATION);
-                            alertNovo.setTitle("Passageiro não encontrado");
-                            alertNovo.setHeaderText("\"" + nomeTrimmed + "\" não está cadastrado.");
-                            alertNovo.setContentText("Deseja continuar com este nome como novo passageiro?");
-                            ButtonType btnSimNovo = new ButtonType("Sim, continuar", ButtonBar.ButtonData.YES);
-                            ButtonType btnNaoNovo = new ButtonType("Não, redigitar", ButtonBar.ButtonData.NO);
-                            alertNovo.getButtonTypes().setAll(btnSimNovo, btnNaoNovo);
-                            java.util.Optional<ButtonType> resposta = alertNovo.showAndWait();
-                            if (resposta.isEmpty() || resposta.get() != btnSimNovo) {
-                                isUpdatingFromCode = true;
-                                comboBox.getEditor().clear();
-                                comboBox.getSelectionModel().clearSelection();
-                                isUpdatingFromCode = false;
-                                comboBox.requestFocus();
-                            }
-                        }
-                    }
-                }
-                comboBox.hide();
-                userNavigated[0] = false;
-                event.consume();
-            } else if (event.getCode() == KeyCode.ESCAPE) {
-                comboBox.hide();
-                userNavigated[0] = false;
-                event.consume();
-            } else if (!event.getCode().isModifierKey() && !event.getCode().isFunctionKey()
-                    && event.getCode() != KeyCode.DOWN && event.getCode() != KeyCode.UP) {
-                // Qualquer tecla que nao seja seta/modificador/funcao: resetar navegacao
-                userNavigated[0] = false;
-            }
-        });
-
-        // =====================================================================
-        // CLIQUE no dropdown: preencher dados do passageiro
-        // =====================================================================
+        Consumer<String> onSelect = null;
         if (customAction && comboBox == cmbPassageiroAuto) {
-            comboBox.skinProperty().addListener((obsSkin, oldSkin, newSkin) -> {
-                if (newSkin instanceof javafx.scene.control.skin.ComboBoxListViewSkin) {
-                    @SuppressWarnings("unchecked")
-                    javafx.scene.control.ListView<String> listView =
-                        (javafx.scene.control.ListView<String>)
-                        ((javafx.scene.control.skin.ComboBoxListViewSkin<?>) newSkin).getPopupContent();
-                    listView.setOnMouseClicked(mouseEvent -> {
-                        String selecionado = comboBox.getSelectionModel().getSelectedItem();
-                        if (selecionado != null && !selecionado.isEmpty() && !isUpdatingFromCode) {
-                            isUpdatingFromCode = true;
-                            comboBox.getEditor().setText(selecionado);
-                            comboBox.getEditor().positionCaret(selecionado.length());
-                            isUpdatingFromCode = false;
-                            comboBox.hide();
-                            preencherPassageiroPorNome(selecionado);
-                        }
-                    });
-                }
-            });
+            onSelect = nome -> {
+                if (nome != null && !nome.trim().isEmpty()) preencherPassageiroPorNome(nome);
+            };
         }
+        AutoCompleteHelper.install(comboBox, () -> items, onSelect);
 
-        // Ao perder foco: fechar dropdown e commitar valor
-        comboBox.getEditor().focusedProperty().addListener((obs4, wasFocused, isFocused) -> {
-            if (!isFocused) {
-                comboBox.hide();
-                // Commitar o texto do editor como valor do ComboBox
-                String editorText = comboBox.getEditor().getText();
-                if (editorText != null && !editorText.trim().isEmpty() && !isUpdatingFromCode) {
-                    isUpdatingFromCode = true;
-                    comboBox.setValue(editorText.trim());
-                    isUpdatingFromCode = false;
+        // Enter/Tab quando nao ha selecao no menu: commitar texto digitado.
+        // Para cmbPassageiroAuto, mostrar dialogo se nome nao existir.
+        comboBox.setOnKeyPressed(event -> {
+            if (event.getCode() != KeyCode.ENTER && event.getCode() != KeyCode.TAB) return;
+            String texto = comboBox.getEditor().getText();
+            if (texto == null || texto.trim().isEmpty()) return;
+            String nomeTrim = texto.trim();
+            isUpdatingFromCode = true;
+            try { comboBox.setValue(nomeTrim); } finally { isUpdatingFromCode = false; }
+            if (customAction && comboBox == cmbPassageiroAuto) {
+                boolean existe = todosOsPassageiros.stream().anyMatch(p -> p.getNome().equalsIgnoreCase(nomeTrim));
+                if (existe) {
+                    preencherPassageiroPorNome(nomeTrim);
+                } else {
+                    Alert alertNovo = new Alert(AlertType.CONFIRMATION);
+                    alertNovo.setTitle("Passageiro não encontrado");
+                    alertNovo.setHeaderText("\"" + nomeTrim + "\" não está cadastrado.");
+                    alertNovo.setContentText("Deseja continuar com este nome como novo passageiro?");
+                    ButtonType btnSimNovo = new ButtonType("Sim, continuar", ButtonBar.ButtonData.YES);
+                    ButtonType btnNaoNovo = new ButtonType("Não, redigitar", ButtonBar.ButtonData.NO);
+                    alertNovo.getButtonTypes().setAll(btnSimNovo, btnNaoNovo);
+                    Optional<ButtonType> resposta = alertNovo.showAndWait();
+                    if (resposta.isEmpty() || resposta.get() != btnSimNovo) {
+                        isUpdatingFromCode = true;
+                        comboBox.getEditor().clear();
+                        comboBox.getSelectionModel().clearSelection();
+                        isUpdatingFromCode = false;
+                        comboBox.requestFocus();
+                        event.consume();
+                    }
                 }
-            }
-        });
-        comboBox.focusedProperty().addListener((obs3, wasFocused, isFocused) -> {
-            if (!isFocused && !comboBox.getEditor().isFocused()) {
-                comboBox.hide();
             }
         });
     }
+
 
     private void preencherPassageiroPorNome(String nome) {
         if (nome == null || nome.trim().isEmpty()) {
