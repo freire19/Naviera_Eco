@@ -1,9 +1,13 @@
 package com.naviera.api.config;
 
 import java.math.BigDecimal;
+import java.time.ZoneId;
 
 public final class MoneyUtils {
     private MoneyUtils() {}
+
+    /** #DB209: TZ de negocio — usar em LocalDate.now()/LocalDateTime para evitar drift UTC. */
+    public static final ZoneId ZONE_BR = ZoneId.of("America/Sao_Paulo");
 
     public static BigDecimal toBigDecimal(Object val) {
         if (val == null) return BigDecimal.ZERO;

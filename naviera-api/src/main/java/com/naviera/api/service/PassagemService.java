@@ -73,7 +73,6 @@ public class PassagemService {
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
 
         String forma = req.formaPagamento() != null ? req.formaPagamento() : "PIX";
-        String numBilhete = "APP-" + String.format("%06d", System.currentTimeMillis() % 1000000);
 
         // #212: idTipoPassagem obrigatorio — sem ele nao da pra escolher tarifa.
         if (req.idTipoPassagem() == null) throw ApiException.badRequest("idTipoPassagem obrigatorio");
@@ -87,6 +86,14 @@ public class PassagemService {
 
             Integer empresaId = ((Number) viagem.get(0).get("empresa_id")).intValue();
             Long idRota = (Long) viagem.get(0).get("id_rota");
+
+            // #DB206: numero_bilhete gerado com advisory lock + MAX+1 por empresa
+            //   (timestamp%1M cicla em 16min e colide sob concorrencia).
+            jdbc.query("SELECT pg_advisory_xact_lock(?)", rs -> null, empresaId);
+            Integer proximo = jdbc.queryForObject(
+                "SELECT COALESCE(MAX(CAST(SUBSTRING(numero_bilhete FROM 'APP-([0-9]+)') AS INTEGER)), 0) + 1 FROM passagens WHERE empresa_id = ? AND numero_bilhete LIKE 'APP-%'",
+                Integer.class, empresaId);
+            String numBilhete = "APP-" + String.format("%06d", proximo != null ? proximo : 1);
 
             // #711: cargas fazem parte do total (Desktop e BilheteService ja somam) — alinhar.
             var tarifas = jdbc.queryForList(
@@ -105,10 +112,11 @@ public class PassagemService {
                 "SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?", cliente.getDocumento(), empresaId);
             Long idPassageiro;
             if (passageiros.isEmpty()) {
-                jdbc.update("INSERT INTO passageiros (nome_passageiro, numero_documento, empresa_id) VALUES (?, ?, ?)",
-                    cliente.getNome(), cliente.getDocumento(), empresaId);
-                idPassageiro = jdbc.queryForObject("SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?",
-                    Long.class, cliente.getDocumento(), empresaId);
+                // #DB221: usar INSERT RETURNING (atomico) em vez de INSERT + SELECT separado
+                idPassageiro = jdbc.queryForObject(
+                    "INSERT INTO passageiros (nome_passageiro, numero_documento, empresa_id) VALUES (?, ?, ?) RETURNING id_passageiro",
+                    Long.class, cliente.getNome(), cliente.getDocumento(), empresaId);
+                if (idPassageiro == null) throw ApiException.badGateway("Falha ao criar passageiro");
             } else {
                 idPassageiro = ((Number) passageiros.get(0).get("id_passageiro")).longValue();
             }
@@ -132,6 +140,7 @@ public class PassagemService {
                 numBilhete, idPassageiro, req.idViagem(), idRota, req.idTipoPassagem(),
                 transporte, alimentacao, cargas, desconto, total, valorAPagar, statusPassagem,
                 clienteId, "Compra via App - " + forma, empresaId, forma, descontoApp);
+            if (idPassagem == null) throw ApiException.badGateway("Falha ao criar passagem (RETURNING vazio)");
 
             String subcontaId = null;
             if (!"BARCO".equals(forma)) {
@@ -168,11 +177,14 @@ public class PassagemService {
         Integer empresaId = (Integer) resp.remove("empresaId");
         String subcontaId = (String) resp.remove("subcontaId");
         BigDecimal valorAPagar = (BigDecimal) resp.get("valorAPagar");
+        String numBilhete = (String) resp.get("numeroBilhete");
 
+        // #DB209: vencimento baseado em TZ BR, nao UTC default da JVM
         CobrancaRequest pspReq = new CobrancaRequest(
             empresaId, subcontaId, "PASSAGEM", idPassagem, clienteId, forma,
             valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),
-            "Passagem " + numBilhete, LocalDate.now().plusDays(1),
+            "Passagem " + numBilhete,
+            LocalDate.now(com.naviera.api.config.MoneyUtils.ZONE_BR).plusDays(1),
             cliente.getDocumento(), cliente.getNome(), cliente.getEmail()
         );
         PspCobranca cob = pspService.criar(pspReq);

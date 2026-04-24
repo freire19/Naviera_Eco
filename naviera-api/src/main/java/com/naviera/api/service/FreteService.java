@@ -181,7 +181,9 @@ public class FreteService {
         String numeroFrete = (String) resp.remove("numeroFrete");
         BigDecimal valorAPagar = (BigDecimal) resp.get("valorAPagar");
 
-        LocalDate venc = "BOLETO".equals(forma) ? LocalDate.now().plusDays(3) : LocalDate.now().plusDays(1);
+        // #DB209: TZ BR (MoneyUtils.ZONE_BR) evita drift de vencimento no fim do dia
+        java.time.ZoneId zoneBR = com.naviera.api.config.MoneyUtils.ZONE_BR;
+        LocalDate venc = "BOLETO".equals(forma) ? LocalDate.now(zoneBR).plusDays(3) : LocalDate.now(zoneBR).plusDays(1);
         CobrancaRequest pspReq = new CobrancaRequest(
             empresaId, subcontaId, "FRETE", idFrete, clienteId, forma,
             valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),

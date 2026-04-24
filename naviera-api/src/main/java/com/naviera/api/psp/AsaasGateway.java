@@ -16,12 +16,15 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Implementacao Asaas do {@link PspGateway}.
@@ -67,6 +70,8 @@ public class AsaasGateway implements PspGateway {
             throw new IllegalArgumentException(
                 "Empresa sem subcontaId Asaas — complete o onboarding (Fase 3.2) antes");
         }
+        // #DB222: defesa em profundidade — valorBruto null geraria NPE generico no subtract
+        Objects.requireNonNull(req.valorBruto(), "valorBruto obrigatorio na CobrancaRequest");
 
         try {
             String customerId = obterOuCriarCustomer(req);
@@ -81,7 +86,8 @@ public class AsaasGateway implements PspGateway {
             payload.put("value", valorLiquido);
             payload.put("description", req.descricao() != null ? req.descricao() : "Naviera");
             payload.put("externalReference", req.tipoOrigem() + ":" + req.origemId());
-            LocalDate venc = req.vencimento() != null ? req.vencimento() : LocalDate.now().plusDays(1);
+            // #DB209: TZ BR central (MoneyUtils.ZONE_BR) evita divergir boleto no fim do dia
+            LocalDate venc = req.vencimento() != null ? req.vencimento() : LocalDate.now(com.naviera.api.config.MoneyUtils.ZONE_BR).plusDays(1);
             payload.put("dueDate", venc.toString());
 
             // Split Naviera: uma parcela % vai pra subconta Naviera, resto fica com a empresa
@@ -215,7 +221,10 @@ public class AsaasGateway implements PspGateway {
             byte[] digest = hmac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             StringBuilder hex = new StringBuilder();
             for (byte b : digest) hex.append(String.format("%02x", b));
-            return hex.toString().equalsIgnoreCase(assinatura);
+            // #DB205: compare constant-time para evitar timing attack que revele assinatura
+            byte[] expected = hex.toString().toLowerCase().getBytes(StandardCharsets.US_ASCII);
+            byte[] received = assinatura.toLowerCase().getBytes(StandardCharsets.US_ASCII);
+            return MessageDigest.isEqual(expected, received);
         } catch (Exception e) {
             log.error("[AsaasGateway] Erro ao validar assinatura webhook: {}", e.getMessage());
             return false;
@@ -225,18 +234,23 @@ public class AsaasGateway implements PspGateway {
     // ─── Helpers HTTP ───────────────────────────────────────────────
 
     private String obterOuCriarCustomer(CobrancaRequest req) throws Exception {
-        // Busca por cpfCnpj antes de criar pra nao duplicar
-        if (!isBlank(req.cpfCnpjPagador())) {
-            JsonNode list = get("/customers?cpfCnpj=" + req.cpfCnpjPagador());
+        // #DB207: normalizar cpfCnpj para digitos-apenas e URL-encode evita duplicata e injection.
+        String cpfCnpjDigits = normalizeCpfCnpj(req.cpfCnpjPagador());
+        if (!isBlank(cpfCnpjDigits)) {
+            JsonNode list = get("/customers?cpfCnpj=" + URLEncoder.encode(cpfCnpjDigits, StandardCharsets.UTF_8));
             JsonNode data = list.path("data");
             if (data.isArray() && data.size() > 0) return data.get(0).path("id").asText();
         }
         Map<String, Object> payload = new HashMap<>();
         payload.put("name", req.nomePagador() != null ? req.nomePagador() : "Cliente Naviera");
-        if (!isBlank(req.cpfCnpjPagador())) payload.put("cpfCnpj", req.cpfCnpjPagador());
+        if (!isBlank(cpfCnpjDigits)) payload.put("cpfCnpj", cpfCnpjDigits);
         if (!isBlank(req.emailPagador())) payload.put("email", req.emailPagador());
         JsonNode body = post("/customers", payload);
         return body.path("id").asText();
+    }
+
+    private static String normalizeCpfCnpj(String raw) {
+        return raw == null ? null : raw.replaceAll("\\D", "");
     }
 
     private JsonNode post(String path, Map<String, Object> body) throws Exception {

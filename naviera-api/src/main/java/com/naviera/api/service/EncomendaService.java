@@ -206,7 +206,7 @@ public class EncomendaService {
             empresaId, subcontaId, "ENCOMENDA", idEncomenda, clienteId, forma,
             valorAPagar, BigDecimal.ZERO, pspProps.getSplitNavieraPct(),
             "Encomenda " + (numEncomenda != null ? numEncomenda : idEncomenda),
-            LocalDate.now().plusDays(3),
+            LocalDate.now(com.naviera.api.config.MoneyUtils.ZONE_BR).plusDays(3),
             cliente.getDocumento(), cliente.getNome(), cliente.getEmail()
         );
         PspCobranca cob = pspService.criar(pspReq);
