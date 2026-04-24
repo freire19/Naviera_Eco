@@ -385,11 +385,12 @@ export default function RelatorioFretes({ viagemAtiva }) {
       }
 
       // Assinatura do conferente deste destinatario (uma por cliente)
+      // — sem nome do destinatario (raramente o proprio dono assina)
       html += `
         <div class="dest-signature">
           <div class="dest-sign-line"></div>
           <div class="dest-sign-label">
-            <span>CONFERIDO POR &middot; ${dest}</span>
+            <span>CONFERIDO POR</span>
             <span>Total: <strong>${totalVolumesDest}</strong> volume${totalVolumesDest > 1 ? 's' : ''}</span>
           </div>
           <div class="dest-sign-hint">Assinatura e data</div>
@@ -445,15 +446,19 @@ export default function RelatorioFretes({ viagemAtiva }) {
         border-right: 1px solid #047857;
         border-bottom: 1px solid #047857;
       }
-      /* Assinatura por destinatario: espaco decente pra assinar, aparece
-         depois da ultima nota de cada cliente, antes do proximo destinatario */
+      /* Caixa de assinatura por destinatario: mesmas bordas verdes das
+         notas pra parecer continuacao da caixa, com espaco pra assinar.
+         Aparece depois da ultima nota de cada cliente. */
       .dest-signature {
-        margin: 6px 0 22px;
-        padding: 0 20px;
+        margin: 0 0 24px;
+        padding: 42px 16px 14px;
+        border-left: 4px solid #047857;
+        border-right: 1px solid #047857;
+        border-bottom: 1px solid #047857;
+        border-top: 1px dashed #B7DFCC;
         page-break-inside: avoid;
       }
       .dest-sign-line {
-        margin-top: 44px;
         border-bottom: 1px solid #0F2620;
         height: 1px;
       }
