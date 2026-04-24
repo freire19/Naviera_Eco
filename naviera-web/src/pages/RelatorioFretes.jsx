@@ -399,7 +399,22 @@ export default function RelatorioFretes({ viagemAtiva }) {
 
     const titulo = 'CONFERE DE VIAGEM'
     const full = `<!DOCTYPE html><html><head><title>${titulo}</title><style>${baseStyle}
-      @page { size: A4 portrait; margin: 15mm; }
+      @page {
+        size: A4 portrait;
+        margin: 15mm 15mm 18mm 15mm;
+        @bottom-right {
+          content: counter(page) " / " counter(pages);
+          font-family: Arial, sans-serif;
+          font-size: 9px;
+          color: #3D6B56;
+        }
+        @bottom-left {
+          content: "${titulo}";
+          font-family: Arial, sans-serif;
+          font-size: 9px;
+          color: #7BA393;
+        }
+      }
       body { font-size: 11px; }
       /* Cabecalho do destinatario: faixa superior verde destacada */
       .dest-header {
@@ -482,10 +497,15 @@ export default function RelatorioFretes({ viagemAtiva }) {
     </style></head><body>
       <div class="header">
         <h2 style="font-size:18px">${titulo}</h2>
-        <p>Viagem: ${viagemSel?.descricao || viagemId} | Rota: ${rotaSel || 'Todas'} | ${clienteSel ? 'Cliente: ' + clienteSel : 'Todos os clientes'}</p>
+        <p>
+          <strong>Viagem:</strong> ${viagemSel?.descricao || viagemId}
+          &nbsp;&middot;&nbsp; <strong>Data:</strong> ${fmtDate(viagemSel?.data_viagem)}
+          &nbsp;&middot;&nbsp; <strong>Rota:</strong> ${rotaSel || 'Todas'}
+          &nbsp;&middot;&nbsp; ${clienteSel ? '<strong>Cliente:</strong> ' + clienteSel : 'Todos os clientes'}
+        </p>
       </div>
       ${html || '<p style="text-align:center;color:#999">Sem itens para conferir</p>'}
-      <div style="text-align:center;font-size:9px;margin-top:18px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
+      <div style="text-align:center;font-size:9px;margin-top:18px;color:#999">Emitido em ${new Date().toLocaleString('pt-BR')}</div>
       <script>window.onload=()=>window.print()</script>
     </body></html>`
     printContent(full, titulo)
