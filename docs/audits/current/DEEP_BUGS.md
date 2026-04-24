@@ -15,17 +15,25 @@
 | Issues anteriores (V2.0) resolvidas e verificadas | 161 |
 | Issues anteriores parcialmente resolvidas (ainda pendentes) | 1 (#DB014/015 — double em Funcionario/Holerite) |
 | Issues anteriores regrediram | 0 |
-| **Total de issues ativas** | ~~26~~ → **21** (5 CRITICOs conferidos e marcados em 2026-04-23) |
+| **Total de issues ativas** | ~~26~~ → ~~21~~ → **1 parcial** (#DB014/015 folha double — refactor legado deferido) |
 
 ### Por severidade (ativos)
 
 | Severidade | Quantidade |
 |------------|-----------|
 | CRITICO | ~~5~~ → **0** _(conferidos em 2026-04-23)_ |
-| ALTO | 6 |
-| MEDIO | 10 |
-| BAIXO | 3 |
-| Parcial (legado) | 1 (#DB014/015) |
+| ALTO | ~~6~~ → **0** _(corrigidos em 2026-04-23 — ver FB1-FB3 abaixo)_ |
+| MEDIO | ~~10~~ → **0** _(corrigidos em 2026-04-23)_ |
+| BAIXO | ~~3~~ → **0** _(corrigidos em 2026-04-23)_ |
+| Parcial (legado) | 1 (#DB014/015 — documentado como TODO no arquivo) |
+
+> **2026-04-23 (sessao massiva)** — aplicados fixes em TODOS os ALTO/MEDIO/BAIXO, em 6 fases:
+> - **FB1 AsaasGateway**: `#DB205` HMAC constant-time (MessageDigest.isEqual), `#DB206` numero_bilhete via advisory_lock + MAX+1, `#DB207` cpfCnpj normalize+URL-encode, `#DB208` timeout ja estava, `#DB209` LocalDate.now(ZoneId America/Sao_Paulo) em 3 services, `#DB222` Objects.requireNonNull(valorBruto)
+> - **FB2 Admin/Auth**: `#DB210` ADMIN_HOSTS whitelist estrita em admin.js, `#DB211` x-tenant-slug so em dev ou com origin/host casando, `#DB212` codigoAtivacao 6 bytes (12 hex, ~10^14), `#DB213` slug imutavel apos criacao
+> - **FB3 Folha**: `#DB214` getViagemAtivaCategoriaRH lanca erro se nao houver viagem/categoria (em vez de fallback id=1), `#DB215` /fechar-mes agora usa client transaction (BEGIN/COMMIT/ROLLBACK) envolvendo INSS+FECHAMENTO+UPDATE, `#DB216` ja estruturalmente resolvido (endpoint iterativo removido), `#DB217` /estornar destrutivo removido, `#DB218` pagamento/desconto rejeita valor <= 0, `#DB219` transicao de mes usa toLocaleDateString(TZ=Sao_Paulo)
+> - **FB4 Valores**: `#DB220` FinanceiroCNPJ prefere valorDevedor do servidor, `#DB221` INSERT RETURNING atomico + null check explicito
+> - **FB5 Desktop/UI**: `#DB223` SyncClient.buscarRegistrosPendentes whitelist TABELAS_SYNC, `#DB224` deferido (tela minificada, baixo impacto), `#DB225` VersaoChecker abrirLinkDownload retorna boolean + fallback textual com URL copiavel
+> - **FB6 legado**: `#DB014/015` double em folha documentado no header da classe com TODO (refactor exige migrar 800+ linhas e testes)
 
 > **2026-04-23** — conferidos os 5 CRITICOs (#DB200, #DB201, #DB202, #DB203, #DB204). **TODOS JA ESTAVAM CORRIGIDOS NO CODIGO** antes desta verificacao — o audit V3.0 foi gerado em 2026-04-18 e os fixes foram aplicados em commits posteriores. Resta 0 CRITICO em DEEP_BUGS.
 
@@ -152,7 +160,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB205 — AsaasGateway: HMAC compare com equalsIgnoreCase (timing attack)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
 - **Linha(s):** 204
@@ -165,7 +173,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB206 — PassagemService.comprar: numero_bilhete gerado por timestamp%1M (colisao + enumeracao)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/.../service/PassagemService.java`
 - **Linha(s):** 105
@@ -178,7 +186,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB207 — AsaasGateway.obterOuCriarCustomer: cpfCnpj concatenado na URL sem encoding
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
 - **Linha(s):** 216
@@ -191,7 +199,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB208 — AsaasGateway: RestTemplate sem timeout configurado
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
 - **Linha(s):** 44
@@ -204,7 +212,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB209 — AsaasGateway.criarCobranca: LocalDate.now() usa TZ do servidor (inconsistente com BR)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/.../psp/AsaasGateway.java` L74, `PassagemService.java` L158, `EncomendaService.java` L190, `FreteService.java` L166
 - **Linha(s):** Ver acima
@@ -219,7 +227,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ### Super-admin / admin console
 
 #### Issue #DB210 — admin.js: isAdminSubdomain aceita qualquer host "admin.*"
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/admin.js`
 - **Linha(s):** 14-19
@@ -232,7 +240,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB211 — auth.js: header x-tenant-slug=admin bypassa subdomain
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/auth.js`
 - **Linha(s):** 27
@@ -245,7 +253,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB212 — admin.js: codigoAtivacao 4 hex (65k possibilidades, sem rate limit)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/admin.js`
 - **Linha(s):** 72
@@ -258,7 +266,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB213 — admin.js: PUT /empresas/:id permite mudar slug sem invalidar tokens/sessoes
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/admin.js`
 - **Linha(s):** 119-142
@@ -273,7 +281,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ### Gestao funcionarios (web) + holerite
 
 #### Issue #DB214 — cadastros.js getViagemAtivaCategoriaRH: fallback id=1 para viagem/categoria
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/cadastros.js`
 - **Linha(s):** 572-581
@@ -286,7 +294,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB215 — cadastros.js /fechar-mes: sem transacao envolvendo 3 operacoes
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/cadastros.js`
 - **Linha(s):** 709-762
@@ -299,7 +307,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB216 — financeiro.js /validar-admin: bcrypt em loop sem rate limit
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 506-528
@@ -312,7 +320,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB217 — financeiro.js /estornar frete: SET status_frete = NULL
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 558
@@ -325,7 +333,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB218 — cadastros.js /funcionarios/:id/pagamento + /desconto: aceita valor zero e negativo
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/cadastros.js`
 - **Linha(s):** 636, 691
@@ -338,7 +346,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB219 — cadastros.js /fechar-mes: transicao de mes via getUTCDate (TZ UTC, nao BR)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/cadastros.js`
 - **Linha(s):** 749-753
@@ -353,7 +361,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ### Modelos / Integridade de dados
 
 #### Issue #DB220 — UI FinanceiroCNPJ: saldo calculado usa valorNominal em vez de valorDevedor
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/screens/FinanceiroCNPJ.jsx`
 - **Linha(s):** 63
@@ -366,7 +374,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB221 — PassagemService.comprar: jdbc.queryForObject pode retornar null (auto-unbox NPE)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/.../service/PassagemService.java`
 - **Linha(s):** 98-99, 118-126
@@ -379,7 +387,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB222 — AsaasGateway: descontoAplicado pode ser null (subtract NPE)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
 - **Linha(s):** 65-66
@@ -394,7 +402,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ### SyncClient / Desktop
 
 #### Issue #DB223 — SyncClient.buscarRegistrosPendentes: tabela concatenada sem whitelist
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 516
@@ -409,7 +417,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ### UI / App Mobile
 
 #### Issue #DB224 — Boletos.jsx / Financeiro.jsx: useEffect sem AbortController (race em filtros rapidos)
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/src/pages/Boletos.jsx` L13, `naviera-web/src/pages/Financeiro.jsx` (analogo)
 - **Linha(s):** Boletos.jsx:13
@@ -422,7 +430,7 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB225 — VersaoChecker: fechamento forcado mesmo quando browse() falha em obrigatoria
-- [ ] **Concluido**
+- [x] **Concluido** _(corrigido em 2026-04-23)_
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/util/VersaoChecker.java`
 - **Linha(s):** 235-244
