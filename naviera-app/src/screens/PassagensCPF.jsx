@@ -26,7 +26,8 @@ export default function PassagensCPF({ t, authHeaders }) {
   const [toast, setToast] = useState(null);
   const [selBilhete, setSelBilhete] = useState(null);
 
-  const hoje = new Date().toISOString().split("T")[0];
+  // #209 #220: usar data-local (sv-SE = YYYY-MM-DD) evita drift UTC no fim do dia BR.
+  const hoje = new Date().toLocaleDateString('sv-SE');
   const viagensEmb = selEmb ? viagens?.filter(v => v.embarcacao === selEmb.nome && v.dataViagem >= hoje && !v.atual) || [] : [];
   const tarifasDaViagem = compra ? tarifas?.filter(x => x.origem === compra.origem && x.destino === compra.destino) || [] : [];
   const embFiltradas = busca.trim() ? embarcacoes?.filter(e => e.nome.toLowerCase().includes(busca.toLowerCase()) || (e.rotaPrincipal || "").toLowerCase().includes(busca.toLowerCase())) : embarcacoes;
@@ -35,7 +36,9 @@ export default function PassagensCPF({ t, authHeaders }) {
     if (!tipoSel) { setErro("Selecione o tipo de passagem."); return; }
     setErro(""); setComprando(true);
     try {
-      const res = await authFetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: compra.id, idTipoPassagem: tipoSel, formaPagamento: formaPag }) });
+      // #231: fallback para id_viagem quando DTO usar snake_case
+      const viagemIdCompra = compra.id ?? compra.id_viagem ?? compra.idViagem;
+      const res = await authFetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: viagemIdCompra, idTipoPassagem: tipoSel, formaPagamento: formaPag }) });
       const data = await res.json();
       if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
       setResultado(data); rm();

@@ -104,10 +104,12 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
     </div>;
   }
 
-  // Agrupar fretes por embarcacao
+  // #232: agrupar por empresa quando disponivel (CNPJ pode ter fretes em empresas diferentes
+  // que compartilham nomes de embarcacao). Fallback para embarcacao se empresa_nome ausente.
   const grupos = (fretes || []).reduce((acc, f) => {
-    const key = f.embarcacao || "Sem embarcacao";
-    if (!acc[key]) acc[key] = { embarcacao: key, fretes: [], pendente: 0, pago: 0 };
+    const empresaNome = f.empresaNome || f.empresa_nome;
+    const key = empresaNome || f.embarcacao || "Sem empresa";
+    if (!acc[key]) acc[key] = { titulo: key, embarcacao: key, fretes: [], pendente: 0, pago: 0 };
     acc[key].fretes.push(f);
     acc[key].pendente += Number(f.valorDevedor) || 0;
     acc[key].pago += Number(f.valorPago) || 0;
