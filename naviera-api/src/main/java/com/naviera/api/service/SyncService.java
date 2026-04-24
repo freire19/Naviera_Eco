@@ -195,10 +195,11 @@ public class SyncService {
 
     /**
      * Retorna true se o timestamp do cliente e mais recente que o do servidor.
-     * Se nao for possivel comparar, assume que o cliente e mais recente (aceita o upload).
+     * Se nao for possivel comparar, assume que o servidor vence (preserva dados consolidados).
+     * #222: cliente com timestamp blank NAO ganha — caso contrario sobrescreve servidor com registro velho.
      */
     private boolean isClienteNewer(String clienteTimestamp, Map<String, Object> serverRow) {
-        if (clienteTimestamp == null || clienteTimestamp.isBlank()) return true;
+        if (clienteTimestamp == null || clienteTimestamp.isBlank()) return false;
 
         Object serverObj = serverRow.get("ultima_atualizacao");
         if (serverObj == null) return true;
@@ -217,7 +218,7 @@ public class SyncService {
         } catch (DateTimeParseException e) {
             log.warn("Erro ao comparar timestamps (cliente={}, servidor={}): {}",
                 clienteTimestamp, serverObj, e.getMessage());
-            return true; // na duvida, aceita
+            return false; // #222: na duvida, preserva servidor
         }
     }
 
@@ -313,10 +314,12 @@ public class SyncService {
                 updateSets.add(col + " = EXCLUDED." + col);
             }
         }
+        // #221: ON CONFLICT composto (uuid, empresa_id) — ver migration 033_sync_uuid_empresa_unique.sql.
+        //   Evita colisao cross-tenant em caso raro de UUIDs duplicados globalmente.
         String sql = "INSERT INTO " + tabela
             + " (" + String.join(", ", colunas) + ")"
             + " VALUES (" + String.join(", ", placeholders) + ")"
-            + " ON CONFLICT (uuid) DO UPDATE SET " + String.join(", ", updateSets);
+            + " ON CONFLICT (uuid, empresa_id) DO UPDATE SET " + String.join(", ", updateSets);
 
         jdbc.update(sql, valores.toArray());
     }

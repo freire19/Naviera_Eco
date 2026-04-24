@@ -75,25 +75,31 @@ public class PassagemService {
         String forma = req.formaPagamento() != null ? req.formaPagamento() : "PIX";
         String numBilhete = "APP-" + String.format("%06d", System.currentTimeMillis() % 1000000);
 
+        // #212: idTipoPassagem obrigatorio — sem ele nao da pra escolher tarifa.
+        if (req.idTipoPassagem() == null) throw ApiException.badRequest("idTipoPassagem obrigatorio");
+
         Map<String, Object> resp = tx.execute(status -> {
+            // #657: FOR UPDATE trava a viagem enquanto calcula/insere — evita race com desativacao.
             var viagem = jdbc.queryForList(
-                "SELECT v.id_viagem, v.id_rota, v.id_embarcacao, v.empresa_id FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE",
+                "SELECT v.id_viagem, v.id_rota, v.id_embarcacao, v.empresa_id FROM viagens v WHERE v.id_viagem = ? AND v.ativa = true AND v.data_viagem >= CURRENT_DATE FOR UPDATE",
                 req.idViagem());
             if (viagem.isEmpty()) throw ApiException.badRequest("Viagem nao disponivel para compra");
 
             Integer empresaId = ((Number) viagem.get(0).get("empresa_id")).intValue();
             Long idRota = (Long) viagem.get(0).get("id_rota");
 
+            // #711: cargas fazem parte do total (Desktop e BilheteService ja somam) — alinhar.
             var tarifas = jdbc.queryForList(
-                "SELECT valor_transporte, valor_alimentacao, valor_desconto FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ? AND empresa_id = ?",
+                "SELECT valor_transporte, valor_alimentacao, valor_cargas, valor_desconto FROM tarifas WHERE id_rota = ? AND id_tipo_passagem = ? AND empresa_id = ?",
                 idRota, req.idTipoPassagem(), empresaId);
             if (tarifas.isEmpty()) throw ApiException.badRequest("Tarifa nao encontrada para este tipo de passagem");
 
             var tarifa = tarifas.get(0);
-            var transporte = (BigDecimal) tarifa.get("valor_transporte");
-            var alimentacao = (BigDecimal) tarifa.get("valor_alimentacao");
-            var desconto = (BigDecimal) tarifa.get("valor_desconto");
-            var total = transporte.add(alimentacao).subtract(desconto);
+            var transporte = com.naviera.api.config.MoneyUtils.toBigDecimal(tarifa.get("valor_transporte"));
+            var alimentacao = com.naviera.api.config.MoneyUtils.toBigDecimal(tarifa.get("valor_alimentacao"));
+            var cargas = com.naviera.api.config.MoneyUtils.toBigDecimal(tarifa.get("valor_cargas"));
+            var desconto = com.naviera.api.config.MoneyUtils.toBigDecimal(tarifa.get("valor_desconto"));
+            var total = transporte.add(alimentacao).add(cargas).subtract(desconto);
 
             var passageiros = jdbc.queryForList(
                 "SELECT id_passageiro FROM passageiros WHERE numero_documento = ? AND empresa_id = ?", cliente.getDocumento(), empresaId);
@@ -113,17 +119,18 @@ public class PassagemService {
             BigDecimal valorAPagar = total.subtract(descontoApp);
             String statusPassagem = "BARCO".equals(forma) ? "PENDENTE" : "PENDENTE_CONFIRMACAO";
 
+            // #DL034b: gravar valor_cargas junto (relatorios fiscais dependem da decomposicao).
             Long idPassagem = jdbc.queryForObject("""
                 INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao,
-                    id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao,
+                    id_rota, id_tipo_passagem, valor_transporte, valor_alimentacao, valor_cargas,
                     valor_desconto_tarifa, valor_total, valor_a_pagar, valor_pago,
                     status_passagem, origem_emissao, id_cliente_app, observacoes, empresa_id,
                     forma_pagamento_app, desconto_app)
-                VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'APP', ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'APP', ?, ?, ?, ?, ?)
                 RETURNING id_passagem
                 """, Long.class,
                 numBilhete, idPassageiro, req.idViagem(), idRota, req.idTipoPassagem(),
-                transporte, alimentacao, desconto, total, valorAPagar, statusPassagem,
+                transporte, alimentacao, cargas, desconto, total, valorAPagar, statusPassagem,
                 clienteId, "Compra via App - " + forma, empresaId, forma, descontoApp);
 
             String subcontaId = null;
@@ -235,6 +242,15 @@ public class PassagemService {
         if ("JA_EMBARCADO".equals(situacao)) throw ApiException.conflict("Passageiro ja embarcou em " + dados.get("data_embarque"));
         if ("CANCELADA".equals(situacao)) throw ApiException.badRequest("Passagem cancelada");
         if ("PAGAMENTO_PENDENTE".equals(situacao)) throw ApiException.badRequest("Pagamento pendente de confirmacao");
+
+        // #225: status PENDENTE = "pagar no barco" — operador DEVE coletar antes do embarque.
+        if ("PENDENTE".equals(dados.get("status_passagem"))) {
+            BigDecimal valorAPagar = com.naviera.api.config.MoneyUtils.toBigDecimal(dados.get("valor_a_pagar"));
+            BigDecimal valorPago = com.naviera.api.config.MoneyUtils.toBigDecimal(dados.get("valor_pago"));
+            if (valorPago.compareTo(valorAPagar) < 0) {
+                throw ApiException.badRequest("Passagem PENDENTE — colete o pagamento antes do embarque");
+            }
+        }
 
         jdbc.update("UPDATE passagens SET status_passagem = 'EMBARCADO', data_embarque = NOW(), conferido_por = ? WHERE numero_bilhete = ? AND empresa_id = ?",
             operador, numeroBilhete, empresaId);

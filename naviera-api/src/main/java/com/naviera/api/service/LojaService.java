@@ -84,10 +84,23 @@ public class LojaService {
 
     @Transactional
     public Map<String, Object> criarAvaliacao(Long idLoja, Long clienteId, Object nota, Object comentario) {
+        // #DL040: validar nota [1,5] e impedir duplicata por cliente
+        if (nota == null) throw ApiException.badRequest("nota obrigatoria");
+        int n;
+        try { n = ((Number) nota).intValue(); } catch (ClassCastException e) {
+            throw ApiException.badRequest("nota deve ser numero inteiro entre 1 e 5");
+        }
+        if (n < 1 || n > 5) throw ApiException.badRequest("nota deve estar entre 1 e 5");
+        Integer existing = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM avaliacoes_loja WHERE id_loja = ? AND id_cliente = ?",
+            Integer.class, idLoja, clienteId);
+        if (existing != null && existing > 0) {
+            throw ApiException.conflict("Voce ja avaliou esta loja");
+        }
         jdbc.update("""
             INSERT INTO avaliacoes_loja (id_loja, id_cliente, nota, comentario)
             VALUES (?, ?, ?, ?)""",
-            idLoja, clienteId, nota, comentario);
+            idLoja, clienteId, n, comentario);
 
         jdbc.update("""
             UPDATE lojas_parceiras SET nota_media = (

@@ -16,4 +16,5 @@ public class ApiException extends RuntimeException {
     public static ApiException conflict(String message) { return new ApiException(409, message); }
     public static ApiException forbidden(String message) { return new ApiException(403, message); }
     public static ApiException badGateway(String message) { return new ApiException(502, message); }
+    public static ApiException tooManyRequests(String message) { return new ApiException(429, message); }
 }

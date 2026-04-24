@@ -13,14 +13,15 @@ public class OpEncomendaService {
         this.jdbc = jdbc;
     }
 
+    // #DL036: listar/resumo filtrar `excluido` (nao incluir soft-deleted)
     public List<Map<String, Object>> listar(Integer empresaId, Long viagemId) {
         if (viagemId != null) {
             return jdbc.queryForList(
-                "SELECT * FROM encomendas WHERE empresa_id = ? AND id_viagem = ? ORDER BY id_encomenda DESC",
+                "SELECT * FROM encomendas WHERE empresa_id = ? AND id_viagem = ? AND (excluido IS NULL OR excluido = FALSE) ORDER BY id_encomenda DESC",
                 empresaId, viagemId);
         }
         return jdbc.queryForList(
-            "SELECT * FROM encomendas WHERE empresa_id = ? ORDER BY id_encomenda DESC", empresaId);
+            "SELECT * FROM encomendas WHERE empresa_id = ? AND (excluido IS NULL OR excluido = FALSE) ORDER BY id_encomenda DESC", empresaId);
     }
 
     public Map<String, Object> resumo(Integer empresaId, Long viagemId) {
@@ -28,6 +29,7 @@ public class OpEncomendaService {
             SELECT COUNT(*) AS total,
                    COALESCE(SUM(total_a_pagar), 0) AS valor_total,
                    COALESCE(SUM(valor_pago), 0) AS valor_pago
-            FROM encomendas WHERE id_viagem = ? AND empresa_id = ?""", viagemId, empresaId);
+            FROM encomendas WHERE id_viagem = ? AND empresa_id = ?
+              AND (excluido IS NULL OR excluido = FALSE)""", viagemId, empresaId);
     }
 }

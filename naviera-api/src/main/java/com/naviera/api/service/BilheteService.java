@@ -22,11 +22,13 @@ import java.util.Map;
 public class BilheteService {
 
     private final JdbcTemplate jdbc;
+    private final com.naviera.api.config.CryptoUtil crypto;
     private static final int TOTP_PERIOD = 30; // seconds
     private static final int TOTP_DIGITS = 6;
 
-    public BilheteService(JdbcTemplate jdbc) {
+    public BilheteService(JdbcTemplate jdbc, com.naviera.api.config.CryptoUtil crypto) {
         this.jdbc = jdbc;
+        this.crypto = crypto;
     }
 
     /**
@@ -42,6 +44,7 @@ public class BilheteService {
         String docCliente = (String) cliente.get("documento");
 
         // 2. Verificar se a viagem existe e está ativa — derivar empresaId server-side (fix DS4-001)
+        // #219: data_viagem >= CURRENT_DATE — nao vender bilhete para viagem passada.
         var viagem = jdbc.queryForMap("""
             SELECT v.id_viagem, v.data_viagem, v.data_chegada, v.empresa_id,
                    e.nome as embarcacao, r.origem, r.destino,
@@ -51,7 +54,7 @@ public class BilheteService {
             JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
-            WHERE v.id_viagem = ? AND v.is_atual = TRUE
+            WHERE v.id_viagem = ? AND v.is_atual = TRUE AND v.data_viagem >= CURRENT_DATE
             """, idViagem);
 
         Integer empresaId = ((Number) viagem.get("empresa_id")).intValue();
@@ -112,11 +115,11 @@ public class BilheteService {
         String totpSecret = generateSecret();
         String qrHash = generateQRHash(idPassagem, totpSecret);
 
-        // 8. Criar bilhete digital
+        // 8. Criar bilhete digital — #226: totp_secret cifrado at-rest (AES-GCM).
         jdbc.update("""
             INSERT INTO bilhetes_digitais (id_passagem, id_cliente_app, totp_secret, qr_hash)
             VALUES (?, ?, ?, ?)
-            """, idPassagem, clienteAppId, totpSecret, qrHash);
+            """, idPassagem, clienteAppId, crypto.encrypt(totpSecret), qrHash);
 
         // 9. Buscar nome tipo passagem e acomodação
         String tipoPassagem = "Adulto";
@@ -175,7 +178,7 @@ public class BilheteService {
             bilheteId, clienteAppId);
         if (rows.isEmpty()) throw ApiException.notFound("Bilhete nao encontrado");
 
-        String secret = (String) rows.get(0).get("totp_secret");
+        String secret = crypto.decrypt((String) rows.get(0).get("totp_secret"));
         long now = Instant.now().getEpochSecond();
         String code = generateTOTP(secret, now);
         int timeLeft = TOTP_PERIOD - (int) (now % TOTP_PERIOD);
@@ -207,22 +210,30 @@ public class BilheteService {
         if ("EXPIRADO".equals(status))
             throw ApiException.conflict("Bilhete expirado.");
 
-        // Verificar TOTP (aceita janela de +/- 1 período)
-        String secret = (String) bilhete.get("totp_secret");
+        // #659: janela apertada (atual + 1 anterior = 60s max); rate-limit em attempts.
+        //   Contador `totp_attempts` acumula; reset no sucesso.
+        Long bilheteId = ((Number) bilhete.get("id")).longValue();
+        Integer attempts = (Integer) bilhete.getOrDefault("totp_attempts", 0);
+        if (attempts == null) attempts = 0;
+        if (attempts >= 10) throw ApiException.tooManyRequests("Muitas tentativas — bilhete temporariamente bloqueado.");
+
+        String secret = crypto.decrypt((String) bilhete.get("totp_secret"));
         long now = Instant.now().getEpochSecond();
         boolean valid = false;
-        for (int i = -1; i <= 1; i++) {
+        for (int i = -1; i <= 0; i++) {
             String expected = generateTOTP(secret, now + (i * TOTP_PERIOD));
             if (expected.equals(totpCode)) { valid = true; break; }
         }
 
-        if (!valid)
+        if (!valid) {
+            jdbc.update("UPDATE bilhetes_digitais SET totp_attempts = COALESCE(totp_attempts, 0) + 1 WHERE id = ?", bilheteId);
             throw ApiException.badRequest("Código de segurança inválido ou expirado.");
+        }
 
-        // Marcar como embarcado
+        // Marcar como embarcado (reset de attempts no sucesso)
         jdbc.update("""
             UPDATE bilhetes_digitais SET status = 'EMBARCADO',
-                data_embarque = CURRENT_TIMESTAMP, validado_por = ?
+                data_embarque = CURRENT_TIMESTAMP, validado_por = ?, totp_attempts = 0
             WHERE qr_hash = ?
             """, operador, qrHash);
 

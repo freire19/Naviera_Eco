@@ -136,12 +136,9 @@ public class EncomendaService {
             if (donoFk != null) {
                 if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Encomenda nao pertence a este cliente");
             } else {
-                // #DB201: fallback por nome exige nome nao-vazio — String.contains("") e sempre true.
-                if (cliente.getNome() == null || cliente.getNome().isBlank()) {
-                    throw ApiException.forbidden("Encomenda nao pertence a este cliente");
-                }
-                String destinatario = (String) enc.get("destinatario");
-                if (destinatario == null || !destinatario.toUpperCase().contains(cliente.getNome().toUpperCase())) {
+                // #DB201/#714: fallback por nome exige match exato (trim+lower) com destinatario.
+                if (!com.naviera.api.config.MoneyUtils.nomeCasaComAlgum(
+                        cliente.getNome(), (String) enc.get("destinatario"))) {
                     throw ApiException.forbidden("Encomenda nao pertence a este cliente");
                 }
             }
@@ -151,12 +148,9 @@ public class EncomendaService {
             if ("PENDENTE_CONFIRMACAO".equalsIgnoreCase(statusAtual))
                 throw ApiException.conflict("Pagamento ja enviado, aguardando confirmacao");
 
-            BigDecimal total = (BigDecimal) enc.get("total_a_pagar");
-            if (total == null) total = BigDecimal.ZERO;
-            BigDecimal descontoBase = (BigDecimal) enc.get("desconto");
-            if (descontoBase == null) descontoBase = BigDecimal.ZERO;
-            BigDecimal valorPago = (BigDecimal) enc.get("valor_pago");
-            if (valorPago == null) valorPago = BigDecimal.ZERO;
+            BigDecimal total = com.naviera.api.config.MoneyUtils.toBigDecimal(enc.get("total_a_pagar"));
+            BigDecimal descontoBase = com.naviera.api.config.MoneyUtils.toBigDecimal(enc.get("desconto"));
+            BigDecimal valorPago = com.naviera.api.config.MoneyUtils.toBigDecimal(enc.get("valor_pago"));
 
             BigDecimal saldo = total.subtract(descontoBase).subtract(valorPago).max(BigDecimal.ZERO);
             BigDecimal descontoApp = "PIX".equals(forma)

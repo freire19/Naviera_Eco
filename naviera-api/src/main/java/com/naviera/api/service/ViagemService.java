@@ -12,6 +12,7 @@ public class ViagemService {
     public ViagemService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     // DS4-008 fix: empresaId != null → filtrar (operador), null → cross-tenant (app)
+    // #DL041: nao retornar viagens com data_chegada ja no passado
     public List<ViagemDTO> buscarAtivas(Integer empresaId) {
         String sql = """
             SELECT v.id_viagem as id, emb.nome as embarcacao, r.origem, r.destino,
@@ -22,7 +23,7 @@ public class ViagemService {
             JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN aux_horarios_saida hs ON v.id_horario_saida = hs.id_horario_saida
-            WHERE v.ativa = true""" + (empresaId != null ? " AND v.empresa_id = ?" : "") + """
+            WHERE v.ativa = true AND v.data_chegada >= CURRENT_DATE""" + (empresaId != null ? " AND v.empresa_id = ?" : "") + """
 
             ORDER BY v.data_viagem DESC
             """;
@@ -41,6 +42,7 @@ public class ViagemService {
     }
 
     /** Viagens ativas de todas as empresas — cross-tenant para o app mobile */
+    // #DL041: nao mostrar viagens com data_chegada passada (cliente CPF ve viagem expirada)
     public List<Map<String, Object>> buscarPublicas() {
         String sql = """
             SELECT v.id_viagem, v.data_viagem, v.data_chegada, v.descricao,
@@ -50,7 +52,7 @@ public class ViagemService {
             JOIN embarcacoes emb ON v.id_embarcacao = emb.id_embarcacao
             JOIN rotas r ON v.id_rota = r.id
             LEFT JOIN empresas emp ON emb.empresa_id = emp.id
-            WHERE v.ativa = TRUE
+            WHERE v.ativa = TRUE AND v.data_chegada >= CURRENT_DATE
             ORDER BY v.data_viagem ASC
             """;
         return jdbc.queryForList(sql);

@@ -49,14 +49,24 @@ public class OpPassagemWriteService {
         BigDecimal valorTotal = toBigDecimal(dados.get("valor_total"));
         BigDecimal valorPago = toBigDecimal(dados.get("valor_pago"));
         BigDecimal valorDevedor = valorTotal.subtract(valorPago);
+        // #DL034b: preservar decomposicao contabil (Desktop/BilheteService ja fazem isso)
+        // toBigDecimal ja retorna ZERO quando argumento e null
+        BigDecimal valorTransporte = toBigDecimal(dados.get("valor_transporte"));
+        BigDecimal valorAlimentacao = toBigDecimal(dados.get("valor_alimentacao"));
+        BigDecimal valorCargas = toBigDecimal(dados.get("valor_cargas"));
+        BigDecimal valorDescontoTarifa = toBigDecimal(dados.get("valor_desconto_tarifa"));
 
         jdbc.update("""
             INSERT INTO passagens (numero_bilhete, id_passageiro, id_viagem, data_emissao, assento,
-                id_acomodacao, id_rota, id_tipo_passagem, valor_total, valor_a_pagar, valor_pago,
+                id_acomodacao, id_rota, id_tipo_passagem,
+                valor_transporte, valor_alimentacao, valor_cargas, valor_desconto_tarifa,
+                valor_total, valor_a_pagar, valor_pago,
                 valor_devedor, id_forma_pagamento, id_caixa, status_passagem, observacoes, empresa_id)
-            VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             numBilhete, idPassageiro, idViagem, assento,
-            idAcomodacao, idRota, idTipoPassagem, valorTotal, valorTotal, valorPago,
+            idAcomodacao, idRota, idTipoPassagem,
+            valorTransporte, valorAlimentacao, valorCargas, valorDescontoTarifa,
+            valorTotal, valorTotal, valorPago,
             valorDevedor, idFormaPagamento, idCaixa,
             valorDevedor.compareTo(BigDecimal.ZERO) <= 0 ? "PAGO" : "PENDENTE",
             dados.get("observacoes"), empresaId);
@@ -85,16 +95,22 @@ public class OpPassagemWriteService {
         return Map.of("mensagem", "Passagem excluida");
     }
 
+    // #DL035: pagar com guard anti-overpayment
     @Transactional
     public Map<String, Object> pagar(Integer empresaId, Long id, Map<String, Object> dados) {
         BigDecimal valorPago = toBigDecimal(dados.get("valor_pago"));
+        if (valorPago == null || valorPago.signum() <= 0) {
+            throw ApiException.badRequest("valor_pago deve ser > 0");
+        }
 
         int rows = jdbc.update("""
             UPDATE passagens SET valor_pago = valor_pago + ?, valor_devedor = valor_devedor - ?,
                 status_passagem = CASE WHEN valor_devedor - ? <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END
-            WHERE id_passagem = ? AND empresa_id = ?""",
-            valorPago, valorPago, valorPago, id, empresaId);
-        if (rows == 0) throw ApiException.notFound("Passagem nao encontrada");
+            WHERE id_passagem = ? AND empresa_id = ? AND valor_devedor >= ?""",
+            valorPago, valorPago, valorPago, id, empresaId, valorPago);
+        if (rows == 0) {
+            throw ApiException.badRequest("Passagem nao encontrada ou valor excede valor devedor");
+        }
         return Map.of("mensagem", "Pagamento registrado");
     }
 

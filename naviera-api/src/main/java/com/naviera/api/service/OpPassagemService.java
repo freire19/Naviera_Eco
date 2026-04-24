@@ -13,12 +13,13 @@ public class OpPassagemService {
         this.jdbc = jdbc;
     }
 
+    // #DL037: listar/resumo filtrar `excluido` (nao incluir soft-deleted)
     public List<Map<String, Object>> listar(Integer empresaId, Long viagemId) {
         String sql = """
             SELECT p.*, pas.nome_passageiro, pas.numero_documento
             FROM passagens p
             LEFT JOIN passageiros pas ON p.id_passageiro = pas.id_passageiro
-            WHERE p.empresa_id = ?"""
+            WHERE p.empresa_id = ? AND (p.excluido IS NULL OR p.excluido = FALSE)"""
             + (viagemId != null ? " AND p.id_viagem = ?" : "")
             + " ORDER BY p.numero_bilhete DESC";
         return viagemId != null
@@ -31,6 +32,7 @@ public class OpPassagemService {
             SELECT COUNT(*) AS total,
                    COALESCE(SUM(valor_total), 0) AS valor_total,
                    COALESCE(SUM(valor_pago), 0) AS valor_pago
-            FROM passagens WHERE id_viagem = ? AND empresa_id = ?""", viagemId, empresaId);
+            FROM passagens WHERE id_viagem = ? AND empresa_id = ?
+              AND (excluido IS NULL OR excluido = FALSE)""", viagemId, empresaId);
     }
 }

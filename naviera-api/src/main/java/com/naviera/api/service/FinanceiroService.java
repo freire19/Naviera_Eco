@@ -36,14 +36,15 @@ public class FinanceiroService {
     }
 
     public Map<String, Object> balanco(Integer empresaId, Long viagemId) {
+        // #238: receitas nao devem incluir registros soft-deleted.
         BigDecimal passagens = jdbc.queryForObject(
-            "SELECT COALESCE(SUM(valor_pago), 0) FROM passagens WHERE id_viagem = ? AND empresa_id = ?",
+            "SELECT COALESCE(SUM(valor_pago), 0) FROM passagens WHERE id_viagem = ? AND empresa_id = ? AND (excluido IS NULL OR excluido = FALSE)",
             BigDecimal.class, viagemId, empresaId);
         BigDecimal encomendas = jdbc.queryForObject(
-            "SELECT COALESCE(SUM(valor_pago), 0) FROM encomendas WHERE id_viagem = ? AND empresa_id = ?",
+            "SELECT COALESCE(SUM(valor_pago), 0) FROM encomendas WHERE id_viagem = ? AND empresa_id = ? AND (excluido IS NULL OR excluido = FALSE)",
             BigDecimal.class, viagemId, empresaId);
         BigDecimal fretes = jdbc.queryForObject(
-            "SELECT COALESCE(SUM(valor_pago), 0) FROM fretes WHERE id_viagem = ? AND empresa_id = ?",
+            "SELECT COALESCE(SUM(valor_pago), 0) FROM fretes WHERE id_viagem = ? AND empresa_id = ? AND (excluido IS NULL OR excluido = FALSE)",
             BigDecimal.class, viagemId, empresaId);
         BigDecimal despesas = jdbc.queryForObject(
             "SELECT COALESCE(SUM(valor), 0) FROM financeiro_saidas WHERE id_viagem = ? AND excluido = FALSE AND empresa_id = ?",

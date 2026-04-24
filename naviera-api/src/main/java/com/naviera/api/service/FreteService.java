@@ -112,16 +112,13 @@ public class FreteService {
             if (donoFk != null) {
                 if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Frete nao pertence a este cliente");
             } else {
-                // #DB201: fallback por nome exige nome nao-vazio — String.contains("") e sempre true.
-                if (cliente.getNome() == null || cliente.getNome().isBlank()) {
+                // #DB201/#714: fallback por nome exige match exato (trim+lower) em remetente ou destinatario.
+                if (!com.naviera.api.config.MoneyUtils.nomeCasaComAlgum(
+                        cliente.getNome(),
+                        (String) f.get("remetente_nome_temp"),
+                        (String) f.get("destinatario_nome_temp"))) {
                     throw ApiException.forbidden("Frete nao pertence a este cliente");
                 }
-                String remetente = (String) f.get("remetente_nome_temp");
-                String destinatario = (String) f.get("destinatario_nome_temp");
-                String nomeUpper = cliente.getNome().toUpperCase();
-                boolean match = (remetente != null && remetente.toUpperCase().contains(nomeUpper))
-                             || (destinatario != null && destinatario.toUpperCase().contains(nomeUpper));
-                if (!match) throw ApiException.forbidden("Frete nao pertence a este cliente");
             }
 
             String statusAtual = (String) f.get("status_pagamento");
@@ -129,12 +126,9 @@ public class FreteService {
             if ("PENDENTE_CONFIRMACAO".equalsIgnoreCase(statusAtual))
                 throw ApiException.conflict("Pagamento ja enviado, aguardando confirmacao");
 
-            BigDecimal total = (BigDecimal) f.get("valor_frete_calculado");
-            if (total == null) total = BigDecimal.ZERO;
-            BigDecimal descontoBase = (BigDecimal) f.get("desconto");
-            if (descontoBase == null) descontoBase = BigDecimal.ZERO;
-            BigDecimal valorPago = (BigDecimal) f.get("valor_pago");
-            if (valorPago == null) valorPago = BigDecimal.ZERO;
+            BigDecimal total = com.naviera.api.config.MoneyUtils.toBigDecimal(f.get("valor_frete_calculado"));
+            BigDecimal descontoBase = com.naviera.api.config.MoneyUtils.toBigDecimal(f.get("desconto"));
+            BigDecimal valorPago = com.naviera.api.config.MoneyUtils.toBigDecimal(f.get("valor_pago"));
 
             BigDecimal saldo = total.subtract(descontoBase).subtract(valorPago).max(BigDecimal.ZERO);
             BigDecimal descontoApp = "PIX".equals(forma)

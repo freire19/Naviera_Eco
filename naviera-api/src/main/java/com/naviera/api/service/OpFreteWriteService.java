@@ -96,14 +96,22 @@ public class OpFreteWriteService {
         return Map.of("mensagem", "Frete excluido");
     }
 
+    // #DL034: pagar com guard anti-overpayment + atualizar status_pagamento/status_frete
     @Transactional
     public Map<String, Object> pagar(Integer empresaId, Long id, Map<String, Object> dados) {
         BigDecimal valorPago = toBigDecimal(dados.get("valor_pago"));
+        if (valorPago == null || valorPago.signum() <= 0) {
+            throw ApiException.badRequest("valor_pago deve ser > 0");
+        }
         int rows = jdbc.update("""
-            UPDATE fretes SET valor_pago = valor_pago + ?, valor_devedor = valor_devedor - ?
-            WHERE id_frete = ? AND empresa_id = ?""",
-            valorPago, valorPago, id, empresaId);
-        if (rows == 0) throw ApiException.notFound("Frete nao encontrado");
+            UPDATE fretes SET valor_pago = valor_pago + ?, valor_devedor = valor_devedor - ?,
+                status_pagamento = CASE WHEN (valor_devedor - ?) <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END,
+                status_frete = CASE WHEN (valor_devedor - ?) <= 0.01 THEN 'PAGO' ELSE status_frete END
+            WHERE id_frete = ? AND empresa_id = ? AND valor_devedor >= ?""",
+            valorPago, valorPago, valorPago, valorPago, id, empresaId, valorPago);
+        if (rows == 0) {
+            throw ApiException.badRequest("Frete nao encontrado ou valor de pagamento excede valor devedor");
+        }
         return Map.of("mensagem", "Pagamento registrado");
     }
 

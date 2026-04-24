@@ -35,6 +35,20 @@ public class OpEncomendaWriteService {
 
         BigDecimal totalAPagar = toBigDecimal(dados.get("total_a_pagar"));
         BigDecimal valorPago = toBigDecimal(dados.get("valor_pago"));
+        // #228: guards de valores
+        if (totalAPagar == null || totalAPagar.signum() < 0) {
+            throw ApiException.badRequest("total_a_pagar invalido");
+        }
+        if (valorPago == null) valorPago = BigDecimal.ZERO;
+        if (valorPago.signum() < 0) throw ApiException.badRequest("valor_pago nao pode ser negativo");
+        if (valorPago.compareTo(totalAPagar) > 0) {
+            throw ApiException.badRequest("valor_pago nao pode exceder total_a_pagar");
+        }
+        Object totVol = dados.get("total_volumes");
+        if (totVol != null) {
+            int tv = ((Number) totVol).intValue();
+            if (tv < 0) throw ApiException.badRequest("total_volumes nao pode ser negativo");
+        }
 
         jdbc.update("""
             INSERT INTO encomendas (numero_encomenda, id_viagem, remetente, destinatario, observacoes,
