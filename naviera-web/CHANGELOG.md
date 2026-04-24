@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.1.1...web-v1.2.0) (2026-04-24)
+
+
+### Features
+
+* **web/agenda:** calendario com colunas iguais e visual modernizado ([9ba8a8f](https://github.com/freire19/Naviera_Eco/commit/9ba8a8f7024b6c49471919a3fb06a129a1f5fc3f))
+
+
+### Bug Fixes
+
+* **web/agenda:** calendario mais compacto, texto dos eventos legivel ([c7164df](https://github.com/freire19/Naviera_Eco/commit/c7164df6f218dec2d0df9bd8ece16b63b0382020))
+
+
+### Refactoring
+
+* **web/fretes:** remove secao Nota Fiscal de Fretes.jsx ([47b65dd](https://github.com/freire19/Naviera_Eco/commit/47b65dde8eee7d3a19b52485f5e27e1bade4c57a))
+
 ## [1.1.1](https://github.com/freire19/Naviera_Eco/compare/web-v1.1.0...web-v1.1.1) (2026-04-24)
 
 
