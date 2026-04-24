@@ -380,8 +380,7 @@ export default function RelatorioFretes({ viagemAtiva }) {
             </tbody>
           </table>
           <div class="nota-footer">
-            <div style="border-top:1px solid #333;width:180px;text-align:center;font-size:9px;padding-top:3px">Conferido por</div>
-            <div style="font-size:10px;color:#3D6B56">Volumes: <strong>${vol}</strong></div>
+            <div style="font-size:10px;color:#3D6B56">Volumes desta nota: <strong>${vol}</strong></div>
           </div>`
       }
     }
@@ -442,11 +441,20 @@ export default function RelatorioFretes({ viagemAtiva }) {
         <p>Viagem: ${viagemSel?.descricao || viagemId} | Rota: ${rotaSel || 'Todas'} | ${clienteSel ? 'Cliente: ' + clienteSel : 'Todos os clientes'}</p>
       </div>
       ${html || '<p style="text-align:center;color:#999">Sem itens para conferir</p>'}
-      <div style="margin-top:18px;padding:10px 12px;border:2px solid #047857;border-radius:4px;display:flex;justify-content:space-between;align-items:center">
-        <strong style="font-size:13px;color:#047857;text-transform:uppercase">Total geral da viagem</strong>
-        <strong style="font-size:14px;color:#047857">${volumesTotal} volumes</strong>
+      <div style="margin-top:24px;padding:14px 16px;border:2px solid #047857;border-radius:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px dashed #047857">
+          <strong style="font-size:13px;color:#047857;text-transform:uppercase;letter-spacing:0.04em">Total geral da viagem</strong>
+          <strong style="font-size:16px;color:#047857">${volumesTotal} volumes</strong>
+        </div>
+        <div style="margin-top:40px;display:flex;justify-content:center">
+          <div style="text-align:center;width:80%">
+            <div style="border-bottom:1px solid #0F2620;height:1px;margin-bottom:4px"></div>
+            <div style="font-size:11px;color:#3D6B56;letter-spacing:0.04em;text-transform:uppercase;font-weight:700">Conferido por</div>
+            <div style="font-size:9px;color:#7BA393;margin-top:2px">Assinatura e data</div>
+          </div>
+        </div>
       </div>
-      <div style="text-align:center;font-size:9px;margin-top:12px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
+      <div style="text-align:center;font-size:9px;margin-top:10px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
       <script>window.onload=()=>window.print()</script>
     </body></html>`
     printContent(full, titulo)
