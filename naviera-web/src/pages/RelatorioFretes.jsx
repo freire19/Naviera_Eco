@@ -383,9 +383,19 @@ export default function RelatorioFretes({ viagemAtiva }) {
             <div style="font-size:10px;color:#3D6B56">Volumes desta nota: <strong>${vol}</strong></div>
           </div>`
       }
+
+      // Assinatura do conferente deste destinatario (uma por cliente)
+      html += `
+        <div class="dest-signature">
+          <div class="dest-sign-line"></div>
+          <div class="dest-sign-label">
+            <span>CONFERIDO POR &middot; ${dest}</span>
+            <span>Total: <strong>${totalVolumesDest}</strong> volume${totalVolumesDest > 1 ? 's' : ''}</span>
+          </div>
+          <div class="dest-sign-hint">Assinatura e data</div>
+        </div>`
     }
 
-    const volumesTotal = itensRelatorio.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
     const titulo = 'CONFERE DE VIAGEM'
     const full = `<!DOCTYPE html><html><head><title>${titulo}</title><style>${baseStyle}
       @page { size: A4 portrait; margin: 15mm; }
@@ -435,26 +445,42 @@ export default function RelatorioFretes({ viagemAtiva }) {
         border-right: 1px solid #047857;
         border-bottom: 1px solid #047857;
       }
+      /* Assinatura por destinatario: espaco decente pra assinar, aparece
+         depois da ultima nota de cada cliente, antes do proximo destinatario */
+      .dest-signature {
+        margin: 6px 0 22px;
+        padding: 0 20px;
+        page-break-inside: avoid;
+      }
+      .dest-sign-line {
+        margin-top: 44px;
+        border-bottom: 1px solid #0F2620;
+        height: 1px;
+      }
+      .dest-sign-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-top: 4px;
+        font-size: 10px;
+        color: #0F2620;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .dest-sign-label strong { color: #047857; }
+      .dest-sign-hint {
+        font-size: 9px;
+        color: #7BA393;
+        margin-top: 2px;
+      }
     </style></head><body>
       <div class="header">
         <h2 style="font-size:18px">${titulo}</h2>
         <p>Viagem: ${viagemSel?.descricao || viagemId} | Rota: ${rotaSel || 'Todas'} | ${clienteSel ? 'Cliente: ' + clienteSel : 'Todos os clientes'}</p>
       </div>
       ${html || '<p style="text-align:center;color:#999">Sem itens para conferir</p>'}
-      <div style="margin-top:24px;padding:14px 16px;border:2px solid #047857;border-radius:4px">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px dashed #047857">
-          <strong style="font-size:13px;color:#047857;text-transform:uppercase;letter-spacing:0.04em">Total geral da viagem</strong>
-          <strong style="font-size:16px;color:#047857">${volumesTotal} volumes</strong>
-        </div>
-        <div style="margin-top:40px;display:flex;justify-content:center">
-          <div style="text-align:center;width:80%">
-            <div style="border-bottom:1px solid #0F2620;height:1px;margin-bottom:4px"></div>
-            <div style="font-size:11px;color:#3D6B56;letter-spacing:0.04em;text-transform:uppercase;font-weight:700">Conferido por</div>
-            <div style="font-size:9px;color:#7BA393;margin-top:2px">Assinatura e data</div>
-          </div>
-        </div>
-      </div>
-      <div style="text-align:center;font-size:9px;margin-top:10px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
+      <div style="text-align:center;font-size:9px;margin-top:18px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
       <script>window.onload=()=>window.print()</script>
     </body></html>`
     printContent(full, titulo)
