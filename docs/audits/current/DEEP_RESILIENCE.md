@@ -12,15 +12,24 @@
 | Status | Quantidade |
 |--------|-----------|
 | Issues anteriores V5.0 — resolvidas | 47 (todas marcadas FIXADAS — nao reverificadas 1-a-1 neste ciclo) |
-| Issues do AUDIT_V1.3 secao 2.4 — **ainda PENDENTES** | 27 (#300-#331, 7 CRITICAS + 8 ALTAS + 12 MEDIAS/BAIXAS) |
+| Issues do AUDIT_V1.3 secao 2.4 — PENDENTES | ~~27~~ → **20** (7 CRITICAS ja corrigidas em 2026-04-23) |
 | Novos problemas — PSP/Asaas | 5 |
 | Novos problemas — BFF Web | 9 |
 | Novos problemas — Desktop Java | 6 |
 | Novos problemas — Apps React | 6 |
-| **Total de NOVAS issues ativas** | **26** |
-| **Total de issues ativas (V6.0)** | **53** |
+| **Total de NOVAS issues ativas** | ~~26~~ → **25** (#DR260 resolvido) |
+| **Total de issues ativas (V6.0)** | ~~53~~ → **45** (8 CRITICOs conferidos em 2026-04-23) |
 
-> **Importante:** Todos os issues de AUDIT_V1.3 secao 2.4 (#300-#331) permanecem PENDENTES — PSP/Asaas foi adicionado apos V5.0 e nao recebeu fix entre as versoes. Acao obrigatoria antes de producao.
+### Por severidade (ativos)
+
+| Severidade | Quantidade |
+|------------|-----------|
+| CRITICO | ~~8~~ → **0** _(conferidos em 2026-04-23)_ |
+| ALTO | 19 |
+| MEDIO | 21 |
+| BAIXO | 5 |
+
+> **2026-04-23** — conferidos os 8 CRITICOs (7 de AUDIT_V1.3 sec 2.4 + 1 novo DR260). **TODOS JA ESTAVAM CORRIGIDOS NO CODIGO** antes desta verificacao — o audit V6.0 foi gerado em 2026-04-18 e os fixes foram aplicados em commits posteriores. Resta 0 CRITICO em DEEP_RESILIENCE.
 
 ---
 
@@ -51,17 +60,17 @@ Nenhuma — V5.0 fechou todos os pendentes antigos.
 
 ## ISSUES PENDENTES DE AUDIT_V1.3 (CATEGORIA RESILIENCE)
 
-### CRITICOS (7) — bloqueio de producao
+### CRITICOS (7) — ~~bloqueio de producao~~ **TODOS CORRIGIDOS (conferido 2026-04-23)**
 
-| Issue | Arquivo | Problema resumido |
-|-------|---------|-------------------|
-| #300 | `AsaasGateway.java:42-44` | `new RestTemplate()` sem timeout — TCP hang segura thread Tomcat indefinidamente |
-| #301 | `PspCobrancaService.java:75-85` | `atualizarStatus` sem idempotencia e sem `WebhookController` implementado |
-| #304 | `naviera-web/server/routes/ocr.js:127,132,243` | `crypto.randomUUID()` sem `import { randomUUID } from 'crypto'` |
-| #305 | `AsaasGateway.java:191-196` | `validarAssinaturaWebhook` retorna `true` se webhook-secret vazio — aceita webhook forjado |
-| #308 | `PassagemService.java:65-181` | `@Transactional` envolvendo 4 queries + INSERT + HTTP Asaas (2 round-trips) |
-| #311 | `FirebaseConfig.java:17-34` | `catch (Exception) { System.err.println(...) }` — API sobe sem FCM silenciosamente |
-| #315 | `naviera-api/Dockerfile:10-14` | Sem `tini` / `STOPSIGNAL` — SIGTERM nao propagado, graceful shutdown quebrado |
+| Issue | Arquivo | Status |
+|-------|---------|--------|
+| #300 | `AsaasGateway.java:51-54` | **RESOLVIDO (2026-04-23)** — `SimpleClientHttpRequestFactory` com `setConnectTimeout(5_000)` + `setReadTimeout(15_000)`. |
+| #301 | `PspCobrancaService.java` + `PspWebhookController.java` | **RESOLVIDO (2026-04-23)** — `PspWebhookController` existe com HMAC e idempotencia via `psp_webhook_events` (migration `031_psp_webhook_events.sql`). `processarEvento` implementado. |
+| #304 | `naviera-web/server/routes/ocr.js:6` | **RESOLVIDO (2026-04-23)** — `import { randomUUID } from 'crypto'` presente. |
+| #305 | `AsaasGateway.java:201-210` | **RESOLVIDO (2026-04-23)** — em profile `prod` + secret blank retorna `false` (rejeita). Somente dev aceita com log.warn. |
+| #308 | `PassagemService.java` + `FreteService.java` + `EncomendaService.java` | **RESOLVIDO (2026-04-23)** — os 3 metodos (`comprar`/`pagar`) nao tem `@Transactional`; usam `tx.execute()` programatico e chamam `pspService.criar()` fora de TX; TX2 posterior para UPDATE dos dados PSP. |
+| #311 | `FirebaseConfig.java:30-49` | **RESOLVIDO (2026-04-23)** — `@PostConstruct` checa profile `prod` e lanca `IllegalStateException` se credenciais ausentes ou init falhar (API nao sobe silenciosamente). |
+| #315 | `naviera-api/Dockerfile` | **RESOLVIDO (2026-04-23)** — `apk add tini` + `ENTRYPOINT ["/sbin/tini", "--", ...]` + `STOPSIGNAL SIGTERM` + `EXPOSE 8081`. |
 
 ### ALTOS (8)
 
@@ -87,7 +96,10 @@ Nenhuma — V5.0 fechou todos os pendentes antigos.
 ### CRITICOS
 
 #### Issue #DR260 — AsaasGateway.post/get: NullPointerException se body da resposta for null
-- [ ] **Concluido**
+- [x] **Concluido** _(ja estava corrigido — conferido em 2026-04-23)_
+
+> Ja estava corrigido: `AsaasGateway.java:261-267` extraiu `parseBody(res, path)` helper que valida `body == null || body.isBlank()` e lanca `ApiException.badGateway("Resposta Asaas vazia em ...")`. Comentario `// #DR260` explicativo. `post()` e `get()` delegam para `parseBody()`.
+
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 228-244
@@ -653,18 +665,18 @@ useEffect(() => {
 
 ## PLANO DE CORRECAO
 
-### P0 — Bloqueio de producao (CRITICO)
+### P0 — Bloqueio de producao (CRITICO) — **CONCLUIDA (2026-04-23)**
 
-Antes de qualquer deploy publico com PSP ativo, fechar:
+Todos os 8 CRITICOs ja estavam corrigidos no codigo no momento da conferencia (2026-04-23). #DR263 segue pendente (MEDIO, nao CRIT).
 
-- [ ] **#300** AsaasGateway RestTemplate timeout (5s connect / 15s read)
-- [ ] **#301** + **#DR263** WebhookController + idempotencia + validacao de transicao
-- [ ] **#304** ocr.js `import { randomUUID } from 'crypto'`
-- [ ] **#305** webhook secret: fail-closed em profile=prod
-- [ ] **#308** + **#303** Separar `@Transactional` curto + chamada PSP fora da tx (padrao outbox minimo)
-- [ ] **#311** FirebaseConfig: throw em prod se credenciais faltarem
-- [ ] **#315** + **#316** Dockerfile: tini + STOPSIGNAL + EXPOSE 8081
-- [ ] **#DR260** AsaasGateway: null check em mapper.readTree
+- [x] **#300** AsaasGateway RestTemplate timeout _(5s connect / 15s read em AsaasGateway:51-54)_
+- [x] **#301** WebhookController + idempotencia _(PspWebhookController existe com psp_webhook_events)_
+- [x] **#304** ocr.js `import { randomUUID } from 'crypto'` _(em ocr.js:6)_
+- [x] **#305** webhook secret: fail-closed em profile=prod _(AsaasGateway:201-210)_
+- [x] **#308** `@Transactional` + PSP separados _(3 services usam tx.execute() programatico)_
+- [x] **#311** FirebaseConfig: throw em prod _(FirebaseConfig:30-49 com profile check)_
+- [x] **#315** Dockerfile: tini + STOPSIGNAL + EXPOSE 8081 _(conferido no Dockerfile)_
+- [x] **#DR260** AsaasGateway: null check em parseBody _(AsaasGateway:261-267)_
 
 ### P1 — Importante (ALTO)
 

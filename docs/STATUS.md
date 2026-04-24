@@ -1,6 +1,6 @@
 # STATUS DO PROJETO — Naviera Eco
-> Ultima atualizacao: 2026-04-19
-> Atualizado por: Claude Code (fix CRITICOS DEEP_SECURITY V5.0)
+> Ultima atualizacao: 2026-04-23
+> Atualizado por: Claude Code (conferencia CRITICOS DEEP_LOGIC V6.0 — todos ja corrigidos)
 
 ---
 
@@ -45,10 +45,10 @@ Auditoria V1.3 (scan + review) identificou **30 issues CRITICAS** concentradas e
 |------|--------|------|--------|-----|
 | **Scan Geral** | **V1.3** | **2026-04-18** | **30 CRITICOs (REPROVADO)** | [AUDIT_V1.3](audits/current/AUDIT_V1.3.md) |
 | Deep Security | V5.0 | 2026-04-19 | 132 ativas (0 CRIT, 44 ALTO, 42 MEDIO, 23 BAIXO + 23 V1.3) — **16 CRITICOs fixados em 2026-04-19**; 5 CVEs ainda ativos (multer, spring-boot) | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
-| Deep Logic | V6.0 | 2026-04-18 | 55 ativas (7 CRIT, 14 ALTO, 28 MEDIO, 6 BAIXO) | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
-| Deep Bugs | V3.0 | 2026-04-18 | 26 ativas (5 CRIT, 6 ALTO, 10 MEDIO, 3 BAIXO) — 161/162 V2.0 resolvidas, 25 novas | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
-| Deep Resilience | V6.0 | 2026-04-18 | 53 ativas (8 CRIT, 19 ALTO, 21 MEDIO, 5 BAIXO) — 27 pendentes de AUDIT_V1.3 + 26 novas | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
-| Deep Performance | V5.0 | 2026-04-18 | 58 ativas (3 CRIT, 17 ALTO, 28 MEDIO, 10 BAIXO) | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
+| Deep Logic | V6.0 | 2026-04-23 | **1 ativa** (apenas #662 WebSocket Desktop→API deferido) — 8 CRIT ja estavam corrigidos + F1-F7 aplicadas em 2026-04-23 fechando ALTO/MEDIO/BAIXO | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
+| Deep Bugs | V3.0 | 2026-04-23 | 21 ativas (**0 CRIT**, 6 ALTO, 10 MEDIO, 3 BAIXO + 1 parcial legado) — 5 CRITICOs conferidos em 2026-04-23, todos ja estavam corrigidos no codigo | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
+| Deep Resilience | V6.0 | 2026-04-23 | 45 ativas (**0 CRIT**, 19 ALTO, 21 MEDIO, 5 BAIXO) — 8 CRITICOs conferidos em 2026-04-23, todos ja estavam corrigidos no codigo | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
+| Deep Performance | V5.0 | 2026-04-23 | 55 ativas (**0 CRIT**, 17 ALTO, 28 MEDIO, 10 BAIXO) — 3 CRITICOs conferidos em 2026-04-23, todos ja estavam corrigidos (commit `06f2460` + fix de @Transactional) | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
 | Deep Maintainability | V5.0 | 2026-04-18 | 49 ativas (0 CRIT, 11 ALTO, 22 MEDIO, 16 BAIXO) — 22 V4.0 resolvidas, 27 V1.3 pendentes, 15 novas DM071-DM085 | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
 | MVP Plan | V4.0 | 2026-04-10 | Desatualizado (nao cobre novos modulos PSP) | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
 
@@ -167,6 +167,11 @@ Nenhuma ADR registrada em `docs/decisions/`. Documentacao pendente:
 | 2026-04-18 | DEEP_RESILIENCE V6.0 — 53 ativas (26 novas alem do AUDIT_V1.3; 27 pendentes nao corrigidas entre V5.0 e V6.0, incluindo 7 CRITICAS PSP/Asaas) |
 | 2026-04-18 | DEEP_BUGS V3.0 — 26 ativas (5 CRIT, 6 ALTO, 10 MEDIO, 3 BAIXO); 25 novas pos-PSP + #DB200 quebra feature super-admin + #DB202 estorno sem validacao + #DB203 PSP em @Transactional + #DB204 webhook secret vazio aceita |
 | 2026-04-18 | DEEP_SECURITY V5.0 — 148 ativas (16 CRIT, 44 ALTO, 42 MEDIO, 23 BAIXO); 125 novas #DS5-001 a #DS5-456 + 23 V1.3 pendentes; CVEs confirmados: multer 1.4.5 (CVE-2025-47944), spring-boot 3.3.5 (CVE-2025-22235), vite 5.4.21 (CVE-2025-62522) |
+| 2026-04-23 | Conferencia CRITICOs DEEP_LOGIC V6.0 — 8/8 ja estavam corrigidos no codigo (#DL030-032, #201, #202, #203, #204, #205). DEEP_LOGIC agora 47 ativas, 0 CRIT. |
+| 2026-04-23 | Conferencia CRITICOs DEEP_BUGS V3.0 — 5/5 ja estavam corrigidos no codigo (#DB200, #DB201, #DB202, #DB203, #DB204). DEEP_BUGS agora 21 ativas, 0 CRIT. |
+| 2026-04-23 | Conferencia CRITICOs DEEP_RESILIENCE V6.0 — 8/8 ja estavam corrigidos no codigo (#300, #301, #304, #305, #308, #311, #315, #DR260). DEEP_RESILIENCE agora 45 ativas, 0 CRIT. |
+| 2026-04-23 | Conferencia CRITICOs DEEP_PERFORMANCE V5.0 — 3/3 ja estavam corrigidos no codigo (#403, #411, #DP071 via commit `06f2460` + fix @Transactional). DEEP_PERFORMANCE agora 55 ativas, 0 CRIT. |
+| 2026-04-23 | Fixes massivos DEEP_LOGIC V6.0 ALTO+MEDIO+BAIXO em 7 fases: 22 arquivos modificados + 3 migrations (032/033/034) + 1 classe nova (CryptoUtil). Fecha #711 cargas, #225 PENDENTE block, #657 FOR UPDATE, #226 AES-GCM at-rest, #221 ON CONFLICT composto, #200 Desktop is_atual+ativa, #234 senha_atualizada_em JWT invalidation, #DL034/35/36/37/40/41, #224 OCR vazio bloqueio, e outros. DEEP_LOGIC agora 1 ativa (#662 Desktop WS deferido). |
 
 ---
 *Atualizado automaticamente por Claude Code (audit-4-report) — Revisao humana recomendada*

@@ -15,7 +15,19 @@
 | Issues anteriores (V2.0) resolvidas e verificadas | 161 |
 | Issues anteriores parcialmente resolvidas (ainda pendentes) | 1 (#DB014/015 — double em Funcionario/Holerite) |
 | Issues anteriores regrediram | 0 |
-| **Total de issues ativas** | **26** |
+| **Total de issues ativas** | ~~26~~ → **21** (5 CRITICOs conferidos e marcados em 2026-04-23) |
+
+### Por severidade (ativos)
+
+| Severidade | Quantidade |
+|------------|-----------|
+| CRITICO | ~~5~~ → **0** _(conferidos em 2026-04-23)_ |
+| ALTO | 6 |
+| MEDIO | 10 |
+| BAIXO | 3 |
+| Parcial (legado) | 1 (#DB014/015) |
+
+> **2026-04-23** — conferidos os 5 CRITICOs (#DB200, #DB201, #DB202, #DB203, #DB204). **TODOS JA ESTAVAM CORRIGIDOS NO CODIGO** antes desta verificacao — o audit V3.0 foi gerado em 2026-04-18 e os fixes foram aplicados em commits posteriores. Resta 0 CRITICO em DEEP_BUGS.
 
 ---
 
@@ -47,7 +59,10 @@ _(nenhuma)_
 ### PSP / Pagamentos app
 
 #### Issue #DB200 — BFF proxy admin PSP envia JWT sem tipo=OPERADOR (Spring sempre rejeita)
-- [ ] **Concluido**
+- [x] **Concluido** _(ja estava corrigido — conferido em 2026-04-23)_
+
+> Ja estava corrigido: `naviera-web/server/middleware/auth.js:29` inclui `tipo: 'OPERADOR'` na claim. Comentario explicativo em L26-27 referencia esta issue.
+
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/admin.js`
 - **Linha(s):** 203-219 (proxy) + `naviera-web/server/middleware/auth.js` L9-15 + `naviera-api/.../security/JwtFilter.java` L24-40
@@ -68,7 +83,10 @@ return jwt.sign(
 ---
 
 #### Issue #DB201 — EncomendaService.pagar / FreteService.pagar — ownership fallback bypassado por nome vazio
-- [ ] **Concluido**
+- [x] **Concluido** _(ja estava corrigido — conferido em 2026-04-23)_
+
+> Ja estava corrigido: `FreteService.java:115-118` e `EncomendaService.java:139-142` fazem `if (cliente.getNome() == null || cliente.getNome().isBlank()) throw forbidden(...)` antes do `contains`.
+
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/.../service/EncomendaService.java` L135-138, `FreteService.java` L113-116
 - **Linha(s):** Ver acima
@@ -86,7 +104,10 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB202 — Estorno financeiro: autorizador vem do body (bypass admin password)
-- [ ] **Concluido**
+- [x] **Concluido** _(ja estava corrigido — conferido em 2026-04-23)_
+
+> Ja estava corrigido: endpoints legados `/estornar` e `/validar-admin` foram removidos de `financeiro.js:509-512`. Estornos agora em `routes/estornos.js` exigem `login_autorizador` + `senha_autorizador` no mesmo request, validados via `validarAutorizador(...)` (bcrypt).
+
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 530-580 (/estornar), 506-528 (/validar-admin)
@@ -99,7 +120,10 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB203 — PSP chamado dentro de @Transactional — cobranca orfanada se commit falhar
-- [ ] **Concluido**
+- [x] **Concluido** _(ja estava corrigido — conferido em 2026-04-23)_
+
+> Ja estava corrigido: os 3 metodos (`PassagemService.comprar`, `FreteService.pagar`, `EncomendaService.pagar`) nao tem `@Transactional`. Usam `tx.execute()` programatico para a TX1 (DB), chamam `pspService.criar()` fora de TX, e abrem TX2 via `tx.executeWithoutResult()` para UPDATE dos dados PSP. Comentario `// #205/#DB203` documenta o padrao.
+
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/.../service/PassagemService.java` L140-176, `EncomendaService.java` L176-206, `FreteService.java` L155-188
 - **Linha(s):** Ver acima
@@ -112,7 +136,10 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 ---
 
 #### Issue #DB204 — AsaasGateway: webhook secret vazio aceita qualquer webhook
-- [ ] **Concluido**
+- [x] **Concluido** _(ja estava corrigido — conferido em 2026-04-23)_
+
+> Ja estava corrigido: `AsaasGateway.java:203-210` agora checa o profile Spring. Em `prod` (`env.acceptsProfiles(Profiles.of("prod"))`), secret blank → `return false` (rejeita). Em dev aceita com `log.warn`. Resta a issue ALTO #DB205 (equalsIgnoreCase nao constant-time) separada.
+
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/.../psp/AsaasGateway.java`
 - **Linha(s):** 191-209
@@ -468,14 +495,14 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 
 ## PLANO DE CORRECAO
 
-### Urgente (CRITICO — 5 issues)
-- [ ] #DB200 — BFF proxy admin PSP JWT sem tipo — **Esforco:** 15min (add `tipo: 'OPERADOR'` em generateToken)
-- [ ] #DB201 — Ownership fallback por nome vazio em Encomenda/Frete — **Esforco:** 30min
-- [ ] #DB202 — Estorno sem validacao real do admin — **Esforco:** 2h (token assinado curto)
-- [ ] #DB203 — PSP chamado dentro de @Transactional — **Esforco:** 3h (refatorar 3 services)
-- [ ] #DB204 — Webhook secret vazio aceita webhook — **Esforco:** 15min
+### Urgente (CRITICO — 5 issues) — **CONCLUIDA (2026-04-23)**
+- [x] #DB200 — BFF proxy admin PSP JWT sem tipo _(ja corrigido em auth.js:29; conferido 2026-04-23)_
+- [x] #DB201 — Ownership fallback por nome vazio em Encomenda/Frete _(ja corrigido em FreteService/EncomendaService com isBlank check)_
+- [x] #DB202 — Estorno sem validacao real do admin _(endpoint removido; estornos.js usa validarAutorizador com bcrypt)_
+- [x] #DB203 — PSP chamado dentro de @Transactional _(3 services usam tx.execute() programatico)_
+- [x] #DB204 — Webhook secret vazio aceita webhook _(AsaasGateway:203-210 rejeita quando profile prod + secret blank)_
 - **Notas:**
-> _#DB200 e #DB202 sao de efeito imediato em producao. #DB201 pode ser explorado por qualquer cliente com acesso ao app. #DB204 depende de atacante saber URL do webhook (mas e trivialmente descobrivel em Asaas)._
+> Todos os 5 CRITICOs ja estavam corrigidos no codigo no momento da conferencia (2026-04-23). Nenhum arquivo de codigo foi modificado nesta sessao.
 
 ### Importante (ALTO — 6 issues)
 - [ ] #DB205 — HMAC nao timing-safe — **Esforco:** 10min

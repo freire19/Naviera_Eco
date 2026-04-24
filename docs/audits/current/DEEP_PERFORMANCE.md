@@ -15,16 +15,18 @@
 | Issues anteriores (V4.0) resolvidas | 30 |
 | Issues anteriores (V4.0) ainda pendentes | 2 |
 | Novos problemas encontrados neste deep | 23 |
-| **Total de issues ativas de performance** | **58** |
+| **Total de issues ativas de performance** | ~~58~~ → **55** (3 CRITICOs conferidos em 2026-04-23) |
 
-Distribuicao por severidade das 58 ativas:
+Distribuicao por severidade das 55 ativas:
 
 | Severidade | Qtd |
 |------------|-----|
-| CRITICO | 3 |
+| CRITICO | ~~3~~ → **0** _(conferidos em 2026-04-23)_ |
 | ALTO | 17 |
 | MEDIO | 28 |
 | BAIXO | 10 |
+
+> **2026-04-23** — conferidos os 3 CRITICOs (#403, #411, #DP071). **TODOS JA ESTAVAM CORRIGIDOS NO CODIGO** — commit `06f2460 perf(web): dashboard financeiro agrega no Postgres em vez de JS` resolveu #403 + #DP071; #411 foi resolvido junto com #205/#DB203/#308 (3 services usam `tx.execute()` programatico). Resta 0 CRITICO em DEEP_PERFORMANCE.
 
 ---
 
@@ -246,7 +248,10 @@ try {
 ### BFF — ROUTES + HELPERS
 
 #### Issue #DP071 — Financeiro /dashboard: filtros categoria/forma_pagto em JS pos-UNION
-- [ ] **Concluido**
+- [x] **Concluido** _(ja estava corrigido — conferido em 2026-04-23)_
+
+> Ja estava corrigido: `financeiro.js:95-148` — commit `06f2460 perf(web): dashboard financeiro agrega no Postgres em vez de JS`. Filtros `categoria`, `forma_pagto`, `caixa`, `viagem_id` estao no SQL (`catFilter` + `outerWhere`); endpoint retorna apenas agregados (SUM/COUNT), sem `.filter()` pos-query em JS.
+
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 100-147
@@ -600,13 +605,13 @@ public static String getUrlApi() {
 
 ## PLANO DE CORRECAO
 
-### Urgente (CRITICO) — 3 issues
+### Urgente (CRITICO) — 3 issues — **CONCLUIDA (2026-04-23)**
 
-- [ ] #403 — Financeiro /dashboard UNION ALL sem LIMIT — **Esforco:** 2h
-- [ ] #411 — PSP chamado dentro de @Transactional (EncomendaService/FreteService/PassagemService.pagar) — **Esforco:** 4h (outbox pattern)
-- [ ] #DP071 — Filtros categoria/forma_pagto em JS pos-UNION (extende #403) — **Esforco:** 1h (junto com #403)
+- [x] #403 — Financeiro /dashboard UNION ALL _(agrega no Postgres com SUM/COUNT; commit `06f2460`; conferido 2026-04-23)_
+- [x] #411 — PSP chamado dentro de @Transactional _(3 services usam `tx.execute()` programatico; mesmo fix de #205/#DB203/#308)_
+- [x] #DP071 — Filtros categoria/forma_pagto no SQL _(catFilter + outerWhere em `financeiro.js:109-115`; conferido 2026-04-23)_
 - **Notas:**
-> _#411 e o mais critico operacionalmente — incidente no Asaas derruba toda a API._
+> Todos os 3 CRITICOs ja estavam corrigidos no codigo (inclusive `06f2460 perf(web): dashboard financeiro agrega no Postgres em vez de JS`). Nenhum arquivo de codigo modificado nesta sessao.
 
 ### Importante (ALTO) — 17 issues
 
