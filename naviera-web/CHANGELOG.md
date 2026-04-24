@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/freire19/Naviera_Eco/compare/web-v1.1.0...web-v1.1.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* **web:** DEEP_BUGS FB2 + FB3 — admin hosts whitelist, folha transacional, TZ BR ([da59630](https://github.com/freire19/Naviera_Eco/commit/da5963092a83329669ab7e05ee68428b8b951236))
+* **web:** DEEP_LOGIC fixes — guards financeiro/viagens, JWT invalidation, OCR block ([6522207](https://github.com/freire19/Naviera_Eco/commit/6522207479e3893ef1ace5949cb10159ce87ce5a))
+
 ## [1.1.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.0.0...web-v1.1.0) (2026-04-23)
 
 
