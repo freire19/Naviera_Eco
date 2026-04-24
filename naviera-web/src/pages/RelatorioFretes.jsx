@@ -327,61 +327,129 @@ export default function RelatorioFretes({ viagemAtiva }) {
   }
 
   function printConfereViagem() {
-    // Agrupar itens por frete — sem valores, so Qtd/Descricao/Local
-    const itensPorFrete = {}
+    // Agrupar por DESTINATARIO, dentro por nota (numero_frete).
+    // Assim o conferente recebe tudo junto do mesmo cliente,
+    // mas ainda confere nota por nota.
+    const porDestinatario = {}
     itensRelatorio.forEach(i => {
-      if (!itensPorFrete[i.numero_frete]) itensPorFrete[i.numero_frete] = []
-      itensPorFrete[i.numero_frete].push(i)
+      const dest = i.destinatario || 'SEM DESTINATARIO'
+      if (!porDestinatario[dest]) porDestinatario[dest] = {}
+      const nota = String(i.numero_frete)
+      if (!porDestinatario[dest][nota]) {
+        porDestinatario[dest][nota] = {
+          remetente: i.remetente || '-',
+          local: i.local_transporte || '-',
+          itens: []
+        }
+      }
+      porDestinatario[dest][nota].itens.push(i)
     })
 
-    let fretesHtml = ''
-    for (const numero of Object.keys(itensPorFrete)) {
-      const itens = itensPorFrete[numero]
-      const primeiro = itens[0] || {}
-      const remetente = primeiro.remetente || ''
-      const destinatario = primeiro.destinatario || ''
-      fretesHtml += `
-        <div class="frete-header">
-          <div><strong style="font-size:14px">Frete #${numero}</strong>${remetente ? ` &nbsp; <span>${remetente}</span>` : ''}${destinatario ? ` &rarr; <span>${destinatario}</span>` : ''}</div>
-        </div>
-        <table style="margin:0">
-          <thead><tr>
-            <th style="width:10%">QTD</th>
-            <th style="width:65%">DESCRICAO</th>
-            <th style="width:25%">LOCAL</th>
-          </tr></thead>
-          <tbody>${itens.map(i => `<tr>
-            <td style="text-align:center">${i.quantidade}</td>
-            <td>${i.item}</td>
-            <td>${primeiro.local_transporte || '-'}</td>
-          </tr>`).join('')}
-          ${itens.length === 0 ? '<tr><td colspan="3" style="text-align:center;color:#999">Sem itens</td></tr>' : ''}
-          </tbody>
-        </table>
-        <div class="frete-footer">
-          <div style="border-top:1px solid #333;width:180px;text-align:center;font-size:9px;padding-top:3px">Conferido por</div>
-          <div style="font-size:10px;color:#666">Volumes: <strong>${itens.reduce((s,i) => s + (parseInt(i.quantidade) || 0), 0)}</strong></div>
+    let html = ''
+    for (const dest of Object.keys(porDestinatario).sort()) {
+      const fretesDoDest = porDestinatario[dest]
+      const totalVolumesDest = Object.values(fretesDoDest)
+        .reduce((s, f) => s + f.itens.reduce((a, i) => a + (parseInt(i.quantidade) || 0), 0), 0)
+      const numNotas = Object.keys(fretesDoDest).length
+
+      html += `
+        <div class="dest-header">
+          <span class="dest-name">${dest}</span>
+          <span class="dest-meta">${numNotas} nota${numNotas > 1 ? 's' : ''} · ${totalVolumesDest} volume${totalVolumesDest > 1 ? 's' : ''}</span>
         </div>`
+
+      for (const numero of Object.keys(fretesDoDest).sort((a, b) => Number(a) - Number(b))) {
+        const dados = fretesDoDest[numero]
+        const vol = dados.itens.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
+        html += `
+          <div class="nota-header">
+            <strong>Nota #${numero}</strong>
+            <span style="margin-left:12px">REM: <span class="green">${dados.remetente}</span></span>
+          </div>
+          <table style="margin:0;border-left:4px solid #047857;border-right:1px solid #047857">
+            <thead><tr>
+              <th style="width:10%">QTD</th>
+              <th style="width:65%">DESCRICAO</th>
+              <th style="width:25%">LOCAL</th>
+            </tr></thead>
+            <tbody>${dados.itens.map(i => `<tr>
+              <td style="text-align:center">${i.quantidade}</td>
+              <td>${i.item}</td>
+              <td>${dados.local}</td>
+            </tr>`).join('')}
+            </tbody>
+          </table>
+          <div class="nota-footer">
+            <div style="border-top:1px solid #333;width:180px;text-align:center;font-size:9px;padding-top:3px">Conferido por</div>
+            <div style="font-size:10px;color:#3D6B56">Volumes: <strong>${vol}</strong></div>
+          </div>`
+      }
     }
 
     const volumesTotal = itensRelatorio.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
     const titulo = 'CONFERE DE VIAGEM'
-    const html = `<!DOCTYPE html><html><head><title>${titulo}</title><style>${baseStyle}
+    const full = `<!DOCTYPE html><html><head><title>${titulo}</title><style>${baseStyle}
       @page { size: A4 portrait; margin: 15mm; }
       body { font-size: 11px; }
+      /* Cabecalho do destinatario: faixa superior verde destacada */
+      .dest-header {
+        margin-top: 18px;
+        padding: 10px 14px 8px;
+        border-left: 5px solid #047857;
+        border-top: 2px solid #047857;
+        border-bottom: 2px solid #047857;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .dest-header .dest-name {
+        color: #047857;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      .dest-header .dest-meta {
+        color: #3D6B56;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      /* Cabecalho de cada nota dentro do destinatario */
+      .nota-header {
+        background: #fff;
+        color: #0F2620;
+        padding: 7px 12px;
+        margin-top: 10px;
+        border-left: 4px solid #047857;
+        border-top: 1px solid #047857;
+        border-right: 1px solid #047857;
+        font-size: 12px;
+      }
+      .nota-footer {
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        margin-bottom: 4px;
+        border-left: 4px solid #047857;
+        border-right: 1px solid #047857;
+        border-bottom: 1px solid #047857;
+      }
     </style></head><body>
       <div class="header">
         <h2 style="font-size:18px">${titulo}</h2>
         <p>Viagem: ${viagemSel?.descricao || viagemId} | Rota: ${rotaSel || 'Todas'} | ${clienteSel ? 'Cliente: ' + clienteSel : 'Todos os clientes'}</p>
       </div>
-      ${fretesHtml || '<p style="text-align:center;color:#999">Sem itens para conferir</p>'}
-      <div style="margin-top:16px;padding:10px;border:2px solid #000;border-radius:6px;text-align:center">
-        <strong style="font-size:14px">TOTAL DE VOLUMES: ${volumesTotal}</strong>
+      ${html || '<p style="text-align:center;color:#999">Sem itens para conferir</p>'}
+      <div style="margin-top:18px;padding:10px 12px;border:2px solid #047857;border-radius:4px;display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:13px;color:#047857;text-transform:uppercase">Total geral da viagem</strong>
+        <strong style="font-size:14px;color:#047857">${volumesTotal} volumes</strong>
       </div>
       <div style="text-align:center;font-size:9px;margin-top:12px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
       <script>window.onload=()=>window.print()</script>
     </body></html>`
-    printContent(html, titulo)
+    printContent(full, titulo)
   }
 
   function printExtrato() {
