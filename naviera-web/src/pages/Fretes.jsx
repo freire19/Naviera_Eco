@@ -37,10 +37,11 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
   const [localTransporte, setLocalTransporte] = useState('')
   const [conferente, setConferente] = useState('')
   const [cidadeCobranca, setCidadeCobranca] = useState('')
-  const [notaFiscal, setNotaFiscal] = useState(false)
-  const [numNota, setNumNota] = useState('')
-  const [valorNota, setValorNota] = useState('')
-  const [pesoNota, setPesoNota] = useState('')
+  // Nota fiscal não é editada nesta tela (vive na tela de OCR/Review).
+  // Preservamos os valores para não sobrescrever ao salvar uma edição.
+  const [preservadoNumNota, setPreservadoNumNota] = useState(null)
+  const [preservadoValorNota, setPreservadoValorNota] = useState(null)
+  const [preservadoPesoNota, setPreservadoPesoNota] = useState(null)
   const [observacoes, setObservacoes] = useState('')
   const [precoTipo, setPrecoTipo] = useState('normal')
 
@@ -105,13 +106,10 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
         setConferente(f.conferente || f.conferente_temp || '')
         setLocalTransporte(f.local_transporte || '')
         setCidadeCobranca(f.cidade_cobranca || '')
-        // Nota fiscal
-        if (f.num_notafiscal) {
-          setNotaFiscal(true)
-          setNumNota(f.num_notafiscal || '')
-          setValorNota(f.valor_notafiscal || '')
-          setPesoNota(f.peso_notafiscal || '')
-        }
+        // Nota fiscal: preserva valores do banco (vieram do OCR/ReviewOCR)
+        setPreservadoNumNota(f.num_notafiscal || null)
+        setPreservadoValorNota(f.valor_notafiscal != null ? parseFloat(f.valor_notafiscal) : null)
+        setPreservadoPesoNota(f.peso_notafiscal != null ? parseFloat(f.peso_notafiscal) : null)
         // Carregar itens
         api.get(`/fretes/${f.id_frete}/itens`).then(data => {
           if (Array.isArray(data)) {
@@ -162,8 +160,8 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
 
   function limparForm() {
     setRemetente(''); setDestinatario(''); setIdRota(''); setLocalTransporte('')
-    setConferente(''); setCidadeCobranca(''); setNotaFiscal(false); setNumNota('')
-    setValorNota(''); setPesoNota(''); setObservacoes(''); setPrecoTipo('normal')
+    setConferente(''); setCidadeCobranca(''); setObservacoes(''); setPrecoTipo('normal')
+    setPreservadoNumNota(null); setPreservadoValorNota(null); setPreservadoPesoNota(null)
     setItens([]); setNovoItem({ ...ITEM_VAZIO }); setSelecionado(null); setEditando(false)
   }
 
@@ -287,9 +285,9 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
         observacoes: observacoes.trim(),
         local_transporte: localTransporte,
         cidade_cobranca: cidadeCobranca,
-        num_notafiscal: notaFiscal ? numNota : null,
-        valor_notafiscal: notaFiscal ? parseFloat(valorNota) || 0 : 0,
-        peso_notafiscal: notaFiscal ? parseFloat(pesoNota) || 0 : 0,
+        num_notafiscal: preservadoNumNota,
+        valor_notafiscal: preservadoValorNota != null ? preservadoValorNota : 0,
+        peso_notafiscal: preservadoPesoNota != null ? preservadoPesoNota : 0,
         valor_total_itens: totalItens || 0,
         desconto: 0,
         valor_pago: 0,
@@ -360,9 +358,9 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
         observacoes: observacoes.trim(),
         local_transporte: localTransporte,
         cidade_cobranca: cidadeCobranca,
-        num_notafiscal: notaFiscal ? numNota : null,
-        valor_notafiscal: notaFiscal ? parseFloat(valorNota) || 0 : 0,
-        peso_notafiscal: notaFiscal ? parseFloat(pesoNota) || 0 : 0,
+        num_notafiscal: preservadoNumNota,
+        valor_notafiscal: preservadoValorNota != null ? preservadoValorNota : 0,
+        peso_notafiscal: preservadoPesoNota != null ? preservadoPesoNota : 0,
         valor_total_itens: totalItens,
         desconto: vDesc,
         valor_pago: vPago,
@@ -482,33 +480,17 @@ export default function Fretes({ viagemAtiva, onNavigate, onClose }) {
         <div><label style={L}>Cidade Cobranca:</label><input style={I} value={cidadeCobranca} onChange={e => setCidadeCobranca(e.target.value)} /></div>
       </div>
 
-      {/* ROW 3: Nota Fiscal + Observacoes */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
-        <div style={{ padding: 10, border: '1px solid var(--border)', borderRadius: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <label style={{ ...L, marginBottom: 0 }}>Nota Fiscal?</label>
-            <label style={{ fontSize: '0.82rem' }}><input type="radio" checked={notaFiscal} onChange={() => setNotaFiscal(true)} /> Sim</label>
-            <label style={{ fontSize: '0.82rem' }}><input type="radio" checked={!notaFiscal} onChange={() => setNotaFiscal(false)} /> Nao</label>
+      {/* ROW 3: Observacoes */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+          <label style={{ ...L, marginBottom: 0 }}>Observacoes:</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>
+            <label style={L}>Preco:</label>
+            <label><input type="radio" checked={precoTipo === 'normal'} onChange={() => handleTrocarPrecoTipo('normal')} /> Normal</label>
+            <label><input type="radio" checked={precoTipo === 'desconto'} onChange={() => handleTrocarPrecoTipo('desconto')} /> Desc.</label>
           </div>
-          {notaFiscal && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <div><label style={{ ...L, fontSize: '0.68rem' }}>N° Nota:</label><input style={I} value={numNota} onChange={e => setNumNota(e.target.value)} /></div>
-              <div><label style={{ ...L, fontSize: '0.68rem' }}>Valor (R$):</label><input style={I} type="number" step="0.01" value={valorNota} onChange={e => setValorNota(e.target.value)} /></div>
-              <div><label style={{ ...L, fontSize: '0.68rem' }}>Peso (kg):</label><input style={I} type="number" step="0.01" value={pesoNota} onChange={e => setPesoNota(e.target.value)} /></div>
-            </div>
-          )}
         </div>
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-            <label style={{ ...L, marginBottom: 0 }}>Observacoes:</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>
-              <label style={L}>Preco:</label>
-              <label><input type="radio" checked={precoTipo === 'normal'} onChange={() => handleTrocarPrecoTipo('normal')} /> Normal</label>
-              <label><input type="radio" checked={precoTipo === 'desconto'} onChange={() => handleTrocarPrecoTipo('desconto')} /> Desc.</label>
-            </div>
-          </div>
-          <textarea style={{ ...I, minHeight: 60, resize: 'vertical' }} value={observacoes} onChange={e => setObservacoes(e.target.value)} />
-        </div>
+        <textarea style={{ ...I, minHeight: 60, resize: 'vertical' }} value={observacoes} onChange={e => setObservacoes(e.target.value)} />
       </div>
 
       {/* ITEM ENTRY */}
