@@ -102,6 +102,7 @@ router.get('/relatorio/itens', async (req, res) => {
     if (!viagem_id) return res.status(400).json({ error: 'viagem_id obrigatorio' })
     const empresaId = req.user.empresa_id
     let sql = `SELECT f.numero_frete, v.data_viagem, f.remetente_nome_temp AS remetente,
+      f.destinatario_nome_temp AS destinatario, f.local_transporte, f.rota_temp AS rota,
       fi.nome_item_ou_id_produto AS item, fi.quantidade, fi.preco_unitario,
       (fi.quantidade * fi.preco_unitario) AS total_item
       FROM fretes f

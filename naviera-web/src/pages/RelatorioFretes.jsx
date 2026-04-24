@@ -107,7 +107,33 @@ export default function RelatorioFretes({ viagemAtiva }) {
     .green { color: #059669; }
     .red { color: #DC2626; }
     .signature { margin-top: 30px; border-top: 1px solid #333; width: 200px; text-align: center; font-size: 10px; padding-top: 4px; }
-    @media print { body { margin: 0; } }
+    .frete-header { background: #047857; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .frete-footer { background: #f5f5f5; padding: 6px 12px; display: flex; justify-content: space-between; border-radius: 0 0 6px 6px; font-size: 11px; margin-bottom: 4px; }
+    /* Impressao: remove todos os fundos coloridos, usa so texto preto + bordas */
+    @media print {
+      body { margin: 0; color: #000; }
+      -webkit-print-color-adjust: economy; print-color-adjust: economy;
+      .header h2 { color: #000 !important; }
+      th {
+        background: #fff !important;
+        color: #000 !important;
+        border-top: 2px solid #000 !important;
+        border-bottom: 2px solid #000 !important;
+      }
+      td { color: #000 !important; }
+      .summary { background: #fff !important; border: 1px solid #000 !important; }
+      .frete-header {
+        background: #fff !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+        border-bottom: none !important;
+        font-weight: 700;
+      }
+      .frete-footer { background: #fff !important; border: 1px solid #000 !important; }
+      .green { color: #000 !important; font-weight: 700 !important; }
+      .red { color: #000 !important; font-weight: 700 !important; }
+      .status-pago, .status-falta { background: #fff !important; color: #000 !important; border: 1px solid #000 !important; }
+    }
   `
 
   function printRelatorio() {
@@ -276,7 +302,61 @@ export default function RelatorioFretes({ viagemAtiva }) {
   }
 
   function printConfereViagem() {
-    printGeralA4('tudo')
+    // Agrupar itens por frete — sem valores, so Qtd/Descricao/Local
+    const itensPorFrete = {}
+    itensRelatorio.forEach(i => {
+      if (!itensPorFrete[i.numero_frete]) itensPorFrete[i.numero_frete] = []
+      itensPorFrete[i.numero_frete].push(i)
+    })
+
+    let fretesHtml = ''
+    for (const numero of Object.keys(itensPorFrete)) {
+      const itens = itensPorFrete[numero]
+      const primeiro = itens[0] || {}
+      const remetente = primeiro.remetente || ''
+      const destinatario = primeiro.destinatario || ''
+      fretesHtml += `
+        <div class="frete-header">
+          <div><strong style="font-size:14px">Frete #${numero}</strong>${remetente ? ` &nbsp; <span>${remetente}</span>` : ''}${destinatario ? ` &rarr; <span>${destinatario}</span>` : ''}</div>
+        </div>
+        <table style="margin:0">
+          <thead><tr>
+            <th style="width:10%">QTD</th>
+            <th style="width:65%">DESCRICAO</th>
+            <th style="width:25%">LOCAL</th>
+          </tr></thead>
+          <tbody>${itens.map(i => `<tr>
+            <td style="text-align:center">${i.quantidade}</td>
+            <td>${i.item}</td>
+            <td>${primeiro.local_transporte || '-'}</td>
+          </tr>`).join('')}
+          ${itens.length === 0 ? '<tr><td colspan="3" style="text-align:center;color:#999">Sem itens</td></tr>' : ''}
+          </tbody>
+        </table>
+        <div class="frete-footer">
+          <div style="border-top:1px solid #333;width:180px;text-align:center;font-size:9px;padding-top:3px">Conferido por</div>
+          <div style="font-size:10px;color:#666">Volumes: <strong>${itens.reduce((s,i) => s + (parseInt(i.quantidade) || 0), 0)}</strong></div>
+        </div>`
+    }
+
+    const volumesTotal = itensRelatorio.reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0)
+    const titulo = 'CONFERE DE VIAGEM'
+    const html = `<!DOCTYPE html><html><head><title>${titulo}</title><style>${baseStyle}
+      @page { size: A4 portrait; margin: 15mm; }
+      body { font-size: 11px; }
+    </style></head><body>
+      <div class="header">
+        <h2 style="font-size:18px">${titulo}</h2>
+        <p>Viagem: ${viagemSel?.descricao || viagemId} | Rota: ${rotaSel || 'Todas'} | ${clienteSel ? 'Cliente: ' + clienteSel : 'Todos os clientes'}</p>
+      </div>
+      ${fretesHtml || '<p style="text-align:center;color:#999">Sem itens para conferir</p>'}
+      <div style="margin-top:16px;padding:10px;border:2px solid #000;border-radius:6px;text-align:center">
+        <strong style="font-size:14px">TOTAL DE VOLUMES: ${volumesTotal}</strong>
+      </div>
+      <div style="text-align:center;font-size:9px;margin-top:12px;color:#999">${new Date().toLocaleString('pt-BR')}</div>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    printContent(html, titulo)
   }
 
   function printExtrato() {
