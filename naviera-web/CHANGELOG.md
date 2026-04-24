@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.3.0...web-v1.4.0) (2026-04-24)
+
+
+### Features
+
+* **web/confere-viagem:** agrupa por destinatario, separa nota por nota ([d5c3ccc](https://github.com/freire19/Naviera_Eco/commit/d5c3cccba3e03331e456e09e68eed4751f3dabae))
+
 ## [1.3.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.2.0...web-v1.3.0) (2026-04-24)
 
 
