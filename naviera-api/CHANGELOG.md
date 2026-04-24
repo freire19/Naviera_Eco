@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.1...api-v1.1.2) (2026-04-24)
+
+
+### Bug Fixes
+
+* **api:** DEEP_BUGS FB1 + FB4 — HMAC constant-time, bilhete advisory_lock, TZ BR ([f21799e](https://github.com/freire19/Naviera_Eco/commit/f21799ec021cb408efc3f043db359e9e65514c9d))
+
 ## [1.1.1](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.0...api-v1.1.1) (2026-04-24)
 
 
