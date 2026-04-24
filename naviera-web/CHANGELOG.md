@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.4.3...web-v1.5.0) (2026-04-24)
+
+
+### Features
+
+* **web/confere-viagem:** data da viagem no cabecalho + paginacao no rodape ([750efcc](https://github.com/freire19/Naviera_Eco/commit/750efcc6774f64a303b8a0709d9e0e596ec8533e))
+
 ## [1.4.3](https://github.com/freire19/Naviera_Eco/compare/web-v1.4.2...web-v1.4.3) (2026-04-24)
 
 
