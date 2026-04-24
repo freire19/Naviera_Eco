@@ -1107,6 +1107,155 @@ table tr.clickable { cursor: pointer; }
   .page [style*="display: flex"][style*="gap: 6px"] { flex-wrap: wrap !important; }
 }
 
+/* === Calendario de Eventos === */
+.calendario-card {
+  padding: 24px !important;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+}
+
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendario-grid > * {
+  min-width: 0;
+}
+
+.calendario-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.calendario-weekday {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  padding: 4px 0;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.calendario-weekday.weekend {
+  color: var(--primary);
+}
+
+.calendario-cell {
+  min-height: 92px;
+  min-width: 0;
+  padding: 8px 8px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  text-align: left;
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.calendario-cell.weekend {
+  background: var(--bg-soft);
+}
+
+.calendario-cell:hover:not(.is-hoje) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.12);
+  border-color: rgba(5, 150, 105, 0.30);
+}
+
+.calendario-cell.is-selecionado:not(.is-hoje) {
+  border: 2px solid var(--primary);
+  background: var(--bg-accent);
+}
+
+.calendario-cell.is-hoje {
+  background: linear-gradient(135deg, #059669, #34D399);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.32);
+  font-weight: 700;
+}
+
+.calendario-cell .dia-num {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.calendario-cell.weekend:not(.is-hoje) .dia-num {
+  color: var(--primary);
+}
+
+.calendario-cell.is-hoje .dia-num {
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendario-cell .evento-linha {
+  font-size: 9.5px;
+  line-height: 1.2;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendario-cell.is-hoje .evento-linha {
+  color: rgba(255,255,255,0.95);
+}
+
+.calendario-placeholder-cell {
+  min-height: 92px;
+  background: transparent;
+}
+
+.calendario-btn-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.calendario-btn-nav:hover {
+  background: var(--bg-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Se alguem aplicar a classe em viewport pequena, garantir que as colunas continuem iguais (sobrepoe o override de linha 974) */
+@media (max-width: 1024px) {
+  .calendario-grid,
+  .calendario-weekdays {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+}
+
 /* === Passagens/Encomendas grids responsivos === */
 @media (max-width: 900px) {
   .passagem-grid-passageiro {

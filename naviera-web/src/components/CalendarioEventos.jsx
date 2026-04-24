@@ -87,32 +87,44 @@ export default function CalendarioEventos() {
     ...(feriados[dataSelecionada] ? [{ tipo: 'feriado', titulo: feriados[dataSelecionada], sub: 'Feriado nacional' }] : [])
   ]
 
-  const btnMes = {
-    padding: '6px 14px', background: 'var(--primary)', color: '#fff', border: 'none',
-    borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem'
-  }
+  const COR_VIAGEM = '#DC2626'
+  const COR_TAREFA = '#7C3AED'
+  const COR_FERIADO = '#F59E0B'
+  const COR_BOLETO = '#0EA5E9'
 
   return (
-    <div className="card" style={{ padding: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <button style={btnMes} onClick={() => navMes(-1)}>&lt; Anterior</button>
-        <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{MESES[mes]} {ano}</h3>
-        <button style={btnMes} onClick={() => navMes(1)}>Proximo &gt;</button>
+    <div className="calendario-card">
+      {/* Header */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--border)'
+      }}>
+        <button className="calendario-btn-nav" onClick={() => navMes(-1)}>&larr; Anterior</button>
+        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          {MESES[mes]} <span style={{ color: 'var(--text-muted)', fontWeight: 500, marginLeft: 4 }}>{ano}</span>
+        </h3>
+        <button className="calendario-btn-nav" onClick={() => navMes(1)}>Proximo &rarr;</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-        {DIAS_SEMANA.map(d => (
-          <div key={d} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', padding: '6px 0', textAlign: 'center' }}>{d}</div>
+      {/* Dias da semana */}
+      <div className="calendario-weekdays">
+        {DIAS_SEMANA.map((d, i) => (
+          <div key={d} className={`calendario-weekday${(i === 0 || i === 6) ? ' weekend' : ''}`}>{d}</div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-        {Array.from({ length: primeiroDia }).map((_, i) => <div key={`e${i}`} />)}
+      {/* Grade de dias */}
+      <div className="calendario-grid">
+        {Array.from({ length: primeiroDia }).map((_, i) => (
+          <div key={`e${i}`} className="calendario-placeholder-cell" />
+        ))}
         {Array.from({ length: diasNoMes }).map((_, i) => {
           const dia = i + 1
           const dateStr = toDateStr(ano, mes, dia)
           const isHoje = dateStr === hojeStr
           const isSel = dia === diaSelecionado
+          const diaSemana = (primeiroDia + i) % 7
+          const isFimSemana = diaSemana === 0 || diaSemana === 6
           const feriadoNome = feriados[dateStr]
           const viagensDia = viagensPorDia[dateStr] || []
           const tarefasDia = tarefasPorDia[dateStr] || []
@@ -120,49 +132,40 @@ export default function CalendarioEventos() {
           const temViagem = viagensDia.length > 0
           const temTarefa = tarefasDia.length > 0
           const temBoleto = boletosDia.length > 0
-          // Resumo curto da primeira viagem do dia (ex: "MANAUS - JUTAI")
+          const temEvento = temViagem || temTarefa || temBoleto || !!feriadoNome
           const rotaResumo = temViagem
             ? (viagensDia[0].nome_rota ||
                (viagensDia[0].origem && viagensDia[0].destino ? `${viagensDia[0].origem} - ${viagensDia[0].destino}` : viagensDia[0].descricao || 'Viagem'))
             : null
 
+          const cellClasses = [
+            'calendario-cell',
+            isFimSemana ? 'weekend' : '',
+            isHoje ? 'is-hoje' : '',
+            (isSel && !isHoje) ? 'is-selecionado' : ''
+          ].filter(Boolean).join(' ')
+
           return (
-            <button key={dia}
-              onClick={() => setDiaSelecionado(dia)}
-              style={{
-                minHeight: 82, padding: '4px 3px', position: 'relative',
-                background: isHoje ? 'var(--primary)' : (isSel ? 'var(--bg-accent)' : 'var(--bg-card)'),
-                color: isHoje ? '#fff' : 'var(--text)',
-                border: isSel && !isHoje ? '2px solid var(--primary)' : '1px solid var(--border)',
-                borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: isHoje || isSel ? 700 : 500,
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start',
-                gap: 2, textAlign: 'left'
-              }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                <span>{dia}</span>
-                {temBoleto && <span style={{ fontSize: 10 }} title="Conta a pagar">&#128221;</span>}
+            <button key={dia} className={cellClasses} onClick={() => setDiaSelecionado(dia)}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="dia-num">{dia}</span>
               </div>
+
               {feriadoNome && (
-                <div style={{ fontSize: 9, color: isHoje ? '#fff' : '#B45309', lineHeight: 1.1 }}>&#9733; {feriadoNome}</div>
+                <div className="evento-linha" style={{ color: isHoje ? undefined : COR_FERIADO }} title={feriadoNome}>
+                  ★ {feriadoNome}
+                </div>
               )}
               {rotaResumo && (
-                <div style={{
-                  fontSize: 9, fontWeight: 700, lineHeight: 1.1,
-                  color: isHoje ? '#fff' : '#DC2626',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  maxWidth: '100%'
-                }} title={viagensDia.map(v => v.nome_rota || v.descricao).join(', ')}>
-                  &#9875; {rotaResumo}{viagensDia.length > 1 ? ` +${viagensDia.length - 1}` : ''}
+                <div className="evento-linha" style={{ color: isHoje ? undefined : COR_VIAGEM, fontWeight: 700 }}
+                  title={viagensDia.map(v => v.nome_rota || v.descricao).join(', ')}>
+                  ⚓ {rotaResumo}{viagensDia.length > 1 ? ` +${viagensDia.length - 1}` : ''}
                 </div>
               )}
               {temTarefa && tarefasDia[0]?.descricao && (
-                <div style={{
-                  fontSize: 9, lineHeight: 1.1,
-                  color: isHoje ? '#fff' : '#7C3AED',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  maxWidth: '100%'
-                }} title={tarefasDia.map(t => t.descricao).join(', ')}>
-                  &#128221; {tarefasDia[0].descricao}{tarefasDia.length > 1 ? ` +${tarefasDia.length - 1}` : ''}
+                <div className="evento-linha" style={{ color: isHoje ? undefined : COR_TAREFA }}
+                  title={tarefasDia.map(t => t.descricao).join(', ')}>
+                  ✎ {tarefasDia[0].descricao}{tarefasDia.length > 1 ? ` +${tarefasDia.length - 1}` : ''}
                 </div>
               )}
               {temBoleto && (() => {
@@ -172,33 +175,36 @@ export default function CalendarioEventos() {
                 const label = valor > 0 ? `${desc} R$ ${valor.toFixed(2).replace('.', ',')}` : desc
                 const titulo = boletosDia.map(x => `${x.descricao || 'Boleto'} R$ ${Number(x.valor_total || 0).toFixed(2).replace('.', ',')}`).join(' | ')
                 return (
-                  <div style={{
-                    fontSize: 9, fontWeight: 700, lineHeight: 1.1,
-                    color: isHoje ? '#fff' : '#0EA5E9',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    maxWidth: '100%'
-                  }} title={titulo}>
-                    &#36; {label}{boletosDia.length > 1 ? ` +${boletosDia.length - 1}` : ''}
+                  <div className="evento-linha" style={{ color: isHoje ? undefined : COR_BOLETO, fontWeight: 700 }} title={titulo}>
+                    $ {label}{boletosDia.length > 1 ? ` +${boletosDia.length - 1}` : ''}
                   </div>
                 )
               })()}
-              <div style={{ display: 'flex', gap: 3, marginTop: 'auto' }}>
-                {temViagem && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#DC2626' }} title="Viagem" />}
-                {temTarefa && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#7C3AED' }} title="Anotacao" />}
-                {feriadoNome && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B' }} title="Feriado" />}
-                {temBoleto && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#0EA5E9' }} title="Conta a pagar" />}
-              </div>
+
+              {temEvento && (
+                <div style={{ display: 'flex', gap: 3, marginTop: 'auto', paddingTop: 2 }}>
+                  {temViagem && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_VIAGEM }} title="Viagem" />}
+                  {temTarefa && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_TAREFA }} title="Anotacao" />}
+                  {feriadoNome && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_FERIADO }} title="Feriado" />}
+                  {temBoleto && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_BOLETO }} title="Conta a pagar" />}
+                </div>
+              )}
             </button>
           )
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: 16, fontSize: 11, marginTop: 10, flexWrap: 'wrap', color: 'var(--text-muted)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC2626' }} /> Viagem</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#7C3AED' }} /> Anotacao</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} /> Feriado</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0EA5E9' }} /> Conta a Pagar</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} /> Hoje</div>
+      {/* Legenda */}
+      <div style={{
+        display: 'flex', gap: 20, fontSize: 11, marginTop: 16, paddingTop: 14,
+        borderTop: '1px solid var(--border)',
+        flexWrap: 'wrap', color: 'var(--text-muted)', fontWeight: 500
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_VIAGEM }} /> Viagem</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_TAREFA }} /> Anotacao</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_FERIADO }} /> Feriado</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_BOLETO }} /> Conta a Pagar</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} /> Hoje</div>
       </div>
 
       {eventosDoDia.length > 0 && (
