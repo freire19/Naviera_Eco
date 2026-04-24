@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.2.0...web-v1.3.0) (2026-04-24)
+
+
+### Features
+
+* **web/relatorio-fretes:** Confere Viagem dedicado + impressao P&B ([bfb93a6](https://github.com/freire19/Naviera_Eco/commit/bfb93a6d274e465a4199adb99ed74bdaa555fa33))
+
 ## [1.2.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.1.1...web-v1.2.0) (2026-04-24)
 
 
