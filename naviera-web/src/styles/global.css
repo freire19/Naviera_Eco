@@ -1109,17 +1109,19 @@ table tr.clickable { cursor: pointer; }
 
 /* === Calendario de Eventos === */
 .calendario-card {
-  padding: 24px !important;
+  padding: 14px !important;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
 }
 
 .calendario-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  gap: 3px;
 }
 
 .calendario-grid > * {
@@ -1129,18 +1131,18 @@ table tr.clickable { cursor: pointer; }
 .calendario-weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 8px;
-  padding-bottom: 10px;
+  gap: 3px;
+  margin-bottom: 4px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
 
 .calendario-weekday {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--text-muted);
-  padding: 4px 0;
+  padding: 2px 0;
   text-align: center;
   text-transform: uppercase;
 }
@@ -1150,21 +1152,21 @@ table tr.clickable { cursor: pointer; }
 }
 
 .calendario-cell {
-  min-height: 92px;
+  min-height: 60px;
   min-width: 0;
-  padding: 8px 8px 6px;
+  padding: 4px 5px 3px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-family: inherit;
   font-weight: 500;
   color: var(--text);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 3px;
+  gap: 1px;
   text-align: left;
   overflow: hidden;
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
@@ -1194,9 +1196,10 @@ table tr.clickable { cursor: pointer; }
 }
 
 .calendario-cell .dia-num {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: -0.01em;
+  line-height: 1;
 }
 
 .calendario-cell.weekend:not(.is-hoje) .dia-num {
@@ -1205,12 +1208,11 @@ table tr.clickable { cursor: pointer; }
 
 .calendario-cell.is-hoje .dia-num {
   color: #fff;
-  font-weight: 700;
 }
 
 .calendario-cell .evento-linha {
-  font-size: 9.5px;
-  line-height: 1.2;
+  font-size: 10px;
+  line-height: 1.15;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1222,7 +1224,7 @@ table tr.clickable { cursor: pointer; }
 }
 
 .calendario-placeholder-cell {
-  min-height: 92px;
+  min-height: 60px;
   background: transparent;
 }
 
@@ -1230,13 +1232,13 @@ table tr.clickable { cursor: pointer; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 5px 12px;
   background: transparent;
   color: var(--text-soft);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 600;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   cursor: pointer;
   font-family: inherit;
   transition: all 0.15s;

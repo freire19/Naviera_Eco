@@ -97,10 +97,10 @@ export default function CalendarioEventos() {
       {/* Header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--border)'
+        marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--border)'
       }}>
         <button className="calendario-btn-nav" onClick={() => navMes(-1)}>&larr; Anterior</button>
-        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
           {MESES[mes]} <span style={{ color: 'var(--text-muted)', fontWeight: 500, marginLeft: 4 }}>{ano}</span>
         </h3>
         <button className="calendario-btn-nav" onClick={() => navMes(1)}>Proximo &rarr;</button>
@@ -182,11 +182,11 @@ export default function CalendarioEventos() {
               })()}
 
               {temEvento && (
-                <div style={{ display: 'flex', gap: 3, marginTop: 'auto', paddingTop: 2 }}>
-                  {temViagem && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_VIAGEM }} title="Viagem" />}
-                  {temTarefa && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_TAREFA }} title="Anotacao" />}
-                  {feriadoNome && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_FERIADO }} title="Feriado" />}
-                  {temBoleto && <span style={{ width: 6, height: 6, borderRadius: '50%', background: isHoje ? '#fff' : COR_BOLETO }} title="Conta a pagar" />}
+                <div style={{ display: 'flex', gap: 2, marginTop: 'auto', paddingTop: 1 }}>
+                  {temViagem && <span style={{ width: 5, height: 5, borderRadius: '50%', background: isHoje ? '#fff' : COR_VIAGEM }} title="Viagem" />}
+                  {temTarefa && <span style={{ width: 5, height: 5, borderRadius: '50%', background: isHoje ? '#fff' : COR_TAREFA }} title="Anotacao" />}
+                  {feriadoNome && <span style={{ width: 5, height: 5, borderRadius: '50%', background: isHoje ? '#fff' : COR_FERIADO }} title="Feriado" />}
+                  {temBoleto && <span style={{ width: 5, height: 5, borderRadius: '50%', background: isHoje ? '#fff' : COR_BOLETO }} title="Conta a pagar" />}
                 </div>
               )}
             </button>
@@ -196,7 +196,7 @@ export default function CalendarioEventos() {
 
       {/* Legenda */}
       <div style={{
-        display: 'flex', gap: 20, fontSize: 11, marginTop: 16, paddingTop: 14,
+        display: 'flex', gap: 14, fontSize: 10, marginTop: 8, paddingTop: 8,
         borderTop: '1px solid var(--border)',
         flexWrap: 'wrap', color: 'var(--text-muted)', fontWeight: 500
       }}>
