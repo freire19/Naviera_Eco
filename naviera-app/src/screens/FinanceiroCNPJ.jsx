@@ -60,7 +60,10 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
 
   // Modal de pagamento
   if (pagando) {
-    const saldo = Math.max(0, (Number(pagando.valorNominal) || 0) - (Number(pagando.valorPago) || 0));
+    // #DB220: usar valorDevedor (ja subtrai desconto aplicado pela API) — evita cobrar a mais
+    const saldo = pagando.valorDevedor != null
+      ? Math.max(0, Number(pagando.valorDevedor))
+      : Math.max(0, (Number(pagando.valorNominal) || 0) - (Number(pagando.valorPago) || 0));
     const desconto10 = formaPag === "PIX" ? saldo * 0.10 : 0;
     const aPagar = saldo - desconto10;
     const opts = [
