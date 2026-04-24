@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +29,9 @@ public class SyncClient {
 
     private static final String TAG = "SyncClient";
     private static final String CONFIG_FILE = "sync_config.properties";
+    // #223: Patterns precompilados — chamados por coluna × registro × tabela em loops de sync.
+    private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}.*");
+    private static final Pattern DATE_PATTERN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // Tabelas permitidas para sync — ORDEM IMPORTA: tabelas referenciadas primeiro
@@ -736,7 +740,27 @@ public class SyncClient {
 
         try (java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < valores.size(); i++) {
-                stmt.setObject(i + 1, valores.get(i));
+                // #223: normalizar timestamps (String ISO -> Timestamp) para evitar mismatch
+                //   entre postgres (sem TZ) e java.util.Date quando vem do JSON.
+                Object val = valores.get(i);
+                if (val instanceof String s && s.length() >= 10 && s.length() <= 30) {
+                    boolean ts = TIMESTAMP_PATTERN.matcher(s).matches();
+                    boolean dt = !ts && DATE_PATTERN.matcher(s).matches();
+                    if (ts || dt) {
+                        try {
+                            if (ts) {
+                                String norm = s.replace('T', ' ');
+                                int dot = norm.indexOf('.');
+                                if (dot > 0) norm = norm.substring(0, dot);
+                                stmt.setTimestamp(i + 1, java.sql.Timestamp.valueOf(norm));
+                            } else {
+                                stmt.setDate(i + 1, java.sql.Date.valueOf(s));
+                            }
+                            continue;
+                        } catch (Exception ignored) { /* fallback setObject */ }
+                    }
+                }
+                stmt.setObject(i + 1, val);
             }
             stmt.executeUpdate();
         }
