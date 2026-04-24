@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/freire19/Naviera_Eco/compare/web-v1.4.0...web-v1.4.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* **web/confere-viagem:** uma so assinatura no rodape, com espaco decente ([24eb762](https://github.com/freire19/Naviera_Eco/commit/24eb762349d8f0a55a63404125ab884441da7907))
+
 ## [1.4.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.3.0...web-v1.4.0) (2026-04-24)
 
 
