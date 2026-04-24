@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.0...api-v1.1.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* **api:** DEEP_LOGIC massive fixes — cargas, guards, cifra totp, PSP off-TX ([63f47dd](https://github.com/freire19/Naviera_Eco/commit/63f47ddb1d32086f60e25ba2e61efad0d2b4ec31))
+
 ## [1.1.0](https://github.com/freire19/Naviera_Eco/compare/api-v1.0.0...api-v1.1.0) (2026-04-23)
 
 
