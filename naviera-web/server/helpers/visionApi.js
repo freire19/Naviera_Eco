@@ -67,3 +67,30 @@ export async function callVisionOCR(imagePath) {
     fullResponse: response
   }
 }
+
+/**
+ * #240: chama Vision OCR em multiplas imagens com concorrencia limitada.
+ * Antes multi-pagina era loop sequencial — agora roda ate `concurrency` em paralelo.
+ *
+ * @param {string[]} imagePaths - Lista de caminhos absolutos
+ * @param {number} concurrency - Limite simultaneo (default 3 — evita rate-limit Google)
+ * @returns {Array<{text, confidence, fullResponse, error?}>}
+ */
+export async function callVisionOCRBatch(imagePaths, concurrency = 3) {
+  if (!Array.isArray(imagePaths) || imagePaths.length === 0) return []
+  const results = new Array(imagePaths.length)
+  let cursor = 0
+  const workers = Array.from({ length: Math.min(concurrency, imagePaths.length) }, async () => {
+    while (true) {
+      const idx = cursor++
+      if (idx >= imagePaths.length) break
+      try {
+        results[idx] = await callVisionOCR(imagePaths[idx])
+      } catch (e) {
+        results[idx] = { text: '', confidence: 0, fullResponse: null, error: e.message }
+      }
+    }
+  })
+  await Promise.all(workers)
+  return results
+}

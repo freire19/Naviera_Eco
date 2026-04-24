@@ -141,6 +141,20 @@ router.post('/', validate({ id_embarcacao: 'required|integer', id_rota: 'require
     if (!id_embarcacao || !id_rota || !data_viagem || !data_chegada) {
       return res.status(400).json({ error: 'Campos obrigatorios: id_embarcacao, id_rota, data_viagem, data_chegada' })
     }
+    // #208: validar formato/range de datas antes de inserir
+    const dViagem = new Date(data_viagem)
+    const dChegada = new Date(data_chegada)
+    if (isNaN(dViagem.getTime()) || isNaN(dChegada.getTime())) {
+      return res.status(400).json({ error: 'data_viagem ou data_chegada invalidas' })
+    }
+    if (dChegada < dViagem) {
+      return res.status(400).json({ error: 'data_chegada nao pode ser anterior a data_viagem' })
+    }
+    // Sanity: nao aceitar datas absurdas (> 5 anos no futuro ou > 1 ano no passado)
+    const agora = Date.now()
+    if (dViagem.getTime() < agora - 365 * 24 * 3600 * 1000 || dViagem.getTime() > agora + 5 * 365 * 24 * 3600 * 1000) {
+      return res.status(400).json({ error: 'data_viagem fora do range razoavel' })
+    }
     const marcarAtiva = ativa === true || ativa === 'true'
 
     await client.query('BEGIN')

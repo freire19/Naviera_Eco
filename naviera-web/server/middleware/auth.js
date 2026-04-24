@@ -1,4 +1,15 @@
 import jwt from 'jsonwebtoken'
+import pool from '../db.js'
+
+// #234: cache do senha_atualizada_em para evitar SELECT a cada request.
+//   TTL 60s e' janela aceitavel entre troca de senha e logout forcado em outras sessoes.
+//   Invalidado explicitamente no endpoint de trocar-senha (ver exports.invalidateSenhaCache).
+const senhaEpochCache = new Map()
+const SENHA_CACHE_TTL_MS = 60_000
+
+export function invalidateSenhaCache(userId) {
+  if (userId != null) senhaEpochCache.delete(Number(userId))
+}
 
 const SECRET = process.env.JWT_SECRET
 if (!SECRET) {
@@ -32,7 +43,7 @@ export function generateToken(user) {
   )
 }
 
-export function authMiddleware(req, res, next) {
+export async function authMiddleware(req, res, next) {
   const header = req.headers.authorization
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token nao fornecido' })
@@ -41,9 +52,40 @@ export function authMiddleware(req, res, next) {
   try {
     const token = header.slice(7)
     const decoded = jwt.verify(token, SECRET)
+
+    // #234: invalida JWTs emitidos antes da ultima troca de senha.
+    //   Cache com TTL 60s evita SELECT por request (hot path em dezenas de rotas).
+    if (decoded.tipo === 'OPERADOR' && decoded.iat && decoded.id) {
+      const senhaEpoch = await getSenhaEpoch(decoded.id, decoded.empresa_id)
+      if (senhaEpoch != null && decoded.iat < senhaEpoch) {
+        return res.status(401).json({ error: 'Sessao expirada apos troca de senha. Refaca login.' })
+      }
+    }
+
     req.user = decoded
     next()
   } catch {
     return res.status(401).json({ error: 'Token invalido ou expirado' })
+  }
+}
+
+async function getSenhaEpoch(userId, empresaId) {
+  const key = Number(userId)
+  const hit = senhaEpochCache.get(key)
+  if (hit && hit.expiresAt > Date.now()) return hit.epoch
+  try {
+    const r = await pool.query(
+      'SELECT senha_atualizada_em FROM usuarios WHERE id = $1 AND empresa_id = $2',
+      [userId, empresaId]
+    )
+    const epoch = r.rows.length > 0 && r.rows[0].senha_atualizada_em
+      ? Math.floor(new Date(r.rows[0].senha_atualizada_em).getTime() / 1000)
+      : null
+    senhaEpochCache.set(key, { epoch, expiresAt: Date.now() + SENHA_CACHE_TTL_MS })
+    return epoch
+  } catch (err) {
+    // Falha transitoria no DB: loga mas NAO bloqueia auth (token JWT ja foi validado criptograficamente)
+    console.warn('[Auth] Falha ao ler senha_atualizada_em:', err.message)
+    return null
   }
 }

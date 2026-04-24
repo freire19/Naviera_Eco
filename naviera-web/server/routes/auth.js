@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import pool from '../db.js'
-import { generateToken, authMiddleware } from '../middleware/auth.js'
+import { generateToken, authMiddleware, invalidateSenhaCache } from '../middleware/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 
 const router = Router()
@@ -145,12 +145,14 @@ router.post('/trocar-senha', authMiddleware, async (req, res) => {
     }
 
     const novaHash = await bcrypt.hash(nova_senha, 10)
+    // #234: senha_atualizada_em invalida JWTs antigos via authMiddleware
     await pool.query(
-      'UPDATE usuarios SET senha = $1, deve_trocar_senha = FALSE WHERE id = $2 AND empresa_id = $3',
+      'UPDATE usuarios SET senha = $1, deve_trocar_senha = FALSE, senha_atualizada_em = NOW() WHERE id = $2 AND empresa_id = $3',
       [novaHash, req.user.id, req.user.empresa_id]
     )
+    invalidateSenhaCache(req.user.id)
 
-    res.json({ mensagem: 'Senha alterada com sucesso' })
+    res.json({ mensagem: 'Senha alterada com sucesso. Refaca login nos outros dispositivos.' })
   } catch (err) {
     console.error('[Auth] Erro ao trocar senha:', err.message)
     res.status(500).json({ error: 'Erro ao trocar senha' })

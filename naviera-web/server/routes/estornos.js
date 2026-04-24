@@ -36,6 +36,16 @@ router.post('/passagem/:id', async (req, res) => {
     const passagem = passResult.rows[0]
     const valorPago = parseFloat(passagem.valor_pago) || 0
 
+    // #233: bloquear estorno em passagens ja embarcadas/canceladas
+    if (passagem.status_passagem === 'EMBARCADO') {
+      await client.query('ROLLBACK')
+      return res.status(409).json({ error: 'Passagem ja embarcou — estorno nao permitido' })
+    }
+    if (passagem.status_passagem === 'CANCELADA') {
+      await client.query('ROLLBACK')
+      return res.status(409).json({ error: 'Passagem cancelada — use fluxo de cancelamento' })
+    }
+
     if (parseFloat(valor) > valorPago + 0.01) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: `Valor de estorno (${valor}) excede o valor pago (${valorPago})` })
@@ -166,7 +176,9 @@ router.post('/frete/:id', async (req, res) => {
     }
 
     const novoValorPago = Math.max(0, valorPago - parseFloat(valor))
-    const novoValorDevedor = parseFloat(frete.valor_frete_calculado || 0) - novoValorPago
+    // #215: devedor considera desconto (previne valor devedor "inchado")
+    const totalLiquido = parseFloat(frete.valor_frete_calculado || 0) - parseFloat(frete.desconto || 0)
+    const novoValorDevedor = totalLiquido - novoValorPago
 
     const updated = await client.query(
       `UPDATE fretes SET valor_pago = $1, valor_devedor = $2

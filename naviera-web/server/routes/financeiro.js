@@ -140,9 +140,10 @@ router.get('/dashboard', async (req, res) => {
         COALESCE(SUM(CASE WHEN origem = 'PASSAGEM' THEN total ELSE 0 END), 0) AS soma_passagem,
         COALESCE(SUM(CASE WHEN origem = 'ENCOMENDA' THEN total ELSE 0 END), 0) AS soma_encomenda,
         COALESCE(SUM(CASE WHEN origem = 'FRETE' THEN total ELSE 0 END), 0) AS soma_frete,
-        COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) LIKE '%PIX%' THEN pago ELSE 0 END), 0) AS soma_pix,
-        COALESCE(SUM(CASE WHEN pago > 0 AND (UPPER(pgto) LIKE '%CART%' OR UPPER(pgto) LIKE '%CREDITO%' OR UPPER(pgto) LIKE '%DEBITO%') THEN pago ELSE 0 END), 0) AS soma_cartao,
-        COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) NOT LIKE '%PIX%' AND UPPER(pgto) NOT LIKE '%CART%' AND UPPER(pgto) NOT LIKE '%CREDITO%' AND UPPER(pgto) NOT LIKE '%DEBITO%' THEN pago ELSE 0 END), 0) AS soma_dinheiro
+        -- #214 #653: buckets por match exato (CARTEIRA_DIGITAL nao vira CARTAO, e vice-versa)
+        COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) = 'PIX' THEN pago ELSE 0 END), 0) AS soma_pix,
+        COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) IN ('CARTAO', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'CREDITO', 'DEBITO') THEN pago ELSE 0 END), 0) AS soma_cartao,
+        COALESCE(SUM(CASE WHEN pago > 0 AND UPPER(pgto) NOT IN ('PIX', 'CARTAO', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'CREDITO', 'DEBITO', 'CARTEIRA_DIGITAL', 'BOLETO') THEN pago ELSE 0 END), 0) AS soma_dinheiro
       FROM lancamentos
       WHERE ${outerWhere}
     `
@@ -285,14 +286,34 @@ router.post('/saida', validate({ descricao: 'required|string', valor_total: 'req
     if (!descricao || !valor_total) {
       return res.status(400).json({ error: 'Campos obrigatorios: descricao, valor_total' })
     }
+    // #216: guards valores
+    const vTotal = parseFloat(valor_total)
+    const vPago = parseFloat(valor_pago) || 0
+    if (!(vTotal > 0)) return res.status(400).json({ error: 'valor_total deve ser > 0' })
+    if (vPago < 0) return res.status(400).json({ error: 'valor_pago nao pode ser negativo' })
+    if (vPago > vTotal + 0.01) return res.status(400).json({ error: 'valor_pago nao pode exceder valor_total' })
+    // #217: validar datas
+    const parseDate = (s) => {
+      if (!s) return null
+      const d = new Date(s)
+      if (isNaN(d.getTime())) throw new Error('data invalida')
+      return s
+    }
+    let dVenc, dPag
+    try {
+      dVenc = parseDate(data_vencimento)
+      dPag = parseDate(data_pagamento)
+    } catch {
+      return res.status(400).json({ error: 'data_vencimento ou data_pagamento invalida' })
+    }
     const result = await pool.query(`
       INSERT INTO financeiro_saidas (id_viagem, descricao, valor_total, data_vencimento, id_categoria, funcionario_id, forma_pagamento,
         valor_pago, data_pagamento, status, numero_parcela, total_parcelas, observacoes, is_excluido, empresa_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, FALSE, $14)
       RETURNING *
     `, [
-      id_viagem || null, descricao, valor_total, data_vencimento || null, id_categoria || null, id_funcionario || null, forma_pagamento || null,
-      parseFloat(valor_pago) || 0, data_pagamento || null, status || 'PENDENTE',
+      id_viagem || null, descricao, vTotal, dVenc, id_categoria || null, id_funcionario || null, forma_pagamento || null,
+      vPago, dPag, status || 'PENDENTE',
       numero_parcela ? parseInt(numero_parcela) : null, total_parcelas ? parseInt(total_parcelas) : null, observacoes || null,
       empresaId
     ])
@@ -429,6 +450,11 @@ router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor
     } = req.body
     if (!descricao_base || !valor_total || !parcelas || parcelas < 1) {
       return res.status(400).json({ error: 'Campos obrigatorios: descricao_base, valor_total, parcelas (>= 1)' })
+    }
+    // #218: valor_total deve ser positivo (evita boleto com valor 0 ou negativo)
+    const valorTotalNum = parseFloat(valor_total)
+    if (!(valorTotalNum > 0)) {
+      return res.status(400).json({ error: 'valor_total deve ser maior que zero' })
     }
     if (parcelas > 120) return res.status(400).json({ error: 'Maximo de 120 parcelas permitido' })
     const valorParcela = Math.floor(valor_total * 100 / parcelas) / 100

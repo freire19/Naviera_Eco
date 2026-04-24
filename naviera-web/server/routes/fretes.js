@@ -36,9 +36,10 @@ router.post('/contatos', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (empresa_id, nome_cliente) DO NOTHING RETURNING *`,
       [nomeUpper, (razao_social || '').toUpperCase() || null, cpf_cnpj || null, (endereco || '').toUpperCase() || null, inscricao_estadual || null, email || null, telefone || null, empresaId]
     )
-    if (result.rows.length > 0) return res.status(201).json({ id: result.rows[0].id_cliente, nome_razao_social: result.rows[0].nome_cliente, ...result.rows[0] })
+    // #239: sinalizar se foi criado (201) ou se ja existia (200 com criado:false)
+    if (result.rows.length > 0) return res.status(201).json({ criado: true, id: result.rows[0].id_cliente, nome_razao_social: result.rows[0].nome_cliente, ...result.rows[0] })
     const existing = await pool.query('SELECT * FROM cad_clientes_frete WHERE LOWER(nome_cliente) = LOWER($1) AND empresa_id = $2', [nomeUpper, empresaId])
-    res.json(existing.rows[0] || { nome_razao_social: nomeUpper })
+    res.json({ criado: false, ...(existing.rows[0] || { nome_razao_social: nomeUpper }) })
   } catch (err) {
     console.error('[Fretes] Erro ao criar contato:', err.message)
     res.status(500).json({ error: 'Erro ao criar contato' })
@@ -296,8 +297,13 @@ router.post('/:id/pagar', async (req, res) => {
       return res.status(400).json({ error: 'valor_pago obrigatorio e deve ser positivo' })
     }
     // DS4-011 fix: guarda contra overpayment — so aceita se valor_devedor >= pagamento
+    // #229: atualizar status_pagamento e status_frete junto para nao desalinhar UI/relatorios
     const result = await pool.query(`
-      UPDATE fretes SET valor_pago = valor_pago + $1, valor_devedor = valor_devedor - $1
+      UPDATE fretes SET
+        valor_pago = valor_pago + $1,
+        valor_devedor = valor_devedor - $1,
+        status_pagamento = CASE WHEN (valor_devedor - $1) <= 0.01 THEN 'PAGO' ELSE 'PARCIAL' END,
+        status_frete = CASE WHEN (valor_devedor - $1) <= 0.01 THEN 'PAGO' ELSE status_frete END
       WHERE id_frete = $2 AND empresa_id = $3
         AND valor_devedor >= $1
       RETURNING *

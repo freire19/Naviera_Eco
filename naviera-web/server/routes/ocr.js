@@ -499,6 +499,19 @@ router.put('/lancamentos/:id/aprovar', async (req, res) => {
     const dados = lanc.dados_revisados || lanc.dados_extraidos
     const { auto_cadastrar } = req.body || {}
 
+    // #224: bloquear aprovacao de lancamentos com dados vazios/zerados (evita criar frete fantasma)
+    if (!dados || typeof dados !== 'object') {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Lancamento sem dados para aprovar' })
+    }
+    const nenhumValor =
+      !(Number(dados.total_a_pagar) || Number(dados.valor_total) || Number(dados.valor_frete_calculado))
+      && !(Array.isArray(dados.itens) && dados.itens.length > 0)
+    if (nenhumValor) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Lancamento sem valores reconhecidos — revise antes de aprovar' })
+    }
+
     // Verificar se remetente/destinatario existem em cad_clientes_encomenda
     const clientesFaltantes = []
     for (const campo of ['remetente', 'destinatario']) {
