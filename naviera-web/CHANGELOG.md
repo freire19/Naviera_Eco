@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/freire19/Naviera_Eco/compare/web-v1.4.2...web-v1.4.3) (2026-04-24)
+
+
+### Bug Fixes
+
+* **web/confere-viagem:** assinatura dentro da caixa do destinatario ([370d905](https://github.com/freire19/Naviera_Eco/commit/370d905b56c55eb8248d9f4393036754494bf971))
+
 ## [1.4.2](https://github.com/freire19/Naviera_Eco/compare/web-v1.4.1...web-v1.4.2) (2026-04-24)
 
 
