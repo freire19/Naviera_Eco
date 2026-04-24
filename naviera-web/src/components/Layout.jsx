@@ -38,6 +38,7 @@ const CadastroPassageiro = lazy(() => import('../pages/CadastroPassageiro.jsx'))
 const AdminEmpresas = lazy(() => import('../pages/AdminEmpresas.jsx'))
 const AdminMetricas = lazy(() => import('../pages/AdminMetricas.jsx'))
 const FinanceiroBaixa = lazy(() => import('../pages/FinanceiroBaixa.jsx'))
+const ExtratoCliente = lazy(() => import('../pages/ExtratoCliente.jsx'))
 const DocumentosAdmin = lazy(() => import('../pages/DocumentosAdmin.jsx'))
 const ReviewOCR = lazy(() => import('../pages/ReviewOCR.jsx'))
 const EstornoPassagem = lazy(() => import('../pages/EstornoPassagem.jsx'))
@@ -68,6 +69,7 @@ const PAGES = {
   'financeiro-encomendas': { component: (props) => <FinanceiroBaixa {...props} tipo="encomendas" />, label: 'Financeiro Encomendas', section: 'financeiro' },
   'financeiro-fretes': { component: (props) => <FinanceiroBaixa {...props} tipo="fretes" />, label: 'Financeiro Fretes', section: 'financeiro' },
   'financeiro-saida': { component: FinanceiroSaida, label: 'Lancar Saida', section: 'financeiro' },
+  'extrato-cliente': { component: ExtratoCliente, label: 'Extrato de Cliente', section: 'financeiro' },
   'balanco-viagem': { component: BalancoViagem, label: 'Balanco Viagem', section: 'financeiro' },
   'boletos': { component: Boletos, label: 'Boletos', section: 'financeiro' },
   'cadastro-viagem': { component: CadastroViagem, label: 'Cadastrar Viagem', section: 'cadastros' },

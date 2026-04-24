@@ -29,6 +29,7 @@ import estornoRoutes from './routes/estornos.js'
 import ocrRoutes from './routes/ocr.js'
 import documentosRoutes from './routes/documentos.js'
 import reciboRoutes from './routes/recibos.js'
+import extratoClienteRoutes from './routes/extrato-cliente.js'
 import errorHandler from './middleware/errorHandler.js'
 
 const app = express()
@@ -84,6 +85,7 @@ app.use('/api/estornos', estornoRoutes)
 app.use('/api/ocr', ocrRoutes)
 app.use('/api/documentos', documentosRoutes)
 app.use('/api/recibos', reciboRoutes)
+app.use('/api/extrato-cliente', extratoClienteRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

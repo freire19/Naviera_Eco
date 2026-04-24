@@ -47,6 +47,7 @@ const NAV = [
     items: [
       { key: 'financeiro-entrada', icon: '\uD83D\uDCB0', label: 'Lancar Entrada' },
       { key: 'financeiro-saida', icon: '\uD83D\uDCB8', label: 'Lancar Saida' },
+      { key: 'extrato-cliente', icon: '\uD83D\uDCCB', label: 'Extrato de Cliente' },
       { key: 'balanco-viagem', icon: '\uD83D\uDCC8', label: 'Balanco Viagem' },
       { key: 'boletos', icon: '\uD83D\uDCDD', label: 'Boletos' },
       { key: 'gestao-funcionarios', icon: '\uD83D\uDC65', label: 'Gestao Funcionarios' }
