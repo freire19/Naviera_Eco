@@ -513,6 +513,11 @@ public class SyncClient {
      * Busca registros com sincronizado=false no banco local para upload.
      */
     private List<RegistroPendente> buscarRegistrosPendentes(String tabela) {
+        // #DB223: defesa em profundidade — so tabelas em TABELAS_SYNC podem ser passadas
+        //   (evita SQL injection caso metodo seja chamado com input externo no futuro).
+        if (!TABELAS_SYNC.contains(tabela)) {
+            throw new IllegalArgumentException("Tabela nao autorizada para sync: " + tabela);
+        }
         List<RegistroPendente> pendentes = new ArrayList<>();
         String colunaId = getColunaId(tabela);
 

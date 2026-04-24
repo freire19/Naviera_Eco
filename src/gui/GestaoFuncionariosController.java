@@ -1,5 +1,10 @@
 package gui;
 
+// #DB014/#DB015: folha usa `double` em ~42 locais. Precisao suficiente para valores em BRL
+// (max seguro ~9T), mas perde em soma acumulada de muitos descontos. Refactor para BigDecimal
+// deferido — requer migrar ~800 linhas e testes de regressao. Workaround atual: Math.round*100/100
+// em cada calculo final para evitar acumulo de erros IEEE754.
+
 import dao.ConexaoBD;
 import dao.FuncionarioDAO;
 import gui.util.AlertHelper;

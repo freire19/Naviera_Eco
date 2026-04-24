@@ -233,7 +233,19 @@ public class VersaoChecker {
         btnDownload.setStyle("-fx-background-color: #0e639c; -fx-text-fill: white;");
         btnDownload.setDisable(info.urlDownload == null || info.urlDownload.isBlank());
         btnDownload.setOnAction(e -> {
-            abrirLinkDownload(info.urlDownload);
+            boolean abriu = abrirLinkDownload(info.urlDownload);
+            if (!abriu) {
+                // #DB225: se browse falhar em versao obrigatoria, mostra URL antes de sair
+                //   senao usuario fica sem forma de baixar e sem app aberto.
+                TextArea urlTa = new TextArea(info.urlDownload);
+                urlTa.setEditable(false);
+                urlTa.setPrefRowCount(2);
+                Alert fallback = new Alert(Alert.AlertType.WARNING);
+                fallback.setTitle("Nao foi possivel abrir o navegador");
+                fallback.setHeaderText("Copie o link abaixo e baixe manualmente:");
+                fallback.getDialogPane().setContent(urlTa);
+                fallback.showAndWait();
+            }
             if (info.obrigatoria) {
                 popup.close();
                 Platform.exit();
@@ -269,12 +281,15 @@ public class VersaoChecker {
         popup.show();
     }
 
-    private static void abrirLinkDownload(String url) {
-        if (url == null || url.isBlank()) return;
+    private static boolean abrirLinkDownload(String url) {
+        if (url == null || url.isBlank()) return false;
         try {
+            if (!java.awt.Desktop.isDesktopSupported()) return false;
             java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+            return true;
         } catch (Exception ex) {
             AppLogger.warn(TAG, "Erro ao abrir link de download: " + ex.getMessage());
+            return false;
         }
     }
 }
