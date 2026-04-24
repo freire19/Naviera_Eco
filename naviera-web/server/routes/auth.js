@@ -21,10 +21,14 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     // OCR app e Admin console nao tem tenant — resolvem empresa_id pelo proprio usuario.
     // adminOnly middleware valida funcao=Administrador nas rotas /api/admin.
+    // #DB211: x-tenant-slug=admin/ocr so vale quando origin/host tambem bate no dominio
+    //   (evita credential-stuffing cross-tenant via header forjado).
     const origin = req.headers.origin || req.headers.referer || ''
     const host = (req.headers.host || '').toLowerCase()
-    const isOcrApp = /ocr\.naviera\.com\.br/.test(origin) || req.headers['x-tenant-slug'] === 'ocr'
-    const isAdminApp = /admin\.naviera\.com\.br/.test(origin) || /admin\.naviera\.com\.br/.test(host) || req.headers['x-tenant-slug'] === 'admin'
+    const isDev = process.env.NODE_ENV === 'development'
+    const originOk = (re) => re.test(origin) || re.test(host)
+    const isOcrApp = originOk(/ocr\.naviera\.com\.br/) || (isDev && req.headers['x-tenant-slug'] === 'ocr')
+    const isAdminApp = originOk(/admin\.naviera\.com\.br/) || (isDev && req.headers['x-tenant-slug'] === 'admin')
 
     let sql, params
     if (tenantId) {

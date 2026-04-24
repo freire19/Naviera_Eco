@@ -581,24 +581,33 @@ async function calcFinanceiroFuncionario(pool, idFunc, empresaId, f) {
   }
 }
 
-async function getViagemAtivaCategoriaRH(pool, empresaId, idViagemCliente) {
+async function getViagemAtivaCategoriaRH(db, empresaId, idViagemCliente) {
+  // #DB214: nunca retornar fallback id=1 (pode pertencer a outra empresa ou inexistir —
+  //   FK violation ou cross-tenant bleed). Lanca erro explicito se nao houver viagem/categoria.
   let viagemId = idViagemCliente ? parseInt(idViagemCliente) : null
   const queries = [
-    pool.query(`SELECT id FROM categorias_despesa WHERE empresa_id = $1 AND UPPER(nome) LIKE '%FUNCIONARIO%' LIMIT 1`, [empresaId])
+    db.query(`SELECT id FROM categorias_despesa WHERE empresa_id = $1 AND UPPER(nome) LIKE '%FUNCIONARIO%' LIMIT 1`, [empresaId])
   ]
   if (!viagemId) {
-    queries.push(pool.query(`SELECT id_viagem FROM viagens WHERE empresa_id = $1 AND is_atual = true LIMIT 1`, [empresaId]))
+    queries.push(db.query(`SELECT id_viagem FROM viagens WHERE empresa_id = $1 AND is_atual = true LIMIT 1`, [empresaId]))
   }
   const results = await Promise.all(queries)
   const cRes = results[0]
+  if (cRes.rows.length === 0) {
+    const err = new Error('Empresa sem categoria de RH (FUNCIONARIO) cadastrada — configure antes de lancar folha')
+    err.status = 400
+    throw err
+  }
   if (!viagemId) {
     const vRes = results[1]
-    viagemId = vRes.rows.length > 0 ? vRes.rows[0].id_viagem : 1
+    if (vRes.rows.length === 0) {
+      const err = new Error('Empresa sem viagem ativa (is_atual=true) — defina uma antes de lancar folha')
+      err.status = 400
+      throw err
+    }
+    viagemId = vRes.rows[0].id_viagem
   }
-  return {
-    viagemId,
-    categoriaId: cRes.rows.length > 0 ? cRes.rows[0].id : 1
-  }
+  return { viagemId, categoriaId: cRes.rows[0].id }
 }
 
 // --- Funcionarios: Financeiro (summary) ---
@@ -660,6 +669,9 @@ router.post('/funcionarios/:id/pagamento', async (req, res, next) => {
     const idFunc = req.params.id
     const { descricao, valor, id_viagem } = req.body
     if (!descricao || !valor) return res.status(400).json({ error: 'descricao e valor obrigatorios' })
+    // #DB218: rejeitar valores <= 0 (parseFloat("-50") passa o falsy check antes)
+    const valorNum = Number(valor)
+    if (!(valorNum > 0)) return res.status(400).json({ error: 'valor deve ser maior que zero' })
 
     const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId, id_viagem)
 
@@ -720,6 +732,9 @@ router.post('/funcionarios/:id/desconto', async (req, res, next) => {
     const idFunc = req.params.id
     const { descricao, valor } = req.body
     if (!descricao || !valor) return res.status(400).json({ error: 'descricao e valor obrigatorios' })
+    // #DB218: valor deve ser > 0; negativo corromperia folha
+    const valorNum = Number(valor)
+    if (!(valorNum > 0)) return res.status(400).json({ error: 'valor deve ser maior que zero' })
 
     const fRes = await pool.query('SELECT data_inicio_calculo, data_admissao FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
     if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
@@ -738,59 +753,67 @@ router.post('/funcionarios/:id/desconto', async (req, res, next) => {
 })
 
 // --- Funcionarios: Fechar mes ---
+// #DB215: transacao envolvendo 3 operacoes (INSS + FECHAMENTO + UPDATE data_inicio_calculo).
+//   Sem tx, falha parcial duplica INSS ou re-paga ciclo seguinte.
+// #DB219: transicao de mes usa TZ BR (nao UTC) — evita drift no fim do dia.
 router.post('/funcionarios/:id/fechar-mes', async (req, res, next) => {
+  const client = await pool.connect()
   try {
     const empresaId = req.user.empresa_id
     const idFunc = req.params.id
     const { id_viagem } = req.body || {}
 
-    const fRes = await pool.query('SELECT * FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
+    const fRes = await client.query('SELECT * FROM funcionarios WHERE id = $1 AND empresa_id = $2', [idFunc, empresaId])
     if (fRes.rows.length === 0) return res.status(404).json({ error: 'Funcionario nao encontrado' })
     const f = fRes.rows[0]
 
     const dataInicio = f.data_inicio_calculo || f.data_admissao
     if (!dataInicio) return res.status(400).json({ error: 'Funcionario sem data de admissao' })
 
-    const financeiro = await calcFinanceiroFuncionario(pool, idFunc, empresaId, f)
+    const financeiro = await calcFinanceiroFuncionario(client, idFunc, empresaId, f)
     const saldoParaPagar = financeiro.saldo
-    const hoje = new Date()
-    const hojeISO = hoje.toISOString().split('T')[0]
+    // hoje em TZ BR (sv-SE retorna YYYY-MM-DD local)
+    const hojeISO = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
 
-    // gravar INSS se necessario
+    await client.query('BEGIN')
+
     const descontoInss = financeiro.desconto_inss_auto || 0
     if (descontoInss > 0) {
-      await pool.query(
+      await client.query(
         `INSERT INTO eventos_rh (funcionario_id, tipo, descricao, valor, data_evento, data_referencia, empresa_id)
          VALUES ($1, 'INSS', 'DESC. ENCARGOS (INSS/FOLHA)', $2, $3, $4, $5)`,
         [idFunc, descontoInss, hojeISO, dataInicio, empresaId]
       )
     }
 
-    // pagar saldo restante
     if (saldoParaPagar > 0) {
-      const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(pool, empresaId, id_viagem)
+      const { viagemId, categoriaId } = await getViagemAtivaCategoriaRH(client, empresaId, id_viagem)
       const desc = `FECHAMENTO MENSAL ${(f.nome || '').toUpperCase()}`
-      // mes_referencia = inicio do ciclo que esta sendo fechado (dataInicio)
-      await pool.query(`
+      await client.query(`
         INSERT INTO financeiro_saidas (descricao, valor_total, valor_pago, data_vencimento, data_pagamento,
           status, forma_pagamento, id_categoria, id_viagem, funcionario_id, is_excluido, mes_referencia, empresa_id)
         VALUES ($1, $2, $3, $4, $5, 'PAGO', 'DINHEIRO', $6, $7, $8, false, $9, $10)
       `, [desc, saldoParaPagar, saldoParaPagar, hojeISO, hojeISO, categoriaId, viagemId, idFunc, dataInicio, empresaId])
     }
 
-    // Novo ciclo comeca no dia seguinte ao fechamento (zera contador).
-    // Os lancamentos do ciclo fechado aparecem no mes calendario do `mes_referencia`
-    // (inicio do ciclo que foi fechado), nao no mes do fechamento.
-    const novaData = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() + 1))
-    const novaDataISO = novaData.toISOString().split('T')[0]
+    // proxima data_inicio_calculo = hojeISO + 1 dia (calculado em string pra evitar UTC/BR drift)
+    const [yy, mm, dd] = hojeISO.split('-').map(Number)
+    const proxima = new Date(yy, mm - 1, dd + 1)
+    const novaDataISO = proxima.toLocaleDateString('sv-SE')
 
-    await pool.query(
+    await client.query(
       'UPDATE funcionarios SET data_inicio_calculo = $1 WHERE id = $2 AND empresa_id = $3',
       [novaDataISO, idFunc, empresaId]
     )
 
+    await client.query('COMMIT')
     res.json({ ok: true, saldo_pago: saldoParaPagar, nova_data_inicio: novaDataISO, inss_gravado: descontoInss })
-  } catch (err) { next(err) }
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
+    next(err)
+  } finally {
+    client.release()
+  }
 })
 
 // --- Funcionarios: Demitir ---

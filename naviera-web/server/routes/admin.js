@@ -10,11 +10,18 @@ const router = Router()
 router.use(authMiddleware)
 
 // Admin-only middleware: must be Administrador AND on admin subdomain
+// #DB210: whitelist estrita (nao basta prefix 'admin.' — atacante pode forjar Host: admin.evil.com)
+//   Fail-closed fora de dev: se ADMIN_HOSTS ausente, staging/prod derruba todo /api/admin.
+const ADMIN_HOSTS = (process.env.ADMIN_HOSTS || '')
+  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+if (ADMIN_HOSTS.length === 0 && process.env.NODE_ENV !== 'development') {
+  console.warn('[Admin] ADMIN_HOSTS nao configurado — /api/admin so aceitara em dev. Defina ADMIN_HOSTS=admin.seu-dominio.com em prod.')
+}
 function adminOnly(req, res, next) {
-  const host = req.hostname || req.headers.host || ''
-  // DS4-010 fix: so aceitar localhost em modo dev EXPLICITO (antes: qualquer NODE_ENV != production)
-  const isAdminSubdomain = host.startsWith('admin.') || (process.env.NODE_ENV === 'development' && host === 'localhost')
-  if (!isAdminSubdomain) {
+  const host = (req.hostname || req.headers.host || '').toLowerCase().split(':')[0]
+  const isDev = process.env.NODE_ENV === 'development' && host === 'localhost'
+  const isAdminHost = ADMIN_HOSTS.includes(host) || isDev
+  if (!isAdminHost) {
     return res.status(403).json({ error: 'Acesso restrito ao painel admin' })
   }
   const funcao = (req.user.funcao || '').toLowerCase()
@@ -69,7 +76,8 @@ router.post('/empresas', async (req, res) => {
     await client.query('BEGIN')
 
     // Generate activation code
-    const codigoAtivacao = 'NAV-' + crypto.randomBytes(2).toString('hex').toUpperCase()
+    // #DB212: 6 bytes = 12 hex (~10^14 combinacoes); 2 bytes tinham 65K e eram enumeraveis
+    const codigoAtivacao = 'NAV-' + crypto.randomBytes(6).toString('hex').toUpperCase()
 
     // Create empresa with activation code
     const empresaResult = await client.query(
@@ -116,17 +124,27 @@ router.post('/empresas', async (req, res) => {
 })
 
 // PUT /api/admin/empresas/:id — update empresa
+// #DB213: slug e imutavel — tokens JWT e cache tenant referenciam o slug.
+//   Mudar slug vivo causa token hijacking se slug antigo for reusado por outra empresa.
 router.put('/empresas/:id', async (req, res) => {
   try {
     const { nome, slug, cor_primaria, logo_url } = req.body
+    if (slug != null) {
+      const atual = await pool.query('SELECT slug FROM empresas WHERE id = $1', [req.params.id])
+      const slugAtual = atual.rows[0]?.slug
+      if (slugAtual && slug.toLowerCase() !== slugAtual.toLowerCase()) {
+        return res.status(400).json({
+          error: 'slug imutavel apos criacao — tokens e cache dependem do valor atual'
+        })
+      }
+    }
     const result = await pool.query(
       `UPDATE empresas SET
         nome = COALESCE($1, nome),
-        slug = COALESCE($2, slug),
-        cor_primaria = COALESCE($3, cor_primaria),
-        logo_url = COALESCE($4, logo_url)
-      WHERE id = $5 RETURNING *`,
-      [nome, slug ? slug.toLowerCase() : null, cor_primaria, logo_url, req.params.id]
+        cor_primaria = COALESCE($2, cor_primaria),
+        logo_url = COALESCE($3, logo_url)
+      WHERE id = $4 RETURNING *`,
+      [nome, cor_primaria, logo_url, req.params.id]
     )
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Empresa nao encontrada' })
@@ -134,9 +152,6 @@ router.put('/empresas/:id', async (req, res) => {
     res.json(result.rows[0])
   } catch (err) {
     console.error('[Admin] Erro ao atualizar empresa:', err.message)
-    if (err.code === '23505') {
-      return res.status(409).json({ error: 'Slug ja existe' })
-    }
     res.status(500).json({ error: 'Erro ao atualizar empresa' })
   }
 })
