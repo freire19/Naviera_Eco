@@ -9,7 +9,7 @@
 
 ## Sumário executivo
 
-> **Atualização 2026-04-25 (commit c96d329):** os 7 críticos identificados foram resolvidos. Estado geral promovido de "fragilidade séria" → "fricção moderada residual".
+> **Atualização 2026-04-25 (commit 1007dbb):** os 7 críticos identificados foram resolvidos. Estado geral promovido de "fragilidade séria" → "fricção moderada residual".
 
 1. **Estado geral do frontend:** **fricção moderada residual** após Fix #1-7. A11y e arquitetura foram endereçadas; pendências concentradas em performance (code-split) e polimento (landmarks, h1, touch targets).
 
@@ -29,14 +29,14 @@
 
 | # | Ação | Origem | Severidade | Esforço | Impacto |
 |---|---|---|---|---|---|
-| 1 | Remover `user-scalable=no` e `maximum-scale=1.0` em `index.html:5` _(corrigido 2026-04-25 — commit c96d329)_ | ux | 🔴 | S | alto (fix WCAG 1.4.4 fail) |
-| 2 | Adicionar `aria-label` em 4 botões icon-only do Header (back/profile/theme/logout) — `Header.jsx:9,16,19,22` _(corrigido 2026-04-25 — commit c96d329)_ | ux | 🔴 | S | alto (a11y, leitor de tela) |
-| 3 | Adicionar `htmlFor`/`id` nos pares label/input em LoginScreen/TelaCadastro/PerfilScreen _(corrigido 2026-04-25 — commit c96d329)_ | ux | 🔴 | S | alto (a11y + tap-on-label mobile) |
-| 4 | Adicionar `role="alert"` ou `aria-live="assertive"` nos containers de erro de form _(corrigido 2026-04-25 — commit c96d329)_ | ux | 🔴 | S | médio (anuncia erro a leitor de tela) |
-| 5 | Adicionar confirmação modal no logout (e em "Remover/Recusar amigo") _(logout corrigido 2026-04-25 — commit c96d329; amigo pendente)_ | ux | 🔴 (logout) / 🟡 (amigo) | M | alto (evita perda acidental) |
-| 6 | Criar `ThemeContext` + `AuthContext`, remover props `t` e `authHeaders` de 18 arquivos _(corrigido 2026-04-25 — commit c96d329)_ | review | 🔴 | M | alto (fundação de manutenibilidade) |
+| 1 | Remover `user-scalable=no` e `maximum-scale=1.0` em `index.html:5` _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | alto (fix WCAG 1.4.4 fail) |
+| 2 | Adicionar `aria-label` em 4 botões icon-only do Header (back/profile/theme/logout) — `Header.jsx:9,16,19,22` _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | alto (a11y, leitor de tela) |
+| 3 | Adicionar `htmlFor`/`id` nos pares label/input em LoginScreen/TelaCadastro/PerfilScreen _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | alto (a11y + tap-on-label mobile) |
+| 4 | Adicionar `role="alert"` ou `aria-live="assertive"` nos containers de erro de form _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | médio (anuncia erro a leitor de tela) |
+| 5 | Adicionar confirmação modal no logout (e em "Remover/Recusar amigo") _(logout corrigido 2026-04-25 — commit 1007dbb; amigo pendente)_ | ux | 🔴 (logout) / 🟡 (amigo) | M | alto (evita perda acidental) |
+| 6 | Criar `ThemeContext` + `AuthContext`, remover props `t` e `authHeaders` de 18 arquivos _(corrigido 2026-04-25 — commit 1007dbb)_ | review | 🔴 | M | alto (fundação de manutenibilidade) |
 | 7 | `React.lazy` em todas as 14 screens + `<Suspense>` no `screen()` de `App.jsx` | perf | 🟡 | M | alto (~30–50% bundle inicial) |
-| 8 | Unificar cliente HTTP — remover dead export `api`; eliminar `fetch` raw em `App.jsx:105,129`, `MapaCPF.jsx:58`, `LoginScreen.jsx:27`, `TelaCadastro.jsx:27` _(corrigido 2026-04-25 — commit c96d329)_ | review | 🔴 | M | médio (consistência de 401, manutenção) |
+| 8 | Unificar cliente HTTP — remover dead export `api`; eliminar `fetch` raw em `App.jsx:105,129`, `MapaCPF.jsx:58`, `LoginScreen.jsx:27`, `TelaCadastro.jsx:27` _(corrigido 2026-04-25 — commit 1007dbb)_ | review | 🔴 | M | médio (consistência de 401, manutenção) |
 | 9 | `type="tel"`/`inputMode="numeric"` + `autoComplete` nos forms (CPF/CNPJ/telefone/senha) | ux | 🟡 | S | médio (UX mobile, password manager) |
 | 10 | Lazy-load STOMP/SockJS — extrair para componente `<AuthenticatedShell>` carregado por `import()` após login | perf | 🟡 | M | médio (~50KB fora do bundle pré-login) |
 
@@ -45,37 +45,37 @@
 ## Achados críticos (🔴)
 
 ### Acessibilidade
-- ~~**Viewport bloqueia zoom**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Loc: `index.html:5`. Problema: `maximum-scale=1.0` + `user-scalable=no` impedem pinch-zoom (WCAG 1.4.4 fail). Ação aplicada: removidos os dois atributos.
-- ~~**Labels sem `htmlFor`**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Loc: `LoginScreen.jsx:49,56`, `TelaCadastro.jsx:42-50`, `PerfilScreen.jsx:73-76`. Ação aplicada: `htmlFor`/`id` em todos os pares.
-- ~~**Botões icon-only sem `aria-label`**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Loc: `Header.jsx:9,16,19,22`. Ação aplicada: `aria-label="Voltar|Meu perfil|Alternar tema|Sair da conta"`.
-- ~~**Logout sem confirmação**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Loc: `Header.jsx`. Ação aplicada: `window.confirm("Sair da conta?")` antes de `logout()`.
-- ~~**Sem `aria-live`/`role="alert"` para erros**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Ação aplicada: `role="alert"` em banners de erro e `role="status"` em banners de sucesso (LoginScreen, TelaCadastro, PerfilScreen, PassagensCPF, EncomendaCPF, FinanceiroCNPJ, MapaCPF, Toast).
+- ~~**Viewport bloqueia zoom**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Loc: `index.html:5`. Problema: `maximum-scale=1.0` + `user-scalable=no` impedem pinch-zoom (WCAG 1.4.4 fail). Ação aplicada: removidos os dois atributos.
+- ~~**Labels sem `htmlFor`**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Loc: `LoginScreen.jsx:49,56`, `TelaCadastro.jsx:42-50`, `PerfilScreen.jsx:73-76`. Ação aplicada: `htmlFor`/`id` em todos os pares.
+- ~~**Botões icon-only sem `aria-label`**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Loc: `Header.jsx:9,16,19,22`. Ação aplicada: `aria-label="Voltar|Meu perfil|Alternar tema|Sair da conta"`.
+- ~~**Logout sem confirmação**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Loc: `Header.jsx`. Ação aplicada: `window.confirm("Sair da conta?")` antes de `logout()`.
+- ~~**Sem `aria-live`/`role="alert"` para erros**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `role="alert"` em banners de erro e `role="status"` em banners de sucesso (LoginScreen, TelaCadastro, PerfilScreen, PassagensCPF, EncomendaCPF, FinanceiroCNPJ, MapaCPF, Toast).
 
 ### Arquitetura
-- ~~**Prop drilling de tema `t` em 18 arquivos**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: review. Ação aplicada: criado `ThemeContext` + `AuthContext` em `src/contexts/`; todos os 11 components e 14 screens consomem via `useTheme()`/`useAuth()`. Props `t`, `authHeaders`, `usuario`, `token` removidas do App.jsx.
-- ~~**3 padrões de cliente HTTP concorrentes + 4º dead**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: review. Ação aplicada: removido export `api` + função `request` (dead code) de `api.js`. 4 `fetch` raw migrados para `authFetch` (App.jsx:105/129, LoginScreen.jsx, TelaCadastro.jsx, MapaCPF.jsx). 401 unificado.
+- ~~**Prop drilling de tema `t` em 18 arquivos**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: review. Ação aplicada: criado `ThemeContext` + `AuthContext` em `src/contexts/`; todos os 11 components e 14 screens consomem via `useTheme()`/`useAuth()`. Props `t`, `authHeaders`, `usuario`, `token` removidas do App.jsx.
+- ~~**3 padrões de cliente HTTP concorrentes + 4º dead**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: review. Ação aplicada: removido export `api` + função `request` (dead code) de `api.js`. 4 `fetch` raw migrados para `authFetch` (App.jsx:105/129, LoginScreen.jsx, TelaCadastro.jsx, MapaCPF.jsx). 401 unificado.
 
 ---
 
 ## Achados moderados (🟡)
 
 ### Arquitetura
-- ~~**Prop drilling de `authHeaders` em 12 screens**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: review. Ação aplicada: `AuthContext` expõe `token`/`usuario`/`authHeaders`/`login`/`logout`; todas as screens consomem via `useAuth()`.
+- ~~**Prop drilling de `authHeaders` em 12 screens**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: review. Ação aplicada: `AuthContext` expõe `token`/`usuario`/`authHeaders`/`login`/`logout`; todas as screens consomem via `useAuth()`.
 - **Duplicação substancial entre `FinanceiroCNPJ` e `EncomendaCPF`** (fluxo pagamento) — origem: review. Loc: `FinanceiroCNPJ.jsx:24-37` vs `EncomendaCPF.jsx:33-50`. Ação: extrair `usePagamento(item, endpoint)` hook + `<PagamentoModal>`.
 - **Navegação custom via `useState` em vez de router** — origem: review (manutenção) + ux (sem deep links / back-button do Android fecha app) + perf (sem code-split por rota). Loc: `App.jsx:66-69,142-156`. Ação: avaliar `react-router` com `HashRouter` ou `MemoryRouter` para PWA.
 - **Inline styles densos nas screens (até 75 ocorrências em PassagensCPF)** — origem: review. Loc top: `PassagensCPF.jsx`(75), `FinanceiroCNPJ.jsx`(50), `MapaCPF.jsx`(47), `EncomendaCPF.jsx`(45), `BilheteScreen.jsx`(45). Ação: combinar classes em `App.css` com tokens via `useTheme()`; padronizar primitives `<Card>`/`<Button>`/`<Input>`.
 
 ### UX / a11y
-- ~~**TabBar sem `aria-current="page"`**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Loc: `TabBar.jsx`. Ação aplicada: `aria-current={tab === tb.id ? "page" : undefined}`.
+- ~~**TabBar sem `aria-current="page"`**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Loc: `TabBar.jsx`. Ação aplicada: `aria-current={tab === tb.id ? "page" : undefined}`.
 - **Sem landmarks semânticos** — origem: ux. Loc: `App.jsx:181`, `Header.jsx:7`, `TabBar.jsx:2`. Ação: `<header>`, `<main>`, `<nav>`.
 - **`<h1>` ausente em screens autenticadas** — origem: ux. Loc: única h1 em `LoginScreen.jsx:45`. Ação: cada screen ter h1.
 - **Touch targets 32×32 no Header** — origem: ux. Loc: `Header.jsx:16,19,22`. Ação: aumentar para 40–44 ou padding.
 - **Erros do `useApi` ignorados em 3 screens** — origem: ux. Loc: `AmigosCPF.jsx:11`, `HomeCNPJ.jsx:11-13`, `HomeCPF.jsx:12-13`. Ação: padronizar consumo (banner ou toast).
 - **Destructive actions sem confirmação (além de logout)** — origem: ux. Loc: `AmigosCPF.jsx:86,102` (Recusar/Remover amigo). Ação: confirm inline ou undo via toast.
-- ~~**Sem `autoComplete` em forms**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Ação aplicada: `autoComplete="username|email|tel|address-level2|new-password|current-password|name"` em LoginScreen, TelaCadastro, PerfilScreen.
-- ~~**Sem `required`/`aria-required` nos inputs**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Ação aplicada: `required` em campos obrigatórios (TelaCadastro: documento/nome/senha/confirma).
-- ~~**`type="tel"` ausente em CPF/CNPJ/telefone**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Ação aplicada: `inputMode="numeric"` em CPF/CNPJ + `type="tel" inputMode="tel"` em telefone.
-- ~~**`NotificationList` dropdown sem keyboard handling**~~ _(corrigido 2026-04-25 — commit c96d329)_ — origem: ux. Ação aplicada: `aria-expanded`, `aria-haspopup="menu"` no botão; Escape fecha o dropdown.
+- ~~**Sem `autoComplete` em forms**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `autoComplete="username|email|tel|address-level2|new-password|current-password|name"` em LoginScreen, TelaCadastro, PerfilScreen.
+- ~~**Sem `required`/`aria-required` nos inputs**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `required` em campos obrigatórios (TelaCadastro: documento/nome/senha/confirma).
+- ~~**`type="tel"` ausente em CPF/CNPJ/telefone**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `inputMode="numeric"` em CPF/CNPJ + `type="tel" inputMode="tel"` em telefone.
+- ~~**`NotificationList` dropdown sem keyboard handling**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `aria-expanded`, `aria-haspopup="menu"` no botão; Escape fecha o dropdown.
 
 ### Performance
 - **Zero code-splitting de screens** — origem: perf. Loc: `App.jsx:15-26`. Ação: `React.lazy` para cada screen. Ganho estimado: 30–50% do bundle pós-login.
@@ -91,7 +91,7 @@
 - **28 cores hex hardcoded fora de `theme.js`** — review. A maioria é `"#fff"` justificável; ~10 são palette GPS em `MapaCPF.jsx:35-37,90,148,168` que deveriam ser tokens.
 - **Variáveis de erro com 4 nomes diferentes** — review. `erro` vs `loginErro` vs `errPag` vs `setMsg`. Padronizar.
 - **Componentes minúsculos (5–9 LOC) sub-utilizados** — review. `Card.jsx`, `Skeleton.jsx`, `Bar.jsx`, `Avatar.jsx`, `Logo.jsx`, `Toast.jsx`. Validar consumo real.
-- ~~**`api.js` exporta `api` mas zero importadores**~~ _(corrigido 2026-04-25 — commit c96d329)_ — review. Ação aplicada: removido export `api` + função `request` interna.
+- ~~**`api.js` exporta `api` mas zero importadores**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — review. Ação aplicada: removido export `api` + função `request` interna.
 - **Workaround StrictMode no escopo de módulo** — review. Loc: `App.jsx:28-44`. Funcional mas confuso; extrair para `migrations/migrateAuthStorage.js` chamado em `main.jsx`.
 - **`setTimeout` ad-hoc em 4 lugares** — review. `Toast.jsx:4`, `NotificationBanner.jsx:22`, `PagamentoArtefato.jsx:47`, `MapaCPF.jsx:237`. Tolerável.
 - **Padrão de feedback inconsistente** — ux. Toast em 3 screens, banner inline em outras, `console.warn` em algumas. Padronizar.
@@ -145,7 +145,7 @@ Explícito:
 - **Componentes > 300 LOC:** 1 — `MapaCPF.jsx` (369)
 - **Formulários analisados:** 5 (LoginScreen, TelaCadastro, PerfilScreen, EncomendaCPF busca, AmigosCPF busca)
 - **Cobertura de estados (loading/empty/error/success) completa:** ~7/14 screens com os 4 estados explícitos; todas com pelo menos success path
-- **Achados críticos totais:** 7 → **0 abertos** (7 corrigidos em 2026-04-25 commit c96d329; #5 fica com sub-item "Recusar/Remover amigo" remanescente em moderados)
+- **Achados críticos totais:** 7 → **0 abertos** (7 corrigidos em 2026-04-25 commit 1007dbb; #5 fica com sub-item "Recusar/Remover amigo" remanescente em moderados)
 - **Achados moderados totais:** 17 → **11 abertos** (6 corrigidos: prop drilling authHeaders, TabBar aria-current, autoComplete, required, type=tel, NotificationList keyboard)
 - **Achados menores totais:** 11 → **10 abertos** (1 corrigido: dead `api` export)
 - **`any` em código:** 0 (sem TypeScript)
