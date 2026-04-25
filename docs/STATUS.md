@@ -1,5 +1,5 @@
 # STATUS DO PROJETO — Naviera Eco
-> Ultima atualizacao: 2026-04-24
+> Ultima atualizacao: 2026-04-25
 > Atualizado por: Claude Code (30/30 CRITICOs V1.3 + 37/37 Bugs V1.3 (CRIT/ALTO/MEDIO/BAIXO) fechados)
 
 ---
@@ -53,7 +53,7 @@ Todos os 30 CRITICOs do AUDIT_V1.3 resolvidos. Detalhes em [AUDIT_V1.3](audits/c
 | Tipo | Versao | Data | Status | Doc |
 |------|--------|------|--------|-----|
 | **Scan Geral** | **V1.3** | **2026-04-18** | **0 CRITs (30/30 fechados em 2026-04-24)** | [AUDIT_V1.3](audits/current/AUDIT_V1.3.md) |
-| Deep Security | V5.0 | 2026-04-19 | 132 ativas (0 CRIT, 44 ALTO, 42 MEDIO, 23 BAIXO + 23 V1.3) — **16 CRITICOs fixados em 2026-04-19**; 5 CVEs ainda ativos (multer, spring-boot) | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
+| Deep Security | V5.0 | 2026-04-19 | **115 ativas** (0 CRIT, 34 ALTO, 37 MEDIO, 21 BAIXO + 23 V1.3) — 16 CRITICOs fixados em 2026-04-19; 7 ALTOs + 5 MEDIOs + 2 BAIXOs adicionais verificados/fixados em 2026-04-25 (ver tabela RESUMO no doc); 5 CVEs ainda ativos (multer, spring-boot) | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
 | Deep Logic | V6.0 | 2026-04-23 | **1 ativa** (apenas #662 WebSocket Desktop→API deferido) — 8 CRIT ja estavam corrigidos + F1-F7 aplicadas em 2026-04-23 fechando ALTO/MEDIO/BAIXO | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
 | Deep Bugs | V3.0 | 2026-04-23 | **1 parcial** (#DB014/015 double em folha — deferido) — todos os ALTO/MEDIO/BAIXO corrigidos em FB1-FB6 | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
 | Deep Resilience | V6.0 | 2026-04-23 | 45 ativas (**0 CRIT**, 19 ALTO, 21 MEDIO, 5 BAIXO) — 8 CRITICOs conferidos em 2026-04-23, todos ja estavam corrigidos no codigo | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |

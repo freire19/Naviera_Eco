@@ -13,11 +13,13 @@
 |--------|-----------|
 | Novos problemas encontrados (V5.0) | **125** (16 CRIT + 44 ALTO + 42 MED + 23 BAIXO) |
 | **CRITICOs fixados (2026-04-19)** | **16 / 16** — todos os criticos resolvidos |
-| **ALTOs fixados (2026-04-19)** | **3 / 44** — Lote 1: #DS5-410 (CVE multer+spring-boot) + colateral #DS5-012, #DS5-424 |
+| **ALTOs fixados** | **10 / 44** — 2026-04-19: Lote 1 (#DS5-410 + colateral #DS5-012, #DS5-424); 2026-04-24/25: #DS5-005, #DS5-006, #DS5-007, #DS5-016, #DS5-017, #DS5-019, #DS5-218 _(verificados em 2026-04-25)_ |
+| **MEDIOs fixados** | **5 / 42** — #DS5-026, #DS5-028, #DS5-029, #DS5-031, #DS5-233 _(verificados em 2026-04-25)_ |
+| **BAIXOs fixados** | **2 / 23** — #DS5-037, #DS5-041 _(verificados em 2026-04-25)_ |
 | Issues V1.3 revalidadas AINDA ATIVAS | **23** (deduplicado entre camadas) |
 | Issues V1.3 revalidadas como FIXADAS | 2 (#114, #135) |
 | Issues V4.0 (pre-PSP) que regrediram | Cobertura estrutural das 43 issues V4.0 foi invalidada pela entrada de novos modulos (PSP Asaas, AdminPspController, Onboarding, FuncionarioController, OCR, Webhook) — categorias DS4 voltam a aparecer em formas novas (CSP, headers, idempotencia PSP, rate-limit endpoint publico, senhas em disco) |
-| **Total de issues ativas (V5.0)** | **132** (109 novas pendentes — apos fix dos 16 CRIT + 23 V1.3 ativas) |
+| **Total de issues ativas (V5.0)** | **115** (92 novas pendentes — apos fix dos 16 CRIT + 10 ALTO + 5 MEDIO + 2 BAIXO + 23 V1.3 ativas) |
 
 ### CRITICOs por camada
 
@@ -601,7 +603,7 @@ JWT_SECRET=naviera-jwt-secret-dev-2026
 ### ALTOS
 
 #### Issue #DS5-005 — `AsaasGateway.post()` / `get()` nao valida status HTTP — 4xx/5xx sao tratados como sucesso
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
@@ -632,7 +634,7 @@ Ou configurar `RestTemplate` com `DefaultResponseErrorHandler`.
 ---
 
 #### Issue #DS5-006 — `RestTemplate` sem timeouts de connect/read — slowloris upstream causa DoS
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
@@ -656,7 +658,7 @@ public RestTemplate asaasRestTemplate() {
 ---
 
 #### Issue #DS5-007 — `AsaasGateway.obterOuCriarCustomer` concatena `cpfCnpj` na URL sem URL-encoding
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
@@ -855,7 +857,7 @@ if (exists != null && exists > 0)
 ---
 
 #### Issue #DS5-016 — `GpsController.registrar` cast unsafe sem null-check em body — NPE vira 500 expondo stack
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/GpsController.java`
@@ -882,7 +884,7 @@ public record GpsPosicaoRequest(
 ---
 
 #### Issue #DS5-017 — `EncomendaController` / `FreteController.meusX` nao tem paginacao — unbounded list cross-tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java` + `FreteService.java`
@@ -929,7 +931,7 @@ return jdbc.queryForList("""
 ---
 
 #### Issue #DS5-019 — `LojaService.criarAvaliacao` nao valida que cliente ja fez pedido nesta loja — spam/fake reviews
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/LojaService.java`
@@ -1284,7 +1286,7 @@ Deploy: `java -Dnaviera.cert.pin=<hash> ...`
 ---
 
 #### Issue #DS5-218 — `tenantMiddleware` nao invalida cache ao desativar empresa — admin desativa mas usuarios logam por ate 60s + 8h JWT
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** ALTO (complementa V1.3 #655)
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
@@ -1642,7 +1644,7 @@ http.exceptionHandling(e -> e
 ---
 
 #### Issue #DS5-026 — `JwtFilter.doFilterInternal` deixa JwtException propagar como 500
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** MEDIO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/security/JwtFilter.java`
@@ -1670,7 +1672,7 @@ http.exceptionHandling(e -> e
 ---
 
 #### Issue #DS5-028 — `PushService.enviarNotificacao` usa `System.err.println` — vaza token truncado no stdout
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** MEDIO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PushService.java`
@@ -1684,7 +1686,7 @@ http.exceptionHandling(e -> e
 ---
 
 #### Issue #DS5-029 — `PerfilController.upload` processa `file.getOriginalFilename()` sem sanitizar
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** MEDIO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/PerfilController.java`
@@ -1719,7 +1721,7 @@ if (originalName != null) {
 ---
 
 #### Issue #DS5-031 — `SyncService.executarUpdate` permite bypass futuro de `empresa_id` se dev esquecer skip
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** MEDIO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
@@ -1979,7 +1981,7 @@ Padronizar rule custom `month`/`year`/`date` em `validate.js`.
 ---
 
 #### Issue #DS5-233 — `routes/ocr.js /upload` `crypto.randomUUID()` quebra em Node 18 LTS
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** MEDIO (duplica V1.3 #202)
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/routes/ocr.js:128, 132, 244`
@@ -2206,7 +2208,7 @@ Nginx: restringir `/actuator/*` a `allow 127.0.0.1`.
 ---
 
 #### Issue #DS5-037 — `FirebaseConfig.init` usa `System.err.println` para erro de init
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** BAIXO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/FirebaseConfig.java`
@@ -2259,7 +2261,7 @@ Nginx: restringir `/actuator/*` a `allow 127.0.0.1`.
 ---
 
 #### Issue #DS5-041 — `LojaParceiraRepository.findByCidade` nativeQuery com `:cidade` parametrizado — OK, fragilidade futura
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado em 2026-04-25)_
 - **Severidade:** BAIXO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/repository/LojaParceiraRepository.java`
