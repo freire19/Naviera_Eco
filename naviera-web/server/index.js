@@ -1,18 +1,8 @@
 // #314: handlers globais NUNCA chamam process.exit imediato — fluxo crash-only abandona requests
-//   in-flight e deixa conexoes do pool em limbo. Em vez disso, dispara o shutdown coordenado
-//   (server.close + pool.end) com timeout duro de 10s; PM2/systemd reinicia o processo.
+//   in-flight e deixa conexoes do pool em limbo. Em vez disso, registramos o handler tarde,
+//   apos `shutdown` ser definido (final do arquivo).
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled Rejection:', reason);
-});
-process.on('uncaughtException', (err) => {
-  console.error('[FATAL] Uncaught Exception:', err);
-  // Marcar fatal e drenar; shutdown definido abaixo le esta flag.
-  globalThis.__naviera_fatal__ = true;
-  if (typeof globalThis.__naviera_shutdown__ === 'function') {
-    globalThis.__naviera_shutdown__('uncaughtException', 1);
-  } else {
-    setTimeout(() => process.exit(1), 1000);
-  }
 });
 
 import 'dotenv/config'
@@ -211,7 +201,10 @@ async function shutdown(signal, exitCode = 0) {
   }
   process.exit(exitCode)
 }
-globalThis.__naviera_shutdown__ = shutdown
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err)
+  shutdown('uncaughtException', 1)
+})
