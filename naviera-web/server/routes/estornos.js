@@ -226,7 +226,8 @@ router.get('/historico', async (req, res) => {
       let idx = params.length + 1
       if (data_inicio) { where += ` AND l.data_hora >= $${idx}`; params.push(data_inicio); idx++ }
       if (data_fim) { where += ` AND l.data_hora <= ($${idx}::date + INTERVAL '1 day')`; params.push(data_fim); idx++ }
-      if (autorizador) { where += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${autorizador.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`); idx++ }
+      // #DS5-214: limitar tamanho do termo (LIKE wildcard sem limite vira ataque DoS).
+      if (autorizador) { const a = String(autorizador).slice(0, 100); where += ` AND LOWER(l.nome_autorizador) LIKE LOWER($${idx})`; params.push(`%${a.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`); idx++ }
       if (operacao) { where += ` AND COALESCE(l.tipo_operacao, 'ESTORNO') = $${idx}`; params.push(operacao); idx++ }
       return { where, params }
     }

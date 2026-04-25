@@ -1,0 +1,32 @@
+# #DS5-419: gitignore especifico do BFF + frontend Vite.
+# Build/dist
+dist/
+.vite/
+
+# Logs do BFF
+server/logs/
+logs/
+*.log
+
+# Temporarios e uploads de teste
+server/uploads/tmp/
+server/uploads/test/
+*.tmp
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dependencias
+node_modules/
+
+# Variaveis de ambiente (usar .env.example como referencia)
+.env
+.env.local
+.env.*.local
+
+# Cache do Express e do bundler
+.cache/
+.parcel-cache/
