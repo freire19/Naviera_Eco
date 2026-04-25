@@ -5,15 +5,37 @@ const cache = new Map()
 // DS4-040 fix: reduzido de 5min para 60s (empresa desativada fica acessivel por menos tempo)
 const CACHE_TTL = 60 * 1000 // 60 segundos
 
+// #650: X-Tenant-Slug SO e confiavel quando vem do Nginx local (loopback) ou de um proxy explicitamente
+// declarado em TRUSTED_PROXY_IPS. Sem validar, qualquer cliente mandava o header e forjava tenant
+// (bypass multi-tenant). A conexao TCP chega em req.socket.remoteAddress — checamos este, pois req.ip
+// respeita trust proxy e pode refletir valores setados pelo proprio atacante via X-Forwarded-For.
+const TRUSTED_PROXY_IPS = new Set(
+  (process.env.TRUSTED_PROXY_IPS || '').split(',').map(s => s.trim()).filter(Boolean)
+)
+function isFromTrustedProxy(req) {
+  const ra = req.socket?.remoteAddress || ''
+  if (!ra) return false
+  if (ra === '127.0.0.1' || ra === '::1' || ra.startsWith('::ffff:127.')) return true
+  if (TRUSTED_PROXY_IPS.has(ra)) return true
+  // Suporta "::ffff:10.0.0.1" => "10.0.0.1"
+  const stripped = ra.startsWith('::ffff:') ? ra.slice(7) : ra
+  return TRUSTED_PROXY_IPS.has(stripped)
+}
+
 /**
  * Middleware que resolve o tenant (empresa) pelo slug do subdominio.
  * O slug vem do header X-Tenant-Slug (setado pelo Nginx)
  * ou e extraido do Host header diretamente.
- * 
+ *
  * Resultado: req.tenant = { id, nome, slug, logo_url, cor_primaria }
  * Usado na rota de login para validar usuario da empresa correta.
  */
 export async function tenantMiddleware(req, res, next) {
+  // #650: descartar X-Tenant-Slug se a conexao nao vem de proxy confiavel — evita spoof do tenant.
+  if (req.headers['x-tenant-slug'] && !isFromTrustedProxy(req)) {
+    delete req.headers['x-tenant-slug']
+  }
+
   // 1. Tentar header X-Tenant-Slug (setado pelo Nginx em producao)
   let slug = req.headers['x-tenant-slug']
 

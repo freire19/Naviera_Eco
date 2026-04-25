@@ -141,11 +141,20 @@ router.get('/relatorio/financeiro', async (req, res) => {
 })
 
 // GET /api/fretes/:id/itens
+// #106: JOIN com fretes filtrando por empresa_id — sem isso qualquer tenant lia itens alheios.
 router.get('/:id/itens', async (req, res) => {
   try {
+    const empresaId = req.user.empresa_id
+    const idFrete = parseInt(req.params.id, 10)
+    if (!Number.isInteger(idFrete) || idFrete <= 0) {
+      return res.status(400).json({ error: 'id invalido' })
+    }
     const result = await pool.query(
-      'SELECT * FROM frete_itens WHERE id_frete = $1 ORDER BY id_item_frete',
-      [req.params.id]
+      `SELECT fi.* FROM frete_itens fi
+         JOIN fretes f ON fi.id_frete = f.id_frete
+        WHERE fi.id_frete = $1 AND f.empresa_id = $2
+        ORDER BY fi.id_item_frete`,
+      [idFrete, empresaId]
     )
     res.json(result.rows)
   } catch (err) {

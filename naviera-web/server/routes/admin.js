@@ -24,9 +24,10 @@ function adminOnly(req, res, next) {
   if (!isAdminHost) {
     return res.status(403).json({ error: 'Acesso restrito ao painel admin' })
   }
-  const funcao = (req.user.funcao || '').toLowerCase()
-  if (funcao !== 'administrador' && funcao !== 'admin') {
-    return res.status(403).json({ error: 'Acesso restrito a administradores' })
+  // #100/#114: painel /api/admin e cross-tenant — exige usuarios.super_admin=TRUE no DB.
+  //   funcao=Administrador sozinho e admin-de-empresa (nao tem poder sobre outras empresas).
+  if (req.user.super_admin !== true) {
+    return res.status(403).json({ error: 'Acesso restrito a super-administradores da plataforma' })
   }
   next()
 }

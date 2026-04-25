@@ -7,6 +7,13 @@ process.on('uncaughtException', (err) => {
 });
 
 import 'dotenv/config'
+
+// #108: bloquear combinacao perigosa — ALLOW_DEV_LOGIN em producao abriria login cross-tenant.
+if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_LOGIN === '1') {
+  console.error('[FATAL] ALLOW_DEV_LOGIN=1 em NODE_ENV=production — combinacao bloqueada.')
+  process.exit(1)
+}
+
 import express from 'express'
 import cors from 'cors'
 import log from './logger.js'

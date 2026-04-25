@@ -71,11 +71,21 @@ router.get('/proximo-numero', async (req, res) => {
 })
 
 // GET /api/encomendas/:id/itens
+// #106: JOIN com encomendas filtrando por empresa_id — sem isso qualquer tenant lia itens alheios.
 router.get('/:id/itens', async (req, res) => {
   try {
+    const empresaId = req.user.empresa_id
+    const idEncomenda = parseInt(req.params.id, 10)
+    if (!Number.isInteger(idEncomenda) || idEncomenda <= 0) {
+      return res.status(400).json({ error: 'id invalido' })
+    }
     const result = await pool.query(
-      'SELECT * FROM encomenda_itens WHERE id_encomenda = $1 AND (excluido = FALSE OR excluido IS NULL) ORDER BY id_item_encomenda',
-      [req.params.id]
+      `SELECT ei.* FROM encomenda_itens ei
+         JOIN encomendas e ON ei.id_encomenda = e.id_encomenda
+        WHERE ei.id_encomenda = $1 AND e.empresa_id = $2
+          AND (ei.excluido = FALSE OR ei.excluido IS NULL)
+        ORDER BY ei.id_item_encomenda`,
+      [idEncomenda, empresaId]
     )
     res.json(result.rows)
   } catch (err) {

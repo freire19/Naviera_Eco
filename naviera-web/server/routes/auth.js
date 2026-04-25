@@ -34,7 +34,8 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (tenantId) {
       // Producao: filtrar usuario pela empresa do subdominio
       sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id,
-                    COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha
+                    COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha,
+                    COALESCE(super_admin, FALSE) AS super_admin
              FROM usuarios
              WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1))
                AND (excluido = FALSE OR excluido IS NULL)
@@ -43,22 +44,25 @@ router.post('/login', loginLimiter, async (req, res) => {
     } else if (isOcrApp || isAdminApp) {
       // OCR/Admin: usuario resolve empresa_id pelo banco (sem filtro de tenant)
       sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id,
-                    COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha
+                    COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha,
+                    COALESCE(super_admin, FALSE) AS super_admin
              FROM usuarios
              WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1))
                AND (excluido = FALSE OR excluido IS NULL)`
       params = [login]
-    } else if (process.env.NODE_ENV === 'production') {
-      // Producao: obrigar subdominio de empresa
-      return res.status(400).json({ error: 'Subdominio da empresa obrigatorio' })
-    } else {
-      // Dev (localhost): aceitar qualquer empresa
+    } else if (process.env.ALLOW_DEV_LOGIN === '1' && process.env.NODE_ENV !== 'production') {
+      // #108: branch cross-empresa SO com flag explicita ALLOW_DEV_LOGIN=1 fora de producao.
+      // Staging/test que nao definir a flag passa a rejeitar login sem tenant — antes qualquer
+      // deploy com NODE_ENV != 'production' aceitava login cross-tenant so pelo login.
       sql = `SELECT id, nome, email, senha, funcao, permissao, empresa_id,
-                    COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha
+                    COALESCE(deve_trocar_senha, FALSE) AS deve_trocar_senha,
+                    COALESCE(super_admin, FALSE) AS super_admin
              FROM usuarios
              WHERE (LOWER(nome) = LOWER($1) OR LOWER(email) = LOWER($1))
                AND (excluido = FALSE OR excluido IS NULL)`
       params = [login]
+    } else {
+      return res.status(400).json({ error: 'Subdominio da empresa obrigatorio' })
     }
 
     const result = await pool.query(sql, params)
@@ -81,7 +85,8 @@ router.post('/login', loginLimiter, async (req, res) => {
       id: user.id,
       login: user.nome,
       funcao: user.funcao,
-      empresa_id: user.empresa_id
+      empresa_id: user.empresa_id,
+      super_admin: user.super_admin === true
     })
 
     res.json({

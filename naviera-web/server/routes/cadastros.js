@@ -348,8 +348,19 @@ router.put('/embarcacoes/:id', async (req, res, next) => {
 })
 
 // --- Usuarios CRUD ---
+// #102: alteracao de funcao/permissao so por Administrador; operador comum so edita proprio perfil
+// (nome/email/senha) sem tocar em funcao/permissao. Bloqueia auto-promocao e criacao de novo admin
+// por nao-admin.
+function isAdmin(user) {
+  const f = (user?.funcao || '').toLowerCase()
+  return f === 'administrador' || f === 'admin'
+}
+
 router.post('/usuarios', validate({ nome: 'required|string|min:2', senha: 'required|string|min:4' }), async (req, res, next) => {
   try {
+    if (!isAdmin(req.user)) {
+      return res.status(403).json({ error: 'Apenas Administrador pode criar usuarios' })
+    }
     const empresaId = req.user.empresa_id
     const { nome, email, senha, funcao, permissao } = req.body
     if (!nome || !senha) return res.status(400).json({ error: 'nome e senha obrigatorios' })
@@ -369,16 +380,37 @@ router.post('/usuarios', validate({ nome: 'required|string|min:2', senha: 'requi
 router.put('/usuarios/:id', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
+    const alvoId = parseInt(req.params.id, 10)
+    if (!Number.isInteger(alvoId) || alvoId <= 0) {
+      return res.status(400).json({ error: 'id invalido' })
+    }
     const { nome, email, funcao, permissao, senha } = req.body
+    const mudaRole = funcao !== undefined || permissao !== undefined
+    const admin = isAdmin(req.user)
+
+    // #102: somente admin muda funcao/permissao; nao-admin so edita a si mesmo (sem tocar em role)
+    if (!admin) {
+      if (mudaRole) {
+        return res.status(403).json({ error: 'Apenas Administrador pode alterar funcao/permissao' })
+      }
+      if (alvoId !== req.user.id) {
+        return res.status(403).json({ error: 'Operador nao-admin so pode editar proprio usuario' })
+      }
+    }
+    // #102: admin nao pode alterar propria funcao/permissao (prevenir perda de controle e auto-locking)
+    if (admin && alvoId === req.user.id && mudaRole) {
+      return res.status(400).json({ error: 'Nao e possivel alterar a propria funcao/permissao' })
+    }
+
     let sql, params
     if (senha) {
       if (senha.length > 128) return res.status(400).json({ error: 'Senha deve ter no maximo 128 caracteres' })
       const senhaHash = await bcrypt.hash(senha, 10)
       sql = 'UPDATE usuarios SET nome = COALESCE($1, nome), email = COALESCE($2, email), funcao = COALESCE($3, funcao), permissao = COALESCE($4, permissao), senha = $5 WHERE id = $6 AND empresa_id = $7 RETURNING id, nome, email, funcao, permissao'
-      params = [nome, email, funcao, permissao, senhaHash, req.params.id, empresaId]
+      params = [nome, email, funcao, permissao, senhaHash, alvoId, empresaId]
     } else {
       sql = 'UPDATE usuarios SET nome = COALESCE($1, nome), email = COALESCE($2, email), funcao = COALESCE($3, funcao), permissao = COALESCE($4, permissao) WHERE id = $5 AND empresa_id = $6 RETURNING id, nome, email, funcao, permissao'
-      params = [nome, email, funcao, permissao, req.params.id, empresaId]
+      params = [nome, email, funcao, permissao, alvoId, empresaId]
     }
     const result = await pool.query(sql, params)
     if (result.rows.length === 0) return res.status(404).json({ error: 'Usuario nao encontrado' })
