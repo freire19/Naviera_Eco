@@ -13,6 +13,10 @@ import util.AppLogger;
 
 public class ViagemDAO {
 
+    // #DR274: namespace arbitrario para advisory lock por empresa em definirViagemAtiva.
+    //   Combinado com empresaId, serializa concorrencia sem afetar outras tabelas.
+    private static final int LOCK_NS_VIAGEM_ATIVA = 730001;
+
     private final AuxiliaresDAO auxiliaresDAO;
 
     public ViagemDAO() {
@@ -449,7 +453,7 @@ public class ViagemDAO {
             conn.setAutoCommit(false);
 
             try (PreparedStatement lock = conn.prepareStatement("SELECT pg_advisory_xact_lock(?, ?)")) {
-                lock.setInt(1, 730001); // namespace arbitrario para "definirViagemAtiva"
+                lock.setInt(1, LOCK_NS_VIAGEM_ATIVA);
                 lock.setInt(2, empresaId);
                 lock.executeQuery().close();
             }

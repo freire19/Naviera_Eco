@@ -431,23 +431,13 @@ public class SyncClient {
                 ? "Sincronizacao concluida com sucesso!"
                 : "Sincronizacao concluida com " + resultadoGeral.erros.size() + " erro(s)";
 
-            // #310: contador de falhas consecutivas — apos 3 falhas seguidas, escala para ALERTA
-            //   visivel ao operador do barco (nao basta encher log; o operador precisa saber).
-            if (resultadoGeral.sucesso) {
-                falhasConsecutivas = 0;
-            } else {
-                falhasConsecutivas++;
-            }
-            SyncEvent finalEvent = resultadoGeral.sucesso ? SyncEvent.SUCESSO
-                : (falhasConsecutivas >= 3 ? SyncEvent.ALERTA : SyncEvent.ERRO);
-            String finalMsg = resultadoGeral.mensagem
+            // #310: 3 falhas seguidas escalam para ALERTA visivel (operador precisa saber).
+            falhasConsecutivas = resultadoGeral.sucesso ? 0 : falhasConsecutivas + 1;
+            String resumo = resultadoGeral.mensagem
                 + " (enviados=" + resultadoGeral.registrosEnviados
                 + ", recebidos=" + resultadoGeral.registrosRecebidos + ")";
-            if (finalEvent == SyncEvent.ALERTA) {
-                finalMsg = "ATENCAO: sync falhou " + falhasConsecutivas
-                    + "x consecutivas. Verifique conexao e contate suporte. " + finalMsg;
-            }
-            notificarListeners(finalEvent, finalMsg);
+            notificarListeners(eventoFinal(resultadoGeral.sucesso, falhasConsecutivas),
+                montarMensagemFinal(resumo, falhasConsecutivas));
 
             return resultadoGeral;
         }, syncExecutor);
@@ -514,10 +504,15 @@ public class SyncClient {
                 resultado.erros.add(tabela + ": " + uuidsFalha.size() + " uuid(s) com falha — reenviar");
             }
             if (resultado.sucesso || resultado.registrosEnviados > 0) {
-                java.util.Set<String> falha = new java.util.HashSet<>(uuidsFalha);
-                List<RegistroPendente> aMarcar = new ArrayList<>();
-                for (RegistroPendente p : pendentes) {
-                    if (p.uuid == null || !falha.contains(p.uuid)) aMarcar.add(p);
+                List<RegistroPendente> aMarcar;
+                if (uuidsFalha.isEmpty()) {
+                    aMarcar = pendentes;
+                } else {
+                    java.util.Set<String> falha = new java.util.HashSet<>(uuidsFalha);
+                    aMarcar = new ArrayList<>();
+                    for (RegistroPendente p : pendentes) {
+                        if (p.uuid == null || !falha.contains(p.uuid)) aMarcar.add(p);
+                    }
                 }
                 marcarComoSincronizados(tabela, aMarcar);
             }
@@ -640,6 +635,17 @@ public class SyncClient {
         json.append("]}");
 
         return json.toString();
+    }
+
+    private static SyncEvent eventoFinal(boolean sucesso, int falhasConsec) {
+        if (sucesso) return SyncEvent.SUCESSO;
+        return falhasConsec >= 3 ? SyncEvent.ALERTA : SyncEvent.ERRO;
+    }
+
+    private static String montarMensagemFinal(String resumo, int falhasConsec) {
+        if (falhasConsec < 3) return resumo;
+        return "ATENCAO: sync falhou " + falhasConsec
+            + "x consecutivas. Verifique conexao e contate suporte. " + resumo;
     }
 
     // ========================================================================
