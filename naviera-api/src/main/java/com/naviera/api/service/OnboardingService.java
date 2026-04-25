@@ -129,6 +129,7 @@ public class OnboardingService {
         String senhaHash = encoder.encode(senha);
 
         // 1. Criar empresa
+        final String cnpjFinal = (cnpj != null && !cnpj.isBlank()) ? cnpj : null;
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(con -> {
             PreparedStatement ps = con.prepareStatement("""
@@ -136,7 +137,7 @@ public class OnboardingService {
                 VALUES (?, ?, ?, ?, ?, ?, 'basico', TRUE)""",
                 new String[]{"id"});
             ps.setString(1, nomeEmpresa);
-            ps.setObject(2, cnpj != null && !cnpj.isBlank() ? cnpj : null);
+            ps.setObject(2, cnpjFinal);
             ps.setObject(3, telefone);
             ps.setObject(4, email.toLowerCase());
             ps.setString(5, slug);

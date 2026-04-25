@@ -122,7 +122,7 @@ public class OpEncomendaWriteService {
     }
 
     @Transactional
-    public Map<String, Object> entregar(Integer empresaId, Long operadorId, Long id, Map<String, Object> dados) {
+    public Map<String, Object> entregar(Integer empresaId, Integer operadorId, Long id, Map<String, Object> dados) {
         // #DS5-020: validar identificacao do recebedor antes de marcar como entregue.
         String docRec = trimToNull(dados.get("doc_recebedor"));
         String nomeRec = trimToNull(dados.get("nome_recebedor"));

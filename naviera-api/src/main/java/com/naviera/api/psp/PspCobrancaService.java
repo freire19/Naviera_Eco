@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -21,6 +23,19 @@ import java.util.UUID;
 public class PspCobrancaService {
 
     private static final Logger log = LoggerFactory.getLogger(PspCobrancaService.class);
+
+    // #DR263: whitelist de transicoes — webhooks podem chegar fora de ordem ou repetidos
+    //   (PAYMENT_RECEIVED depois de REFUNDED, etc). Sem validacao, status final ficaria
+    //   incoerente com a realidade. Estados terminais (ESTORNADA/CANCELADA) sao absorventes.
+    private static final Map<String, Set<String>> TRANSICOES_VALIDAS = Map.of(
+        "INICIADA",   Set.of("PENDENTE", "CONFIRMADA", "VENCIDA", "CANCELADA", "FALHA"),
+        "PENDENTE",   Set.of("CONFIRMADA", "VENCIDA", "CANCELADA"),
+        "CONFIRMADA", Set.of("ESTORNADA"),
+        "VENCIDA",    Set.of("CONFIRMADA", "CANCELADA"),
+        "FALHA",      Set.of("PENDENTE", "CONFIRMADA", "CANCELADA"),
+        "ESTORNADA",  Set.of(),
+        "CANCELADA",  Set.of()
+    );
 
     private final PspGateway gateway;
     private final PspCobrancaRepository repo;
@@ -111,6 +126,16 @@ public class PspCobrancaService {
     @Transactional
     public void atualizarStatus(String provider, String pspCobrancaId, String novoStatus) {
         repo.findByPspProviderAndPspCobrancaId(provider, pspCobrancaId).ifPresent(c -> {
+            String atual = c.getPspStatus();
+            if (atual != null && atual.equals(novoStatus)) {
+                return;
+            }
+            Set<String> permitidos = TRANSICOES_VALIDAS.get(atual);
+            if (permitidos == null || !permitidos.contains(novoStatus)) {
+                log.warn("[PspCobrancaService] Transicao invalida {}->{} rejeitada (cobranca {})",
+                    atual, novoStatus, pspCobrancaId);
+                return;
+            }
             c.setPspStatus(novoStatus);
             if ("CONFIRMADA".equals(novoStatus) && c.getDataConfirmacao() == null) {
                 c.setDataConfirmacao(LocalDateTime.now());

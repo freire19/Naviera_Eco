@@ -74,6 +74,13 @@ public class AsaasGateway implements PspGateway {
         }
         // #DB222: defesa em profundidade — valorBruto null geraria NPE generico no subtract
         Objects.requireNonNull(req.valorBruto(), "valorBruto obrigatorio na CobrancaRequest");
+        // #DR264: split fora de [0,100] explode no Asaas com mensagem opaca; validar antes
+        if (req.splitNavieraPct() != null) {
+            BigDecimal pct = req.splitNavieraPct();
+            if (pct.signum() < 0 || pct.compareTo(BigDecimal.valueOf(100)) > 0) {
+                throw new IllegalArgumentException("splitNavieraPct fora do intervalo [0,100]: " + pct);
+            }
+        }
 
         try {
             String customerId = obterOuCriarCustomer(req);
