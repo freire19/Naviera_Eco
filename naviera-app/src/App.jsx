@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import "./App.css";
 import {
   IconHome, IconHeart, IconShip, IconTicket, IconGrid, IconCart,
@@ -132,20 +132,35 @@ export default function Naviera() {
       .catch(e => console.warn("[App] erro ao carregar foto do perfil:", e?.message));
   }, [token]);
 
-  const handleLogin = (data) => {
+  const handleLogin = useCallback((data) => {
     sessionStorage.setItem("naviera_token", data.token);
     sessionStorage.setItem("naviera_usuario", JSON.stringify({ nome: data.nome, tipo: data.tipo, id: data.id }));
     setToken(data.token);
     setUsuario({ nome: data.nome, tipo: data.tipo, id: data.id });
     setProfile(data.tipo === "CNPJ" ? "cnpj" : "cpf");
     setTab("home"); setTabHistory([]);
-  };
+  }, []);
 
-  const doLogout = () => { sessionStorage.removeItem("naviera_token"); sessionStorage.removeItem("naviera_usuario"); setProfile(null); setToken(null); setUsuario(null); setTab("home"); setTabHistory([]); setMinhaFoto(null); pushTokenEnviado.current = false; };
+  const doLogout = useCallback(() => {
+    sessionStorage.removeItem("naviera_token"); sessionStorage.removeItem("naviera_usuario");
+    setProfile(null); setToken(null); setUsuario(null);
+    setTab("home"); setTabHistory([]); setMinhaFoto(null);
+    pushTokenEnviado.current = false;
+  }, []);
 
   const isCPF = profile === "cpf";
   const tabs = isCPF ? TABS_CPF : TABS_CNPJ;
-  const authHeaders = token ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } : {};
+  // Estabilidade de referencia: consumidores listam authHeaders em deps de useEffect.
+  const authHeaders = useMemo(
+    () => token ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } : {},
+    [token]
+  );
+
+  const themeValue = useMemo(() => ({ t, mode, setMode }), [t, mode]);
+  const authValue = useMemo(
+    () => ({ token, usuario, authHeaders, login: handleLogin, logout: doLogout }),
+    [token, usuario, authHeaders, handleLogin, doLogout]
+  );
 
   const screen = () => {
     if (tab === "perfil") return <PerfilScreen onFotoChange={setMinhaFoto} />;
@@ -165,8 +180,8 @@ export default function Naviera() {
   };
 
   return (
-    <ThemeProvider value={{ t, mode, setMode }}>
-      <AuthProvider value={{ token, usuario, authHeaders, login: handleLogin, logout: doLogout }}>
+    <ThemeProvider value={themeValue}>
+      <AuthProvider value={authValue}>
         {!profile ? (
           <LoginScreen />
         ) : (

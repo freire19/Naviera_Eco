@@ -65,15 +65,8 @@ export function useApi(path, authHeaders, deps = []) {
       ? AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
       : controller.signal;
     setLoading(true); setErro("");
-    fetch(`${API}${path}`, { headers: authHeaders, signal })
-      .then(r => {
-        // #DS5-225: 403 nao expira sessao — usuario pode ter perdido permissao especifica.
-        if (r.status === 401) {
-          clearSession()
-          return Promise.reject("Sessao expirada");
-        }
-        return r.ok ? r.json() : Promise.reject("Erro ao carregar");
-      })
+    authFetch(`${API}${path}`, { headers: authHeaders, signal })
+      .then(r => r.ok ? r.json() : Promise.reject("Erro ao carregar"))
       .then(d => { if (active) setData(d); })
       .catch((e) => {
         if (e.name === 'AbortError' || !active) return;

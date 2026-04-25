@@ -6,10 +6,11 @@ import Logo from "../components/Logo.jsx";
 import { API, authFetch } from "../api.js";
 import { useAuth } from "../contexts/AuthContext.jsx";
 
+// Bilhete sempre em dark — visual premium independente do tema do app.
+const t = T.dark;
+
 export default function BilheteScreen({ bilhete, onBack }) {
   const { authHeaders } = useAuth();
-  // Forca tema dark pro bilhete — visual premium
-  const t = { ...T.dark };
   const [now, setNow] = useState(Date.now());
   const [brightness, setBrightness] = useState(false);
   const [totp, setTotp] = useState("------");
