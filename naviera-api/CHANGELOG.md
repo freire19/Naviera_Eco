@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.4](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.3...api-v1.1.4) (2026-04-25)
+
+
+### Bug Fixes
+
+* **api:** DEEP_RESILIENCE V6.0 MEDIO — PSP state machine + split range ([b0260f2](https://github.com/freire19/Naviera_Eco/commit/b0260f263aa283fd4d412bc4219c1c3bc90cf78f))
+
+
+### Refactoring
+
+* **api:** AsaasGateway — backoff constante + log split parse error ([34359e3](https://github.com/freire19/Naviera_Eco/commit/34359e3ac328252b0f0f2f913502ed5fdca00e37))
+
 ## [1.1.3](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.2...api-v1.1.3) (2026-04-25)
 
 
