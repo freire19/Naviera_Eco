@@ -76,9 +76,17 @@ public class ConexaoBD {
             throw new RuntimeException(
                 "FATAL: db.properties incompleto. Preencha db.url, db.usuario e db.senha.");
         }
-        // Garantir sslmode=disable para evitar SSL handshake_failure em PG local com SSL ativado
+        // #DS5-216: NUNCA forcar sslmode=disable. Se URL nao especifica:
+        //   - host local (localhost/127.0.0.1)  -> sslmode=prefer  (tenta TLS, cai pra claro se PG local nao tem)
+        //   - host remoto                       -> sslmode=require (TLS obrigatorio; conexao falha se PG nao oferecer)
+        // Operador que precisa rodar em rede sem TLS DEVE setar sslmode=disable explicitamente em db.properties.
         if (!url.contains("sslmode=")) {
-            url = url + (url.contains("?") ? "&" : "?") + "sslmode=disable";
+            boolean isLocal = url.contains("localhost") || url.contains("127.0.0.1");
+            String defaultMode = isLocal ? "prefer" : "require";
+            url = url + (url.contains("?") ? "&" : "?") + "sslmode=" + defaultMode;
+            if (!isLocal) {
+                AppLogger.warn("ConexaoBD", "sslmode nao especificado em db.properties — usando 'require' (host remoto). Defina explicitamente para silenciar.");
+            }
         }
         URL = url;
         USUARIO = usuario;
