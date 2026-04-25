@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.4](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.3...web-v1.7.4) (2026-04-25)
+
+
+### Bug Fixes
+
+* **web:** DEEP_RESILIENCE ALTOs — 429 retry, graceful shutdown ([99e32f8](https://github.com/freire19/Naviera_Eco/commit/99e32f82490b1089b29ac91b608f3e35697b8ecb))
+
+
+### Refactoring
+
+* **web:** drop globalThis shutdown hack — register handler after definition ([cafaa09](https://github.com/freire19/Naviera_Eco/commit/cafaa093300c7eca317a055cafd00560ecb8adec))
+
 ## [1.7.3](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.2...web-v1.7.3) (2026-04-25)
 
 
