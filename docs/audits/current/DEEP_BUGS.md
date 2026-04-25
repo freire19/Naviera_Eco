@@ -513,31 +513,31 @@ if (!destinatario.toUpperCase().contains(cliente.getNome().toUpperCase()))
 > Todos os 5 CRITICOs ja estavam corrigidos no codigo no momento da conferencia (2026-04-23). Nenhum arquivo de codigo foi modificado nesta sessao.
 
 ### Importante (ALTO — 6 issues)
-- [ ] #DB205 — HMAC nao timing-safe — **Esforco:** 10min
-- [ ] #DB206 — numero_bilhete timestamp%1M — **Esforco:** 30min (usar advisory lock)
-- [ ] #DB207 — cpfCnpj sem URL encoding — **Esforco:** 15min
-- [ ] #DB208 — RestTemplate sem timeout — **Esforco:** 15min
-- [ ] #DB210 — isAdminSubdomain prefix match frouxo — **Esforco:** 15min
-- [ ] #DB214 — Fallback viagemId/categoriaId=1 na folha — **Esforco:** 30min
-- [ ] #DB215 — /fechar-mes sem transacao — **Esforco:** 30min
-- [ ] #DB216 — /validar-admin bcrypt loop sem rate limit — **Esforco:** 1h
+- [x] #DB205 — HMAC nao timing-safe — **Esforco:** 10min
+- [x] #DB206 — numero_bilhete timestamp%1M — **Esforco:** 30min (usar advisory lock)
+- [x] #DB207 — cpfCnpj sem URL encoding — **Esforco:** 15min
+- [x] #DB208 — RestTemplate sem timeout — **Esforco:** 15min
+- [x] #DB210 — isAdminSubdomain prefix match frouxo — **Esforco:** 15min
+- [x] #DB214 — Fallback viagemId/categoriaId=1 na folha — **Esforco:** 30min
+- [x] #DB215 — /fechar-mes sem transacao — **Esforco:** 30min
+- [x] #DB216 — /validar-admin bcrypt loop sem rate limit — **Esforco:** 1h
 
 ### Importante (MEDIO — 10 issues)
-- [ ] #DB209 — LocalDate.now() TZ servidor — **Esforco:** 30min
-- [ ] #DB211 — x-tenant-slug=admin bypassa — **Esforco:** 20min
-- [ ] #DB212 — codigoAtivacao 4 hex — **Esforco:** 5min
-- [ ] #DB213 — PUT slug sem invalidacao — **Esforco:** 1h
-- [ ] #DB217 — status_frete = NULL em estorno — **Esforco:** 10min
-- [ ] #DB218 — pagamento/desconto negativo — **Esforco:** 10min
-- [ ] #DB219 — /fechar-mes TZ UTC — **Esforco:** 30min
-- [ ] #DB220 — UI usa valorNominal em vez de valorDevedor — **Esforco:** 10min
-- [ ] #DB221 — queryForObject null unbox — **Esforco:** 20min
-- [ ] #DB222 — CobrancaRequest sem validacao de nulls — **Esforco:** 15min
+- [x] #DB209 — LocalDate.now() TZ servidor — **Esforco:** 30min
+- [x] #DB211 — x-tenant-slug=admin bypassa — **Esforco:** 20min
+- [x] #DB212 — codigoAtivacao 4 hex — **Esforco:** 5min
+- [x] #DB213 — PUT slug sem invalidacao — **Esforco:** 1h
+- [x] #DB217 — status_frete = NULL em estorno — **Esforco:** 10min
+- [x] #DB218 — pagamento/desconto negativo — **Esforco:** 10min
+- [x] #DB219 — /fechar-mes TZ UTC — **Esforco:** 30min
+- [x] #DB220 — UI usa valorNominal em vez de valorDevedor — **Esforco:** 10min
+- [x] #DB221 — queryForObject null unbox — **Esforco:** 20min
+- [x] #DB222 — CobrancaRequest sem validacao de nulls — **Esforco:** 15min
 
 ### Menor (BAIXO — 3 issues)
-- [ ] #DB223 — SyncClient whitelist em buscarRegistrosPendentes — **Esforco:** 10min
+- [x] #DB223 — SyncClient whitelist em buscarRegistrosPendentes — **Esforco:** 10min
 - [ ] #DB224 — useEffect sem AbortController — **Esforco:** 30min por tela
-- [ ] #DB225 — VersaoChecker obrigatoria exit mesmo com browse falha — **Esforco:** 15min
+- [x] #DB225 — VersaoChecker obrigatoria exit mesmo com browse falha — **Esforco:** 15min
 
 ---
 

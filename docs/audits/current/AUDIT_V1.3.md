@@ -424,7 +424,7 @@ String numBilhete = String.format("APP-%08d", seq);
 ---
 
 #### Issue #009 — Auth.js: resultado de Promise rejeitada em dinamic import de bcryptjs esconde erro
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 517-522
@@ -450,7 +450,7 @@ for (const user of result.rows) {
 ---
 
 #### Issue #011 — ThreadLocal temDataChegadaTL sem cleanup em PassagemDAO
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/PassagemDAO.java`
 - **Linha(s):** 184, 256, 272, 343, 377
@@ -479,7 +479,7 @@ try {
 ---
 
 #### Issue #012 — Validacao assincrona do pagamento ignora erro de rede e deixa estado inconsistente
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java`
 - **Linha(s):** 161-196
@@ -506,7 +506,7 @@ public Map<String, Object> pagar(Long clienteId, Long idEncomenda, String formaP
 ---
 
 #### Issue #013 — Mesmo bug de outbox em FreteService.pagar
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FreteService.java`
 - **Linha(s):** 139-176
@@ -527,7 +527,7 @@ public Map<String, Object> pagar(Long clienteId, Long idFrete, String formaPagam
 ---
 
 #### Issue #014 — Mesmo bug em PassagemService.comprar
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 118-166
@@ -545,7 +545,7 @@ PspCobranca cob = pspService.criar(pspReq);
 ---
 
 #### Issue #016 — FreteService.buscarPorRemetenteCrossTenant sem limite nem cache
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FreteService.java`
 - **Linha(s):** 42-80
@@ -564,7 +564,7 @@ ORDER BY f.id_frete DESC
 ---
 
 #### Issue #017 — NPE em ClienteApp.getNome() no matching fallback por nome
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java`
 - **Linha(s):** 136
@@ -592,7 +592,7 @@ if (destinatario == null || !destinatario.toUpperCase().contains(nomeCli.toUpper
 ---
 
 #### Issue #019 — setTimeout com setState sem cleanup pode bater em componente unmounted
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/components/PagamentoArtefato.jsx`
 - **Linha(s):** 22-23
@@ -621,7 +621,7 @@ const copiar = async (...) => {
 ---
 
 #### Issue #020 — PassagensCPF: confirmarCompra nao trata body nao-JSON no erro
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
 - **Linha(s):** 34-43
@@ -652,7 +652,7 @@ if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
 ---
 
 #### Issue #021 — Mesmo problema de dupla chamada em EncomendaCPF.confirmarPagamento
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/EncomendaCPF.jsx`
 - **Linha(s):** 29-47
@@ -665,7 +665,7 @@ if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
 ---
 
 #### Issue #022 — FinanceiroCNPJ.confirmarPagamento sem idempotencia
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/FinanceiroCNPJ.jsx`
 - **Linha(s):** 20-38
@@ -678,7 +678,7 @@ if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
 ---
 
 #### Issue #023 — `catch {}` generico em confirmarPagamento engole erro util
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/EncomendaCPF.jsx`, `FinanceiroCNPJ.jsx`, `PassagensCPF.jsx`
 - **Linha(s):** 46, 37, 42
@@ -701,7 +701,7 @@ if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
 ---
 
 #### Issue #600 — PassagensCPF: setSelBilhete nao inclui id_passagem — TOTP fetch falha silenciosamente no bilhete digital apos compra
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx` + `naviera-api/.../service/PassagemService.java`
 - **Linha(s):** PassagensCPF:69 / PassagemService:167-176
@@ -2915,7 +2915,7 @@ E em application.properties: `server.shutdown=graceful` e `spring.lifecycle.time
 ---
 
 #### Issue #302 — PSP cobrancas: 2 round-trips sequenciais sem timeout e sem retry
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 90-105
@@ -2939,7 +2939,7 @@ for (int attempt = 1; attempt <= 3; attempt++) {
 ---
 
 #### Issue #303 — EncomendaService.pagar: transacao segura pool HikariCP durante I/O externo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java`
 - **Linha(s):** 115-211
@@ -2951,7 +2951,7 @@ for (int attempt = 1; attempt <= 3; attempt++) {
 ---
 
 #### Issue #307 — `fetchWithRetry` em Gemini/Vision nao retenta em 429 Too Many Requests
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/helpers/fetchWithRetry.js`
 - **Linha(s):** 15-16
@@ -2974,7 +2974,7 @@ if (retryAfter && attempt < retries) {
 ---
 
 #### Issue #309 — SyncService.processar: engole erros por registro silenciosamente
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
 - **Linha(s):** 103-115
@@ -2999,7 +2999,7 @@ return new SyncResponse(uuidsFalhos.isEmpty(), mensagem, recebidos, paraDownload
 ---
 
 #### Issue #310 — SyncClient (Desktop): enviaComRetry nao persiste failure state
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 387-436, 787-854
@@ -3011,7 +3011,7 @@ return new SyncResponse(uuidsFalhos.isEmpty(), mensagem, recebidos, paraDownload
 ---
 
 #### Issue #313 — GlobalExceptionHandler: exception generica retorna 500 sem correlationId
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/GlobalExceptionHandler.java`
 - **Linha(s):** 30-34
@@ -3040,7 +3040,7 @@ public ResponseEntity<?> handleGeneric(Exception e, HttpServletRequest req) {
 ---
 
 #### Issue #314 — index.js BFF: uncaughtException faz process.exit(1) sem drenar conexoes
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/index.js`
 - **Linha(s):** 4-7
@@ -3059,7 +3059,7 @@ process.on('uncaughtException', (err) => {
 ---
 
 #### Issue #319 — useWebSocket: sem heartbeat configurado — conexoes mortas nao detectadas
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/hooks/useWebSocket.js`
 - **Linha(s):** 28-62
@@ -3080,7 +3080,7 @@ const client = new Client({
 ---
 
 #### Issue #306 — fetchWithRetry nao distingue timeout de erro de rede; nao loga tentativa
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/helpers/fetchWithRetry.js`
 - **Linha(s):** 10-32
@@ -3101,7 +3101,7 @@ if (attempt < retries) {
 ---
 
 #### Issue #312 — PushService.enviarNotificacao: loop sincrono sem limite de paralelismo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PushService.java`
 - **Linha(s):** 41-66
@@ -3122,7 +3122,7 @@ future.addListener(() -> { /* log result */ }, Runnable::run);
 ---
 
 #### Issue #316 — docker-compose.yml API expoe 8081 mas Dockerfile EXPOSE 8080
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/Dockerfile` / `docker-compose.yml`
 - **Linha(s):** Dockerfile:13, compose:25, compose:36
@@ -3134,7 +3134,7 @@ future.addListener(() -> { /* log result */ }, Runnable::run);
 ---
 
 #### Issue #317 — PagamentoArtefato / FinanceiroCNPJ / EncomendaCPF: `catch` engole erro sem correlationId
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/screens/EncomendaCPF.jsx` / `FinanceiroCNPJ.jsx` / `PassagensCPF.jsx`
 - **Linha(s):** EncomendaCPF:46, FinanceiroCNPJ:37, PassagensCPF:42
@@ -3152,7 +3152,7 @@ future.addListener(() -> { /* log result */ }, Runnable::run);
 ---
 
 #### Issue #320 — SyncClient.escapeJson: implementacao manual, nao lida com \u0000-\u001F
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 939-946, 582-607
@@ -3168,7 +3168,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #322 — TenantMiddleware cache in-memory com TTL de 60s — falha em scale horizontal
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
 - **Linha(s):** 3-4, 36-54
@@ -3180,7 +3180,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #323 — SyncClient.aplicarRegistroRecebido: catch silencioso em loop
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 618-638, 480-487
@@ -3192,7 +3192,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #324 — Asaas onboarding: exception generica engole detalhe
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 184-188
@@ -3204,7 +3204,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #327 — AsaasGateway.obterOuCriarCustomer: race condition pode criar customer duplicado
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 213-226
@@ -3216,7 +3216,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #328 — SyncClient (Desktop): scheduler com thread daemon
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 94-98, 117-123
@@ -3228,7 +3228,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #329 — geminiParser: JSON parse via regex `\{[\s\S]*\}` gulos ao erro
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/helpers/geminiParser.js`
 - **Linha(s):** 122-125, 164-187
@@ -3240,7 +3240,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #330 — NotificationService.notify: catch silencia WebSocket send failures
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/NotificationService.java`
 - **Linha(s):** 27-33
@@ -3252,7 +3252,7 @@ String jsonRequest = MAPPER.writeValueAsString(body);
 ---
 
 #### Issue #318 — PagamentoArtefato: `navigator.clipboard?.writeText().then()` sem `.catch`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/components/PagamentoArtefato.jsx`
 - **Linha(s):** 19-25
@@ -3276,7 +3276,7 @@ const copiar = async (txt, label) => {
 ---
 
 #### Issue #321 — Auth.js trocar-senha: bcrypt.hash com cost factor 10 hardcoded
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/auth.js`
 - **Linha(s):** 147
@@ -3288,7 +3288,7 @@ const copiar = async (txt, label) => {
 ---
 
 #### Issue #331 — AuthOperadorService / AuthService: NUNCA checados no audit
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthService.java` / `AuthOperadorService.java`
 - **Problema:** Nao varridos. JWT expira em 8h. App mobile nao parece ter refresh token.
@@ -3369,7 +3369,7 @@ public Map<String, Object> pagar(...) {
 ---
 
 #### Issue #400 — Cross-tenant LIKE full-scan sem indice trigram nem LIMIT
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java`
 - **Linha(s):** 82-104
@@ -3396,7 +3396,7 @@ sql += " WHERE (e.id_cliente_app_destinatario = ? " +
 ---
 
 #### Issue #401 — `viagens/buscarPublicas` sem LIMIT, sem cache, cross-tenant
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/ViagemService.java`
 - **Linha(s):** 44-57
@@ -3420,7 +3420,7 @@ public List<Map<String, Object>> buscarPublicas() {
 ---
 
 #### Issue #402 — Pool de conexoes subdimensionado (HikariCP + pg Pool)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/resources/application.properties` (L22-23) + `naviera-web/server/db.js` (L10)
 - **Problema:** HikariCP max=10, pg Pool max=10. Mesmo Postgres atende ambos + desktop sync + webhooks. Dashboard faz Promise.all com 4 queries.
@@ -3440,7 +3440,7 @@ const pool = new Pool({ ..., max: 30, idleTimeoutMillis: 10000, allowExitOnIdle:
 ---
 
 #### Issue #404 — `FreteService.buscarPorRemetenteCrossTenant`: LIKE cross-tenant sem LIMIT
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FreteService.java`
 - **Linha(s):** 42-80
@@ -3460,7 +3460,7 @@ sql += " WHERE (f.id_cliente_app_pagador = ? OR UPPER(f.remetente_nome_temp) LIK
 ---
 
 #### Issue #405 — `AmigoService.buscarPorNome/sugestoes`: subquery NOT IN + UNION sem indice
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AmigoService.java`
 - **Linha(s):** 60-90
@@ -3477,7 +3477,7 @@ CREATE INDEX idx_clientes_app_nome_trgm ON clientes_app USING gin (UPPER(nome) g
 ---
 
 #### Issue #406 — `LojaService.stats`: 3 sub-SELECTs + N+1 em toPedidoDTO
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/LojaService.java`
 - **Linha(s):** 100-109, 111-118
@@ -3495,7 +3495,7 @@ Map<Long, String> nomes = clienteRepo.findAllById(ids).stream()
 ---
 
 #### Issue #407 — `EmbarcacaoService.listarComStatus`: 2 LATERAL JOINs por embarcacao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EmbarcacaoService.java`
 - **Linha(s):** 14-55
@@ -3512,7 +3512,7 @@ CREATE INDEX idx_viagens_embarcacao_ativa
 ---
 
 #### Issue #409 — `PassagemService.minhasPassagens`: query cross-tenant sem limite
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 36-61
@@ -3527,7 +3527,7 @@ sql += " AND v.data_viagem >= CURRENT_DATE - INTERVAL '24 months' ORDER BY v.dat
 ---
 
 #### Issue #412 — QR Code PIX em base64 dentro de JSON response
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/components/PagamentoArtefato.jsx`
 - **Linha(s):** 27-48
@@ -3548,7 +3548,7 @@ export default React.memo(PagamentoArtefato);
 ---
 
 #### Issue #413 — `PassagensCPF.jsx`: 4 `useApi` + filtros O(n) em todo render
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
 - **Linha(s):** 14-32
@@ -3571,7 +3571,7 @@ const embFiltradas = useMemo(() => {
 ---
 
 #### Issue #415 — OCR `callVisionOCR`/`geminiParseOCR`: base64 de imagem inteira em memoria
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/helpers/{visionApi.js,geminiParser.js}`
 - **Problema:** `readFile + toString('base64')` duplica em heap. 10 paginas ~140MB. BFF com heap 512MB-1.5GB.
@@ -3589,7 +3589,7 @@ const results = await Promise.all(allFiles.map(f => limit(() => callVisionOCR(f.
 ---
 
 #### Issue #429 — Ausencia de indice trigram em colunas de busca cross-tenant
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `database_scripts/*.sql`
 - **Problema:** Nenhum script tem trigram para `encomendas`, `fretes`, `clientes_app.nome`.
@@ -3610,7 +3610,7 @@ CREATE INDEX idx_passagens_empresa_status ON passagens(empresa_id, status_passag
 ---
 
 #### Issue #703 — `financeiro.js /dashboard` nao valida tamanho antes do UNION ALL
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js:95-120`
 - **Problema:** Relacionado ao #403. Usuario que pressione F5 rapidamente dispara N queries UNION paralelas.
@@ -3621,7 +3621,7 @@ CREATE INDEX idx_passagens_empresa_status ON passagens(empresa_id, status_passag
 ---
 
 #### Issue #408 — Dashboard/resumo: 3 aggregate queries sequenciais
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/DashboardService.java`
 - **Linha(s):** 16-32
@@ -3644,7 +3644,7 @@ return jdbc.queryForMap("""
 ---
 
 #### Issue #410 — `BilheteService.comprar`: MAX+1 com advisory lock por viagem
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/BilheteService.java`
 - **Linha(s):** 84-89
@@ -3663,7 +3663,7 @@ String numBilhete = jdbc.queryForObject(
 ---
 
 #### Issue #414 — `FinanceiroCNPJ.jsx`: `reduce` sobre fretes re-executado em todo render
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/screens/FinanceiroCNPJ.jsx`
 - **Linha(s):** 108-119
@@ -3686,7 +3686,7 @@ const { listaGrupos, totalPendente, totalPago } = useMemo(() => {
 ---
 
 #### Issue #416 — Loop sequencial de INSERT em OCR aprovar (N+1 insert)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 551-567, 604-614
@@ -3709,7 +3709,7 @@ await client.query(
 ---
 
 #### Issue #417 — `listarAvaliacoes` sem LIMIT + `criarAvaliacao` recalcula AVG(nota)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/LojaService.java`
 - **Linha(s):** 76-98
@@ -3723,7 +3723,7 @@ CREATE INDEX idx_avaliacoes_loja ON avaliacoes_loja(id_loja);
 ---
 
 #### Issue #418 — `CrudFactory.list`: sem LIMIT default
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/utils/crudFactory.js`
 - **Linha(s):** 20-30, 85-93
@@ -3738,7 +3738,7 @@ CREATE INDEX idx_avaliacoes_loja ON avaliacoes_loja(id_loja);
 ---
 
 #### Issue #419 — Rate limit em memoria no filter Java
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/RateLimitFilter.java`
 - **Linha(s):** 30, 40-43
@@ -3756,7 +3756,7 @@ Cache<String, RateEntry> hits = Caffeine.newBuilder()
 ---
 
 #### Issue #421 — `viagens.delete`: cascade em 6 steps sequenciais
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/viagens.js`
 - **Linha(s):** 155-178
@@ -3773,7 +3773,7 @@ ALTER TABLE encomenda_itens
 ---
 
 #### Issue #424 — `PushService.enviarNotificacao`: N requests sincronos ao FCM
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PushService.java`
 - **Linha(s):** 48-65
@@ -3792,7 +3792,7 @@ BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(mu
 ---
 
 #### Issue #430 — `passageiros(numero_documento)` indice nao-composto com empresa
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `database_scripts/006_criar_indices_performance.sql`
 - **Linha(s):** 28
@@ -3807,7 +3807,7 @@ CREATE INDEX idx_passageiros_doc_empresa ON passageiros(empresa_id, numero_docum
 ---
 
 #### Issue #431 — `OCR upload` roda Vision OCR em serie
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 197-206
@@ -3824,7 +3824,7 @@ const results = await Promise.all(allFiles.map(f => limit(() => callVisionOCR(f.
 ---
 
 #### Issue #700 — `PassagemService.confirmarEmbarque` executa query pesada dentro de `@Transactional`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 222-241
@@ -3844,7 +3844,7 @@ protected Map<String, Object> updateEmbarque(...) { ... }
 ---
 
 #### Issue #702 — `SELECT MAX(CAST(SUBSTRING(...)))` para numero_bilhete em hot path
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/BilheteService.java`
 - **Linha(s):** 86-89
@@ -3856,7 +3856,7 @@ protected Map<String, Object> updateEmbarque(...) { ... }
 ---
 
 #### Issue #420 — Tenant cache sem max size nem LRU eviction
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
 - **Linha(s):** 4, 52
@@ -3873,7 +3873,7 @@ const cache = new LRUCache({ max: 500, ttl: 60_000, ttlAutopurge: true })
 ---
 
 #### Issue #422 — `EncomendaService.pagar`/`FreteService.pagar`: 3 queries sequenciais para metadados
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `EncomendaService.java`/`FreteService.java`
 - **Problema:** 3 round-trips ao DB por pagamento quando poderia ser 1.
@@ -3890,7 +3890,7 @@ var row = jdbc.queryForMap("""
 ---
 
 #### Issue #425 — Dashboard `useEffect` sem cleanup + fetch nao cancelado (apenas pagina web)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/src/pages/Dashboard.jsx`
 - **Linha(s):** 28-33
@@ -3911,7 +3911,7 @@ useEffect(() => {
 ---
 
 #### Issue #427 — Console.log/System.err em hot paths (sync I/O)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** multiplos (ex.: `PushService.java:61`, `routes/*.js`)
 - **Problema:** `System.err.println` e `console.error` sao sincronos.
@@ -3928,7 +3928,7 @@ useEffect(() => {
 ---
 
 #### Issue #428 — `jdbc.queryForMap` em hot-path retorna `LinkedHashMap` — GC pressure
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** muitos — ex.: `FinanceiroService.java`, `DashboardService.java`, `OpViagemService.java`
 - **Problema:** `Map<String, Object>` gera muitas alocacoes curtas.
@@ -3939,7 +3939,7 @@ useEffect(() => {
 ---
 
 #### Issue #701 — `OpEmbarcacaoController.listar` retorna `SELECT *` sem projecao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/.../controller/OpEmbarcacaoController.java:19-23`
 - **Problema:** `SELECT *` puxa todas as colunas (incluindo `foto_url`, `descricao`, `link_externo`).
@@ -3952,7 +3952,7 @@ useEffect(() => {
 ### 2.6 — Manutenibilidade
 
 #### Issue #500 — Triplicacao do fluxo `pagar()` nos services PSP da API
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivos:** `EncomendaService.java`, `FreteService.java`, `PassagemService.java`
 - **Linha(s):** Encomenda 115-211 (`pagar`), Frete 92-193 (`pagar`), Passagem 66-181 (`comprar`)
@@ -3973,7 +3973,7 @@ class PagamentoProcessor {
 ---
 
 #### Issue #501 — Triplicacao do modal de pagamento nas 3 telas do App
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivos:** `EncomendaCPF.jsx`, `FinanceiroCNPJ.jsx`, `PassagensCPF.jsx`
 - **Linha(s):** EncomendaCPF 68-111, FinanceiroCNPJ 61-105, PassagensCPF 99-130
@@ -3992,7 +3992,7 @@ export default function PagamentoModal({
 ---
 
 #### Issue #502 — Magic number `0.10` (desconto PIX) hardcoded em 6 lugares
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivos:** 3 services Java + 3 telas React
 - **Problema:** Regra de negocio "PIX da 10% de desconto" espalhada em 3 linguagens, sem fonte unica.
@@ -4011,7 +4011,7 @@ desconto = "PIX".equals(forma) ? saldo.multiply(pct).setScale(2, HALF_UP) : ZERO
 ---
 
 #### Issue #506 — `CadastroFreteController.java` com 2.081 linhas e responsabilidades misturadas
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/CadastroFreteController.java`
 - **Problema:** Controller mistura autocomplete, OCR, audio, XML parser, SQL inline, tabela de precos.
@@ -4022,7 +4022,7 @@ desconto = "PIX".equals(forma) ? saldo.multiply(pct).setScale(2, HALF_UP) : ZERO
 ---
 
 #### Issue #507 — `VenderPassagemController.java` 1.824 linhas
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/VenderPassagemController.java`
 - **Problema:** Mesma patologia do #506. Logica de calculo de tarifa duplicada com `PassagemService`.
@@ -4033,7 +4033,7 @@ desconto = "PIX".equals(forma) ? saldo.multiply(pct).setScale(2, HALF_UP) : ZERO
 ---
 
 #### Issue #527 — Services de negocio criticos sem nenhum teste unitario
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivos sem testes:** `EncomendaService`, `FreteService`, `PassagemService`, `OnboardingService`, `EmpresaPspService`, `PspCobrancaService` e 22 outros.
 - **Problema:** `pagar()` e `comprar()` fazem calculo financeiro + ownership + PSP — refatorar sem test suite e radicalmente arriscado.
@@ -4044,7 +4044,7 @@ desconto = "PIX".equals(forma) ? saldo.multiply(pct).setScale(2, HALF_UP) : ZERO
 ---
 
 #### Issue #710 — DELETE de `frete_itens` sem filtro `empresa_id` em `CadastroFreteController.handleExcluirFrete`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/CadastroFreteController.java:1563-1567`
 - **Problema:** `DELETE FROM frete_itens WHERE id_frete = ?` sem `AND empresa_id = ?`. Quebra regra #6 do CLAUDE.md.
@@ -4060,7 +4060,7 @@ WHERE id_frete IN (SELECT id_frete FROM fretes WHERE id_frete = ? AND empresa_id
 ---
 
 #### Issue #503 — `AdminPspController` e `PspController` duplicam endpoints PSP
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `AdminPspController.java` + `PspController.java`
 - **Problema:** Ambos expoem `/status` e `/onboarding`.
@@ -4071,7 +4071,7 @@ WHERE id_frete IN (SELECT id_frete FROM fretes WHERE id_frete = ? AND empresa_id
 ---
 
 #### Issue #504 — BCrypt com custos diferentes entre Desktop e BFF para o mesmo banco
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `src/dao/UsuarioDAO.java:25` (cost=12), `naviera-web/server/routes/{auth,admin,cadastros}.js` (cost=10)
 - **Problema:** Desktop cost 12, BFF cost 10. Bcrypt detecta cost do hash — verificacao funciona. Cost 10 aceitavel em 2026 mas divergencia e inconsistente.
@@ -4086,7 +4086,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #508 — Metodos de >100 linhas no Desktop
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `CadastroFreteController.java`
 - **Linha(s):** 284-428, 1650-1734, 1546-1597
@@ -4098,7 +4098,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #509 — Pages React grandes: ReviewOCR 755, Fretes 710, GestaoFuncionarios 683, Encomendas 676, Passagens 561
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `naviera-web/src/pages/{ReviewOCR,Fretes,GestaoFuncionarios,Encomendas,Passagens}.jsx`
 - **Problema:** >500 linhas JSX com logica de fetch, state, validacao e UI.
@@ -4109,7 +4109,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #510 — Route BFF `ocr.js` 935 linhas, `cadastros.js` 862
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `naviera-web/server/routes/{ocr,cadastros}.js`
 - **Problema:** Arquivo unico com multiplas entidades.
@@ -4120,7 +4120,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #511 — Controllers da API chamando `JdbcTemplate` direto (sem Service)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `OpEmbarcacaoController.java`, `OpRotaController.java`
 - **Problema:** Controllers pulando a camada de service.
@@ -4131,7 +4131,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #512 — Desktop GUI: controllers fazem SQL JDBC direto
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** transversal, >27 arquivos em `src/gui/*.java` (87 ocorrencias de ConexaoBD)
 - **Problema:** Controllers conhecendo detalhes de transacao e conexao.
@@ -4142,7 +4142,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #513 — `RotaController` expoe `findAll()` sem filtro de tenant
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/RotaController.java:13`
 - **Problema:** `return ResponseEntity.ok(repo.findAll());` sem filtrar por empresa_id. Dois controllers fazendo "a mesma coisa" com semanticas diferentes.
@@ -4153,7 +4153,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #515 — 4 arquivos `.env.example` com esquemas divergentes
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `/.env.example`, `naviera-api/.env.example`, `naviera-web/.env.example`, `naviera-app/.env.example`
 - **Problema:** DB_PORT 5432 vs 5437, CORS_ORIGINS conflitantes, JWT_SECRET em 3 arquivos, NODE_ENV nao documentado.
@@ -4164,7 +4164,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #517 — CLAUDE.md diz "JWT expira em 24h" mas codigo usa 8h
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `CLAUDE.md:120`, `application.properties:33`, `server/middleware/auth.js:13`
 - **Fix sugerido:** Atualizar CLAUDE.md para "8h" ou alinhar codigo a 24h.
@@ -4174,7 +4174,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #528 — Middlewares BFF sem testes
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos sem testes:** `naviera-web/server/middleware/{auth,tenant,rateLimit,validate}.js`
 - **Fix sugerido:** Criar `server/tests/tenant.test.js` com mock de pool.
@@ -4184,7 +4184,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #529 — App mobile sem testes
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/` inteiro
 - **Fix sugerido:** Adicionar vitest. Comecar por `helpers.test.js` e `hooks/useApi.test.js`.
@@ -4194,7 +4194,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #712 — `PassagemService.comprar` gera `numeroBilhete` com `System.currentTimeMillis() % 1000000`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/.../service/PassagemService.java:105`
 - **Problema:** Colisao em ~16min; mesmo ms gera bilhetes identicos.
@@ -4205,7 +4205,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #713 — Duplicacao estrutural de rota `/rotas` e `/op/rotas`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivos:** `RotaController.java` (sem tenant), `OpRotaController.java` (com tenant)
 - **Problema:** Dois endpoints sem semantica clara.
@@ -4216,7 +4216,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #717 — `CadastroFreteController` encoding corrompido em strings de UI visiveis
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/CadastroFreteController.java:1548-1555`
 - **Problema:** Strings `"NÃ£o hÃ¡ frete selecionado para exclusÃ£o."` aparecem em AlertHelper na UI.
@@ -4227,7 +4227,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #505 — `crudFactory.js` usa `.then/.catch` enquanto todo resto do BFF usa async/await
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/utils/crudFactory.js`
 - **Problema:** Mistura de estilos.
@@ -4238,7 +4238,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #514 — `tenant.js` acopla roteamento a chamadas diretas de DB
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js:43-54`
 - **Problema:** Middleware faz `pool.query` direto em vez de delegar a um `empresaService`.
@@ -4249,7 +4249,7 @@ export async function hashSenha(senha) { return bcrypt.hash(senha, BCRYPT_COST) 
 ---
 
 #### Issue #516 — `vite.config.js` hardcoda portas
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/vite.config.js:7,10`
 - **Fix sugerido:**
@@ -4265,7 +4265,7 @@ server: {
 ---
 
 #### Issue #518 — Drift de contagens em CLAUDE.md
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `CLAUDE.md`
 - **Problema:** 42 pages (CLAUDE 29), 15 rotas BFF (10), 29 DAOs (27).
@@ -4276,7 +4276,7 @@ server: {
 ---
 
 #### Issue #519 — CLAUDE.md nao menciona `/psp` endpoints nem PSP modulo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `CLAUDE.md`
 - **Fix sugerido:** Adicionar secao "Integracao PSP (Asaas)".
@@ -4286,7 +4286,7 @@ server: {
 ---
 
 #### Issue #522 — TODOs antigos em `PassagemService` aguardando DTO tipado
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 33, 63, 183, 219, 244
@@ -4298,7 +4298,7 @@ server: {
 ---
 
 #### Issue #523 — TODO em `PublicController` sobre bucket de rate limit
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/PublicController.java:44`
 - **Fix sugerido:** Implementar ou fechar.
@@ -4308,7 +4308,7 @@ server: {
 ---
 
 #### Issue #524 — Arquivo `src/gui/util/A.txt` e anotacao pessoal commitada
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/util/A.txt`
 - **Fix sugerido:** Remover ou mover para um issue tracker.
@@ -4318,7 +4318,7 @@ server: {
 ---
 
 #### Issue #525 — `db.properties.bak2` e `log_erros.txt` no tree
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivos:** `db.properties.bak2`, `log_erros.txt`, `RELATÓRIO GERAL DO PROJETO SISTEMA 19.02.25.txt`
 - **Fix sugerido:** `git rm --cached` nos 3.
@@ -4328,7 +4328,7 @@ server: {
 ---
 
 #### Issue #526 — Comentarios com encoding corrompido no Desktop
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivos:** `VenderPassagemController.java`, `CadastroFreteController.java`
 - **Fix sugerido:** Converter arquivos para UTF-8 limpo com iconv. Adicionar `.editorconfig` com `charset = utf-8`.
@@ -4338,7 +4338,7 @@ server: {
 ---
 
 #### Issue #530 — `EncomendaService.buscarPorCliente` faz LIKE por NOME, nao por cliente
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/.../service/EncomendaService.java:40`
 - **Problema:** Assinatura sugere busca por ID, mas internamente faz LIKE por nome.
@@ -4349,7 +4349,7 @@ server: {
 ---
 
 #### Issue #715 — `RELATÓRIO GERAL DO PROJETO SISTEMA 19.02.25.txt` commitado no root
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `RELATÓRIO GERAL DO PROJETO SISTEMA 19.02.25.txt` (5.9KB)
 - **Problema:** Documento antigo no root, nome com acentos e espacos.
@@ -4460,36 +4460,36 @@ server: {
 
 ### Sprint 1 — Criticos (AGORA) — 30 issues
 
-- [ ] **#003** — NullPointerException em EncomendaService.pagar — `naviera-api/.../service/EncomendaService.java`
-- [ ] **#004** — NPE identico em FreteService.pagar — `naviera-api/.../service/FreteService.java`
-- [ ] **#005** — NPE em PassagemService.comprar — `naviera-api/.../service/PassagemService.java`
-- [ ] **#006** — NPE em tarifa.valor_transporte/alimentacao/desconto — `naviera-api/.../service/PassagemService.java`
-- [ ] **#007** — ClassCastException + race em passageiros — `naviera-api/.../service/PassagemService.java`
-- [ ] **#008** — Numero de bilhete colisivel (mod 1e6) — `naviera-api/.../service/PassagemService.java`
-- [ ] **#100** — Admin cross-empresa — `naviera-api/.../controller/AdminController.java`
-- [ ] **#102** — Auto-promocao Administrador BFF — `naviera-web/server/routes/cadastros.js`
-- [ ] **#103** — Escalacao de privilegios via /op/cadastros/usuarios — `naviera-api/.../service/CadastrosWriteService.java`
-- [ ] **#105** — /rotas vaza cross-tenant — `naviera-api/.../controller/RotaController.java`
-- [ ] **#106** — /encomendas/:id/itens cross-tenant — `naviera-web/server/routes/encomendas.js`, `fretes.js`
-- [ ] **#107** — Ownership weak em pagamento — `naviera-api/.../service/EncomendaService.java`, `FreteService.java`
-- [ ] **#108** — Login BFF aceita qualquer empresa em dev — `naviera-web/server/routes/auth.js`
-- [ ] **#114** — AdminController nao valida role — `naviera-api/.../controller/AdminController.java`
-- [ ] **#200** — Desktop e API divergem no conceito "viagem ativa" — `src/dao/ViagemDAO.java` vs API/BFF
-- [ ] **#201** — Webhook Asaas inexistente — `naviera-api/.../psp/`
-- [ ] **#202** — ocr.js usa `crypto.randomUUID()` sem importar — `naviera-web/server/routes/ocr.js`
-- [ ] **#203** — OpPassagemService colunas inexistentes — `naviera-api/.../service/OpPassagemService.java`
-- [ ] **#204** — /financeiro/estornar zera valor_pago — `naviera-web/server/routes/financeiro.js`
-- [ ] **#205** — PSP cria cobranca antes de confirmar — `naviera-api/.../service/*.java`
-- [ ] **#300** — AsaasGateway sem timeout — `naviera-api/.../psp/AsaasGateway.java`
-- [ ] **#301** — Webhook sem idempotencia — `naviera-api/.../psp/PspCobrancaService.java`
-- [ ] **#304** — ocr.js crypto sem import (duplicado #202 mas referenciado em Cat 4) — `naviera-web/server/routes/ocr.js`
-- [ ] **#305** — Webhook secret vazio retorna true — `naviera-api/.../psp/AsaasGateway.java`
-- [ ] **#308** — PassagemService.comprar PSP call em @Transactional — `naviera-api/.../service/PassagemService.java`
-- [ ] **#311** — FirebaseConfig falha silenciosa — `naviera-api/.../config/FirebaseConfig.java`
-- [ ] **#315** — Dockerfile sem tini/STOPSIGNAL — `naviera-api/Dockerfile`
-- [ ] **#403** — financeiro/dashboard UNION ALL sem LIMIT — `naviera-web/server/routes/financeiro.js`
-- [ ] **#411** — PSP inline em @Transactional — `naviera-api/.../service/{Encomenda,Frete,Passagem}Service.java`
-- [ ] **#650** — X-Tenant-Slug sem validar trusted proxy — `naviera-web/server/middleware/tenant.js`
+- [x] **#003** — NullPointerException em EncomendaService.pagar — `naviera-api/.../service/EncomendaService.java`
+- [x] **#004** — NPE identico em FreteService.pagar — `naviera-api/.../service/FreteService.java`
+- [x] **#005** — NPE em PassagemService.comprar — `naviera-api/.../service/PassagemService.java`
+- [x] **#006** — NPE em tarifa.valor_transporte/alimentacao/desconto — `naviera-api/.../service/PassagemService.java`
+- [x] **#007** — ClassCastException + race em passageiros — `naviera-api/.../service/PassagemService.java`
+- [x] **#008** — Numero de bilhete colisivel (mod 1e6) — `naviera-api/.../service/PassagemService.java`
+- [x] **#100** — Admin cross-empresa — `naviera-api/.../controller/AdminController.java`
+- [x] **#102** — Auto-promocao Administrador BFF — `naviera-web/server/routes/cadastros.js`
+- [x] **#103** — Escalacao de privilegios via /op/cadastros/usuarios — `naviera-api/.../service/CadastrosWriteService.java`
+- [x] **#105** — /rotas vaza cross-tenant — `naviera-api/.../controller/RotaController.java`
+- [x] **#106** — /encomendas/:id/itens cross-tenant — `naviera-web/server/routes/encomendas.js`, `fretes.js`
+- [x] **#107** — Ownership weak em pagamento — `naviera-api/.../service/EncomendaService.java`, `FreteService.java`
+- [x] **#108** — Login BFF aceita qualquer empresa em dev — `naviera-web/server/routes/auth.js`
+- [x] **#114** — AdminController nao valida role — `naviera-api/.../controller/AdminController.java`
+- [x] **#200** — Desktop e API divergem no conceito "viagem ativa" — `src/dao/ViagemDAO.java` vs API/BFF
+- [x] **#201** — Webhook Asaas inexistente — `naviera-api/.../psp/`
+- [x] **#202** — ocr.js usa `crypto.randomUUID()` sem importar — `naviera-web/server/routes/ocr.js`
+- [x] **#203** — OpPassagemService colunas inexistentes — `naviera-api/.../service/OpPassagemService.java`
+- [x] **#204** — /financeiro/estornar zera valor_pago — `naviera-web/server/routes/financeiro.js`
+- [x] **#205** — PSP cria cobranca antes de confirmar — `naviera-api/.../service/*.java`
+- [x] **#300** — AsaasGateway sem timeout — `naviera-api/.../psp/AsaasGateway.java`
+- [x] **#301** — Webhook sem idempotencia — `naviera-api/.../psp/PspCobrancaService.java`
+- [x] **#304** — ocr.js crypto sem import (duplicado #202 mas referenciado em Cat 4) — `naviera-web/server/routes/ocr.js`
+- [x] **#305** — Webhook secret vazio retorna true — `naviera-api/.../psp/AsaasGateway.java`
+- [x] **#308** — PassagemService.comprar PSP call em @Transactional — `naviera-api/.../service/PassagemService.java`
+- [x] **#311** — FirebaseConfig falha silenciosa — `naviera-api/.../config/FirebaseConfig.java`
+- [x] **#315** — Dockerfile sem tini/STOPSIGNAL — `naviera-api/Dockerfile`
+- [x] **#403** — financeiro/dashboard UNION ALL sem LIMIT — `naviera-web/server/routes/financeiro.js`
+- [x] **#411** — PSP inline em @Transactional — `naviera-api/.../service/{Encomenda,Frete,Passagem}Service.java`
+- [x] **#650** — X-Tenant-Slug sem validar trusted proxy — `naviera-web/server/middleware/tenant.js`
 
 ### Sprint 2 — Altos (esta semana) — 77 issues
 
