@@ -179,7 +179,7 @@ Normalizar para digitos-apenas antes de enviar (padrao recomendado pelo Asaas).
 ### MEDIOS
 
 #### Issue #DR263 — PspCobrancaService.atualizarStatus: sem validacao de transicao de estado
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/PspCobrancaService.java`
 - **Linha(s):** 75-85
@@ -205,7 +205,7 @@ if (!TRANSICOES_VALIDAS.get(c.getPspStatus()).contains(novoStatus)) {
 ---
 
 #### Issue #DR264 — AsaasGateway: splitNavieraPct nao validado (range)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 80-88
@@ -285,7 +285,7 @@ function shutdown(signal) {
 ### MEDIOS
 
 #### Issue #DR268 — ocr.js upload lote: N+1 INSERTs em loop sequencial
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 130-148
@@ -313,7 +313,7 @@ finally { client.release(); }
 ---
 
 #### Issue #DR269 — financeiro.js estornar: INSERT em auditoria fora da transacao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** ~531-580
@@ -326,7 +326,7 @@ finally { client.release(); }
 ---
 
 #### Issue #DR270 — Rate limiter in-memory cresce sem bound sob IPs variados
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/middleware/rateLimit.js`
 - **Problema:** Map de hits cresce 1 entrada por IP/key. Em ataque com IPs rotativos (botnet), map pode chegar a milhoes de entradas em minutos. Cleanup tardio no expire do window.
@@ -338,7 +338,7 @@ finally { client.release(); }
 ---
 
 #### Issue #DR271 — Pool PG: sem healthcheck periodico / dead connections
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/db.js`
 - **Problema:** Connections ociosas podem ser mortas por firewall/load balancer sem o pool saber. Proxima query recebe `ECONNRESET`. `node-postgres` nao faz keepalive por default.
@@ -354,7 +354,7 @@ pool.on('error', (err) => log.error('PG', 'Pool error', err.message));
 ---
 
 #### Issue #DR272 — /api/health nao valida dependencias (DB)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/index.js`
 - **Linha(s):** 83-85
@@ -376,7 +376,7 @@ app.get('/api/health', async (req, res) => {
 ---
 
 #### Issue #DR273 — OCR lote: `crypto.randomUUID()` usado sem `import crypto` (variantes de #304)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 127, 132, 243
@@ -419,7 +419,7 @@ conn.commit();
 ### MEDIOS
 
 #### Issue #DR275 — SyncClient: aplicar registros recebidos SEM transacao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** ~480-490 (loop em `sincronizarTabelaSync`)
@@ -432,7 +432,7 @@ conn.commit();
 ---
 
 #### Issue #DR276 — SyncClient: JWT decode manual via regex fragil
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** ~283-306 (metodo `garantirAutenticacao` ou similar)
@@ -452,7 +452,7 @@ if (System.currentTimeMillis()/1000 > exp - 60) { jwtToken = null; }
 ---
 
 #### Issue #DR277 — SyncClient.buscarRegistrosPendentes: sem LIMIT
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** ~510-556
@@ -465,7 +465,7 @@ if (System.currentTimeMillis()/1000 > exp - 60) { jwtToken = null; }
 ---
 
 #### Issue #DR278 — RelatorioPassagensController: Thread de carga sem try-catch externo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/RelatorioPassagensController.java`
 - **Linha(s):** 101-138
@@ -478,7 +478,7 @@ if (System.currentTimeMillis()/1000 > exp - 60) { jwtToken = null; }
 ---
 
 #### Issue #DR279 — TelaPrincipalController.initialize: Task sem setOnFailed
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/TelaPrincipalController.java`
 - **Linha(s):** 127-174
@@ -575,7 +575,7 @@ try {
 ### MEDIOS
 
 #### Issue #DR283 — PagamentoArtefato.copiar: promise `writeText()` sem .catch
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/components/PagamentoArtefato.jsx`
 - **Linha(s):** 19-25
@@ -588,7 +588,7 @@ try {
 ---
 
 #### Issue #DR284 — MapaCPF: setInterval com `fetchGps` no deps re-cria timer em cada auth change
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/screens/MapaCPF.jsx`
 - **Linha(s):** 70-77
@@ -609,7 +609,7 @@ useEffect(() => {
 ---
 
 #### Issue #DR285 — ErrorBoundary sem remote logging
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/ErrorBoundary.jsx`, `naviera-ocr/src/ErrorBoundary.jsx`
 - **Problema:** `componentDidCatch` apenas `console.error`. Em producao, nenhum diagnostico chega ao backend. Usuario reporta "tela branca" e desenvolvedor nao tem nada.
@@ -621,7 +621,7 @@ useEffect(() => {
 ---
 
 #### Issue #DR286 — localStorage.getItem + JSON.parse sem validacao de schema
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/App.jsx` (L46, L54), varios outros screens
 - **Problema:** `JSON.parse(localStorage.getItem("naviera_usuario"))` tem try/catch contra JSON invalido, mas nao contra objeto com schema diferente (ex: depois de refactor de campos). Se user_v1 tem `{tipo, nome}` e v2 tem `{perfil, fullName}`, app nao crasheia mas comportamento fica indefinido.
@@ -712,26 +712,26 @@ Todos os 8 CRITICOs ja estavam corrigidos no codigo no momento da conferencia (2
 - [ ] #328 SyncClient shutdown hook
 - [ ] #329 geminiParser: response_mime_type=application/json
 - [ ] #330 NotificationService: outbox local
-- [ ] #DR264 splitNavieraPct range validation
-- [ ] #DR268 OCR lote batch INSERT em transacao
-- [ ] #DR269 financeiro estornar dentro de transacao
-- [ ] #DR270 rateLimiter LRU cap
-- [ ] #DR271 pool keepAlive + on('error')
-- [ ] #DR275 SyncClient downloads em transacao
-- [ ] #DR276 SyncClient JWT decode com Base64/Jackson
-- [ ] #DR277 SyncClient pendentes com LIMIT
-- [ ] #DR278 RelatorioPassagensController Task<>
-- [ ] #DR279 TelaPrincipalController setOnFailed
-- [ ] #DR284 MapaCPF ref pattern para fetchGps
-- [ ] #DR285 ErrorBoundary com remote logging
+- [x] #DR264 splitNavieraPct range validation
+- [x] #DR268 OCR lote batch INSERT em transacao
+- [x] #DR269 financeiro estornar dentro de transacao
+- [x] #DR270 rateLimiter LRU cap
+- [x] #DR271 pool keepAlive + on('error')
+- [x] #DR275 SyncClient downloads em transacao
+- [x] #DR276 SyncClient JWT decode com Base64/Jackson
+- [x] #DR277 SyncClient pendentes com LIMIT
+- [x] #DR278 RelatorioPassagensController Task<>
+- [x] #DR279 TelaPrincipalController setOnFailed
+- [x] #DR284 MapaCPF ref pattern para fetchGps
+- [x] #DR285 ErrorBoundary com remote logging
 
 ### P3 — Menor (BAIXO)
 
 - [ ] #321 bcrypt library nativa
 - [ ] #331 Auditoria pendente de AuthService/AuthOperadorService
-- [ ] #DR272 /api/health com check DB
-- [ ] #DR273 ver #304 (consolidar)
-- [ ] #DR286 localStorage schema validation
+- [x] #DR272 /api/health com check DB
+- [x] #DR273 ver #304 (consolidar)
+- [x] #DR286 localStorage schema validation
 
 ---
 

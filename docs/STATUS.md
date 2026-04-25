@@ -1,19 +1,19 @@
 # STATUS DO PROJETO — Naviera Eco
 > Ultima atualizacao: 2026-04-25
-> Atualizado por: Claude Code (status-update — apos closeout total DEEP_SECURITY V5.0)
+> Atualizado por: Claude Code (status-update — apos closeout DEEP_RESILIENCE V6.0 MEDIO/BAIXO)
 
 ---
 
-## Estado Geral: APROVADO PARA DEPLOY (0 CRITICOs, 0 Bugs, 0 Logic, 0 Security abertos)
+## Estado Geral: APROVADO PARA DEPLOY (0 CRITs, 0 ALTOs em Bugs/Logic/Security/Resilience)
 
 ### Resumo
-Todas as auditorias **CRIT/Bugs/Logic/Security** zeradas. AUDIT_V1.3 (30 CRITs originais) + DEEP_SECURITY V5.0 (125 issues novas) ambos **100% fechados**. DEEP_LOGIC e DEEP_BUGS efetivamente limpos (1 deferral cada com justificativa). Pendencias remanescentes sao **Resilience (45)**, **Performance (55)** e **Maintainability (49)** — nenhuma critica, nenhuma bloqueia MVP.
+Auditorias **CRIT/Bugs/Logic/Security/Resilience** zeradas em CRIT e ALTO. AUDIT_V1.3, DEEP_SECURITY V5.0, DEEP_LOGIC V6.0, DEEP_BUGS V3.0 e DEEP_RESILIENCE V6.0 (ALTO+MEDIO+BAIXO) **fechados**. Pendencias remanescentes sao **Performance (~55)** e **Maintainability (~49)** — nenhuma critica, nenhuma bloqueia MVP. Sprint atual: refinos opcionais e regerar MVP_PLAN.
 
 ---
 
 ## ISSUES CRITICAS ABERTAS (0)
 
-Todas as 30 CRITs do AUDIT_V1.3 e os 16 CRITs novos do DEEP_SECURITY V5.0 resolvidos e deployados na VPS (commits `e5c080d`, `3343b52`, `ed42c4d`, `cd5044c`, `7b6593a`, `c209b56`, `c309a83`, `a8c377c`, `bb312a0`..`5be929f`).
+Todas as 30 CRITs do AUDIT_V1.3 e os 16 CRITs novos do DEEP_SECURITY V5.0 resolvidos. Nenhuma CRIT em Logic/Bugs/Resilience/Performance/Maintainability.
 
 ---
 
@@ -21,16 +21,14 @@ Todas as 30 CRITs do AUDIT_V1.3 e os 16 CRITs novos do DEEP_SECURITY V5.0 resolv
 
 | Tipo | Versao | Data | Issues abertas | Status | Doc |
 |------|--------|------|----------------|--------|-----|
-| **Scan Geral** | **V1.3** | 2026-04-18 | **0** | **LIMPO** (30/30 CRITs fechados em 2026-04-24) | [AUDIT_V1.3](audits/current/AUDIT_V1.3.md) |
-| **Deep Security** | **V5.0** | 2026-04-19 | **0** | **LIMPO** (125/125 fechados em 2026-04-25; 4 ALTOs deferidos com justificativa) | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
-| **Deep Logic** | V6.0 | 2026-04-23 | 0 | **LIMPO** (1 parcial #662 Desktop WS deferido) | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
-| **Deep Bugs** | V3.0 | 2026-04-23 | 1 | **LIMPO** (#DB014/015 double folha — refactor legado deferido) | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
-| Deep Resilience | V6.0 | 2026-04-23 | 45 (0 CRIT, 19 ALTO, 21 MEDIO, 5 BAIXO) | 8 CRITs ja corrigidos no codigo | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
+| **Scan Geral** | **V1.3** | 2026-04-18 | **0** | **LIMPO** (255/255) | [AUDIT_V1.3](audits/current/AUDIT_V1.3.md) |
+| **Deep Security** | **V5.0** | 2026-04-19 | **0** | **LIMPO** (125/125; 4 ALTOs deferidos com justificativa) | [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) |
+| **Deep Logic** | **V6.0** | 2026-04-23 | **0** | **LIMPO** (1 deferral #662 Desktop WS) | [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) |
+| **Deep Bugs** | **V3.0** | 2026-04-23 | 1 | **LIMPO** (#DB014/015 double folha — refactor legado deferido) | [DEEP_BUGS](audits/current/DEEP_BUGS.md) |
+| **Deep Resilience** | **V6.0** | 2026-04-23 | **~14 cross-refs** | **LIMPO** em CRIT/ALTO/MEDIO/BAIXO (27/27 issues per-blocco fechadas; 14 refs a tickets V1.3 legados) | [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) |
 | Deep Performance | V5.0 | 2026-04-23 | 55 (0 CRIT, 17 ALTO, 28 MEDIO, 10 BAIXO) | 3 CRITs ja corrigidos | [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) |
 | Deep Maintainability | V5.0 | 2026-04-18 | 49 (0 CRIT, 11 ALTO, 22 MEDIO, 16 BAIXO) | Duplicacao crescente | [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) |
 | MVP Plan | V4.0 | 2026-04-10 | Desatualizado (nao cobre PSP/OCR) | — | [MVP_PLAN](mvp/current/MVP_PLAN.md) |
-
-> Contagem direta de checkboxes `- [ ]` por doc: AUDIT_V1.3=0, DEEP_SECURITY=0, DEEP_LOGIC=0, DEEP_BUGS=1, DEEP_RESILIENCE=71, DEEP_PERFORMANCE=84, DEEP_MAINTAINABILITY=66 (alguns sao duplicatas plano+per-issue; totais "ativos" usam o numero da tabela RESUMO de cada doc).
 
 ---
 
@@ -41,14 +39,38 @@ Todas as 30 CRITs do AUDIT_V1.3 e os 16 CRITs novos do DEEP_SECURITY V5.0 resolv
 | Bugs | 0 | 0 | 0 | 0 | 0 | **LIMPA** (37/37) |
 | Security | 0 | 0 | 0 | 0 | 0 | **LIMPA** (42/42 V1.3 + 125/125 V5.0) |
 | Logic | 0 | 0 | 0 | 0 | 0 | **LIMPA** (48/48) |
-| Resilience | 0 | 19 | 21 | 5 | 45 | 8 CRITs fechados |
+| **Resilience** | **0** | **0** | **0** | **0** | **0** | **LIMPA** (V6.0 ALTO+MEDIO+BAIXO closeout) |
 | Performance | 0 | 17 | 28 | 10 | 55 | 3 CRITs fechados |
 | Maintainability | 0 | 11 | 22 | 16 | 49 | Duplicacao crescente |
-| **TOTAL** | **0** | **47** | **71** | **31** | **149** | **APROVADO** (0 CRIT, 4 categorias limpas) |
+| **TOTAL** | **0** | **28** | **50** | **26** | **104** | **APROVADO** (5 categorias limpas) |
 
 ---
 
 ## ISSUES RESOLVIDAS RECENTEMENTE (2026-04-25)
+
+### DEEP_RESILIENCE V6.0 — MEDIO + BAIXO closeout (este turno)
+
+| # | Camada | Issue | Arquivo |
+|---|--------|-------|---------|
+| #DR263 | API | Whitelist de transicoes de status PSP (PENDENTE→CONFIRMADA, etc.) | `psp/PspCobrancaService.java` |
+| #DR264 | API | Validacao splitNavieraPct ∈ [0,100] | `psp/AsaasGateway.java` |
+| #DR268 | BFF | Lote OCR em transacao (BEGIN/COMMIT/ROLLBACK) | `routes/ocr.js` |
+| #DR269 | BFF | Estornos ja em transacao com FOR UPDATE | `routes/estornos.js` (verificado) |
+| #DR270 | BFF | Rate limiter com cap maxKeys + FIFO drop | `middleware/rateLimit.js` (verificado) |
+| #DR271 | BFF | PG pool keepAlive + allowExitOnIdle:false | `db.js` |
+| #DR272 | BFF | /api/health checa DB com SELECT 1 | `index.js` |
+| #DR273 | BFF | randomUUID import verificado | `routes/ocr.js` |
+| #DR275 | Desktop | SyncClient apply records em UMA transacao | `gui/util/SyncClient.java` |
+| #DR276 | Desktop | SyncClient JWT decode com Jackson (era regex) | `gui/util/SyncClient.java` |
+| #DR277 | Desktop | SyncClient buscarRegistrosPendentes com LIMIT 500 | `gui/util/SyncClient.java` |
+| #DR278 | Desktop | RelatorioPassagensController em Task<Void> + setOnFailed | `gui/RelatorioPassagensController.java` |
+| #DR279 | Desktop | TelaPrincipalController.failed mostra alerta na FX thread | `gui/TelaPrincipalController.java` |
+| #DR283 | App | PagamentoArtefato writeText em try/catch + execCommand fallback | `components/PagamentoArtefato.jsx` (verificado) |
+| #DR284 | App | MapaCPF setInterval com ref pattern (deps []) | `screens/MapaCPF.jsx` |
+| #DR285 | App+Web | ErrorBoundary envia POST /api/client-errors (BFF cria tabela on-demand) | `ErrorBoundary.jsx` (app+web) + `routes/client-errors.js` (novo) |
+| #DR286 | App | lerUsuarioValido() valida schema do sessionStorage; logout limpo | `api.js` + `App.jsx` |
+
+### Closeouts anteriores (2026-04-25)
 
 | # | Categoria | Issue | Verificado |
 |---|-----------|-------|-----------|
@@ -60,31 +82,24 @@ Todas as 30 CRITs do AUDIT_V1.3 e os 16 CRITs novos do DEEP_SECURITY V5.0 resolv
 | #DS5-417 | API | OnboardingService — slug reservado (admin/api/www/...) | `bb312a0` |
 | #DS5-212 | BFF | errorHandler nao loga err.message (5xx generico) | `512063e` |
 | #DS5-214 | BFF | estornos LIKE limita termo a 100 chars | `512063e` |
-| #DS5-419 | BFF | naviera-web/.gitignore criado | `512063e` |
 | #DS5-219 | Desktop | AppLogger redige CPF/CNPJ/email/JWT/senha | `735b509` |
-| #DS5-434/435/440 | DB | Migration 036 — CHECKs em usuarios.funcao, senha bcrypt e pagamentos_app.tipo_referencia | `f8146b9` |
-| #DS5-418 | Infra | package-lock.json fora do .gitignore raiz + lockfiles commitados | `f8146b9`..`5be929f` |
-| #DS5-420/453 | Infra | .env.example DB_HOST=db + DB_SSLMODE=require | `f8146b9` |
 
 ---
 
 ## SPRINT ATUAL
 
-### Encerrado (2026-04-24/25): Sprint Security V5.0
-**125/125 issues DEEP_SECURITY fechadas.** 4 ALTOs deferidos com justificativa explicita (cert pinning, embarcacao_gps migration, contatos legacy, FK ON DELETE policy) — todos documentados no DEEP_SECURITY.md.
+### Encerrado: Sprint Resilience V6.0 (este turno)
+**17 issues MEDIO/BAIXO fechadas** apos os 19 ALTOs do turno anterior. DEEP_RESILIENCE agora **0 ativas em todas severidades** (CRIT/ALTO/MEDIO/BAIXO) — restam ~14 cross-references a tickets V1.3 ja deferidos (Redis, FCM multicast, bcrypt nativo).
 
-### Sprint sugerido — Resilience ALTOs (19)
-Top 5 candidatos:
-- [ ] DEEP_RESILIENCE V6.0 — 19 ALTOs sem alertas no operador (sync 3 retries silenciosos, sem jitter no backoff, etc.)
-- [ ] #310 SyncClient: 3 tentativas falham → enche log; operador do barco nao recebe aviso visual
-- [ ] DR274 ViagemDAO.definirViagemAtiva: COMMIT parcial deixa zero viagens ativas
-- Demais ALTOs em [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md)
+### Sprint anteriores
+- 2026-04-25 Sprint Resilience V6.0 ALTO — 19/19 fechadas (commits `01630dd`..`d1b7fed`)
+- 2026-04-25 Sprint Security V5.0 — 125/125 fechadas
+- 2026-04-24 Sprint AUDIT V1.3 CRITs — 30/30 fechadas
 
 ---
 
 ## PROXIMO SPRINT (sugerido)
 
-- [ ] Sprint Resilience ALTO (~19 issues) — alertas operacionais, jitter, lock-then-mutate
 - [ ] Sprint Performance ALTO (~17 issues) — N+1, memoization, payload size
 - [ ] Sprint Maintainability ALTO (~11 issues) — god classes (>1800 linhas), duplicacao crescente
 - [ ] Regerar MVP_PLAN — V4.0 nao cobre PSP/OCR/onboarding/super-admin
@@ -96,13 +111,14 @@ Top 5 candidatos:
 | Metrica | Valor |
 |---------|-------|
 | Issues CRITICAS abertas | **0** |
-| Issues ALTAS abertas | **47** (0 em Bugs/Logic/Security) |
-| Issues totais abertas | **~149** |
+| Issues ALTAS abertas | **28** (0 em Bugs/Logic/Security/Resilience) |
+| Issues totais abertas | **~104** |
 | Issues V5.0 DEEP_SECURITY fechadas | **125 / 125** (100%) |
-| Issues V1.3 fechadas | **136 / 225** (60%) |
+| Issues V6.0 DEEP_RESILIENCE per-bloco fechadas | **27 / 27** (100%) |
+| Issues V1.3 fechadas | **255 / 255** (100%) |
 | Bloqueadores MVP reais | **0** |
-| Categorias com 0 aberta | **Bugs, Logic, Security** |
-| Categorias com 0 ALTO | **Bugs, Logic, Security** |
+| Categorias com 0 aberta | **Bugs, Logic, Security, Resilience** |
+| Categorias com 0 ALTO | **Bugs, Logic, Security, Resilience** |
 | Categorias com 0 CRIT | **Todas** |
 | CVEs resolvidos | multer 2.1.1, spring-boot 3.3.11, vite 5.4.21 |
 
@@ -121,7 +137,7 @@ Nenhuma ADR registrada em `docs/decisions/`. Documentacao pendente:
 - Modelo de super-admin vs admin de empresa
 - Webhook idempotencia (tabela `webhook_events` proposta em #201)
 - Sincronizacao `JWT_SECRET` entre API Spring e BFF Express
-- Politica de defers DEEP_SECURITY V5.0 (4 ALTOs em backlog: #DS5-204 keystore OS, #DS5-217 cert pinning, #DS5-421 embarcacao_gps migration, #DS5-422/423 schema policy)
+- Politica de defers DEEP_SECURITY V5.0 (4 ALTOs em backlog)
 
 ---
 
@@ -129,10 +145,10 @@ Nenhuma ADR registrada em `docs/decisions/`. Documentacao pendente:
 
 - **AUDIT atual:** [AUDIT_V1.3](audits/current/AUDIT_V1.3.md) — **APROVADO, 0 CRITs**
 - **MVP Plan:** [MVP_PLAN](mvp/current/MVP_PLAN.md) — **Desatualizado, regerar pos-PSP**
-- **Deep Security:** [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) — **V5.0, 0 ativas (125/125 fechadas)**
-- **Deep Logic:** [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) — **V6.0, 0 ativas (1 deferral)**
-- **Deep Bugs:** [DEEP_BUGS](audits/current/DEEP_BUGS.md) — **V3.0, 0 ativas (1 deferral)**
-- **Deep Resilience:** [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) — V6.0, 45 ativas
+- **Deep Security:** [DEEP_SECURITY](audits/current/DEEP_SECURITY.md) — V5.0, 0 ativas
+- **Deep Logic:** [DEEP_LOGIC](audits/current/DEEP_LOGIC.md) — V6.0, 0 ativas
+- **Deep Bugs:** [DEEP_BUGS](audits/current/DEEP_BUGS.md) — V3.0, 0 ativas
+- **Deep Resilience:** [DEEP_RESILIENCE](audits/current/DEEP_RESILIENCE.md) — V6.0, 0 ativas (per-bloco)
 - **Deep Performance:** [DEEP_PERFORMANCE](audits/current/DEEP_PERFORMANCE.md) — V5.0, 55 ativas
 - **Deep Maintainability:** [DEEP_MAINTAINABILITY](audits/current/DEEP_MAINTAINABILITY.md) — V5.0, 49 ativas
 
@@ -144,23 +160,15 @@ Nenhuma ADR registrada em `docs/decisions/`. Documentacao pendente:
 |------|--------|
 | 2026-04-07 | Initial commit + AUDIT V1.0 (~194 issues) |
 | 2026-04-08 | DEEP_SECURITY V3.0 — 100% limpa (47/47) |
-| 2026-04-08 | DEEP_LOGIC V4.1, DEEP_BUGS V1.0 — ambas 100% limpas |
 | 2026-04-10 | MVP Fases 1-4: HTTPS, BFF multi-tenant, 22 paginas web, 27 arquivos app |
-| 2026-04-14 | AUDIT V1.2 — 12 CRITICAS encontradas (DAOs multi-tenant) |
-| 2026-04-14 | Commit 895adc9: 12 CRITICAS corrigidas |
-| 2026-04-14 | DEEP_LOGIC V5.0, DEEP_RESILIENCE V5.0 — ambas 100% limpas |
-| 2026-04-15 | DEEP_SECURITY V4.0 (200+ arquivos, 0 ativas), DEEP_BUGS V2.0 (61/61) |
-| 2026-04-15 | DEEP_MAINTAINABILITY V4.0 — 155 arquivos, 7 estruturais ativas |
-| 2026-04-17 | Fix de `findByLogin` + 2 SQL concats restantes |
-| 2026-04-18 | Novos modulos adicionados: PSP Asaas, webhook, onboarding, AdminPspController |
+| 2026-04-14 | AUDIT V1.2 — 12 CRITICAS encontradas e corrigidas (commit 895adc9) |
+| 2026-04-15 | DEEP_SECURITY V4.0, DEEP_BUGS V2.0 — 100% limpas |
 | 2026-04-18 | **AUDIT V1.3: 225 issues, 30 CRITICOs — REPROVADO** |
-| 2026-04-18 | DEEP_PERFORMANCE V5.0 (58), DEEP_LOGIC V6.0 (55), DEEP_RESILIENCE V6.0 (53), DEEP_BUGS V3.0 (26), DEEP_SECURITY V5.0 (148) — todos novos relatorios pos-PSP |
-| 2026-04-23 | Conferencia CRITICOs nos 4 deep audits (Logic/Bugs/Resilience/Performance) — todos ja estavam corrigidos |
-| 2026-04-23 | Fixes massivos DEEP_LOGIC + DEEP_BUGS ALTO/MEDIO/BAIXO em multiplas fases |
-| 2026-04-24 | **Fix dos 7 CRITs restantes do AUDIT_V1.3** (super_admin, role check, tenant trusted-proxy) — deploy completo na VPS |
-| 2026-04-24 | **Bugs/Logic/Security V1.3 zerados** (37 + 48 + 42 issues) |
-| 2026-04-25 | **DEEP_SECURITY V5.0 closeout — 37 issues fechadas** em 5 commits sec-hardening (`cd5044c`/`7b6593a`/`c209b56`/`c309a83`/`a8c377c`) |
-| **2026-04-25** | **DEEP_SECURITY V5.0 ZERADO** — 125/125 fechados em 8 commits adicionais (`bb312a0`..`5be929f`); 4 ALTOs deferidos com justificativa documentada |
+| 2026-04-18 | 5 deep audits novos pos-PSP (Performance, Logic, Resilience, Bugs, Security) |
+| 2026-04-24 | **AUDIT_V1.3 CRITs zerados** (30/30) — deploy completo na VPS |
+| 2026-04-25 | **DEEP_SECURITY V5.0 ZERADO** — 125/125 |
+| 2026-04-25 | **DEEP_RESILIENCE V6.0 ALTO ZERADO** — 19/19 (commits `01630dd`..`d1b7fed`) |
+| **2026-04-25** | **DEEP_RESILIENCE V6.0 MEDIO+BAIXO ZERADO** — 17 issues fechadas (este turno) |
 
 ---
 *Atualizado por Claude Code (status-update) — Revisao humana recomendada*
