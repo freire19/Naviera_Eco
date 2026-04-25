@@ -1,9 +1,18 @@
-process.on('unhandledRejection', (reason, promise) => {
+// #314: handlers globais NUNCA chamam process.exit imediato — fluxo crash-only abandona requests
+//   in-flight e deixa conexoes do pool em limbo. Em vez disso, dispara o shutdown coordenado
+//   (server.close + pool.end) com timeout duro de 10s; PM2/systemd reinicia o processo.
+process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled Rejection:', reason);
 });
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught Exception:', err);
-  process.exit(1);
+  // Marcar fatal e drenar; shutdown definido abaixo le esta flag.
+  globalThis.__naviera_fatal__ = true;
+  if (typeof globalThis.__naviera_shutdown__ === 'function') {
+    globalThis.__naviera_shutdown__('uncaughtException', 1);
+  } else {
+    setTimeout(() => process.exit(1), 1000);
+  }
 });
 
 import 'dotenv/config'
@@ -175,14 +184,34 @@ server.requestTimeout = 30_000
 server.keepAliveTimeout = 65_000
 server.timeout = 120_000
 
-function shutdown(signal) {
+// #314 + #DR266: shutdown coordenado — para de aceitar conexoes, drena requests in-flight,
+//   fecha pool PG, sai com codigo. Timeout duro impede travar em conexao zumbi.
+async function shutdown(signal, exitCode = 0) {
+  if (shutdown._called) return
+  shutdown._called = true
   log.info('Server', `${signal} received — shutting down`)
-  server.close(() => {
-    log.info('Server', 'Connections closed — exiting')
-    process.exit(0)
-  })
-  setTimeout(() => process.exit(1), 10000)
+  const hardExit = setTimeout(() => {
+    log.warn('Server', 'Shutdown timeout — forcing exit')
+    process.exit(exitCode || 1)
+  }, 10000)
+  hardExit.unref()
+  await new Promise(resolve => server.close(() => {
+    log.info('Server', 'HTTP connections closed')
+    resolve()
+  }))
+  try {
+    const dbModule = await import('./db.js')
+    const pool = dbModule.default || dbModule.pool
+    if (pool) {
+      await pool.end()
+      log.info('Server', 'PG pool drained')
+    }
+  } catch (e) {
+    log.warn('Server', `pool.end falhou: ${e.code || e.name || 'unknown'}`)
+  }
+  process.exit(exitCode)
 }
+globalThis.__naviera_shutdown__ = shutdown
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
