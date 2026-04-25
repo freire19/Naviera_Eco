@@ -9,7 +9,7 @@
 
 ## Sumário executivo
 
-> **Atualização 2026-04-25:** 7 críticos + 14 moderados (de 17) resolvidos em 3 lotes (commits 1007dbb, 4e3df91 + correções). Estado promovido de "fragilidade séria" → **"sólido com refactors arquiteturais opcionais"**.
+> **Atualização 2026-04-25:** 7 críticos + 14 moderados (de 17) resolvidos em 3 lotes (commits 1007dbb, 1beeeec + correções). Estado promovido de "fragilidade séria" → **"sólido com refactors arquiteturais opcionais"**.
 
 1. **Estado geral do frontend:** **sólido**. A11y atende WCAG básico (landmarks, h1 único por screen, ARIA, htmlFor, role=alert, touch targets ≥40px). Performance: bundle main -38%, STOMP/SockJS lazy, GPS pausa em background. Arquitetura: contextos eliminam prop drilling, HTTP unificado.
 
@@ -33,12 +33,12 @@
 | 2 | Adicionar `aria-label` em 4 botões icon-only do Header (back/profile/theme/logout) — `Header.jsx:9,16,19,22` _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | alto (a11y, leitor de tela) |
 | 3 | Adicionar `htmlFor`/`id` nos pares label/input em LoginScreen/TelaCadastro/PerfilScreen _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | alto (a11y + tap-on-label mobile) |
 | 4 | Adicionar `role="alert"` ou `aria-live="assertive"` nos containers de erro de form _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | médio (anuncia erro a leitor de tela) |
-| 5 | Adicionar confirmação modal no logout (e em "Remover/Recusar amigo") _(corrigido 2026-04-25 — logout commit 1007dbb; amigo commit 4e3df91)_ | ux | 🔴 (logout) / 🟡 (amigo) | M | alto (evita perda acidental) |
+| 5 | Adicionar confirmação modal no logout (e em "Remover/Recusar amigo") _(corrigido 2026-04-25 — logout commit 1007dbb; amigo commit 1beeeec)_ | ux | 🔴 (logout) / 🟡 (amigo) | M | alto (evita perda acidental) |
 | 6 | Criar `ThemeContext` + `AuthContext`, remover props `t` e `authHeaders` de 18 arquivos _(corrigido 2026-04-25 — commit 1007dbb)_ | review | 🔴 | M | alto (fundação de manutenibilidade) |
-| 7 | `React.lazy` em todas as 14 screens + `<Suspense>` no `screen()` de `App.jsx` _(corrigido 2026-04-25 — commit 4e3df91)_ | perf | 🟡 | M | alto (~30–50% bundle inicial) |
+| 7 | `React.lazy` em todas as 14 screens + `<Suspense>` no `screen()` de `App.jsx` _(corrigido 2026-04-25 — commit 1beeeec)_ | perf | 🟡 | M | alto (~30–50% bundle inicial) |
 | 8 | Unificar cliente HTTP — remover dead export `api`; eliminar `fetch` raw em `App.jsx:105,129`, `MapaCPF.jsx:58`, `LoginScreen.jsx:27`, `TelaCadastro.jsx:27` _(corrigido 2026-04-25 — commit 1007dbb)_ | review | 🔴 | M | médio (consistência de 401, manutenção) |
 | 9 | `type="tel"`/`inputMode="numeric"` + `autoComplete` nos forms (CPF/CNPJ/telefone/senha) | ux | 🟡 | S | médio (UX mobile, password manager) |
-| 10 | Lazy-load STOMP/SockJS — extrair para componente `<AuthenticatedShell>` carregado por `import()` após login _(corrigido 2026-04-25 — commit 4e3df91)_ | perf | 🟡 | M | médio (~50KB fora do bundle pré-login) |
+| 10 | Lazy-load STOMP/SockJS — extrair para componente `<AuthenticatedShell>` carregado por `import()` após login _(corrigido 2026-04-25 — commit 1beeeec)_ | perf | 🟡 | M | médio (~50KB fora do bundle pré-login) |
 
 ---
 
@@ -67,22 +67,22 @@
 
 ### UX / a11y
 - ~~**TabBar sem `aria-current="page"`**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Loc: `TabBar.jsx`. Ação aplicada: `aria-current={tab === tb.id ? "page" : undefined}`.
-- ~~**Sem landmarks semânticos**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: `<header>` em Header, `<nav aria-label="Navegacao principal">` em TabBar, `<main>` envolvendo screen() em App.jsx.
-- ~~**`<h1>` ausente em screens autenticadas**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: títulos das 14 screens promovidos de `<h3>`/`<h2>` para `<h1>` (LojaCNPJ, PedidosCNPJ, FinanceiroCNPJ, EncomendaCPF, PerfilScreen, PassagensCPF, AmigosCPF, LojasParceiras, MapaCPF, HomeCPF, HomeCNPJ, TelaCadastro).
-- ~~**Touch targets 32×32 no Header**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: 32×32 → 40×40 em perfil/tema/sair; padding 8 no botão Voltar.
-- ~~**Erros do `useApi` ignorados em 3 screens**~~ _(parcialmente corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: AmigosCPF agora surfacia erro com `<ErrorRetry>`. HomeCPF/HomeCNPJ já tratam o fetch primário; secundários (pedidos/lojas/encomendas/amigos) seguem silenciosos por design (dashboard tolera dados parciais).
-- ~~**Destructive actions sem confirmação (além de logout)**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: `window.confirm` em "Recusar convite" e "Remover amigo" com mensagem específica do contexto.
+- ~~**Sem landmarks semânticos**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: ux. Ação aplicada: `<header>` em Header, `<nav aria-label="Navegacao principal">` em TabBar, `<main>` envolvendo screen() em App.jsx.
+- ~~**`<h1>` ausente em screens autenticadas**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: ux. Ação aplicada: títulos das 14 screens promovidos de `<h3>`/`<h2>` para `<h1>` (LojaCNPJ, PedidosCNPJ, FinanceiroCNPJ, EncomendaCPF, PerfilScreen, PassagensCPF, AmigosCPF, LojasParceiras, MapaCPF, HomeCPF, HomeCNPJ, TelaCadastro).
+- ~~**Touch targets 32×32 no Header**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: ux. Ação aplicada: 32×32 → 40×40 em perfil/tema/sair; padding 8 no botão Voltar.
+- ~~**Erros do `useApi` ignorados em 3 screens**~~ _(parcialmente corrigido 2026-04-25 — commit 1beeeec)_ — origem: ux. Ação aplicada: AmigosCPF agora surfacia erro com `<ErrorRetry>`. HomeCPF/HomeCNPJ já tratam o fetch primário; secundários (pedidos/lojas/encomendas/amigos) seguem silenciosos por design (dashboard tolera dados parciais).
+- ~~**Destructive actions sem confirmação (além de logout)**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: ux. Ação aplicada: `window.confirm` em "Recusar convite" e "Remover amigo" com mensagem específica do contexto.
 - ~~**Sem `autoComplete` em forms**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `autoComplete="username|email|tel|address-level2|new-password|current-password|name"` em LoginScreen, TelaCadastro, PerfilScreen.
 - ~~**Sem `required`/`aria-required` nos inputs**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `required` em campos obrigatórios (TelaCadastro: documento/nome/senha/confirma).
 - ~~**`type="tel"` ausente em CPF/CNPJ/telefone**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `inputMode="numeric"` em CPF/CNPJ + `type="tel" inputMode="tel"` em telefone.
 - ~~**`NotificationList` dropdown sem keyboard handling**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `aria-expanded`, `aria-haspopup="menu"` no botão; Escape fecha o dropdown.
 
 ### Performance
-- ~~**Zero code-splitting de screens**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `React.lazy` em todas as 11 screens autenticadas + `<Suspense fallback={<Skeleton/>}>`. Bundle main: 376KB → 234KB (-38%). Cada screen vira chunk independente (1.8KB–23KB).
-- ~~**STOMP/SockJS no main bundle**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `useWebSocket` carrega STOMP+SockJS via `import()` dinâmico apenas quando `token && empresaId`. Para naviera-app (CPF/CNPJ, empresaId sempre null) os ~85KB nunca são baixados.
+- ~~**Zero code-splitting de screens**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: perf. Ação aplicada: `React.lazy` em todas as 11 screens autenticadas + `<Suspense fallback={<Skeleton/>}>`. Bundle main: 376KB → 234KB (-38%). Cada screen vira chunk independente (1.8KB–23KB).
+- ~~**STOMP/SockJS no main bundle**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: perf. Ação aplicada: `useWebSocket` carrega STOMP+SockJS via `import()` dinâmico apenas quando `token && empresaId`. Para naviera-app (CPF/CNPJ, empresaId sempre null) os ~85KB nunca são baixados.
 - **8 weights de Google Fonts (Sora 6 + Space Mono 2)** — origem: perf. Loc: `index.html:21`. **Mantido como está**: análise mostrou todos os weights em uso (300/400/500/600/700/800 para Sora; 400/700 para Space Mono). Trim quebraria branding (NAVIERA logo @800) ou subtítulos (@300).
-- ~~**`<img>` sem `loading="lazy"`**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `loading="lazy" decoding="async"` em Avatar, foto de perfil do Header e listas de embarcação em PassagensCPF.
-- ~~**Polling de GPS continua com app em background**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `visibilitychange` listener pausa `setInterval` quando `document.hidden`; retoma + refetch imediato no return.
+- ~~**`<img>` sem `loading="lazy"`**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: perf. Ação aplicada: `loading="lazy" decoding="async"` em Avatar, foto de perfil do Header e listas de embarcação em PassagensCPF.
+- ~~**Polling de GPS continua com app em background**~~ _(corrigido 2026-04-25 — commit 1beeeec)_ — origem: perf. Ação aplicada: `visibilitychange` listener pausa `setInterval` quando `document.hidden`; retoma + refetch imediato no return.
 
 ---
 
