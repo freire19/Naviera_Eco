@@ -14,6 +14,8 @@ export default function TelaCadastro({ t, onVoltar, onSucesso }) {
   const labelStyle = { fontSize: 12, fontWeight: 600, color: t.txSoft, marginBottom: 4, display: "block" };
 
   const submit = async () => {
+    // #DR281: bloquear double-submit (Enter repetido / clique duplo).
+    if (loading) return;
     setErro("");
     if (!form.documento.trim() || !form.nome.trim() || !form.senha.trim()) { setErro("Documento, nome e senha s\u00e3o obrigat\u00f3rios."); return; }
     const docErro = validarDocumento(form.documento, tipo);

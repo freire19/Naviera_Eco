@@ -18,6 +18,8 @@ export default function LoginScreen({ t, mode, setMode, onLogin }) {
   const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", boxSizing: "border-box" };
 
   const doLogin = async () => {
+    // #DR281: bloquear double-submit (Enter repetido enquanto request em voo).
+    if (loginLoading) return;
     setLoginErro("");
     if (!loginDoc.trim() || !loginSenha.trim()) { setLoginErro("Informe documento e senha."); return; }
     setLoginLoading(true);

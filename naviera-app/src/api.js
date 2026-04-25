@@ -80,6 +80,8 @@ export function useApi(path, authHeaders, deps = []) {
 
   useEffect(() => {
     if (!authHeaders?.Authorization) return;
+    // #DR280: guarda contra setState apos unmount — fetch pode resolver depois do componente sair.
+    let active = true;
     const controller = new AbortController();
     const signal = AbortSignal.any
       ? AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])
@@ -94,13 +96,13 @@ export function useApi(path, authHeaders, deps = []) {
         }
         return r.ok ? r.json() : Promise.reject("Erro ao carregar");
       })
-      .then(d => setData(d))
+      .then(d => { if (active) setData(d); })
       .catch((e) => {
-        if (e.name === 'AbortError') return;
+        if (e.name === 'AbortError' || !active) return;
         setErro(typeof e === "string" ? e : "Erro ao carregar dados.");
       })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; controller.abort(); };
   }, [path, authHeaders?.Authorization, rev, ...deps]);
 
   return { data, loading, erro, refresh };

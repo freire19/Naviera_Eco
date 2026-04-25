@@ -27,23 +27,34 @@ export default function EncomendaCPF({ t, authHeaders }) {
   });
 
   const confirmarPagamento = async () => {
-    if (!pagando) return;
+    if (!pagando || enviando) return;
     setErrPag(""); setEnviando(true);
     try {
       const res = await authFetch(`${API}/encomendas/${pagando.id_encomenda}/pagar`, {
         method: "POST", headers: authHeaders,
         body: JSON.stringify({ formaPagamento: formaPag }),
       });
-      const data = await res.json();
-      if (!res.ok) { setErrPag(data.erro || data.message || "Erro ao pagar."); return; }
+      // #DR282: resposta pode nao ser JSON valido (502/504 Nginx, HTML de gateway timeout, etc).
+      //   Le texto cru e tenta parsear; caso contrario, preserva o status para diagnostico em
+      //   vez de cair no catch generico "Erro de conexao" (que e mentira para erro HTTP).
+      const raw = await res.text();
+      let data = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* nao e JSON */ }
+      if (!res.ok) {
+        setErrPag(data?.erro || data?.message || (raw && raw.slice(0, 120).trim()) || `HTTP ${res.status}`);
+        return;
+      }
       if (formaPag === "BARCO") {
         setToast("Reservado para pagar no embarque");
         setPagando(null); setFormaPag("PIX"); refresh();
       } else {
-        setResultado({ ...data, numeroEncomenda: pagando.numero_encomenda, destinatario: pagando.destinatario });
+        setResultado({ ...(data || {}), numeroEncomenda: pagando.numero_encomenda, destinatario: pagando.destinatario });
         setPagando(null); refresh();
       }
-    } catch { setErrPag("Erro de conexao."); } finally { setEnviando(false); }
+    } catch (e) {
+      console.warn("[EncomendaCPF] confirmarPagamento falhou:", e?.message);
+      setErrPag("Sem conexao com o servidor.");
+    } finally { setEnviando(false); }
   };
 
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;

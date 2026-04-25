@@ -29,6 +29,11 @@ export default function useWebSocket({ token, empresaId, apiUrl }) {
       webSocketFactory: () => new SockJS(wsUrl),
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: reconnectDelay.current,
+      // #319: STOMP heartbeats (ms) — sem isso, NAT/celular mantem conexao TCP "viva" mas
+      //   sem dados o broker nao detecta que o cliente sumiu (zombie). 10s e o sweet spot
+      //   para mobile (bateria) sem perder o evento de queda.
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
 
       onConnect: () => {
         setConnected(true);
