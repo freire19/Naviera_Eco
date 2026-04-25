@@ -2,10 +2,20 @@ import { Router } from 'express'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
+import { rateLimit } from '../middleware/rateLimit.js'
 import { validarAutorizador } from '../utils/validarAutorizador.js'
 
 const router = Router()
 router.use(authMiddleware)
+
+// #661: bucket dedicado para enumeracao por id sequencial — embora ja haja filtro empresa_id (#106),
+//   atacante com conta operadora pode varrer ids em poucos minutos. Limita por user.
+const itensRateLimit = rateLimit({
+  windowMs: 60_000,
+  max: 30,
+  message: 'Muitas consultas de itens. Aguarde alguns segundos.',
+  keyFn: (req) => `itens:${req.user?.id || req.ip}`
+})
 
 // GET /api/encomendas?viagem_id=X
 router.get('/', async (req, res) => {
@@ -72,7 +82,8 @@ router.get('/proximo-numero', async (req, res) => {
 
 // GET /api/encomendas/:id/itens
 // #106: JOIN com encomendas filtrando por empresa_id — sem isso qualquer tenant lia itens alheios.
-router.get('/:id/itens', async (req, res) => {
+// #661: rate-limit dedicado contra enumeracao sequencial.
+router.get('/:id/itens', itensRateLimit, async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
     const idEncomenda = parseInt(req.params.id, 10)
@@ -235,9 +246,11 @@ router.post('/:id/pagar', async (req, res) => {
       return res.status(400).json({ error: 'valor_pago obrigatorio e deve ser positivo' })
     }
     // DS4-011 fix: guarda contra overpayment — so aceita se valor_devedor >= pagamento
+    // #213: tolerancia de 1 centavo no match PAGO — evita encomenda ficar PARCIAL indefinidamente
+    //   quando cliente paga R$ 99.99 em divida de R$ 100 (arredondamento de float).
     const result = await pool.query(`
       UPDATE encomendas SET valor_pago = valor_pago + $1,
-        status_pagamento = CASE WHEN (valor_pago + $1) >= (total_a_pagar - COALESCE(desconto, 0)) THEN 'PAGO' ELSE 'PARCIAL' END
+        status_pagamento = CASE WHEN (valor_pago + $1) >= (total_a_pagar - COALESCE(desconto, 0)) - 0.01 THEN 'PAGO' ELSE 'PARCIAL' END
       WHERE id_encomenda = $2 AND empresa_id = $3
         AND (total_a_pagar - COALESCE(desconto, 0) - valor_pago) >= $1
       RETURNING *

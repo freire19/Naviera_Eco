@@ -4,7 +4,7 @@
  * DR247: NOTA — em PM2 cluster mode cada worker tem seu proprio Map.
  * Para rate limiting real em cluster, usar Redis. Em fork mode (atual), funciona OK.
  */
-export function rateLimit({ windowMs = 60000, max = 10, message = 'Muitas tentativas. Tente novamente em breve.', keyFn } = {}) {
+export function rateLimit({ windowMs = 60000, max = 10, message = 'Muitas tentativas. Tente novamente em breve.', keyFn, maxKeys = 10000 } = {}) {
   const hits = new Map()
 
   // DR247: guardar ref do interval para cleanup em graceful shutdown
@@ -22,6 +22,21 @@ export function rateLimit({ windowMs = 60000, max = 10, message = 'Muitas tentat
     let entry = hits.get(key)
 
     if (!entry || now - entry.start > windowMs) {
+      // #027: cap em maxKeys evita Map sem bound em keyFn de alta cardinalidade.
+      //   Sweep limitado a 100 entradas por request — caso contrario varriamos 10k a cada
+      //   POST sob saturacao. FIFO drop garante progresso mesmo se sweep nao liberar nada.
+      if (hits.size >= maxKeys) {
+        let scanned = 0
+        for (const [k, e] of hits) {
+          if (++scanned > 100) break
+          if (now - e.start > windowMs) hits.delete(k)
+          if (hits.size < maxKeys) break
+        }
+        if (hits.size >= maxKeys) {
+          const firstKey = hits.keys().next().value
+          if (firstKey !== undefined) hits.delete(firstKey)
+        }
+      }
       entry = { count: 0, start: now }
       hits.set(key, entry)
     }

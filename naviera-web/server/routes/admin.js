@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { invalidateTenantCache } from '../middleware/tenant.js'
 
 const router = Router()
 
@@ -150,6 +151,7 @@ router.put('/empresas/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Empresa nao encontrada' })
     }
+    invalidateTenantCache(result.rows[0].slug)
     res.json(result.rows[0])
   } catch (err) {
     console.error('[Admin] Erro ao atualizar empresa:', err.message)
@@ -167,6 +169,8 @@ router.put('/empresas/:id/ativar', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Empresa nao encontrada' })
     }
+    // #024: empresa desativada ficava ate 60s acessivel por cache stale — invalidar agora.
+    invalidateTenantCache(result.rows[0].slug)
     res.json(result.rows[0])
   } catch (err) {
     console.error('[Admin] Erro ao toggle ativo empresa:', err.message)

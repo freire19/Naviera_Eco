@@ -39,8 +39,10 @@ router.get('/saidas', async (req, res) => {
     if (data_especifica) { sql += ` AND s.data_vencimento = $${params.length + 1}`; params.push(data_especifica) }
     sql += ' ORDER BY s.data_vencimento DESC'
     // DP052: LIMIT para evitar datasets ilimitados
-    const limit = Math.min(parseInt(req.query.limit) || 500, 1000)
-    const offset = parseInt(req.query.offset) || 0
+    // #025: parseInt('-10') = -10 (nao e falsy) — LIMIT negativo quebra SQL com 500.
+    //   Clamp min 1 no limit e 0 no offset.
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 500, 1), 1000)
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0)
     sql += ` LIMIT ${limit} OFFSET ${offset}`
     const result = await pool.query(sql, params)
     res.json(result.rows)
@@ -397,17 +399,18 @@ router.get('/boletos', async (req, res) => {
 
 // POST /api/financeiro/boleto — Create single boleto
 router.post('/boleto', validate({ descricao: 'required|string', valor_total: 'required|number' }), async (req, res) => {
+  // #001: validar ANTES do pool.connect() — nao segurar slot de conexao em 400.
+  const empresaId = req.user.empresa_id
+  const {
+    descricao, valor_total, data_vencimento, id_categoria, id_viagem,
+    numero_parcela, total_parcelas, observacoes
+  } = req.body
+  if (!descricao || !valor_total) {
+    return res.status(400).json({ error: 'Campos obrigatorios: descricao, valor_total' })
+  }
+
   const client = await pool.connect()
   try {
-    const empresaId = req.user.empresa_id
-    const {
-      descricao, valor_total, data_vencimento, id_categoria, id_viagem,
-      numero_parcela, total_parcelas, observacoes
-    } = req.body
-    if (!descricao || !valor_total) {
-      return res.status(400).json({ error: 'Campos obrigatorios: descricao, valor_total' })
-    }
-
     await client.query('BEGIN')
 
     const result = await client.query(`
@@ -441,29 +444,30 @@ router.post('/boleto', validate({ descricao: 'required|string', valor_total: 're
 
 // POST /api/financeiro/boleto/batch — Create multiple boletos (parcelas)
 router.post('/boleto/batch', validate({ descricao_base: 'required|string', valor_total: 'required|number', parcelas: 'required|integer' }), async (req, res) => {
+  // #002: validar ANTES do pool.connect() — nao segurar slot de conexao em 400.
+  const empresaId = req.user.empresa_id
+  const {
+    descricao_base, valor_total, parcelas, data_primeira_vencimento, intervalo_dias,
+    id_categoria, id_viagem
+  } = req.body
+  if (!descricao_base || !valor_total || !parcelas || parcelas < 1) {
+    return res.status(400).json({ error: 'Campos obrigatorios: descricao_base, valor_total, parcelas (>= 1)' })
+  }
+  // #218: valor_total deve ser positivo (evita boleto com valor 0 ou negativo)
+  const valorTotalNum = parseFloat(valor_total)
+  if (!(valorTotalNum > 0)) {
+    return res.status(400).json({ error: 'valor_total deve ser maior que zero' })
+  }
+  if (parcelas > 120) return res.status(400).json({ error: 'Maximo de 120 parcelas permitido' })
+  const valorParcela = Math.floor(valor_total * 100 / parcelas) / 100
+  const valorUltimaParcela = Math.round((valor_total - valorParcela * (parcelas - 1)) * 100) / 100
+  const intervalo = parseInt(intervalo_dias) || 30
+  const dataBase = data_primeira_vencimento ? new Date(data_primeira_vencimento) : new Date()
+  if (isNaN(dataBase.getTime())) return res.status(400).json({ error: 'Data de vencimento invalida' })
+  const boletos = []
+
   const client = await pool.connect()
   try {
-    const empresaId = req.user.empresa_id
-    const {
-      descricao_base, valor_total, parcelas, data_primeira_vencimento, intervalo_dias,
-      id_categoria, id_viagem
-    } = req.body
-    if (!descricao_base || !valor_total || !parcelas || parcelas < 1) {
-      return res.status(400).json({ error: 'Campos obrigatorios: descricao_base, valor_total, parcelas (>= 1)' })
-    }
-    // #218: valor_total deve ser positivo (evita boleto com valor 0 ou negativo)
-    const valorTotalNum = parseFloat(valor_total)
-    if (!(valorTotalNum > 0)) {
-      return res.status(400).json({ error: 'valor_total deve ser maior que zero' })
-    }
-    if (parcelas > 120) return res.status(400).json({ error: 'Maximo de 120 parcelas permitido' })
-    const valorParcela = Math.floor(valor_total * 100 / parcelas) / 100
-    const valorUltimaParcela = Math.round((valor_total - valorParcela * (parcelas - 1)) * 100) / 100
-    const intervalo = parseInt(intervalo_dias) || 30
-    const dataBase = data_primeira_vencimento ? new Date(data_primeira_vencimento) : new Date()
-    if (isNaN(dataBase.getTime())) return res.status(400).json({ error: 'Data de vencimento invalida' })
-    const boletos = []
-
     await client.query('BEGIN')
 
     // DP055: batch inserts em vez de loop sequencial (era 2*N queries, agora 2)

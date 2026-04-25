@@ -92,3 +92,17 @@ export function tenantInfoRoute(req, res) {
     res.json(null)
   }
 }
+
+/**
+ * #024: invalidacao explicita do cache tenant.
+ * Admin chama apos toggle de ativo/alteracao de nome/cor/logo — evita janela de 60s
+ * com dados stale (ex: empresa desativada ainda aceitando logins).
+ * Sem slug limpa tudo (usar quando mutar em lote).
+ */
+export function invalidateTenantCache(slug) {
+  if (!slug) {
+    cache.clear()
+    return
+  }
+  cache.delete(slug.toLowerCase())
+}
