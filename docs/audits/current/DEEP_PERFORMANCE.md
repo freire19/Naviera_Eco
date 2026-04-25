@@ -96,7 +96,7 @@ Todas as 33 issues listadas na secao 2.5 do AUDIT_V1.3 foram re-verificadas linh
 ### API SPRING — SERVICES
 
 #### Issue #DP063 — SyncService.processar loop N+1 — processarRegistro por registro
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
 - **Linha(s):** 103-115
@@ -120,7 +120,7 @@ for (SyncRegistro reg : registros) {
 ---
 
 #### Issue #DP064 — GpsService.historicoViagem: SELECT sem LIMIT, sem filtro empresa_id
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/GpsService.java`
 - **Linha(s):** 45-51
@@ -269,7 +269,7 @@ WHERE e.empresa_id = $1 AND e.id_viagem = $2
 ---
 
 #### Issue #DP072 — ListaFretes.jsx: Promise.all de /itens sem concurrency limit
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/src/pages/ListaFretes.jsx`
 - **Linha(s):** 72-86
@@ -474,7 +474,7 @@ const initial = (() => { try { return JSON.parse(localStorage.getItem(k)) ?? fal
 ### DESKTOP JAVAFX
 
 #### Issue #DP084 — CadastroFreteController: Files.readAllBytes no FX thread
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/gui/CadastroFreteController.java`
 - **Linha(s):** 1795
