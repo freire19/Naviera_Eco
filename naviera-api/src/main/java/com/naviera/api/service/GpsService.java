@@ -57,15 +57,29 @@ public class GpsService {
             ORDER BY timestamp ASC""", idViagem);
     }
 
-    /** Última posição de cada embarcação — para mapa público de tracking */
+    // #DP065: cache TTL 30s para mapa publico — endpoint pode ser chamado a cada segundo
+    //   por N clientes. DISTINCT ON e custoso; cachear evita seq scan em embarcacao_gps.
+    //   Cache em memoria simples; em multi-instance trocaria por Redis.
+    private static final long CACHE_TTL_MS = 30_000L;
+    private volatile List<Map<String, Object>> cacheTodasUltimas;
+    private volatile long cacheTodasUltimasExpiresAt;
+
     public List<Map<String, Object>> todasUltimasPosicoes() {
-        return jdbc.queryForList("""
+        long now = System.currentTimeMillis();
+        List<Map<String, Object>> snap = cacheTodasUltimas;
+        if (snap != null && now < cacheTodasUltimasExpiresAt) return snap;
+
+        List<Map<String, Object>> fresh = jdbc.queryForList("""
             SELECT DISTINCT ON (g.id_embarcacao)
                    g.id_embarcacao AS embarcacao_id, e.nome,
                    g.latitude, g.longitude, g.timestamp AS ultima_atualizacao
             FROM embarcacao_gps g
             JOIN embarcacoes e ON g.id_embarcacao = e.id_embarcacao
             ORDER BY g.id_embarcacao, g.timestamp DESC
+            LIMIT 1000
             """);
+        cacheTodasUltimas = fresh;
+        cacheTodasUltimasExpiresAt = now + CACHE_TTL_MS;
+        return fresh;
     }
 }

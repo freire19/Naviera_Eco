@@ -24,7 +24,8 @@ public class AuthService {
     //   Sem isso, atacante mede latencia (com BCrypt vs sem) e enumera CPFs/CNPJs cadastrados.
     private static final String DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
-    @Transactional
+    // #DP070: sem @Transactional — login e 1 SELECT + 1 UPDATE de ultimo_acesso fire-and-forget;
+    //   nao precisa de ACID e overhead de tx era ~0.5ms desnecessario por login.
     public AuthResponse login(LoginRequest req) {
         var clienteOpt = repo.findByDocumentoAndAtivoTrue(req.documento());
         String hashAlvo = clienteOpt.map(ClienteApp::getSenhaHash).orElse(DUMMY_HASH);

@@ -72,11 +72,17 @@ public class OnboardingService {
             base = partes[0] + "-" + partes[1] + "-" + partes[2];
         }
 
-        // Garantir unicidade + nao colidir com slug reservado.
+        // #DP068: 1 query para todos os slugs ja usados (base + numerados) em vez de N queries
+        //   no while. Race condition residual nao e bloqueante — INSERT subsequente em
+        //   empresas.slug com UNIQUE constraint pegaria o conflito (se existir).
+        List<String> existentes = jdbc.queryForList(
+            "SELECT slug FROM empresas WHERE slug = ? OR slug LIKE ?",
+            String.class, base, base + "-%");
+        java.util.Set<String> ocupados = new java.util.HashSet<>(existentes);
+
         String slug = base;
         int contador = 1;
-        while (SLUGS_RESERVADOS.contains(slug)
-                || !jdbc.queryForList("SELECT 1 FROM empresas WHERE slug = ?", slug).isEmpty()) {
+        while (SLUGS_RESERVADOS.contains(slug) || ocupados.contains(slug)) {
             slug = base + "-" + contador++;
         }
         return slug;
