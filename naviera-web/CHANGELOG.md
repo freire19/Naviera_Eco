@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.5](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.4...web-v1.7.5) (2026-04-25)
+
+
+### Bug Fixes
+
+* **web:** DEEP_RESILIENCE V6.0 MEDIO — pool, health, OCR tx, error endpoint ([41dbdf3](https://github.com/freire19/Naviera_Eco/commit/41dbdf31abbb032e9a6508b2ec1622c502a2e3b6))
+
+
+### Performance
+
+* **web:** DEEP_PERFORMANCE V5.0 ALTO — ListaFretes concurrency limit ([eebf11e](https://github.com/freire19/Naviera_Eco/commit/eebf11e7e18136db31f2134820bbec09a048e947))
+
 ## [1.7.4](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.3...web-v1.7.4) (2026-04-25)
 
 
