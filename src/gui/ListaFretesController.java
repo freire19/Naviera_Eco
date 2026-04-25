@@ -425,21 +425,24 @@ public class ListaFretesController {
         LocalDate dataInicio = dpDataInicio.getValue();
         LocalDate dataFim = dpDataFim.getValue();
         List<Frete> fretesDoBanco = freteDAO.buscarFretes(idViagemFiltro, termoBuscaItem, dataInicio, dataFim);
-        listaCompletaFretes.clear();
+        // #DP086: setAll dispara 1 notificacao de change list em vez de N (era flicker visivel
+        //   ao recarregar lista grande, com N updates de UI sequenciais).
+        List<FreteView> views = new ArrayList<>(fretesDoBanco.size());
         for (Frete f : fretesDoBanco) {
             String dataEmissaoStr = (f.getDataEmissao() != null) ? f.getDataEmissao().format(dateFormatter) : "";
             String dataViagemStr = "";
             if (f.getDataViagem() != null) {
                 dataViagemStr = f.getDataViagem().format(dateFormatter);
             }
-            listaCompletaFretes.add(new FreteView(
+            views.add(new FreteView(
                 f.getNumeroFrete() != null ? f.getNumeroFrete() : String.valueOf(f.getIdFrete()),
-                f.getNomeRemetente(), f.getNomeDestinatario(), f.getNomeRota(), 
+                f.getNomeRemetente(), f.getNomeDestinatario(), f.getNomeRota(),
                 dataViagemStr, dataEmissaoStr,
                 df.format(f.getValorNominal()), df.format(f.getValorDevedor()), df.format(f.getValorPago()),
                 f.getNomeConferente(), f.getStatus(), f.getTotalVolumes()
             ));
         }
+        listaCompletaFretes.setAll(views);
         filtrarListaLocalmente();
     }
 

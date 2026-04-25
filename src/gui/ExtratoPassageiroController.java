@@ -173,8 +173,8 @@ public class ExtratoPassageiroController implements Initializable {
         Thread t = new Thread(() -> {
             try {
                 List<Passageiro> lista = passageiroDAO.listarTodos();
-                todosNomesPassageiros.clear();
-                for (Passageiro p : lista) todosNomesPassageiros.add(p.getNome());
+                // #DP088: substituir lista de uma vez em vez de clear + N adds.
+                todosNomesPassageiros = lista.stream().map(Passageiro::getNome).collect(java.util.stream.Collectors.toList());
 
                 Platform.runLater(() -> {
                     cmbPassageiro.setItems(FXCollections.observableArrayList(todosNomesPassageiros));

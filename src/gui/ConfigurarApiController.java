@@ -297,6 +297,8 @@ public class ConfigurarApiController implements Initializable {
             try (FileOutputStream fos = new FileOutputStream(CONFIG_FILE)) {
                 config.store(fos, "Configurações da API - Naviera");
             }
+            // #DP085: invalidar cache apos salvar para que getters retornem novos valores.
+            cachedProps = null;
             
             atualizarStatus();
             mostrarAlerta(Alert.AlertType.INFORMATION, "Sucesso", "Configurações salvas com sucesso!");
@@ -346,42 +348,30 @@ public class ConfigurarApiController implements Initializable {
         }
     }
     
-    /**
-     * Retorna a URL da API configurada
-     */
+    // #DP085: cache em memoria — getters eram chamados por SyncClient/ApiClient a cada
+    //   request HTTP, abrindo FileInputStream toda vez. Cache invalidado em salvar().
+    private static volatile Properties cachedProps;
+
+    private static Properties loadProps() {
+        Properties p = cachedProps;
+        if (p != null) return p;
+        Properties fresh = new Properties();
+        try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
+            fresh.load(fis);
+        } catch (IOException ignored) { /* arquivo ausente — retorna props vazio + defaults nos getters */ }
+        cachedProps = fresh;
+        return fresh;
+    }
+
     public static String getUrlApi() {
-        Properties props = new Properties();
-        try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
-            props.load(fis);
-            return props.getProperty("url.api", "https://sistemabarco.navdeusdealianca.com.br/api");
-        } catch (IOException e) {
-            return "https://sistemabarco.navdeusdealianca.com.br/api";
-        }
+        return loadProps().getProperty("url.api", "https://sistemabarco.navdeusdealianca.com.br/api");
     }
-    
-    /**
-     * Retorna o token de acesso configurado
-     */
+
     public static String getToken() {
-        Properties props = new Properties();
-        try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
-            props.load(fis);
-            return props.getProperty("token", "");
-        } catch (IOException e) {
-            return "";
-        }
+        return loadProps().getProperty("token", "");
     }
-    
-    /**
-     * Retorna a pasta de arquivos configurada
-     */
+
     public static String getPastaArquivos() {
-        Properties props = new Properties();
-        try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
-            props.load(fis);
-            return props.getProperty("pasta.arquivos", System.getProperty("user.home") + "/SistemaEmbarcacao/uploads");
-        } catch (IOException e) {
-            return System.getProperty("user.home") + "/SistemaEmbarcacao/uploads";
-        }
+        return loadProps().getProperty("pasta.arquivos", System.getProperty("user.home") + "/SistemaEmbarcacao/uploads");
     }
 }
