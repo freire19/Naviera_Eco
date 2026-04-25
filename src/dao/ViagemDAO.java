@@ -434,34 +434,50 @@ public class ViagemDAO {
 
     // --- CORREÇÃO PRINCIPAL: DEFINIR VIAGEM ATIVA USANDO is_atual ---
     // #200: manter `ativa` e `is_atual` em sincronia (API e BFF ja fazem isso juntos)
+    // #DR274: garantir atomicidade — se UPDATE de ativacao nao afeta nenhuma linha (alvo
+    //   inexistente / cross-tenant), rollback do desativar para nao deixar empresa SEM
+    //   viagem ativa. Tambem trava com pg_advisory_xact_lock para serializar concorrencia.
     public boolean definirViagemAtiva(long idViagemParaAtivar) {
-        invalidarCacheViagem(DAOUtils.empresaId());
-        // Zera is_atual e ativa de TODAS as viagens DESTA EMPRESA
+        int empresaId = DAOUtils.empresaId();
+        invalidarCacheViagem(empresaId);
         String sqlDesativar = "UPDATE viagens SET is_atual = false, ativa = false WHERE empresa_id = ?";
-        // Define is_atual = true e ativa = true apenas para a escolhida
         String sqlAtivar = "UPDATE viagens SET is_atual = true, ativa = true WHERE id_viagem = ? AND empresa_id = ?";
-        
+
         Connection conn = null;
         try {
             conn = ConexaoBD.getConnection();
             conn.setAutoCommit(false);
-            
-            try (PreparedStatement s1 = conn.prepareStatement(sqlDesativar)) { 
-                s1.setInt(1, DAOUtils.empresaId());
-                s1.executeUpdate(); 
+
+            try (PreparedStatement lock = conn.prepareStatement("SELECT pg_advisory_xact_lock(?, ?)")) {
+                lock.setInt(1, 730001); // namespace arbitrario para "definirViagemAtiva"
+                lock.setInt(2, empresaId);
+                lock.executeQuery().close();
             }
-            
-            try (PreparedStatement s2 = conn.prepareStatement(sqlAtivar)) { 
+
+            try (PreparedStatement s1 = conn.prepareStatement(sqlDesativar)) {
+                s1.setInt(1, empresaId);
+                s1.executeUpdate();
+            }
+
+            int rowsAtivada;
+            try (PreparedStatement s2 = conn.prepareStatement(sqlAtivar)) {
                 s2.setLong(1, idViagemParaAtivar);
-                s2.setInt(2, DAOUtils.empresaId());
-                s2.executeUpdate(); 
+                s2.setInt(2, empresaId);
+                rowsAtivada = s2.executeUpdate();
             }
-            
+
+            if (rowsAtivada == 0) {
+                conn.rollback();
+                AppLogger.warn("ViagemDAO",
+                    "definirViagemAtiva abortado: id=" + idViagemParaAtivar + " nao existe na empresa " + empresaId);
+                return false;
+            }
+
             conn.commit();
             return true;
         } catch (SQLException e) {
-            try { if(conn!=null) conn.rollback(); } catch(Exception ex){}
-            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage()); 
+            try { if (conn != null) conn.rollback(); } catch (Exception ex) { /* ignorado */ }
+            AppLogger.warn("ViagemDAO", "Erro SQL em ViagemDAO: " + e.getMessage());
             return false;
         } finally {
             if (conn != null) {

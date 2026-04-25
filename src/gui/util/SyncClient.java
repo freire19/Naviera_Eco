@@ -91,6 +91,8 @@ public class SyncClient {
 
     // DR108: volatile para visibilidade entre threads (scheduler, FX, CompletableFuture)
     private volatile LocalDateTime ultimaSincronizacao;
+    // #310: contador de falhas consecutivas para escalar UI para ALERTA quando >=3.
+    private volatile int falhasConsecutivas = 0;
     // DR210: volatile + nao-final para permitir recriar apos shutdown via pararSyncAutomatica()
     private volatile ScheduledExecutorService scheduler;
     // DB112: executor dedicado para operacoes de sync que fazem I/O bloqueante.
@@ -429,12 +431,23 @@ public class SyncClient {
                 ? "Sincronizacao concluida com sucesso!"
                 : "Sincronizacao concluida com " + resultadoGeral.erros.size() + " erro(s)";
 
-            notificarListeners(
-                resultadoGeral.sucesso ? SyncEvent.SUCESSO : SyncEvent.ERRO,
-                resultadoGeral.mensagem
-                    + " (enviados=" + resultadoGeral.registrosEnviados
-                    + ", recebidos=" + resultadoGeral.registrosRecebidos + ")"
-            );
+            // #310: contador de falhas consecutivas — apos 3 falhas seguidas, escala para ALERTA
+            //   visivel ao operador do barco (nao basta encher log; o operador precisa saber).
+            if (resultadoGeral.sucesso) {
+                falhasConsecutivas = 0;
+            } else {
+                falhasConsecutivas++;
+            }
+            SyncEvent finalEvent = resultadoGeral.sucesso ? SyncEvent.SUCESSO
+                : (falhasConsecutivas >= 3 ? SyncEvent.ALERTA : SyncEvent.ERRO);
+            String finalMsg = resultadoGeral.mensagem
+                + " (enviados=" + resultadoGeral.registrosEnviados
+                + ", recebidos=" + resultadoGeral.registrosRecebidos + ")";
+            if (finalEvent == SyncEvent.ALERTA) {
+                finalMsg = "ATENCAO: sync falhou " + falhasConsecutivas
+                    + "x consecutivas. Verifique conexao e contate suporte. " + finalMsg;
+            }
+            notificarListeners(finalEvent, finalMsg);
 
             return resultadoGeral;
         }, syncExecutor);
@@ -491,9 +504,22 @@ public class SyncClient {
                 }
             }
 
-            // 6. Marcar registros locais como sincronizados
-            if (resultado.sucesso) {
-                marcarComoSincronizados(tabela, pendentes);
+            // 6. Marcar registros locais como sincronizados — exceto os que falharam no servidor.
+            // #309: respeitar uuidsFalha do response. Sem isso, registros com erro no servidor
+            //   eram marcados sincronizado=TRUE e nunca mais retornavam — perda de dados.
+            @SuppressWarnings("unchecked")
+            List<String> uuidsFalha = (List<String>) syncResponse.getOrDefault("uuidsFalha", java.util.Collections.emptyList());
+            if (!uuidsFalha.isEmpty()) {
+                AppLogger.warn(TAG, "Sync " + tabela + ": " + uuidsFalha.size() + " registro(s) falharam no servidor — manter pendente");
+                resultado.erros.add(tabela + ": " + uuidsFalha.size() + " uuid(s) com falha — reenviar");
+            }
+            if (resultado.sucesso || resultado.registrosEnviados > 0) {
+                java.util.Set<String> falha = new java.util.HashSet<>(uuidsFalha);
+                List<RegistroPendente> aMarcar = new ArrayList<>();
+                for (RegistroPendente p : pendentes) {
+                    if (p.uuid == null || !falha.contains(p.uuid)) aMarcar.add(p);
+                }
+                marcarComoSincronizados(tabela, aMarcar);
             }
 
         } catch (Exception e) {
@@ -1141,7 +1167,9 @@ public class SyncClient {
     // ========================================================================
 
     public enum SyncEvent {
-        INFO, PROGRESSO, SUCESSO, ERRO
+        INFO, PROGRESSO, SUCESSO, ERRO,
+        // #310: ERRO recorrente (3+ falhas seguidas) — UI deve mostrar banner persistente.
+        ALERTA
     }
 
     public interface SyncListener {
