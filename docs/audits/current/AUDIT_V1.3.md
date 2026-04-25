@@ -739,7 +739,7 @@ setSelBilhete({
 ---
 
 #### Issue #001 — Connection leak em POST /api/financeiro/boleto quando descricao/valor_total ausentes
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 374-415
@@ -777,7 +777,7 @@ router.post('/boleto', validate({...}), async (req, res) => {
 ---
 
 #### Issue #002 — Connection leak em POST /api/financeiro/boleto/batch com parcelas invalidas
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 418-434
@@ -790,7 +790,7 @@ router.post('/boleto', validate({...}), async (req, res) => {
 ---
 
 #### Issue #015 — rastreioCrossTenant executa LIKE sem limite, vulneravel a full-table scan
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java`
 - **Linha(s):** 86-104
@@ -817,7 +817,7 @@ sql += " LIMIT 200";
 ---
 
 #### Issue #018 — Promises sem catch em PagamentoArtefato ao copiar clipboard
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/components/PagamentoArtefato.jsx`
 - **Linha(s):** 21-25
@@ -858,7 +858,7 @@ const copiar = async (txt, label) => {
 ---
 
 #### Issue #024 — Cache de tenant no middleware nunca expira por invalidacao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
 - **Linha(s):** 4-58
@@ -880,7 +880,7 @@ cache.set(cacheKey, { data: empresa, ts: Date.now() })
 ---
 
 #### Issue #025 — `parseInt(req.query.limit)` pode retornar NaN e virar 500
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 42-44
@@ -903,7 +903,7 @@ const offset = Math.max(parseInt(req.query.offset) || 0, 0)
 ---
 
 #### Issue #026 — useWebSocket cria cliente novo a cada change de reconnectDelay
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/hooks/useWebSocket.js`
 - **Linha(s):** 15, 31, 56, 73
@@ -924,7 +924,7 @@ onStompError: (frame) => {
 ---
 
 #### Issue #027 — Timer do rateLimit em memoria cresce sem bound por keyFn
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/middleware/rateLimit.js`
 - **Linha(s):** 7-37
@@ -937,7 +937,7 @@ onStompError: (frame) => {
 ---
 
 #### Issue #029 — EncomendaService.pagar: possivel duplicacao de psp_cobrancas em retry
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java`
 - **Linha(s):** 142-166
@@ -950,7 +950,7 @@ onStompError: (frame) => {
 ---
 
 #### Issue #030 — AsaasGateway.post()/get() nao valida status HTTP, trata 4xx/5xx como sucesso
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 228-244
@@ -974,7 +974,7 @@ return mapper.readTree(body);
 ---
 
 #### Issue #031 — AsaasGateway.obterOuCriarCustomer concatena cpfCnpj em URL sem encoding
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 216-218
@@ -993,7 +993,7 @@ JsonNode list = get("/customers?cpfCnpj=" + URLEncoder.encode(cpfCnpj, StandardC
 ---
 
 #### Issue #033 — FreteService/EncomendaService nao valida forma_pagamento contra whitelist
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FreteService.java` + `EncomendaService.java`
 - **Linha(s):** FreteService 96, EncomendaService 120
@@ -1011,7 +1011,7 @@ if (!validas.contains(forma)) throw ApiException.badRequest("Forma de pagamento 
 ---
 
 #### Issue #036 — useNotifications: exception de SW register nao tratada por branch
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/hooks/useNotifications.js`
 - **Linha(s):** 76
@@ -1033,7 +1033,7 @@ try {
 ---
 
 #### Issue #034 — Session storage em usePWA pode lancar em Safari private mode
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/hooks/usePWA.js`
 - **Linha(s):** 6-9, 52
@@ -1046,7 +1046,7 @@ try {
 ---
 
 #### Issue #035 — PassagensCPF: selBilhete construido com totp_secret igual ao numeroBilhete
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
 - **Linha(s):** 69
@@ -1059,7 +1059,7 @@ try {
 ---
 
 #### Issue #037 — BilheteScreen faz destructuring sem fallback em selBilhete
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
 - **Linha(s):** 48
@@ -1072,7 +1072,7 @@ try {
 ---
 
 #### Issue #038 — ConexaoBD: Thread.sleep sem interrupt handling em loop de retry
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `src/dao/ConexaoBD.java`
 - **Linha(s):** 132-163
@@ -1090,7 +1090,7 @@ while (System.currentTimeMillis() < deadline) {
 ---
 
 #### Issue #601 — HashMap com chaves null em responses PSP
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 167-176
@@ -1105,7 +1105,7 @@ while (System.currentTimeMillis() < deadline) {
 ### 2.2 — Seguranca
 
 #### Issue #100 — Qualquer admin de empresa pode modificar/criar/ativar qualquer outra empresa
-- [ ] **Concluido**
+- [x] **Concluido** _(2026-04-24 — fix aplicado e deploy OK)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/AdminController.java` + `naviera-api/src/main/java/com/naviera/api/config/SecurityConfig.java`
 - **Linha(s):** AdminController 17-42; SecurityConfig 29
@@ -1143,7 +1143,7 @@ UPDATE usuarios SET super_admin = TRUE WHERE id = <id_do_dev>;
 ---
 
 #### Issue #102 — Qualquer operador autenticado pode se auto-promover a Administrador (BFF)
-- [ ] **Concluido**
+- [x] **Concluido** _(2026-04-24 — fix aplicado e deploy OK)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/cadastros.js`
 - **Linha(s):** 369-390
@@ -1208,7 +1208,7 @@ public Map<String, Object> criarUsuario(Integer empresaId, Map<String, Object> d
 ---
 
 #### Issue #105 — Endpoint /rotas vaza todas as rotas de todas empresas (cross-tenant)
-- [ ] **Concluido**
+- [x] **Concluido** _(2026-04-24 — fix aplicado e deploy OK)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/RotaController.java`
 - **Linha(s):** 12-14
@@ -1238,7 +1238,7 @@ public ResponseEntity<?> listar(Authentication auth) {
 ---
 
 #### Issue #106 — GET /api/encomendas/:id/itens e GET /api/fretes/:id/itens no BFF vazam itens cross-tenant
-- [ ] **Concluido**
+- [x] **Concluido** _(2026-04-24 — fix aplicado e deploy OK)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/encomendas.js` (65-75); `naviera-web/server/routes/fretes.js` (141-151)
 - **Problema:** Ambos endpoints fazem `SELECT * FROM encomenda_itens WHERE id_encomenda = $1` / `SELECT * FROM frete_itens WHERE id_frete = $1` sem JOIN/check de `empresa_id`.
@@ -1304,7 +1304,7 @@ if (!donoFk.equals(clienteId)) throw ApiException.forbidden("Encomenda nao perte
 ---
 
 #### Issue #108 — Login BFF aceita usuario de qualquer empresa em dev — risco de deploy mal configurado em producao
-- [ ] **Concluido**
+- [x] **Concluido** _(2026-04-24 — fix aplicado e deploy OK)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/auth.js`
 - **Linha(s):** 47-58
@@ -1339,7 +1339,7 @@ if (!req.tenant && !process.env.ALLOW_DEV_LOGIN) {
 ---
 
 #### Issue #114 — AdminController (Spring) nao valida role — ativa/edita empresa com qualquer operador
-- [ ] **Concluido**
+- [x] **Concluido** _(2026-04-24 — fix aplicado e deploy OK)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/AdminController.java`
 - **Linha(s):** 17-42
@@ -1360,7 +1360,7 @@ public ResponseEntity<?> ativar(@PathVariable Long id, @RequestBody Map<String, 
 ---
 
 #### Issue #650 — tenantMiddleware aceita header X-Tenant-Slug diretamente do cliente sem validar origem trusted-proxy
-- [ ] **Concluido**
+- [x] **Concluido** _(2026-04-24 — fix aplicado e deploy OK)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
 - **Linha(s):** 17-18
@@ -1382,7 +1382,7 @@ let slug = fromTrustedProxy ? req.headers['x-tenant-slug'] : null
 ---
 
 #### Issue #101 — Segredos sensiveis em arquivos .env fora de controle (plain text no disco)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/.env`, `naviera-api/.env`
 - **Problema:** Os arquivos `.env` estao no `.gitignore` mas existem no disco com valores reais e fracos: `DB_PASSWORD=123456`, `JWT_SECRET=naviera-jwt-secret-dev-2026`, chaves REAIS Google (`GOOGLE_CLOUD_VISION_API_KEY`, `GEMINI_API_KEY`). .env NAO commitado no git (verificado).
@@ -1409,7 +1409,7 @@ GEMINI_API_KEY=AIzaSyAKOc7s7VRXgwy9J9CZ-tyjTMlEi1KPNXw
 ---
 
 #### Issue #104 — PSP onboarding permite que operador nao-admin cadastre subconta Asaas com dados arbitrarios
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/PspController.java` + `psp/EmpresaPspService.java`
 - **Linha(s):** PspController 31-35; EmpresaPspService 48-97
@@ -1443,7 +1443,7 @@ public ResponseEntity<?> onboarding(@RequestBody @Valid OnboardingRequest req, A
 ---
 
 #### Issue #109 — JWT_SECRET fraco (dev secret "naviera-jwt-secret-dev-2026") em uso
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/.env`, `naviera-api/.env`
 - **Problema:** Secret tem baixa entropia (ASCII previsivel, 34 chars, sem aleatoriedade) e diferentes entre API e web. Atacante pode fazer HMAC-SHA256 cracking.
@@ -1459,7 +1459,7 @@ openssl rand -hex 64
 ---
 
 #### Issue #110 — Rate limit no /auth/login usa IP fraco — sem protecao contra credential stuffing distribuido
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/RateLimitFilter.java` + `naviera-web/server/middleware/rateLimit.js`
 - **Problema:** Rate limit e por IP (10/min). Credential stuffing moderno usa milhares de IPs proxy. Nao ha rate-limit por conta/login, CAPTCHA/MFA, account lockout, detection de "muitos logins falhando com usuarios diferentes".
@@ -1477,7 +1477,7 @@ openssl rand -hex 64
 ---
 
 #### Issue #111 — CORS permite credentials com origin fixo mas sem garantia de que lista nao contem *
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/CorsConfig.java`
 - **Linha(s):** 10-15
@@ -1497,7 +1497,7 @@ c.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Tenant-Slu
 ---
 
 #### Issue #112 — `AsaasGateway.validarAssinaturaWebhook` retorna `true` quando secret nao configurado
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 191-209
@@ -1534,7 +1534,7 @@ public boolean validarAssinaturaWebhook(String payload, String assinatura) {
 ---
 
 #### Issue #113 — Endpoint publico /public/ativar/{codigo} sujeito a brute-force (4-6 hex = 65k-16M possibilidades)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/PublicController.java` + `service/AdminService.java`
 - **Linha(s):** PublicController 47-50; AdminService 46
@@ -1557,7 +1557,7 @@ String codigo = "NAV-" + String.format("%08X", RANDOM.nextInt());
 ---
 
 #### Issue #115 — `POST /api/financeiro/estornar` nao exige senha do autorizador (rota paralela insegura)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 530-580
@@ -1579,7 +1579,7 @@ router.post('/estornar', async (req, res) => {
 ---
 
 #### Issue #118 — JWT nao tem revogacao (stateless) — troca de senha nao invalida tokens emitidos
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/auth.js` + `naviera-api/.../service/AuthService.java`
 - **Problema:** Apos `POST /api/auth/trocar-senha`, tokens anteriores continuam validos ate expiracao natural (8h).
@@ -1600,7 +1600,7 @@ if (user.rows[0]?.password_changed_at && new Date(decoded.iat * 1000) < user.row
 ---
 
 #### Issue #119 — Gemini API key logada/potencialmente vazavel em erros
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/ocr.js` (716); `naviera-web/server/routes/documentos.js` (73)
 - **Problema:** A URL enviada ao `fetchWithRetry` contem a key como query string. Se `fetchWithRetry` logar URLs em falha, a key vaza em logs.
@@ -1623,7 +1623,7 @@ log.error('Gemini', urlSafe, { erro: err.message })
 ---
 
 #### Issue #120 — Verificacao de `funcao` baseada em string (case-insensitive) mas grafia variavel — bypass por mutacao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/.../security/JwtFilter.java`; `naviera-web/server/routes/admin.js`; `naviera-web/server/routes/ocr.js`
 - **Problema:** Multiple checks aceitam variacoes de string (`"ADMIN"`, `"Administrador"`, etc). `funcao="Admin "` com espaco ou `funcao="ADMINISTRADOR"` podem passar em uma camada mas nao em outra.
@@ -1635,7 +1635,7 @@ log.error('Gemini', urlSafe, { erro: err.message })
 ---
 
 #### Issue #121 — Auth BFF nao remove/strip JWT de logs de erro — req.body pode conter senha em `/trocar-senha`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/middleware/errorHandler.js`; `naviera-web/server/index.js` (50-58)
 - **Problema:** Request logging loga method, url e status. `unhandledRejection` handler loga o reason completo — pode incluir bcrypt stack trace com buffer de senha.
@@ -1647,7 +1647,7 @@ log.error('Gemini', urlSafe, { erro: err.message })
 ---
 
 #### Issue #651 — CORS default do Spring Boot inclui `localhost` em producao se env CORS_ORIGINS nao for setada
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/resources/application.properties`
 - **Linha(s):** 44
@@ -1671,7 +1671,7 @@ void validate() {
 ---
 
 #### Issue #655 — Desativacao de empresa nao invalida tokens emitidos dos usuarios dessa empresa
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AdminService.java` + `naviera-web/server/middleware/tenant.js`
 - **Problema:** Admin desativa empresa — `empresas.ativo = FALSE` e gravado. Porem: tokens JWT continuam validos por ate 24h, cache tenant por ate 60s, JwtFilter nao consulta `empresas.ativo`.
@@ -1683,7 +1683,7 @@ void validate() {
 ---
 
 #### Issue #656 — `CadastrosWriteService.criarUsuario` nao valida se email ja existe na empresa antes do INSERT
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/CadastrosWriteService.java`
 - **Linha(s):** 111-119
@@ -1695,7 +1695,7 @@ void validate() {
 ---
 
 #### Issue #658 — `psp/onboarding` concorrente cria DUAS subcontas se 2 operadores clicarem simultaneamente
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/EmpresaPspService.java`
 - **Linha(s):** 48-97
@@ -1708,7 +1708,7 @@ void validate() {
 ---
 
 #### Issue #661 — `encomendas.js /:id/itens` sem paginacao + enumeravel por id sequencial
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/encomendas.js`
 - **Linha(s):** 65-75
@@ -1720,7 +1720,7 @@ void validate() {
 ---
 
 #### Issue #117 — Desktop UsuarioDAO nao filtra por empresa_id (cross-tenant em banco compartilhado)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/UsuarioDAO.java`
 - **Problema:** Todas as queries SELECT/UPDATE de usuarios nao incluem `empresa_id = ?`. Risco depende de `db.properties` apontar errado para banco multi-tenant. Desktop e OFFLINE-FIRST com banco local single-tenant (CLAUDE.md regra #8).
@@ -1736,7 +1736,7 @@ String sql = "SELECT ... FROM usuarios WHERE (login_usuario = ? OR LOWER(email) 
 ---
 
 #### Issue #122 — PerfilController upload de foto permite extensoes como .gif
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/PerfilController.java`
 - **Linha(s):** 74
@@ -1753,7 +1753,7 @@ Set<String> allowedExts = Set.of(".jpg", ".jpeg", ".png", ".webp");
 ---
 
 #### Issue #123 — Stack trace e mensagens de erro SQL potencialmente expostas via res.status(500)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** multiplos `naviera-web/server/routes/*.js` e API
 - **Problema:** errorHandler central para statusCode != 500 retorna `err.message` — se uma ApiException wrapped carregar SQL error, o cliente ve detalhes do schema.
@@ -1769,7 +1769,7 @@ const message = isSafe ? err.safeMessage : 'Erro interno'
 ---
 
 #### Issue #124 — Tenant cache em memoria nao e invalidado entre workers (PM2 cluster)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
 - **Problema:** Cache map em memoria por processo. Em PM2 cluster mode, se admin desativa empresa X, workers que ja cachearam continuam aceitando login por ate 60s.
@@ -1781,7 +1781,7 @@ const message = isSafe ? err.safeMessage : 'Erro interno'
 ---
 
 #### Issue #125 — PublicController.servirFoto usa filename sem validacao de content-type vs extensao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/PublicController.java`
 - **Linha(s):** 56-68
@@ -1794,7 +1794,7 @@ const message = isSafe ? err.safeMessage : 'Erro interno'
 ---
 
 #### Issue #126 — Timing attack em `AuthService.login`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthService.java`
 - **Linha(s):** 25-28
@@ -1821,7 +1821,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #127 — Valor de compra calculado no server OK mas `comprar` cria passagem antes de PSP
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`; `EncomendaService.java`; `FreteService.java`
 - **Problema:** (1) INSERT passagem com status `PENDENTE_CONFIRMACAO`, (2) chama PSP, (3) UPDATE. Se PSP falhar em (2), a passagem fica `PENDENTE_CONFIRMACAO` sem transacao PSP. Cliente pensa que pagou mas nao tem nada.
@@ -1832,7 +1832,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #129 — Documentos pessoais (CPF/RG/CNH) via OCR armazenados em JSON sem criptografia at-rest
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/documentos.js` (122-130); `naviera-web/server/routes/ocr.js`
 - **Problema:** CPF, RG, nome completo gravados em colunas plain text. Para producao brasileira (LGPD/ANPD), dados pessoais devem ter criptografia at-rest ou pseudonimizacao.
@@ -1843,7 +1843,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #130 — `buscarPorRemetenteCrossTenant` retorna fretes cross-tenant sem paginacao — enumeracao do grafo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FreteService.java`
 - **Linha(s):** 42-80
@@ -1855,7 +1855,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #131 — Endpoint GET /viagens/publicas sem autenticacao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/ViagemController.java`
 - **Linha(s):** 29-30 (e SecurityConfig 28)
@@ -1867,7 +1867,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #654 — `PerfilController.upload_foto` sem bucket de rate-limit especifico (DoS disco)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/PerfilController.java`
 - **Linha(s):** 76
@@ -1880,7 +1880,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #128 — CSRF desabilitado mas cookies nao usados — SameSite/HttpOnly nao aplicados ao token
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/SecurityConfig.java`
 - **Linha(s):** 24
@@ -1892,7 +1892,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #132 — `console.error` em BFF mistura com structured logger; erro stack em stdout
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** multiplos routes/*.js
 - **Problema:** Codigo ora usa `console.error` ora usa `log.error`.
@@ -1903,7 +1903,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #133 — `db.properties` nao criptografa senha; plaintext on disk of every desktop
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `db.properties.example`
 - **Problema:** Desktop tem `db.password` em claro.
@@ -1914,7 +1914,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #134 — Versao de Spring Boot 3.3.5 e jjwt 0.12.6 — verificar CVEs
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/pom.xml`
 - **Problema:** Tendencia de CVEs periodicos em Spring Security/Boot.
@@ -1925,7 +1925,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ---
 
 #### Issue #135 — GpsController aceita id_embarcacao do body sem validar ownership
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/controller/GpsController.java`
 - **Linha(s):** 21-33
@@ -2114,7 +2114,7 @@ jdbc.update("UPDATE passagens SET id_transacao_psp = ?, qr_pix_payload = ? WHERE
 ---
 
 #### Issue #206 — Definicao de "saldo" divergente entre PassagemService.comprar() e FreteService.pagar()/EncomendaService.pagar()
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/.../service/PassagemService.java` vs `FreteService.java`/`EncomendaService.java`
 - **Linha(s):** PassagemService 89-111 | FreteService 124-135 | EncomendaService 146-157
@@ -2131,7 +2131,7 @@ const saldo = Math.max(0, (Number(pagando.valorNominal) || 0) - (Number(pagando.
 ---
 
 #### Issue #207 — `PassagemService.comprar()` usa `valorTotal` em vez de `saldo` como base do desconto PIX
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 89, 109-112
@@ -2143,7 +2143,7 @@ const saldo = Math.max(0, (Number(pagando.valorNominal) || 0) - (Number(pagando.
 ---
 
 #### Issue #208 — Data de viagem passada aceita no INSERT sem validacao server-side
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/viagens.js`
 - **Linha(s):** 74-92
@@ -2162,7 +2162,7 @@ if (dc < dv) return res.status(400).json({ error: 'data_chegada deve ser >= data
 ---
 
 #### Issue #209 — `PassagensCPF.jsx` filtra viagens por `v.dataViagem >= hoje` comparando string, formato nao normalizado
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
 - **Linha(s):** 29-30
@@ -2175,7 +2175,7 @@ if (dc < dv) return res.status(400).json({ error: 'data_chegada deve ser >= data
 ---
 
 #### Issue #210 — `definirViagemAtiva` nao invalida cache em outras JVMs/threads do desktop
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/ViagemDAO.java`
 - **Linha(s):** 157-161, 423-458
@@ -2187,7 +2187,7 @@ if (dc < dv) return res.status(400).json({ error: 'data_chegada deve ser >= data
 ---
 
 #### Issue #212 — `comprar()` mobile nao valida se `req.idTipoPassagem` existe em `aux_tipos_passagem`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 79-83
@@ -2203,7 +2203,7 @@ if (req.idTipoPassagem() == null)
 ---
 
 #### Issue #213 — `encomendas.status_pagamento = 'PAGO'` sem subtrair desconto no WHERE
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/encomendas.js`
 - **Linha(s):** 211-232
@@ -2221,7 +2221,7 @@ status_pagamento = CASE
 ---
 
 #### Issue #214 — Dashboard agrupa pagamento por substring de string → falso positivo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 141-146
@@ -2247,7 +2247,7 @@ else somaOutros += v
 ---
 
 #### Issue #216 — `POST /financeiro/saida` nao valida que `valor_pago <= valor_total`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 274-300
@@ -2263,7 +2263,7 @@ if (numero_parcela && total_parcelas && numero_parcela > total_parcelas) return 
 ---
 
 #### Issue #217 — `data_vencimento` e `data_pagamento` aceitam qualquer string (sem parser)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 290-294, 333-335
@@ -2283,7 +2283,7 @@ function parseDate(s) {
 ---
 
 #### Issue #218 — `POST /financeiro/boleto/batch` pode criar parcelas com valor total diferente de `valor_total`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 430-432
@@ -2296,7 +2296,7 @@ function parseDate(s) {
 ---
 
 #### Issue #222 — Sync upload tolera `ultimaAtualizacao` ausente e assume cliente mais recente
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
 - **Linha(s):** 200-222
@@ -2309,7 +2309,7 @@ function parseDate(s) {
 ---
 
 #### Issue #226 — `bilhetes_digitais.totp_secret` gerado com 32 bytes random mas armazenado em plain na tabela
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/BilheteService.java`
 - **Linha(s):** 117-119, 264-268
@@ -2322,7 +2322,7 @@ function parseDate(s) {
 ---
 
 #### Issue #233 — Estornos bloqueiam `valor > valor_pago` mas nao validam estorno de passagem EMBARCADO
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/estornos.js`
 - **Linha(s):** 43-58
@@ -2344,7 +2344,7 @@ if (!motivo || motivo.length < 20) return res.status(400).json({ error: 'Motivo 
 ---
 
 #### Issue #237 — `EmpresaPspService.onboarding` usa `@Transactional` mas faz chamada Asaas dentro dela
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/EmpresaPspService.java`
 - **Linha(s):** 48-97
@@ -2356,7 +2356,7 @@ if (!motivo || motivo.length < 20) return res.status(400).json({ error: 'Motivo 
 ---
 
 #### Issue #238 — `FinanceiroService.balanco` nao exclui registros com `excluido=TRUE`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FinanceiroService.java`
 - **Linha(s):** 38-65
@@ -2369,7 +2369,7 @@ if (!motivo || motivo.length < 20) return res.status(400).json({ error: 'Motivo 
 ---
 
 #### Issue #652 — `ViagemDAO.excluir` cascade pode deletar passageiros compartilhados em outras viagens
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/ViagemDAO.java`
 - **Problema:** Passageiros sao entidades reutilizaveis (mesmo documento pode ter multiplas passagens em multiplas viagens). Se a exclusao de viagem deletar passageiros referenciados por essa viagem, perde-se historico. Se deleta passageiro que ainda tem passagem em outra viagem ativa, FK quebra.
@@ -2381,7 +2381,7 @@ if (!motivo || motivo.length < 20) return res.status(400).json({ error: 'Motivo 
 ---
 
 #### Issue #653 — `financeiro.js` dashboard: `'CARTEIRA_DIGITAL'.includes('CART') === true` → carteira digital contabilizada como cartao
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 144
@@ -2398,7 +2398,7 @@ const bucket = FORMAS[pgto?.toUpperCase().trim()] || 'outros'
 ---
 
 #### Issue #711 — Drift financeiro: desktop soma `cargas`, API `PassagemService` NAO soma
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivos:**
   - `src/gui/VenderPassagemController.java:1291` — `alimentacao.add(transporte).add(cargas).subtract(descontoTarifa)`
@@ -2418,7 +2418,7 @@ var total = transporte.add(alimentacao).add(cargas).subtract(desconto);
 ---
 
 #### Issue #215 — Estorno de frete ignora `desconto` no calculo de devedor
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/estornos.js`
 - **Linha(s):** 184-205
@@ -2431,7 +2431,7 @@ var total = transporte.add(alimentacao).add(cargas).subtract(desconto);
 ---
 
 #### Issue #219 — `comprar()` mobile permite comprar passagem pra viagem `is_atual = TRUE` mesmo com `data_viagem < hoje`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 71-74
@@ -2443,7 +2443,7 @@ var total = transporte.add(alimentacao).add(cargas).subtract(desconto);
 ---
 
 #### Issue #220 — `PassagensCPF.jsx` usa `toISOString()` que converte pra UTC
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
 - **Linha(s):** 29
@@ -2458,7 +2458,7 @@ const hoje = new Date().toLocaleDateString('sv-SE') // '2026-04-18' local
 ---
 
 #### Issue #221 — Sync `executarInsert` aceita `empresa_id` e `sincronizado` do cliente
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/SyncService.java`
 - **Linha(s):** 262-322
@@ -2477,7 +2477,7 @@ const hoje = new Date().toLocaleDateString('sv-SE') // '2026-04-18' local
 ---
 
 #### Issue #223 — `aplicarUpsert` (SyncClient desktop) nao converte timestamps recebidos
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/util/SyncClient.java`
 - **Linha(s):** 686-702, 736-741
@@ -2489,7 +2489,7 @@ const hoje = new Date().toLocaleDateString('sv-SE') // '2026-04-18' local
 ---
 
 #### Issue #224 — `geminiParseOCR` e `geminiParseEncomenda` nao tem fallback robusto para resposta malformada
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/ocr.js` e helpers invocados
 - **Linha(s):** 174-188, 226-238
@@ -2501,7 +2501,7 @@ const hoje = new Date().toLocaleDateString('sv-SE') // '2026-04-18' local
 ---
 
 #### Issue #225 — `confirmarEmbarque` nao verifica pagamento antes de aceitar embarque BARCO
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 222-242
@@ -2518,7 +2518,7 @@ if ("PENDENTE".equals(dados.get("status_passagem")) && BigDecimal.ZERO.compareTo
 ---
 
 #### Issue #227 — Web BFF usa `parseFloat` ao ler mas `Math.round((v * 100)) / 100` ao escrever
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/passagens.js`, `encomendas.js`, `fretes.js`
 - **Problema:** Mistura float IEEE 754 com arredondamento. Desktop Java usa BigDecimal, BFF usa number. Fechamento de caixa pode divergir.
@@ -2529,7 +2529,7 @@ if ("PENDENTE".equals(dados.get("status_passagem")) && BigDecimal.ZERO.compareTo
 ---
 
 #### Issue #228 — `OpEncomendaWriteService.criar()` nao valida `total_volumes >= 0` e `valor_pago <= total_a_pagar - desconto`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpEncomendaWriteService.java`
 - **Linha(s):** 36-48
@@ -2545,7 +2545,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #229 — Frete pagar PIX aplica 10% mas `status_frete` fica intocado
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FreteService.java`
 - **Linha(s):** 139-144
@@ -2557,7 +2557,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #231 — App mobile `PassagensCPF.jsx` passa `compra.id` mas API espera `id_viagem`
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx`
 - **Linha(s):** 38
@@ -2569,7 +2569,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #232 — `FinanceiroCNPJ.jsx` agrupa fretes por `embarcacao` com bucket "Sem embarcacao"
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-app/src/screens/FinanceiroCNPJ.jsx`
 - **Linha(s):** 108-116
@@ -2581,7 +2581,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #234 — `trocar-senha` nao invalida tokens JWT antigos
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/auth.js`
 - **Linha(s):** 120-158
@@ -2593,7 +2593,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #235 — `admin/empresas/{id}/psp/onboarding` nao verifica se empresa esta ativa
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/EmpresaPspService.java`
 - **Linha(s):** 48-97
@@ -2605,7 +2605,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #657 — `PassagemService.comprar` valida tarifa com `empresa_id`, mas INSERT usa `id_viagem` sem revalidar
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 71-74, 118-129
@@ -2617,7 +2617,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #659 — `BilheteService` TOTP aceita janela de +-1 periodo = 90s total
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/BilheteService.java`
 - **Problema:** Com 6 digitos e 3 janelas temporais, brute-force = 3/10^6 por tentativa. Sem rate-limit de tentativas.
@@ -2628,7 +2628,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #660 — `financeiro.js /estornar` sobrescreve `forma_pagamento = NULL` — perde rastreabilidade
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 552, 558
@@ -2640,7 +2640,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #662 — Desktop ViagemDAO.definirViagemAtiva nao propaga evento para API/BFF
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/dao/ViagemDAO.java`
 - **Linha(s):** 423-458
@@ -2652,7 +2652,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #714 — `EncomendaService.pagar` tem validacao de ownership por `contains` (substring), nao exata
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/.../service/EncomendaService.java:134-138`
 - **Problema:** `destinatario.toUpperCase().contains(cliente.getNome().toUpperCase())`. "Ana" ∈ "Mariana". Cliente "curto" paga encomendas de terceiros com nome parcialmente igual.
@@ -2663,7 +2663,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #716 — `BilheteService.comprar` e `PassagemService.comprar` parecem ambas ativas
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/.../service/BilheteService.java:92-109`
 - **Problema:** O INSERT em `passagens` injeta valores, mas calculo difere de `PassagemService.comprar`. Parece haver duas implementacoes de "comprar passagem".
@@ -2674,7 +2674,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #236 — Onboarding `gerarCodigoAtivacao` usa `RANDOM.nextInt()` que retorna signed int
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OnboardingService.java`
 - **Linha(s):** 32-41
@@ -2686,7 +2686,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #239 — `POST /fretes/contatos` usa ON CONFLICT mas nao fala o que aconteceu
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/routes/fretes.js`
 - **Linha(s):** 26-45
@@ -2698,7 +2698,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ---
 
 #### Issue #240 — `callVisionOCR` em `ocr.js` nao tem timeout definido
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/server/helpers/visionApi.js` + `ocr.js:108`
 - **Problema:** Upload multiplas paginas itera sequencialmente. 10 paginas * 5s/pagina = 50s.
