@@ -9,6 +9,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -99,9 +100,10 @@ public class RelatorioPassagensController implements Initializable {
     }
 
     private void carregarTudoEmBackground() {
-        new Thread(() -> {
-            try {
-                // --- Fase 1: Carregar filtros (queries leves) ---
+        // #DR278: Task<Void> + setOnFailed garante feedback no FX thread mesmo se a carga
+        //   morrer com excecao nao tratada (antes: morria silenciosa, UI travava).
+        Task<Void> task = new Task<>() {
+            @Override protected Void call() throws Exception {
                 Viagem viagemAtiva = viagemDAO.buscarViagemAtiva();
 
                 List<String> viagens = new ArrayList<>();
@@ -190,15 +192,21 @@ public class RelatorioPassagensController implements Initializable {
                     inicializando = false;
                     configurarListenersDosFiltros();
                 });
-
-            } catch (Exception e) {
-                AppLogger.error("RelatorioPassagensController", e.getMessage(), e);
-                Platform.runLater(() -> {
-                    inicializando = false;
-                    AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao carregar dados do relat\u00f3rio: " + e.getMessage());
-                });
+                return null;
             }
-        }).start();
+        };
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            String msg = ex != null && ex.getMessage() != null ? ex.getMessage() : "erro desconhecido";
+            AppLogger.error("RelatorioPassagensController", "Task failed: " + msg, ex);
+            Platform.runLater(() -> {
+                inicializando = false;
+                AlertHelper.show(AlertType.ERROR, "Erro", "Falha ao carregar relat\u00f3rio: " + msg);
+            });
+        });
+        Thread t = new Thread(task, "rel-passagens-load");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void configurarColunasTabela() {

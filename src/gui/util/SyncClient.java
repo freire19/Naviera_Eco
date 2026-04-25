@@ -33,6 +33,9 @@ public class SyncClient {
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}.*");
     private static final Pattern DATE_PATTERN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    // #DR277: chunk de upload — sync processa em FIFO ate drenar todos pendentes
+    //   sem nunca tentar payload >500 registros por POST.
+    private static final int UPLOAD_BATCH_LIMIT = 500;
 
     // Tabelas permitidas para sync — ORDEM IMPORTA: tabelas referenciadas primeiro
     // (embarcacoes/rotas antes de viagens, passageiros antes de passagens)
@@ -288,23 +291,22 @@ public class SyncClient {
      * Garante que ha um token JWT valido. Tenta autenticar se necessario.
      */
     private boolean garantirAutenticacao() {
+        // #DR276: parse JWT payload com Jackson em vez de regex/substring — formato pode variar
+        //   (chaves "exp" aparecendo em sub-objetos quebravam o parser antigo).
         if (jwtToken != null && !jwtToken.isEmpty()) {
-            // Decode JWT payload and check exp
             try {
                 String[] parts = jwtToken.split("\\.");
                 if (parts.length >= 2) {
-                    String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]), java.nio.charset.StandardCharsets.UTF_8);
-                    // Simple JSON parse for "exp" field
-                    int expIdx = payload.indexOf("\"exp\"");
-                    if (expIdx >= 0) {
-                        String after = payload.substring(expIdx + 5).replaceFirst("[^0-9]+", "");
-                        long exp = Long.parseLong(after.replaceFirst("[^0-9].*", ""));
-                        if (System.currentTimeMillis() / 1000 > exp - 60) { // 60s buffer
-                            jwtToken = null; // Force re-auth
+                    byte[] payloadBytes = java.util.Base64.getUrlDecoder().decode(parts[1]);
+                    com.fasterxml.jackson.databind.JsonNode node = MAPPER.readTree(payloadBytes);
+                    if (node.has("exp")) {
+                        long exp = node.get("exp").asLong();
+                        if (System.currentTimeMillis() / 1000 > exp - 60) {
+                            jwtToken = null;
                         }
                     }
                 }
-            } catch (Exception ignored) { /* If decode fails, let server reject */ }
+            } catch (Exception ignored) { /* se nao parseia, deixa o server rejeitar */ }
         }
         if (jwtToken != null && !jwtToken.isEmpty()) {
             return true;
@@ -487,9 +489,21 @@ public class SyncClient {
 
             if (registrosDownload != null) {
                 resultado.registrosRecebidos = registrosDownload.size();
+                // #DR275: aplicar em UMA transacao — sem isso, falha no meio do batch deixa
+                //   banco local em estado inconsistente (parte aplicado, parte nao).
                 try (java.sql.Connection connDownload = dao.ConexaoBD.getConnection()) {
-                    for (Map<String, Object> registro : registrosDownload) {
-                        aplicarRegistroRecebido(connDownload, tabela, registro);
+                    boolean autoCommitOriginal = connDownload.getAutoCommit();
+                    connDownload.setAutoCommit(false);
+                    try {
+                        for (Map<String, Object> registro : registrosDownload) {
+                            aplicarRegistroRecebido(connDownload, tabela, registro);
+                        }
+                        connDownload.commit();
+                    } catch (Exception e) {
+                        try { connDownload.rollback(); } catch (Exception ignored) {}
+                        throw e;
+                    } finally {
+                        try { connDownload.setAutoCommit(autoCommitOriginal); } catch (Exception ignored) {}
                     }
                 }
             }
@@ -544,7 +558,10 @@ public class SyncClient {
 
         // Construir WHERE: sincronizado = FALSE AND empresa_id = ?
         // Tabelas com 'excluido' podem ter registros excluidos para enviar como DELETE
-        String sql = "SELECT * FROM " + tabela + " WHERE sincronizado = FALSE AND empresa_id = ?";
+        // #DR277: LIMIT explicito evita carregar 100k+ registros pendentes pos-offline em RAM
+        //   e estourar payload do POST /api/sync. ORDER BY garante FIFO e progresso entre rodadas.
+        String sql = "SELECT * FROM " + tabela + " WHERE sincronizado = FALSE AND empresa_id = ? "
+            + "ORDER BY ultima_atualizacao NULLS FIRST LIMIT " + UPLOAD_BATCH_LIMIT;
 
         try (java.sql.Connection conn = dao.ConexaoBD.getConnection();
              java.sql.PreparedStatement stmt = conn.prepareStatement(sql)) {

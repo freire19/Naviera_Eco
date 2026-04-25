@@ -166,7 +166,13 @@ public class TelaPrincipalController implements Initializable {
 
             @Override
             protected void failed() {
-                AppLogger.warn("TelaPrincipalController", "Erro ao carregar dados iniciais: " + getException().getMessage());
+                // #DR279: dashboard silenciosamente vazio em falha confunde operador.
+                //   Logar + mostrar alerta na FX thread em vez de so warn.
+                Throwable ex = getException();
+                AppLogger.error("TelaPrincipalController", "Erro ao carregar dashboard: " + (ex != null ? ex.getMessage() : "?"), ex);
+                Platform.runLater(() ->
+                    AlertHelper.show(javafx.scene.control.Alert.AlertType.ERROR,
+                        "Erro", "Falha ao carregar dashboard. Verifique conexão e veja logs."));
             }
         };
         Thread t = new Thread(taskInit);
