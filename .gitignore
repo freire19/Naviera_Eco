@@ -47,7 +47,7 @@ logs/
 
 # Node
 node_modules/
-package-lock.json
+# #DS5-418: package-lock.json deve ser commitado para reproducibilidade + audits CVE.
 
 # Maven
 target/
