@@ -18,18 +18,19 @@
 | Novos problemas — Desktop Java | 6 |
 | Novos problemas — Apps React | 6 |
 | **Total de NOVAS issues ativas** | ~~26~~ → **25** (#DR260 resolvido) |
-| **Total de issues ativas (V6.0)** | ~~53~~ → **45** (8 CRITICOs conferidos em 2026-04-23) |
+| **Total de issues ativas (V6.0)** | ~~53~~ → ~~45~~ → **26** (8 CRITICOs em 2026-04-23 + 19 ALTOs em 2026-04-25) |
 
 ### Por severidade (ativos)
 
 | Severidade | Quantidade |
 |------------|-----------|
 | CRITICO | ~~8~~ → **0** _(conferidos em 2026-04-23)_ |
-| ALTO | 19 |
+| ALTO | ~~19~~ → **0** _(17 fixados + 2 ja resolvidos antes em 2026-04-25)_ |
 | MEDIO | 21 |
 | BAIXO | 5 |
 
-> **2026-04-23** — conferidos os 8 CRITICOs (7 de AUDIT_V1.3 sec 2.4 + 1 novo DR260). **TODOS JA ESTAVAM CORRIGIDOS NO CODIGO** antes desta verificacao — o audit V6.0 foi gerado em 2026-04-18 e os fixes foram aplicados em commits posteriores. Resta 0 CRITICO em DEEP_RESILIENCE.
+> **2026-04-23** — conferidos os 8 CRITICOs. Todos ja estavam corrigidos no codigo.
+> **2026-04-25** — fechados os 19 ALTOs (8 V1.3 sec 2.4 + 9 V6.0 + #303/#DR262/#DR265/#DR267 ja resolvidos antes). Commits api/web/desktop/app na sessao de closeout. Resta 0 ALTO em DEEP_RESILIENCE.
 
 ---
 
@@ -131,7 +132,7 @@ private JsonNode post(String path, Map<String, Object> body) throws Exception {
 ### ALTOS
 
 #### Issue #DR261 — AsaasGateway: calculo manual de split diverge do retornado pelo Asaas
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 107-110
@@ -155,7 +156,7 @@ if (splitResp.isArray() && splitResp.size() > 0) {
 ---
 
 #### Issue #DR262 — AsaasGateway.obterOuCriarCustomer: URL query sem encoding
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 216
@@ -227,7 +228,7 @@ if (pct != null && (pct.signum() < 0 || pct.compareTo(BigDecimal.valueOf(100)) >
 ### ALTOS
 
 #### Issue #DR265 — express.json() sem limite — payload grande nao rejeitado cedo
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/index.js`
 - **Linha(s):** 47
@@ -244,7 +245,7 @@ app.use('/api/ocr', express.json({ limit: '1mb' })); // ocr ja tem validacao cus
 ---
 
 #### Issue #DR266 — Graceful shutdown nao drena o pool PG
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/index.js`
 - **Linha(s):** 95-105
@@ -269,7 +270,7 @@ function shutdown(signal) {
 ---
 
 #### Issue #DR267 — tenantMiddleware: empresa desativada continua acessivel por ate 60s
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
 - **Linha(s):** 38-41
@@ -389,7 +390,7 @@ app.get('/api/health', async (req, res) => {
 ### ALTOS
 
 #### Issue #DR274 — ViagemDAO.definirViagemAtiva: COMMIT parcial deixa zero viagens ativas
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `src/dao/ViagemDAO.java`
 - **Linha(s):** 423-458
@@ -500,7 +501,7 @@ taskInit.setOnFailed(e -> {
 ### ALTOS
 
 #### Issue #DR280 — useApi: setState apos unmount via .finally()
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/api.js`
 - **Linha(s):** 62-95
@@ -525,7 +526,7 @@ useEffect(() => {
 ---
 
 #### Issue #DR281 — LoginScreen/TelaCadastro: double-submit possivel via Enter repetido
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/LoginScreen.jsx`, `TelaCadastroCPF.jsx`, `TelaCadastroCNPJ.jsx`
 - **Problema:** Botao e desabilitado via `disabled={loginLoading}`, mas `loginLoading` e setado DENTRO de `doLogin`. Teclado com autorepeat ou toque duplo pode disparar 2x antes do setState propagar (React agenda, nao aplica imediato).
@@ -547,7 +548,7 @@ const doLogin = async () => {
 ---
 
 #### Issue #DR282 — PassagensCPF/EncomendaCPF confirmarCompra: catch mascara erro de parse apos res.ok=false
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_RESILIENCE V6.0 ALTOs closeout — fix sec/resilience round 2026-04-25)
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-app/src/screens/PassagensCPF.jsx` (L34-42), `EncomendaCPF.jsx` (L29-47)
 - **Problema:** Bloco `try { const res = await authFetch(...); const data = await res.json(); if (!res.ok) ... } catch { setErr("Erro de conexao"); }`. Se backend retornar 200 com body invalido (caractere nao-JSON), `res.json()` lanca — catch generico mostra "Erro de conexao" mesmo que a transacao tenha passado no servidor.
@@ -680,22 +681,22 @@ Todos os 8 CRITICOs ja estavam corrigidos no codigo no momento da conferencia (2
 
 ### P1 — Importante (ALTO)
 
-- [ ] **#302** PSP 2 round-trips com retry + Idempotency-Key
-- [ ] **#307** fetchWithRetry: retry em 429 com Retry-After
-- [ ] **#309** SyncService: retornar uuids falhos para cliente
-- [ ] **#310** SyncClient: sinalizar falhas consecutivas via AlertHelper/tray
-- [ ] **#313** GlobalExceptionHandler: correlationId em log + response
-- [ ] **#314** BFF uncaughtException: drenar pool antes de exit
-- [ ] **#319** useWebSocket: heartbeatIncoming/Outgoing 10000
-- [ ] **#DR261** AsaasGateway: usar split retornado pelo Asaas
-- [ ] **#DR262** AsaasGateway: normalizar cpfCnpj em query
-- [ ] **#DR265** express.json limit 1mb
-- [ ] **#DR266** Graceful shutdown drenando pool PG
-- [ ] **#DR267** tenantMiddleware TTL curto ou LISTEN/NOTIFY
-- [ ] **#DR274** ViagemDAO.definirViagemAtiva: verificar affected rows antes de commit
-- [ ] **#DR280** useApi: flag cancelled
-- [ ] **#DR281** Login/Cadastro: pendingRef guard
-- [ ] **#DR282** confirmarCompra: separar catch de rede vs parse
+- [x] **#302** PSP 2 round-trips com retry + Idempotency-Key
+- [x] **#307** fetchWithRetry: retry em 429 com Retry-After
+- [x] **#309** SyncService: retornar uuids falhos para cliente
+- [x] **#310** SyncClient: sinalizar falhas consecutivas via AlertHelper/tray
+- [x] **#313** GlobalExceptionHandler: correlationId em log + response
+- [x] **#314** BFF uncaughtException: drenar pool antes de exit
+- [x] **#319** useWebSocket: heartbeatIncoming/Outgoing 10000
+- [x] **#DR261** AsaasGateway: usar split retornado pelo Asaas
+- [x] **#DR262** AsaasGateway: normalizar cpfCnpj em query
+- [x] **#DR265** express.json limit 1mb
+- [x] **#DR266** Graceful shutdown drenando pool PG
+- [x] **#DR267** tenantMiddleware TTL curto ou LISTEN/NOTIFY
+- [x] **#DR274** ViagemDAO.definirViagemAtiva: verificar affected rows antes de commit
+- [x] **#DR280** useApi: flag cancelled
+- [x] **#DR281** Login/Cadastro: pendingRef guard
+- [x] **#DR282** confirmarCompra: separar catch de rede vs parse
 
 ### P2 — Importante (MEDIO)
 
