@@ -124,29 +124,39 @@ router.post('/upload', uploadLimiter, uploadMulti, async (req, res) => {
       const loteResult = await geminiParseLote(ocrResult.text, padrao.rows)
       log.info('OCR', 'Lote parser OK', { empresa_id: empresaId, encomendas: loteResult.encomendas.length })
 
-      // Criar N lancamentos — 1 por encomenda
+      // #DR268: criar N lancamentos em UMA transacao — sem isso, falha no meio deixa lote incompleto
+      //   (parte salva, parte nao) sem rollback possivel via lote_uuid.
       const fotoRelPath = path.relative(UPLOAD_PATH, primaryFile.path)
       const loteUuid = randomUUID()
       const lancamentos = []
+      const loteClient = await pool.connect()
+      try {
+        await loteClient.query('BEGIN')
+        for (let i = 0; i < loteResult.encomendas.length; i++) {
+          const enc = loteResult.encomendas[i]
+          const encUuid = randomUUID()
+          const encDados = { ...enc, rota: enc.rota || loteResult.rota || '' }
 
-      for (let i = 0; i < loteResult.encomendas.length; i++) {
-        const enc = loteResult.encomendas[i]
-        const encUuid = randomUUID()
-        const encDados = { ...enc, rota: enc.rota || loteResult.rota || '' }
-
-        const result = await pool.query(`
-          INSERT INTO ocr_lancamentos (uuid, empresa_id, id_viagem, foto_path, foto_original_name,
-            ocr_texto_bruto, ocr_confianca, dados_extraidos,
-            status, id_usuario_criou, nome_usuario_criou, tipo, lote_uuid, lote_index)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10, 'lote', $11, $12)
-          ON CONFLICT (uuid) DO UPDATE SET uuid = ocr_lancamentos.uuid
-          RETURNING *
-        `, [
-          encUuid, empresaId, viagem_id || null, fotoRelPath, primaryFile.originalname,
-          ocrResult.text, ocrResult.confidence, JSON.stringify(encDados),
-          req.user.id, req.user.login || null, loteUuid, i
-        ])
-        lancamentos.push({ lancamento: result.rows[0], dados_extraidos: encDados })
+          const result = await loteClient.query(`
+            INSERT INTO ocr_lancamentos (uuid, empresa_id, id_viagem, foto_path, foto_original_name,
+              ocr_texto_bruto, ocr_confianca, dados_extraidos,
+              status, id_usuario_criou, nome_usuario_criou, tipo, lote_uuid, lote_index)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10, 'lote', $11, $12)
+            ON CONFLICT (uuid) DO UPDATE SET uuid = ocr_lancamentos.uuid
+            RETURNING *
+          `, [
+            encUuid, empresaId, viagem_id || null, fotoRelPath, primaryFile.originalname,
+            ocrResult.text, ocrResult.confidence, JSON.stringify(encDados),
+            req.user.id, req.user.login || null, loteUuid, i
+          ])
+          lancamentos.push({ lancamento: result.rows[0], dados_extraidos: encDados })
+        }
+        await loteClient.query('COMMIT')
+      } catch (e) {
+        await loteClient.query('ROLLBACK').catch(() => {})
+        throw e
+      } finally {
+        loteClient.release()
       }
 
       return res.status(201).json({

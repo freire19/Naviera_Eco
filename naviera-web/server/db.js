@@ -1,6 +1,9 @@
 import pg from 'pg'
 const { Pool } = pg
 
+// #DR271: keepAlive evita firewall/LB matar conexoes ociosas sem o pool saber
+//   (proxima query receberia ECONNRESET). allowExitOnIdle:false impede graceful shutdown
+//   sair antes de pool.end().
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5437'),
@@ -10,8 +13,11 @@ const pool = new Pool({
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
-  statement_timeout: 30000,   // 30s max por query
-  query_timeout: 30000        // 30s max por query
+  statement_timeout: 30000,
+  query_timeout: 30000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+  allowExitOnIdle: false
 })
 
 pool.on('error', (err) => {

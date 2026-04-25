@@ -12,6 +12,21 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('[ErrorBoundary] Erro capturado:', error, errorInfo)
+    // #DR285: melhor esforco — envia diagnostico ao BFF.
+    try {
+      fetch('/api/client-errors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          message: error?.message?.slice(0, 500) || 'unknown',
+          stack: error?.stack?.slice(0, 2000) || null,
+          componentStack: errorInfo?.componentStack?.slice(0, 2000) || null,
+          user_agent: navigator?.userAgent?.slice(0, 200) || null,
+          rota: window?.location?.pathname || null
+        })
+      }).catch(() => {})
+    } catch { /* ignored */ }
   }
 
   handleReload = () => {

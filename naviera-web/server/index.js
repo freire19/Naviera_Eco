@@ -37,6 +37,7 @@ import ocrRoutes from './routes/ocr.js'
 import documentosRoutes from './routes/documentos.js'
 import reciboRoutes from './routes/recibos.js'
 import extratoClienteRoutes from './routes/extrato-cliente.js'
+import clientErrorsRoutes from './routes/client-errors.js'
 import errorHandler from './middleware/errorHandler.js'
 
 const app = express()
@@ -111,11 +112,18 @@ app.use('/api/ocr', ocrRoutes)
 app.use('/api/documentos', documentosRoutes)
 app.use('/api/recibos', reciboRoutes)
 app.use('/api/extrato-cliente', extratoClienteRoutes)
+app.use('/api/client-errors', clientErrorsRoutes)
 
-// #DS5-235: health-check publico — sem timestamp para nao vazar clock skew, sem detalhes
-//   de versao/build. Resposta minima 200 OK e suficiente para load balancer/monitor.
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' })
+// #DS5-235 + #DR272: health-check publico — sem timestamp/versao para nao vazar info.
+//   SELECT 1 confirma que DB responde (connection_timeout/query_timeout do pool ja limitam wait);
+//   load balancer so deve rotear trafego se 200 OK.
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1')
+    res.json({ status: 'ok' })
+  } catch {
+    res.status(503).json({ status: 'degraded' })
+  }
 })
 
 // Centralized error handler — must be LAST middleware
