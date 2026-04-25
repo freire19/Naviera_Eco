@@ -6,13 +6,14 @@ import Cd from "../components/Card.jsx";
 import Av from "../components/Avatar.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import Toast from "../components/Toast.jsx";
+import ErrorRetry from "../components/ErrorRetry.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useAuth } from "../contexts/AuthContext.jsx";
 
 export default function AmigosCPF() {
   const { t } = useTheme();
   const { authHeaders } = useAuth();
-  const { data: amigos, loading, refresh } = useApi("/amigos", authHeaders);
+  const { data: amigos, loading, erro, refresh } = useApi("/amigos", authHeaders);
   const { data: pendentes, refresh: refreshPendentes } = useApi("/amigos/pendentes", authHeaders);
   const { data: sugestoes } = useApi("/amigos/sugestoes", authHeaders);
   const [busca, setBusca] = useState("");
@@ -48,9 +49,11 @@ export default function AmigosCPF() {
     refresh(); refreshPendentes();
   };
 
-  const removerAmigo = async (amizadeId) => {
+  const removerAmigo = async (amizadeId, nome, contexto = "remover") => {
+    const msg = contexto === "recusar" ? `Recusar convite de ${nome}?` : `Remover ${nome} dos amigos?`;
+    if (!window.confirm(msg)) return;
     await authFetch(`${API}/amigos/${amizadeId}`, { method: "DELETE", headers: authHeaders });
-    refresh();
+    refresh(); refreshPendentes();
   };
 
   const PessoaCard = ({ p, acao }) => (
@@ -64,9 +67,10 @@ export default function AmigosCPF() {
   );
 
   if (loading) return <Skeleton height={60} count={4} />;
+  if (erro) return <ErrorRetry erro={erro} onRetry={refresh} />;
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Amigos</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Amigos</h1>
     <div style={{ position: "relative" }}>
       <input value={busca} onChange={e => pesquisar(e.target.value)} placeholder="Buscar pessoas por nome..."
         className="input-field" style={{ width: "100%", padding: "10px 14px 10px 36px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.soft, color: t.tx, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
@@ -87,7 +91,7 @@ export default function AmigosCPF() {
       {pendentes.map(p => <PessoaCard key={p.amizadeId} p={p} acao={
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => aceitarAmigo(p.amizadeId)} style={{ background: t.priGrad, border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: "#fff", fontSize: 11, fontWeight: 600 }}>Aceitar</button>
-          <button onClick={() => removerAmigo(p.amizadeId)} style={{ background: "none", border: `1px solid ${t.border}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: t.txMuted, fontSize: 11 }}>Recusar</button>
+          <button onClick={() => removerAmigo(p.amizadeId, p.nome, "recusar")} style={{ background: "none", border: `1px solid ${t.border}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: t.txMuted, fontSize: 11 }}>Recusar</button>
         </div>
       } />)}
     </>}
@@ -103,7 +107,7 @@ export default function AmigosCPF() {
     {!resultados && amigos?.length > 0 && <>
       <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft, marginTop: 4 }}>Seus amigos ({amigos.length})</div>
       {amigos.map(f => <PessoaCard key={f.amizadeId || f.id} p={f} acao={
-        <button onClick={() => removerAmigo(f.amizadeId)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 11, cursor: "pointer" }}>Remover</button>
+        <button onClick={() => removerAmigo(f.amizadeId, f.nome)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 11, cursor: "pointer" }}>Remover</button>
       } />)}
     </>}
 

@@ -61,7 +61,7 @@ export default function EncomendaCPF() {
   // Tela de sucesso (apos pagar PIX/CARTAO) mostra QR/checkout
   if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <button onClick={() => { setResultado(null); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h1>
     <Cd style={{ padding: 14 }}>
       <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{resultado.numeroEncomenda}</div>
       <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {resultado.destinatario || "-"}</div>
@@ -87,7 +87,7 @@ export default function EncomendaCPF() {
     ];
     return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <button onClick={() => { setPagando(null); setErrPag(""); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
-      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagar encomenda</h3>
+      <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagar encomenda</h1>
       <Cd style={{ padding: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{pagando.numero_encomenda}</div>
         <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>De: {pagando.remetente || "-"}</div>
@@ -122,7 +122,7 @@ export default function EncomendaCPF() {
 
   return (
     <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Encomendas</h3>
+      <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Encomendas</h1>
 
       <input
         value={busca}

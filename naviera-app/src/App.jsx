@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from "react";
 import "./App.css";
 import {
   IconHome, IconHeart, IconShip, IconTicket, IconGrid, IconCart,
@@ -13,19 +13,22 @@ import useNotifications from "./hooks/useNotifications.js";
 import Header from "./components/Header.jsx";
 import TabBar from "./components/TabBar.jsx";
 import NotificationBanner from "./components/NotificationBanner.jsx";
+import Skeleton from "./components/Skeleton.jsx";
 import usePWA from "./hooks/usePWA.js";
 import LoginScreen from "./screens/LoginScreen.jsx";
-import HomeCPF from "./screens/HomeCPF.jsx";
-import AmigosCPF from "./screens/AmigosCPF.jsx";
-import MapaCPF from "./screens/MapaCPF.jsx";
-import PassagensCPF from "./screens/PassagensCPF.jsx";
-import HomeCNPJ from "./screens/HomeCNPJ.jsx";
-import PedidosCNPJ from "./screens/PedidosCNPJ.jsx";
-import LojasParceiras from "./screens/LojasParceiras.jsx";
-import FinanceiroCNPJ from "./screens/FinanceiroCNPJ.jsx";
-import LojaCNPJ from "./screens/LojaCNPJ.jsx";
-import PerfilScreen from "./screens/PerfilScreen.jsx";
-import EncomendaCPF from "./screens/EncomendaCPF.jsx";
+
+// Code-split: cada screen carrega sob demanda + STOMP/SockJS sai do bundle pre-login.
+const HomeCPF = lazy(() => import("./screens/HomeCPF.jsx"));
+const AmigosCPF = lazy(() => import("./screens/AmigosCPF.jsx"));
+const MapaCPF = lazy(() => import("./screens/MapaCPF.jsx"));
+const PassagensCPF = lazy(() => import("./screens/PassagensCPF.jsx"));
+const HomeCNPJ = lazy(() => import("./screens/HomeCNPJ.jsx"));
+const PedidosCNPJ = lazy(() => import("./screens/PedidosCNPJ.jsx"));
+const LojasParceiras = lazy(() => import("./screens/LojasParceiras.jsx"));
+const FinanceiroCNPJ = lazy(() => import("./screens/FinanceiroCNPJ.jsx"));
+const LojaCNPJ = lazy(() => import("./screens/LojaCNPJ.jsx"));
+const PerfilScreen = lazy(() => import("./screens/PerfilScreen.jsx"));
+const EncomendaCPF = lazy(() => import("./screens/EncomendaCPF.jsx"));
 
 // #DS5-209: migra credenciais de localStorage (legado) para sessionStorage no import do modulo.
 //   StrictMode roda useState initializers 2x — manter em escopo de modulo evita o duplo-efeito.
@@ -210,7 +213,9 @@ export default function Naviera() {
                 </div>
               </div>
             )}
-            <div style={{ padding: "16px 18px 100px" }}>{screen()}</div>
+            <main style={{ padding: "16px 18px 100px" }}>
+              <Suspense fallback={<Skeleton height={80} count={3} />}>{screen()}</Suspense>
+            </main>
             <TabBar tabs={tabs} tab={tab} setTab={(id) => { setTab(id); setTabHistory([]); }} />
             {notifSuportado && (
               <NotificationBanner

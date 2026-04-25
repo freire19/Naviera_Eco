@@ -15,7 +15,7 @@ export default function PedidosCNPJ() {
   if (loading) return <Skeleton height={80} count={3} />;
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} />;
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pedidos da loja</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pedidos da loja</h1>
     {(!pedidos || pedidos.length === 0) ? <Cd style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhum pedido recebido ainda.</div></Cd> :
     pedidos.map(p => <Cd key={p.id} style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>PED-{String(p.id).padStart(4, "0")}</span><Badge status={p.status || "Aguardando"} /></div>

@@ -21,7 +21,7 @@ export default function HomeCNPJ({ onNav }) {
   if (ef) return <ErrorRetry erro={ef} onRetry={rf} />;
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-    <div><span style={{ fontSize: 13, color: t.txMuted }}>Empresa</span><h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>{usuario?.nome || "Empresa"}</h2></div>
+    <div><span style={{ fontSize: 13, color: t.txMuted }}>Empresa</span><h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>{usuario?.nome || "Empresa"}</h1></div>
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
       {[{ l: "Fretes ativos", v: lf ? "..." : String(fretesAtivos.length), c: t.pri, Ic: IconPackage },
         { l: "Pedidos", v: lp ? "..." : String(pedidos?.length || 0), c: t.amber, Ic: IconCart },

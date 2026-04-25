@@ -37,7 +37,7 @@ export default function TelaCadastro({ onVoltar, onSucesso }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", maxWidth: 380 }}>
       <button onClick={onVoltar} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 14, cursor: "pointer", padding: 0, textAlign: "left", display: "flex", alignItems: "center", gap: 4 }}><IconBack size={16} color={t.txMuted} /> Voltar</button>
-      <div style={{ textAlign: "center", marginBottom: 4 }}><Logo size={40} /><h2 style={{ margin: "8px 0 2px", fontSize: 22, fontWeight: 700 }}>Criar conta</h2><p style={{ fontSize: 12, color: t.txMuted, margin: 0 }}>Preencha seus dados para come\u00e7ar</p></div>
+      <div style={{ textAlign: "center", marginBottom: 4 }}><Logo size={40} /><h1 style={{ margin: "8px 0 2px", fontSize: 22, fontWeight: 700 }}>Criar conta</h1><p style={{ fontSize: 12, color: t.txMuted, margin: 0 }}>Preencha seus dados para come\u00e7ar</p></div>
       <div style={{ display: "flex", gap: 8 }}>
         {["CPF", "CNPJ"].map(tp => <button key={tp} onClick={() => { setTipo(tp); set("documento", ""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${tipo === tp ? t.pri : t.border}`, background: tipo === tp ? t.accent : "transparent", color: tipo === tp ? t.pri : t.txMuted, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{tp}</button>)}
       </div>

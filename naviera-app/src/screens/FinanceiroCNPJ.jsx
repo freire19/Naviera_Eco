@@ -1,4 +1,12 @@
 import { useState } from "react";
+// #DP082: opts em escopo de modulo — antes recriava o array a cada render do PagandoView,
+//   forçando React a tratar Cd elements como nova prop reference.
+const FORMAS_PAGAMENTO = [
+  { v: "PIX", t: "PIX", s: "10% de desconto" },
+  { v: "CARTAO", t: "Cartao", s: "Sem desconto" },
+  { v: "BOLETO", t: "Boleto", s: "Sem desconto, link via email" },
+  { v: "BARCO", t: "Pagar no barco", s: "Sem desconto, no embarque" },
+];
 import { API, useApi, authFetch } from "../api.js";
 import { fmt, money } from "../helpers.js";
 import Badge from "../components/Badge.jsx";
@@ -47,7 +55,7 @@ export default function FinanceiroCNPJ() {
   // Tela de sucesso com QR/boleto/checkout
   if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <button onClick={() => { setResultado(null); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h1>
     <Cd style={{ padding: 14 }}>
       <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>FRT-{resultado.numeroFrete}</div>
       <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {resultado.destinatario || "-"}</div>
@@ -70,15 +78,10 @@ export default function FinanceiroCNPJ() {
       : Math.max(0, (Number(pagando.valorNominal) || 0) - (Number(pagando.valorPago) || 0));
     const desconto10 = formaPag === "PIX" ? saldo * 0.10 : 0;
     const aPagar = saldo - desconto10;
-    const opts = [
-      { v: "PIX", t: "PIX", s: "10% de desconto" },
-      { v: "CARTAO", t: "Cartao", s: "Sem desconto" },
-      { v: "BOLETO", t: "Boleto", s: "Sem desconto, link via email" },
-      { v: "BARCO", t: "Pagar no barco", s: "Sem desconto, no embarque" },
-    ];
+    const opts = FORMAS_PAGAMENTO;
     return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <button onClick={() => { setPagando(null); setErrPag(""); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
-      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagar frete</h3>
+      <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagar frete</h1>
       <Cd style={{ padding: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>FRT-{pagando.numeroFrete || pagando.id}</div>
         <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {pagando.destinatario || "-"}</div>
@@ -128,7 +131,7 @@ export default function FinanceiroCNPJ() {
   const totalPago = listaGrupos.reduce((s, g) => s + g.pago, 0);
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Financeiro</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Financeiro</h1>
 
     <Cd style={{ padding: 16 }}>
       <div style={{ fontSize: 12, color: t.txMuted, marginBottom: 4 }}>Total pendente</div>

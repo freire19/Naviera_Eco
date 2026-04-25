@@ -20,7 +20,7 @@ export default function HomeCPF({ onNav }) {
   if (ev) return <ErrorRetry erro={ev} onRetry={rv} />;
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-    <div><span style={{ fontSize: 13, color: t.txMuted }}>Ol\u00e1,</span><h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{usuario?.nome || "Passageiro"}</h2></div>
+    <div><span style={{ fontSize: 13, color: t.txMuted }}>Ol\u00e1,</span><h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{usuario?.nome || "Passageiro"}</h1></div>
 
     {lv ? <Skeleton height={90} count={1} /> :
     proxima && <Cd style={{ border: `1px solid ${t.borderStrong}` }} onClick={() => onNav("mapa")}>

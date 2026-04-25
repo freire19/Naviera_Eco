@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Client } from "@stomp/stompjs";
-import SockJS from "sockjs-client/dist/sockjs";
 
 /**
  * useWebSocket — STOMP over SockJS for real-time notifications.
  *
+ * STOMP/SockJS sao import()-dinamicos: ~50KB ficam fora do bundle inicial e so
+ * carregam quando ha empresaId ativo (nunca para clients CPF/CNPJ no naviera-app).
+ *
  * @param {{ token: string|null, empresaId: string|number|null, apiUrl: string }} opts
- * @returns {{ connected: boolean, notifications: Array, clearNotifications: Function, unreadCount: number }}
  */
 export default function useWebSocket({ token, empresaId, apiUrl }) {
   const [connected, setConnected] = useState(false);
@@ -22,61 +22,66 @@ export default function useWebSocket({ token, empresaId, apiUrl }) {
   useEffect(() => {
     if (!token || !empresaId) return;
 
-    // Derive WS url: http://…/api -> http://…/api/ws
-    const wsUrl = `${apiUrl}/ws`;
+    let cancelled = false;
+    let client = null;
 
-    const client = new Client({
-      webSocketFactory: () => new SockJS(wsUrl),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      reconnectDelay: reconnectDelay.current,
-      // #319: STOMP heartbeats (ms) — sem isso, NAT/celular mantem conexao TCP "viva" mas
-      //   sem dados o broker nao detecta que o cliente sumiu (zombie). 10s e o sweet spot
-      //   para mobile (bateria) sem perder o evento de queda.
-      heartbeatIncoming: 10000,
-      heartbeatOutgoing: 10000,
+    Promise.all([
+      import("@stomp/stompjs"),
+      import("sockjs-client/dist/sockjs"),
+    ]).then(([{ Client }, SockJSMod]) => {
+      if (cancelled) return;
+      const SockJS = SockJSMod.default || SockJSMod;
+      const wsUrl = `${apiUrl}/ws`;
 
-      onConnect: () => {
-        setConnected(true);
-        // #026: reseta tanto o ref (proxima onStompError) quanto o client.reconnectDelay
-        //   que e o valor realmente lido pelo STOMP em reconexoes.
-        reconnectDelay.current = 2000;
-        client.reconnectDelay = 2000;
+      client = new Client({
+        webSocketFactory: () => new SockJS(wsUrl),
+        connectHeaders: { Authorization: `Bearer ${token}` },
+        reconnectDelay: reconnectDelay.current,
+        // #319: heartbeats 10s — NAT/celular mantem TCP "vivo" sem dados; sem isso o
+        //   broker nao detecta cliente zombie. 10s equilibra bateria mobile e deteccao.
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
 
-        client.subscribe(
-          `/topic/empresa/${empresaId}/notifications`,
-          (message) => {
-            try {
-              const payload = JSON.parse(message.body);
-              setNotifications((prev) => [payload, ...prev].slice(0, MAX_NOTIFICATIONS));
-            } catch {
-              // ignore malformed messages
+        onConnect: () => {
+          setConnected(true);
+          // #026: reseta ref e client.reconnectDelay (valor lido em reconexoes).
+          reconnectDelay.current = 2000;
+          client.reconnectDelay = 2000;
+
+          client.subscribe(
+            `/topic/empresa/${empresaId}/notifications`,
+            (message) => {
+              try {
+                const payload = JSON.parse(message.body);
+                setNotifications((prev) => [payload, ...prev].slice(0, MAX_NOTIFICATIONS));
+              } catch {
+                // ignore malformed messages
+              }
             }
-          }
-        );
-      },
+          );
+        },
 
-      onDisconnect: () => setConnected(false),
+        onDisconnect: () => setConnected(false),
 
-      onStompError: (frame) => {
-        console.warn("[WS] STOMP error", frame.headers?.message);
-        setConnected(false);
-        // #026: backoff exponencial ate 30s — sem atualizar client.reconnectDelay o STOMP
-        //   mantem o valor inicial (2s) e reconecta em loop tight em falhas repetidas.
-        reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000);
-        client.reconnectDelay = reconnectDelay.current;
-      },
+        onStompError: (frame) => {
+          console.warn("[WS] STOMP error", frame.headers?.message);
+          setConnected(false);
+          // #026: backoff exponencial ate 30s — sem atualizar reconnectDelay o STOMP
+          //   mantem 2s inicial e cai em loop tight em falhas repetidas.
+          reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000);
+          client.reconnectDelay = reconnectDelay.current;
+        },
 
-      onWebSocketError: () => {
-        // graceful degradation — app keeps working
-        setConnected(false);
-      },
-    });
+        onWebSocketError: () => setConnected(false),
+      });
 
-    clientRef.current = client;
-    client.activate();
+      clientRef.current = client;
+      client.activate();
+    }).catch(e => console.warn("[WS] falha ao carregar STOMP/SockJS:", e?.message));
 
     return () => {
-      client.deactivate();
+      cancelled = true;
+      if (client) client.deactivate();
       clientRef.current = null;
       setConnected(false);
     };

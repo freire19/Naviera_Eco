@@ -58,7 +58,7 @@ export default function PerfilScreen({ onFotoChange }) {
   if (!perfil) return <Cd style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Erro ao carregar perfil.</div></Cd>;
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Meu perfil</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Meu perfil</h1>
     {sucesso && <div role="status" style={{ padding: "10px 14px", borderRadius: 10, background: t.okBg, color: t.okTx, fontSize: 12, fontWeight: 500 }}>{sucesso}</div>}
     {erro && <div role="alert" style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12, fontWeight: 500 }}>{erro}</div>}
     <Cd style={{ padding: 18 }}>

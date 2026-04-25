@@ -33,7 +33,7 @@ export default function LojasParceiras() {
   }
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Lojas parceiras</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Lojas parceiras</h1>
     <div style={{ fontSize: 13, color: t.txMuted }}>Fornecedores verificados que embarcam pelo Naviera.</div>
     {(!lojas || lojas.length === 0) && <Cd style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhuma loja cadastrada.</div></Cd>}
     {lojas?.map(l => <Cd key={l.id} style={{ padding: 14 }} onClick={() => setSel(l.id)}>

@@ -15,11 +15,11 @@ export default function LojaCNPJ() {
   if (loading) return <Skeleton height={80} count={2} />;
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} />;
   if (!loja) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minha loja</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minha loja</h1>
     <Cd style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Voc\u00ea ainda n\u00e3o tem uma loja cadastrada.</div></Cd>
   </div>;
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <div style={{ display: "flex", justifyContent: "space-between" }}><h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minha loja</h3>{loja.verificada && <Badge status="Verificada" />}</div>
+    <div style={{ display: "flex", justifyContent: "space-between" }}><h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Minha loja</h1>{loja.verificada && <Badge status="Verificada" />}</div>
     <Cd style={{ padding: 16, border: `1px solid ${t.borderStrong}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}><Av letters={initials(loja.nomeLoja)} size={50} />
         <div><div style={{ fontSize: 16, fontWeight: 600 }}>{loja.nomeLoja}</div><div style={{ fontSize: 12, color: t.txMuted }}>{loja.segmento}</div></div></div>

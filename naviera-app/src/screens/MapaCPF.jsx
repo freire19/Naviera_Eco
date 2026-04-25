@@ -75,10 +75,23 @@ function useGps(authHeaders) {
   useEffect(() => { fetchGpsRef.current = fetchGps; }, [fetchGps]);
 
   useEffect(() => {
+    const startPolling = () => {
+      if (timerRef.current) return;
+      timerRef.current = setInterval(() => fetchGpsRef.current(true), REFRESH_MS);
+    };
+    const stopPolling = () => {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    };
+    const onVisibility = () => {
+      if (document.hidden) stopPolling();
+      else { fetchGpsRef.current(true); startPolling(); }
+    };
     fetchGpsRef.current(false);
-    timerRef.current = setInterval(() => fetchGpsRef.current(true), REFRESH_MS);
+    if (!document.hidden) startPolling();
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      clearInterval(timerRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
+      stopPolling();
       if (abortRef.current) abortRef.current.abort();
     };
   }, []);
@@ -258,7 +271,7 @@ export default function MapaCPF() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.tx }}>Mapa GPS</h3>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.tx }}>Mapa GPS</h1>
           <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>
             Posicao em tempo real das embarcacoes
           </div>

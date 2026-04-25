@@ -65,7 +65,7 @@ export default function PassagensCPF() {
     <div style={{ width: 64, height: 64, borderRadius: "50%", background: t.okBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <IconCheck size={32} color={t.ok} />
     </div>
-    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Passagem emitida!</h3>
+    <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Passagem emitida!</h1>
     <Cd style={{ padding: 16, width: "100%", textAlign: "center" }}>
       <div style={{ fontSize: 12, color: t.txMuted }}>Bilhete</div>
       <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri, marginTop: 4 }}>{resultado.numeroBilhete}</div>
@@ -90,7 +90,7 @@ export default function PassagensCPF() {
   // Tela de compra
   if (compra) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <button onClick={() => { setCompra(null); setTipoSel(null); setErro(""); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Comprar passagem</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Comprar passagem</h1>
     <Cd style={{ padding: 14, border: `1px solid ${t.borderStrong}` }}>
       <div style={{ fontSize: 16, fontWeight: 600 }}>{compra.embarcacao}</div>
       <div style={{ fontSize: 13, color: t.txMuted, marginTop: 2 }}>{compra.origem} \u2192 {compra.destino}</div>
@@ -147,9 +147,9 @@ export default function PassagensCPF() {
   // Tela de viagens de uma embarcacao
   if (selEmb) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <button onClick={() => setSelEmb(null)} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0, display: "flex", alignItems: "center", gap: 4 }}><IconBack size={14} color={t.txMuted} /> Voltar</button>
-    {selEmb.fotoUrl && <img src={`${API}${selEmb.fotoUrl}`} alt={selEmb.nome} style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 160 }} />}
+    {selEmb.fotoUrl && <img src={`${API}${selEmb.fotoUrl}`} alt={selEmb.nome} loading="lazy" decoding="async" style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 160 }} />}
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <div><h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{selEmb.nome}</h3>
+      <div><h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{selEmb.nome}</h1>
         <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>{selEmb.rotaPrincipal || selEmb.rotaAtual || ""}</div></div>
       <Badge status={selEmb.status || "NO_PORTO"} />
     </div>
@@ -169,7 +169,7 @@ export default function PassagensCPF() {
 
   // Tela principal
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Passagens</h3>
+    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Passagens</h1>
 
     {minhas?.length > 0 && <>
       <div style={{ fontSize: 13, fontWeight: 600, color: t.txSoft }}>Minhas passagens</div>
@@ -193,7 +193,7 @@ export default function PassagensCPF() {
     embFiltradas?.length > 0 ? embFiltradas.map(e => {
       const proxViagem = viagens?.find(v => v.embarcacao === e.nome && v.dataViagem >= hoje && !v.atual);
       return <Cd key={e.id} style={{ padding: 0, overflow: "hidden", cursor: "pointer" }} onClick={() => setSelEmb(e)}>
-        {e.fotoUrl && <img src={`${API}${e.fotoUrl}`} alt={e.nome} style={{ width: "100%", height: 100, objectFit: "cover" }} />}
+        {e.fotoUrl && <img src={`${API}${e.fotoUrl}`} alt={e.nome} loading="lazy" decoding="async" style={{ width: "100%", height: 100, objectFit: "cover" }} />}
         <div style={{ padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div><div style={{ fontSize: 15, fontWeight: 600 }}>{e.nome}</div>
