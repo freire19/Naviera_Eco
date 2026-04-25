@@ -1,9 +1,11 @@
 import pool from '../db.js'
+import { createBoundedMap } from '../utils/boundedCache.js'
 
-// Cache de slug → empresa para evitar query a cada request
-const cache = new Map()
-// DS4-040 fix: reduzido de 5min para 60s (empresa desativada fica acessivel por menos tempo)
-const CACHE_TTL = 60 * 1000 // 60 segundos
+// #DS5-220: bounded em 1000 — slug invalido validado antes do cache.
+const cache = createBoundedMap(1000)
+const CACHE_TTL = 60 * 1000
+const SLUG_MAX_LEN = 63 // RFC 1035 hostname label
+const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
 
 // #650: X-Tenant-Slug SO e confiavel quando vem do Nginx local (loopback) ou de um proxy explicitamente
 // declarado em TRUSTED_PROXY_IPS. Sem validar, qualquer cliente mandava o header e forjava tenant
@@ -46,6 +48,11 @@ export async function tenantMiddleware(req, res, next) {
     if (match) {
       slug = match[1].toLowerCase()
     }
+  }
+
+  // #DS5-220: rejeitar slugs absurdos antes de tocar o cache/DB.
+  if (slug && (slug.length > SLUG_MAX_LEN || !SLUG_RE.test(slug.toLowerCase()))) {
+    return res.status(400).json({ error: 'Slug invalido' })
   }
 
   // 3. Se nao tem slug (localhost em dev), usar empresa padrao

@@ -59,7 +59,8 @@ const storage = multer.diskStorage({
     // DS4-029 fix: forcar extensao por mimetype (antes: user-controlled originalname)
     const extMap = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }
     const ext = extMap[file.mimetype] || '.jpg'
-    const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+    // #DS5-222: CSPRNG (era Math.random).
+    const name = `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`
     cb(null, name)
   }
 })
@@ -879,6 +880,9 @@ router.get('/lancamentos/:id/doc-foto', async (req, res) => {
     const fullPath = assertSafePath(docPath)
     if (!fullPath) return res.status(403).json({ error: 'Acesso negado' })
 
+    // #DS5-207: Content-Disposition impede browser de tratar foto como navegacao.
+    //   nosniff vem do helmet global em server/index.js.
+    res.setHeader('Content-Disposition', `inline; filename="ocr-doc-${req.params.id}.jpg"`)
     // DP058: res.sendFile handles not-found via callback (removed sync existsSync)
     res.sendFile(fullPath, (err) => {
       if (err && !res.headersSent) res.status(404).json({ error: 'Foto nao encontrada no disco' })
@@ -943,6 +947,9 @@ router.get('/lancamentos/:id/foto', async (req, res) => {
     const fullPath = assertSafePath(result.rows[0].foto_path)
     if (!fullPath) return res.status(403).json({ error: 'Acesso negado' })
 
+    // #DS5-207: Content-Disposition impede browser de tratar foto como navegacao.
+    //   nosniff vem do helmet global em server/index.js.
+    res.setHeader('Content-Disposition', `inline; filename="ocr-${req.params.id}.jpg"`)
     // DP058: res.sendFile handles not-found via callback (removed sync existsSync)
     res.sendFile(fullPath, (err) => {
       if (err && !res.headersSent) res.status(404).json({ error: 'Foto nao encontrada no disco' })

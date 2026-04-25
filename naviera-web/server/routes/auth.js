@@ -6,7 +6,8 @@ import { rateLimit } from '../middleware/rateLimit.js'
 
 const router = Router()
 
-const loginLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Muitas tentativas de login. Aguarde 1 minuto.' })
+// #DS5-234: nao revelar a janela exata do rate-limit (atacante calibra tooling).
+const loginLimiter = rateLimit({ windowMs: 60000, max: 10, message: 'Muitas tentativas. Tente novamente mais tarde.' })
 
 // POST /api/auth/login
 router.post('/login', loginLimiter, async (req, res) => {
@@ -104,7 +105,9 @@ router.post('/login', loginLimiter, async (req, res) => {
       empresa: req.tenant || null
     })
   } catch (err) {
-    console.error('[Auth] Erro no login:', err.message)
+    // #DS5-229: err.message do pg pode conter valor do parametro (ex: "duplicate key value
+    //   violates unique constraint... Key (cpf)=(123.456.789-00)"). Logar so a classe.
+    console.error('[Auth] Erro no login:', err.code || err.name || 'unknown')
     res.status(500).json({ error: 'Erro interno' })
   }
 })
@@ -163,7 +166,8 @@ router.post('/trocar-senha', authMiddleware, async (req, res) => {
 
     res.json({ mensagem: 'Senha alterada com sucesso. Refaca login nos outros dispositivos.' })
   } catch (err) {
-    console.error('[Auth] Erro ao trocar senha:', err.message)
+    // #DS5-229: nao logar err.message (pode conter parametros do query).
+    console.error('[Auth] Erro ao trocar senha:', err.code || err.name || 'unknown')
     res.status(500).json({ error: 'Erro ao trocar senha' })
   }
 })

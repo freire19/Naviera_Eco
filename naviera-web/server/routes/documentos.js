@@ -3,6 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import { unlink } from 'fs/promises'
+import { randomUUID } from 'crypto'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { callVisionOCR } from '../helpers/visionApi.js'
@@ -29,7 +30,8 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const extMap = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }
     const ext = extMap[file.mimetype] || '.jpg'
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`)
+    // #DS5-222: CSPRNG (era Math.random).
+    cb(null, `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`)
   }
 })
 const upload = multer({
@@ -183,6 +185,9 @@ router.get('/:id/foto', async (req, res) => {
     if (!fullPath.startsWith(path.resolve(UPLOAD_PATH))) return res.status(403).json({ error: 'Acesso negado' })
     if (!existsSync(fullPath)) return res.status(404).json({ error: 'Foto nao encontrada' })
 
+    // #DS5-207: Content-Disposition impede browser de tratar arquivo como navegacao.
+    //   nosniff vem do helmet global em server/index.js.
+    res.setHeader('Content-Disposition', `inline; filename="documento-${req.params.id}.jpg"`)
     res.sendFile(fullPath)
   } catch (err) {
     res.status(500).json({ error: 'Erro ao servir foto' })

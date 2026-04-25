@@ -16,6 +16,7 @@ if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEV_LOGIN === '1'
 
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import log from './logger.js'
 import pool from './db.js'
 import { rateLimit } from './middleware/rateLimit.js'
@@ -49,6 +50,24 @@ const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
   : ['http://localhost:5174', 'http://localhost:5173']
 
+// #DS5-207: security headers (HSTS, frameguard, noSniff, referrer-policy, CSP minima).
+//   CSP focada em API JSON — frontend serve via Vite/Nginx em outro origin, entao basta default-src 'none'.
+//   Rotas de upload/foto adicionam nosniff/Content-Disposition pontualmente.
+app.use(helmet({
+  hsts: { maxAge: 31_536_000, includeSubDomains: true, preload: true },
+  frameguard: { action: 'deny' },
+  noSniff: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'none'"]
+    }
+  },
+  crossOriginResourcePolicy: { policy: 'same-site' }
+}))
 app.use(cors({
   origin: corsOrigins,
   credentials: true
@@ -94,8 +113,10 @@ app.use('/api/documentos', documentosRoutes)
 app.use('/api/recibos', reciboRoutes)
 app.use('/api/extrato-cliente', extratoClienteRoutes)
 
+// #DS5-235: health-check publico — sem timestamp para nao vazar clock skew, sem detalhes
+//   de versao/build. Resposta minima 200 OK e suficiente para load balancer/monitor.
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({ status: 'ok' })
 })
 
 // Centralized error handler — must be LAST middleware

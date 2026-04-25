@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken'
 import pool from '../db.js'
+import { createBoundedMap } from '../utils/boundedCache.js'
 
-// #234: cache do senha_atualizada_em para evitar SELECT a cada request.
-//   TTL 60s e' janela aceitavel entre troca de senha e logout forcado em outras sessoes.
-//   Invalidado explicitamente no endpoint de trocar-senha (ver exports.invalidateSenhaCache).
-const senhaEpochCache = new Map()
+// #234: cache de senha_atualizada_em (TTL 60s) — invalidado em /trocar-senha.
+// #DS5-220 (debito relacionado): bounded em 5000 ids para evitar growth ilimitado.
+const senhaEpochCache = createBoundedMap(5000)
 const SENHA_CACHE_TTL_MS = 60_000
 
 export function invalidateSenhaCache(userId) {
@@ -48,7 +48,7 @@ export function generateToken(user) {
       super_admin: user.super_admin === true
     },
     SECRET,
-    { expiresIn: '8h' }
+    { expiresIn: '8h', algorithm: 'HS256' }
   )
 }
 
@@ -60,7 +60,7 @@ export async function authMiddleware(req, res, next) {
 
   try {
     const token = header.slice(7)
-    const decoded = jwt.verify(token, SECRET)
+    const decoded = jwt.verify(token, SECRET, { algorithms: ['HS256'] })
 
     // #234: invalida JWTs emitidos antes da ultima troca de senha.
     //   Cache com TTL 60s evita SELECT por request (hot path em dezenas de rotas).

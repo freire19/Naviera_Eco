@@ -40,10 +40,19 @@ function ts() {
   return new Date().toISOString().replace('T', ' ').slice(0, 23)
 }
 
+// #DS5-231: log injection via newline — escapar CR/LF na msg do caller (input usuario).
+//   tag e literal de codigo, JSON.stringify ja escapa \n dentro de strings.
+function safe(s) {
+  if (s == null) return ''
+  return String(s).replace(/[\r\n]+/g, ' \\n ')
+}
+
 function log(level, tag, msg, extra) {
   if (LEVELS[level] > LEVEL) return
   const prefix = `${ts()} ${level.toUpperCase().padEnd(5)} [${tag}]`
-  const line = extra ? `${prefix} ${msg} ${JSON.stringify(extra)}` : `${prefix} ${msg}`
+  const line = extra
+    ? `${prefix} ${safe(msg)} ${JSON.stringify(extra)}`
+    : `${prefix} ${safe(msg)}`
 
   console[level === 'error' ? 'error' : 'log'](line)
 

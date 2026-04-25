@@ -658,8 +658,12 @@ router.get('/funcionarios/:id/historico', async (req, res, next) => {
   try {
     const empresaId = req.user.empresa_id
     const idFunc = req.params.id
-    const mes = parseInt(req.query.mes) || (new Date().getMonth() + 1)
-    const ano = parseInt(req.query.ano) || new Date().getFullYear()
+    // #DS5-228: parseInt sem fallback retorna NaN — EXTRACT(MONTH FROM ...) = NaN nunca
+    //   bate, mas pg-driver pode emitir warn. Validar e clamp em range.
+    const mesRaw = parseInt(req.query.mes, 10)
+    const anoRaw = parseInt(req.query.ano, 10)
+    const mes = Number.isFinite(mesRaw) && mesRaw >= 1 && mesRaw <= 12 ? mesRaw : (new Date().getMonth() + 1)
+    const ano = Number.isFinite(anoRaw) && anoRaw >= 2000 && anoRaw <= 2100 ? anoRaw : new Date().getFullYear()
 
     // Filtro por mes do CICLO do funcionario:
     //   - financeiro_saidas: usa mes_referencia (coluna dedicada), fallback data_pagamento
