@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.5](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.4...api-v1.1.5) (2026-04-25)
+
+
+### Performance
+
+* **api:** DEEP_PERFORMANCE V5.0 ALTO — sync prefetch + GPS LIMIT ([fb5998d](https://github.com/freire19/Naviera_Eco/commit/fb5998dbff432cbbec0fd4a6b756b6158835bd8e))
+* **api:** DEEP_PERFORMANCE V5.0 MEDIO/BAIXO — balanco, cache, slug, login ([de3cd35](https://github.com/freire19/Naviera_Eco/commit/de3cd3506d9dfe21e6e46712b4f32b44b3d91369))
+
 ## [1.1.4](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.3...api-v1.1.4) (2026-04-25)
 
 
