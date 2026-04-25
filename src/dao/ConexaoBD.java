@@ -132,6 +132,11 @@ public class ConexaoBD {
         try {
             long deadline = System.currentTimeMillis() + CONNECTION_TIMEOUT_MS;
             while (System.currentTimeMillis() < deadline) {
+                // #038: loop de reciclagem de conexoes deve respeitar interrupt — se shutdown JavaFX
+                //   sinaliza a thread enquanto ela cicla conexoes stale, aborta em vez de prosseguir.
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new SQLException("Interrompido ao obter conexao do pool");
+                }
                 Connection conn = pool.pollFirst();
                 if (conn != null) {
                     // Recicla conexoes velhas (max lifetime)

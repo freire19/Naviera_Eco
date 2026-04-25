@@ -36,8 +36,8 @@ public class ReciboAvulsoDAO {
             stmt.setDate(5, Date.valueOf(dataEmissao));
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    detectarColunas(rs);
-                    return montarObjeto(rs);
+                    ColunasRecibo cols = detectarColunas(rs);
+                    return montarObjeto(rs, cols);
                 }
             }
         } catch (SQLException e) {
@@ -75,9 +75,9 @@ public class ReciboAvulsoDAO {
             stmt.setInt(2, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    detectarColunas(rs);
-                    lista.add(montarObjeto(rs));
-                    while (rs.next()) lista.add(montarObjeto(rs));
+                    ColunasRecibo cols = detectarColunas(rs);
+                    lista.add(montarObjeto(rs, cols));
+                    while (rs.next()) lista.add(montarObjeto(rs, cols));
                 }
             }
         } catch (SQLException e) {
@@ -94,9 +94,9 @@ public class ReciboAvulsoDAO {
             stmt.setDate(2, Date.valueOf(data));
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    detectarColunas(rs);
-                    lista.add(montarObjeto(rs));
-                    while (rs.next()) lista.add(montarObjeto(rs));
+                    ColunasRecibo cols = detectarColunas(rs);
+                    lista.add(montarObjeto(rs, cols));
+                    while (rs.next()) lista.add(montarObjeto(rs, cols));
                 }
             }
         } catch (SQLException e) {
@@ -105,32 +105,32 @@ public class ReciboAvulsoDAO {
         return lista;
     }
 
-    // DR208: ThreadLocal em vez de campos de instancia (thread-safe)
-    private final ThreadLocal<String> colIdTL = ThreadLocal.withInitial(() -> "id_recibo");
-    private final ThreadLocal<Boolean> temTipoReciboTL = ThreadLocal.withInitial(() -> false);
+    // #011 gemeo: ColunasRecibo passado como parametro (antes era 2 ThreadLocals sem cleanup,
+    // vazava entre requests no pool JavaFX — mesmo anti-padrao do PassagemDAO ja corrigido).
+    private record ColunasRecibo(String colId, boolean temTipoRecibo) {}
 
-    /** Detecta colunas uma vez por query (chamado antes do while loop). */
-    private void detectarColunas(ResultSet rs) throws SQLException {
+    private ColunasRecibo detectarColunas(ResultSet rs) throws SQLException {
         java.sql.ResultSetMetaData meta = rs.getMetaData();
-        colIdTL.set("id_recibo");
-        temTipoReciboTL.set(false);
+        String colId = "id_recibo";
+        boolean temTipo = false;
         for (int i = 1; i <= meta.getColumnCount(); i++) {
             String col = meta.getColumnName(i).toLowerCase();
-            if (col.equals("id") || col.equals("id_recibo")) colIdTL.set(meta.getColumnName(i));
-            if (col.equals("tipo_recibo")) temTipoReciboTL.set(true);
+            if (col.equals("id") || col.equals("id_recibo")) colId = meta.getColumnName(i);
+            if (col.equals("tipo_recibo")) temTipo = true;
         }
+        return new ColunasRecibo(colId, temTipo);
     }
 
-    private ReciboAvulso montarObjeto(ResultSet rs) throws SQLException {
+    private ReciboAvulso montarObjeto(ResultSet rs, ColunasRecibo cols) throws SQLException {
         ReciboAvulso r = new ReciboAvulso();
-        r.setId(rs.getInt(colIdTL.get()));
+        r.setId(rs.getInt(cols.colId()));
         r.setIdViagem(rs.getInt("id_viagem"));
         r.setNomePagador(rs.getString("nome_pagador"));
         r.setReferenteA(rs.getString("referente_a"));
         r.setValor(rs.getBigDecimal("valor"));
         java.sql.Date dtEmissao = rs.getDate("data_emissao");
         r.setDataEmissao(dtEmissao != null ? dtEmissao.toLocalDate() : null);
-        r.setTipoRecibo(temTipoReciboTL.get() ? rs.getString("tipo_recibo") : "PADRAO");
+        r.setTipoRecibo(cols.temTipoRecibo() ? rs.getString("tipo_recibo") : "PADRAO");
         return r;
     }
 }

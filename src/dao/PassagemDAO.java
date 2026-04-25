@@ -180,10 +180,14 @@ public class PassagemDAO {
         return false;
     }
 
-    // DR207: variavel local de thread em vez de campo de instancia (thread-safe)
-    private final ThreadLocal<Boolean> temDataChegadaTL = ThreadLocal.withInitial(() -> false);
+    // #011: temDataChegada como parametro substitui ThreadLocal sem cleanup que vazava entre
+    //   requests no pool de threads JavaFX.
+    private void mapAll(ResultSet rs, List<Passagem> out) throws SQLException {
+        boolean temDataChegada = detectarTemDataChegada(rs);
+        while (rs.next()) out.add(mapResultSetToPassagem(rs, temDataChegada));
+    }
 
-    private Passagem mapResultSetToPassagem(ResultSet rs) throws SQLException {
+    private Passagem mapResultSetToPassagem(ResultSet rs, boolean temDataChegada) throws SQLException {
         Passagem p = new Passagem();
         p.setId(rs.getLong("id_passagem"));
         p.setNumBilhete(rs.getInt("numero_bilhete"));
@@ -226,7 +230,7 @@ public class PassagemDAO {
         if(rs.getDate("data_viagem") != null) p.setDataViagem(rs.getDate("data_viagem").toLocalDate());
         
         // data_chegada e opcional (presente apenas em queries com JOIN viagens)
-        if (temDataChegadaTL.get()) {
+        if (temDataChegada) {
             if (rs.getDate("data_chegada") != null) {
                 p.setStrViagem(p.getStrViagem() + "||" + rs.getDate("data_chegada").toString());
             }
@@ -253,8 +257,7 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, DAOUtils.empresaId());
             try (ResultSet rs = stmt.executeQuery()) {
-            temDataChegadaTL.set(detectarTemDataChegada(rs));
-            while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
+                mapAll(rs, passagens);
             }
         } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
@@ -269,8 +272,7 @@ public class PassagemDAO {
             stmt.setInt(1, DAOUtils.empresaId());
             stmt.setLong(2, idViagem);
             try (ResultSet rs = stmt.executeQuery()) {
-                temDataChegadaTL.set(detectarTemDataChegada(rs));
-            while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
+                mapAll(rs, passagens);
             }
         } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return passagens;
@@ -340,8 +342,7 @@ public class PassagemDAO {
              PreparedStatement stmt = conn.prepareStatement(sqlBuilder.toString())) {
             for (int i = 0; i < params.size(); i++) stmt.setObject(i + 1, params.get(i));
             try (ResultSet rs = stmt.executeQuery()) {
-                temDataChegadaTL.set(detectarTemDataChegada(rs));
-            while (rs.next()) passagens.add(mapResultSetToPassagem(rs));
+                mapAll(rs, passagens);
             }
         }
 
@@ -374,8 +375,7 @@ public class PassagemDAO {
             stmt.setInt(1, DAOUtils.empresaId());
             stmt.setString(2, "%" + nomePassageiro + "%");
             try (ResultSet rs = stmt.executeQuery()) {
-                temDataChegadaTL.set(detectarTemDataChegada(rs));
-                while (rs.next()) lista.add(mapResultSetToPassagem(rs));
+                mapAll(rs, lista);
             }
         } catch (SQLException e) { AppLogger.warn("PassagemDAO", "Erro SQL em PassagemDAO: " + e.getMessage()); }
         return lista;
