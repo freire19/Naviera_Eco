@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.6.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.5.0...web-v1.6.0) (2026-04-25)
+
+
+### Features
+
+* **web/financeiro:** Extrato de Cliente consolidado (frete + encomenda + passagem) ([8e7a2d4](https://github.com/freire19/Naviera_Eco/commit/8e7a2d4bfb26ba1c750b745f9d4c3968225934b6))
+
+
+### Bug Fixes
+
+* **web/extrato-cliente:** authMiddleware + busca por CONTEM + cadastros + agenda ([eacaac3](https://github.com/freire19/Naviera_Eco/commit/eacaac3f67efab8650852d8918fa922abbebae0c))
+* **web/extrato-cliente:** coluna passageiros.nome_passageiro + carrega viagens ([bb14d1c](https://github.com/freire19/Naviera_Eco/commit/bb14d1cc9b90345d6a0c0b68ebc4de65702b0095))
+* **web/extrato-cliente:** remove validacao de papel + selecao multipla ([b1760b4](https://github.com/freire19/Naviera_Eco/commit/b1760b42265f64964f02dc4abaa3059bcf59540f))
+* **web:** AUDIT_V1.3 CRITs [#100](https://github.com/freire19/Naviera_Eco/issues/100)/[#114](https://github.com/freire19/Naviera_Eco/issues/114) [#102](https://github.com/freire19/Naviera_Eco/issues/102) [#106](https://github.com/freire19/Naviera_Eco/issues/106) [#108](https://github.com/freire19/Naviera_Eco/issues/108) [#650](https://github.com/freire19/Naviera_Eco/issues/650) — tenant isolation ([3343b52](https://github.com/freire19/Naviera_Eco/commit/3343b5279e6f5c6761de4f41b96857c36ddbf173))
+
 ## [1.5.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.4.3...web-v1.5.0) (2026-04-24)
 
 
