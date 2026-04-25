@@ -8,9 +8,16 @@ export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
 
 export default function App() {
+  // #DP080: try/catch protege contra localStorage com JSON corrompido (que crashava o App
+  //   antes de qualquer ErrorBoundary entrar) e contra sandbox sem localStorage.
   const [usuario, setUsuario] = useState(() => {
-    const saved = localStorage.getItem('naviera_usuario')
-    return saved ? JSON.parse(saved) : null
+    try {
+      const saved = localStorage.getItem('naviera_usuario')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      try { localStorage.removeItem('naviera_usuario') } catch { /* sandbox */ }
+      return null
+    }
   })
 
   const [theme, setTheme] = useState(() => localStorage.getItem('naviera_theme') || 'light')

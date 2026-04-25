@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { api } from '../api.js'
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab']
@@ -67,12 +67,15 @@ export default function Agenda() {
     return d === dataSelecionada
   })
 
-  // Count tasks per day for calendar dots
-  const contagem = {}
-  tarefas.forEach(t => {
-    const d = t.data_evento?.split('T')[0]
-    contagem[d] = (contagem[d] || 0) + 1
-  })
+  // #DP079: contagem memoizada — re-build do objeto inteiro a cada render era desperdicio.
+  const contagem = useMemo(() => {
+    const c = {}
+    tarefas.forEach(t => {
+      const d = t.data_evento?.split('T')[0]
+      c[d] = (c[d] || 0) + 1
+    })
+    return c
+  }, [tarefas])
 
   // Viagens neste mes
   const viagensMes = viagens.filter(v => {

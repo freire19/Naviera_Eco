@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { api } from '../api.js'
 import { printNotaFrete, escapeHtml } from '../utils/print.js'
 
@@ -104,18 +104,17 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
     return () => { cancelled = true }
   }, [filtroItem, fretes])
 
-  // Filtros locais
-  const filtrados = fretes.filter(f => {
+  // #DP077: filter+reduce em useMemo — antes recalculava em todo render (digitar em outro input
+  //   triggerava nova varredura dos N fretes mesmo sem mudar o filtro relevante).
+  const filtrados = useMemo(() => fretes.filter(f => {
     if (filtroNumero && !String(f.numero_frete).includes(filtroNumero)) return false
     if (filtroRemetente && (f.remetente || f.remetente_nome_temp || '') !== filtroRemetente) return false
     if (filtroDestinatario && (f.destinatario || f.destinatario_nome_temp || '') !== filtroDestinatario) return false
-    // Filtro por item
     if (filtroItem) {
       const itens = itensMap[f.id_frete] || []
       const match = itens.some(i => (i.nome_item_ou_id_produto || '').toLowerCase().includes(filtroItem.toLowerCase()))
       if (!match) return false
     }
-    // Filtro por periodo
     if (filtroDataIni || filtroDataFim) {
       const dataStr = f.data_emissao || ''
       let dataFrete
@@ -130,12 +129,14 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
       if (filtroDataFim && dataFrete > new Date(filtroDataFim + 'T23:59:59')) return false
     }
     return true
-  })
+  }), [fretes, filtroNumero, filtroRemetente, filtroDestinatario, filtroItem, itensMap, filtroDataIni, filtroDataFim])
 
-  const totalLancado = filtrados.reduce((s, f) => s + (parseFloat(f.valor_total_itens || f.valor_frete_calculado) || 0), 0)
-  const totalRecebido = filtrados.reduce((s, f) => s + (parseFloat(f.valor_pago) || 0), 0)
-  const totalAReceber = Math.max(0, totalLancado - totalRecebido)
-  const totalVolumes = filtrados.reduce((s, f) => s + (parseInt(f.total_volumes) || 0), 0)
+  const { totalLancado, totalRecebido, totalAReceber, totalVolumes } = useMemo(() => {
+    const lancado = filtrados.reduce((s, f) => s + (parseFloat(f.valor_total_itens || f.valor_frete_calculado) || 0), 0)
+    const recebido = filtrados.reduce((s, f) => s + (parseFloat(f.valor_pago) || 0), 0)
+    const volumes = filtrados.reduce((s, f) => s + (parseInt(f.total_volumes) || 0), 0)
+    return { totalLancado: lancado, totalRecebido: recebido, totalAReceber: Math.max(0, lancado - recebido), totalVolumes: volumes }
+  }, [filtrados])
 
   // Filtrar apenas fretes a receber (devedor > 0)
   function filtrarAReceber() {

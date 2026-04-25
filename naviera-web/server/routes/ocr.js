@@ -15,6 +15,7 @@ import { geminiParseOCR } from '../helpers/geminiParser.js'
 import { geminiVisionAnalyze } from '../helpers/geminiVision.js'
 import { geminiParseEncomenda, geminiParseLote } from '../helpers/geminiEncomendaParser.js'
 import { OCR_STATUS, EDITAVEIS } from '../helpers/ocrStatus.js'
+import { ensureUploadDirCached } from '../helpers/ensureUploadDir.js'
 import log from '../logger.js'
 
 const router = Router()
@@ -51,9 +52,7 @@ function assertSafePath(relativePath) {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(UPLOAD_PATH, String(req.user.empresa_id))
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    cb(null, dir)
+    ensureUploadDirCached(path.join(UPLOAD_PATH, String(req.user.empresa_id)), cb)
   },
   filename: (req, file, cb) => {
     // DS4-029 fix: forcar extensao por mimetype (antes: user-controlled originalname)

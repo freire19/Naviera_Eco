@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { api } from '../api.js'
 import { printContent } from '../utils/print.js'
 
@@ -82,11 +82,13 @@ export default function RelatorioFretes({ viagemAtiva }) {
 
   useEffect(() => { carregar() }, [carregar])
 
-  // Totais
-  const totalItens = itensRelatorio.reduce((s, i) => s + (parseFloat(i.total_item) || 0), 0)
-  const totalFinanceiro = financeiro.reduce((s, f) => s + (parseFloat(f.valor_total_itens) || 0), 0)
-  const totalPago = financeiro.reduce((s, f) => s + (parseFloat(f.valor_pago) || 0), 0)
-  const totalDevedor = Math.max(0, totalFinanceiro - totalPago)
+  // #DP077: totais memoizados — re-render sem mudar dados nao recomputa.
+  const { totalItens, totalFinanceiro, totalPago, totalDevedor } = useMemo(() => {
+    const itens = itensRelatorio.reduce((s, i) => s + (parseFloat(i.total_item) || 0), 0)
+    const fin = financeiro.reduce((s, f) => s + (parseFloat(f.valor_total_itens) || 0), 0)
+    const pago = financeiro.reduce((s, f) => s + (parseFloat(f.valor_pago) || 0), 0)
+    return { totalItens: itens, totalFinanceiro: fin, totalPago: pago, totalDevedor: Math.max(0, fin - pago) }
+  }, [itensRelatorio, financeiro])
 
   // Viagem selecionada
   const viagemSel = viagens.find(v => String(v.id_viagem) === viagemId)

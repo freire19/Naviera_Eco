@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { api } from '../api.js'
 import { PieChart } from '../components/Charts.jsx'
 
@@ -13,6 +13,8 @@ function fmtDate(d) {
 }
 
 export default function Financeiro({ viagemAtiva, onNavigate }) {
+  // #DP081: data calculada uma vez por render — antes recriava string e Date a cada update.
+  const dataHoje = useMemo(() => new Date().toLocaleDateString('pt-BR'), [])
   const [viagens, setViagens] = useState([])
   const [viagemId, setViagemId] = useState('')
   const [categoria, setCategoria] = useState('Todas')
@@ -90,7 +92,7 @@ export default function Financeiro({ viagemAtiva, onNavigate }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div>
           <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Visao Geral ({categoria})</h3>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Data de Hoje: {new Date().toLocaleDateString('pt-BR')}</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Data de Hoje: {dataHoje}</span>
         </div>
         <button style={{ padding: '8px 20px', background: '#047857', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer', fontSize: '0.82rem' }}
           onClick={carregar}>ATUALIZAR DADOS</button>

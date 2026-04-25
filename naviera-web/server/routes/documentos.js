@@ -1,13 +1,13 @@
 import { Router } from 'express'
 import multer from 'multer'
 import path from 'path'
-import { existsSync, mkdirSync } from 'fs'
 import { unlink } from 'fs/promises'
 import { randomUUID } from 'crypto'
 import pool from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { callVisionOCR } from '../helpers/visionApi.js'
 import { fetchWithRetry } from '../helpers/fetchWithRetry.js'
+import { ensureUploadDirCached } from '../helpers/ensureUploadDir.js'
 import log from '../logger.js'
 
 const router = Router()
@@ -20,12 +20,9 @@ function isAdmin(req) {
   return FUNCOES_ADMIN.includes((req.user.funcao || '').toLowerCase())
 }
 
-// Upload config — salva direto em docs/{empresa_id}/
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(UPLOAD_PATH, 'docs', String(req.user.empresa_id))
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    cb(null, dir)
+    ensureUploadDirCached(path.join(UPLOAD_PATH, 'docs', String(req.user.empresa_id)), cb)
   },
   filename: (req, file, cb) => {
     const extMap = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }
