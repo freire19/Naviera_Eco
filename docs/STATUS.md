@@ -1,41 +1,40 @@
 # STATUS DO PROJETO — Naviera Eco
-> Ultima atualizacao: 2026-04-23
-> Atualizado por: Claude Code (conferencia CRITICOS DEEP_LOGIC V6.0 — todos ja corrigidos)
+> Ultima atualizacao: 2026-04-24
+> Atualizado por: Claude Code (conferencia final dos 30 CRITICOs V1.3 — 23 ja corrigidos, 7 restantes em Security/Tenant)
 
 ---
 
 ## Estado Geral: REPROVADO PARA PRODUCAO
 
 ### Resumo
-Auditoria V1.3 (scan + review) identificou **30 issues CRITICAS** concentradas em novos modulos adicionados apos V1.2: integracao PSP Asaas, webhook, onboarding self-service, ativacao/desativacao de empresas. Status piorou em relacao a V1.2 (0 CRITICOs) porque novos vetores foram introduzidos sem hardening. Desktop continua limpo apos fixes do V1.2. **Nao fazer deploy de producao ate concluir Sprint 1.**
+Auditoria V1.3 identificou **30 issues CRITICAS**. Conferencia em 2026-04-24 comprovou que **23 ja estao corrigidas no codigo** (via fixes das DEEPs em 2026-04-19/23 e commits pre-existentes) — STATUS anterior estava desatualizado. Restam **7 CRITICOs reais**, TODOS concentrados em Security/Tenant isolation. **Nao fazer deploy de producao ate concluir os 7 restantes.**
 
 ---
 
-## ISSUES CRITICAS ABERTAS (30)
+## ISSUES CRITICAS ABERTAS (7)
 
-**Bloqueadores de deploy** — detalhes completos em [AUDIT_V1.3](audits/current/AUDIT_V1.3.md).
+**Bloqueadores de deploy** — todos em Security/Tenant isolation. Detalhes em [AUDIT_V1.3](audits/current/AUDIT_V1.3.md).
 
-### Top 5 bloqueadores
-1. **#201** — Webhook Asaas NAO existe: pagamentos PIX/boleto ficam eternamente PENDENTE
-2. **#411** — PSP chamado dentro de `@Transactional` + HikariCP=10: incidente Asaas derruba API
-3. **#650** — `X-Tenant-Slug` aceito do cliente sem validar trusted proxy: bypass multi-tenant
-4. **#100/#114** — Admin de qualquer empresa pode modificar/desativar outras via `/admin/empresas`
-5. **#107/#105/#106** — Cross-tenant data leak em rotas e pagamentos
+### Os 7 CRITICOs reais
+1. **#100** — AdminController sem flag super_admin: admin de empresa X edita/ativa empresa Y via `/admin/empresas/{id}` (`SecurityConfig.java:29` + `JwtFilter.java:38`)
+2. **#102** — BFF `PUT /api/cadastros/usuarios/:id` aceita body `funcao` sem checar role do logado — escalacao operador→admin (`routes/cadastros.js:369-381`)
+3. **#105** — `GET /rotas` usa `repo.findAll()` sem filtro `empresa_id` — vaza rotas de todas empresas (`RotaController.java:13`)
+4. **#106** — `GET /api/encomendas/:id/itens` e `/api/fretes/:id/itens` no BFF sem JOIN com empresa_id (`routes/encomendas.js:76`, `routes/fretes.js:143`)
+5. **#108** — Login BFF branch dev aceita usuario de qualquer empresa sem flag explicita `ALLOW_DEV_LOGIN` (`routes/auth.js:54-62`)
+6. **#114** — AdminController Spring (/admin/empresas/{id}/ativar) permite qualquer admin de empresa desativar concorrente — mesma raiz de #100
+7. **#650** — `tenantMiddleware` le `X-Tenant-Slug` do cliente sem validar trusted proxy (`middleware/tenant.js:18`) — bypass multi-tenant
 
-### CRITICOs por categoria
-| Categoria | CRITICOs | Detalhe |
-|-----------|----------|---------|
-| Security | 9 | #100, #102, #103, #105, #106, #107, #108, #114, #650 |
-| Resiliencia | 7 | #300, #301, #304, #305, #308, #311, #315 |
-| Bugs | 6 | #003, #004, #005, #006, #007, #008 |
-| Logic | 6 | #200, #201, #202, #203, #204, #205 |
-| Performance | 2 | #403, #411 |
-| Maintainability | 0 | — |
+### CRITICOs RESOLVIDOS (23/30) — conferidos 2026-04-24
+| Categoria | Issues | Evidencia |
+|-----------|--------|-----------|
+| Bugs (6) | #003, #004, #005, #006, #007, #008 | DEEP_BUGS V3.0 — 0 CRIT |
+| Logic (6) | #200, #201, #202, #203, #204, #205 | DEEP_LOGIC V6.0 — 0 CRIT + commit `ed21783` (webhook Asaas c/ idempotencia) |
+| Resilience (7) | #300, #301, #304, #305, #308, #311, #315 | DEEP_RESILIENCE V6.0 — 0 CRIT |
+| Performance (2) | #403, #411 | DEEP_PERFORMANCE V5.0 — 0 CRIT + commit `f7804a0` (PSP fora de @Transactional) |
+| Security (2) | #103, #107 | `CadastrosWriteService.java:131` valida role; commit `45ccf60` bloqueia match-por-nome vazio |
 
-### Areas concentradoras de risco
-- **Tenant isolation** (9 CRITICOs) — queries sem `empresa_id`, escalacao de privilegio, header X-Tenant-Slug confiado
-- **PSP Asaas / webhook** (5 CRITICOs) — webhook ausente, fail-open HMAC, HTTP em transacao
-- **Pagamento saga** (4 CRITICOs) — estados `PROCESSANDO` orfaos, estorno destrutivo
+### Areas restantes de risco
+- **Tenant isolation / escalacao de privilegio** (7/7 CRITICOs restantes) — todos no eixo multi-tenant: admin global (#100/#114), escalacao role (#102), cross-tenant reads (#105/#106), auth dev fraco (#108), header spoofing (#650)
 
 ---
 
@@ -78,14 +77,15 @@ Auditoria V1.3 (scan + review) identificou **30 issues CRITICAS** concentradas e
 
 ## PROXIMO SPRINT
 
-### Sprint 1 — CRITICOS (bloqueia deploy — fazer AGORA)
-30 issues listadas em [AUDIT_V1.3.md secao 4](audits/current/AUDIT_V1.3.md). Prioridade:
+### Sprint 1 — CRITICOS RESTANTES (bloqueia deploy — fazer AGORA)
+**7 issues** — todas Security/Tenant isolation:
 
-1. **P0 Tenant isolation** — #100, #102, #103, #105, #106, #107, #108, #114, #650 (9 issues)
-2. **P0 PSP/Webhook** — #201, #112, #301, #305, #411 (5 issues)
-3. **P0 Runtime bugs** — #003, #004, #005, #006, #007, #008, #202, #203, #204, #205 (10 issues)
-4. **P0 Resiliencia** — #300, #304, #308, #311, #315 (5 issues)
-5. **P0 Performance** — #403 (1 issue)
+1. **#100 + #114** — Migration `super_admin BOOLEAN` + `ROLE_SUPERADMIN` no `JwtFilter` + `SecurityConfig` exigindo SUPERADMIN em `/admin/**`
+2. **#102** — `routes/cadastros.js` PUT `/usuarios/:id` validar role admin e bloquear auto-promocao
+3. **#105** — `RotaController.listar(Authentication)` usando `findByEmpresaId`
+4. **#106** — `routes/encomendas.js` e `routes/fretes.js` JOIN com empresa pai + check `empresa_id`
+5. **#108** — `routes/auth.js` exigir `ALLOW_DEV_LOGIN` explicito + abortar boot se `NODE_ENV=production` sem CORS https
+6. **#650** — `middleware/tenant.js` deletar `X-Tenant-Slug` se `req.ip` nao loopback/trusted proxy
 
 ### Sprint 2 — ALTOs (~75 issues, 2 semanas)
 Destaques: #222 (sync perda de dados), #226 (TOTP plain text), #655 (desativacao ineficaz), #658 (race PSP), #711 (drift financeiro desktop/API), #502 (magic number PIX), #506/#507 (god classes >1800L), #717 (strings UI corrompidas).
@@ -98,15 +98,15 @@ Destaques: #222 (sync perda de dados), #226 (TOTP plain text), #655 (desativacao
 
 ## BLOQUEADORES MVP
 
-**Status: 5 novos bloqueadores adicionados apos V1.2.**
+**Status: 3 bloqueadores restantes (de 5 originais apos V1.2 — 2 resolvidos em 2026-04-19/23).**
 
-| Bloqueador | Issue | Area |
-|-----------|-------|------|
-| Webhook Asaas ausente | #201 | PSP |
-| Escalacao de privilegio operador→admin | #102/#103 | Auth |
-| Admin cross-empresa (multi-tenant bleed) | #100/#114 | Tenant |
-| X-Tenant-Slug spoofing | #650 | Tenant |
-| Pool exhaustion em incidente Asaas | #411 | Resilience/Perf |
+| Bloqueador | Issue | Area | Status |
+|-----------|-------|------|--------|
+| ~~Webhook Asaas ausente~~ | ~~#201~~ | ~~PSP~~ | **RESOLVIDO** (commit `ed21783`) |
+| Escalacao de privilegio operador→admin | #102 | Auth | PENDENTE (API #103 ja fixado) |
+| Admin cross-empresa (multi-tenant bleed) | #100/#114 | Tenant | PENDENTE |
+| X-Tenant-Slug spoofing | #650 | Tenant | PENDENTE |
+| ~~Pool exhaustion em incidente Asaas~~ | ~~#411~~ | ~~Resilience/Perf~~ | **RESOLVIDO** (commit `f7804a0`) |
 
 ---
 
@@ -114,11 +114,11 @@ Destaques: #222 (sync perda de dados), #226 (TOTP plain text), #655 (desativacao
 
 | Metrica | Valor |
 |---------|-------|
-| Issues CRITICAS pendentes | **30** |
+| Issues CRITICAS pendentes | **7** _(de 30 — 23 conferidos fixados em 2026-04-24)_ |
 | Issues ALTAS pendentes | **75** |
-| Issues totais abertas (V1.3) | **225** |
-| Bloqueadores MVP reais | **5** |
-| Categorias 100% limpas | **nenhuma** |
+| Issues totais abertas (V1.3) | **~202** _(225 - 23 CRITs fixados)_ |
+| Bloqueadores MVP reais | **3** |
+| Categorias com 0 CRIT | Bugs, Logic, Resilience, Performance, Maintainability (apenas Security com CRITs) |
 | Novos modulos desde V1.2 | PSP Asaas, webhook, onboarding, OCR Gemini, bilhetes digitais |
 
 ---
@@ -173,6 +173,7 @@ Nenhuma ADR registrada em `docs/decisions/`. Documentacao pendente:
 | 2026-04-23 | Conferencia CRITICOs DEEP_PERFORMANCE V5.0 — 3/3 ja estavam corrigidos no codigo (#403, #411, #DP071 via commit `06f2460` + fix @Transactional). DEEP_PERFORMANCE agora 55 ativas, 0 CRIT. |
 | 2026-04-23 | Fixes massivos DEEP_LOGIC V6.0 ALTO+MEDIO+BAIXO em 7 fases: 22 arquivos modificados + 3 migrations (032/033/034) + 1 classe nova (CryptoUtil). Fecha #711 cargas, #225 PENDENTE block, #657 FOR UPDATE, #226 AES-GCM at-rest, #221 ON CONFLICT composto, #200 Desktop is_atual+ativa, #234 senha_atualizada_em JWT invalidation, #DL034/35/36/37/40/41, #224 OCR vazio bloqueio, e outros. DEEP_LOGIC agora 1 ativa (#662 Desktop WS deferido). |
 | 2026-04-23 | Fixes massivos DEEP_BUGS V3.0 ALTO+MEDIO+BAIXO em 6 fases (FB1-FB6). Fecha #DB205 HMAC constant-time, #DB206 bilhete advisory_lock, #DB207 CPF URL-encode, #DB209 TZ BR, #DB210 whitelist admin hosts, #DB212 codigo ativacao 12 hex, #DB213 slug imutavel, #DB214 erro sem fallback id=1, #DB215 /fechar-mes transacao, #DB220 valorDevedor do servidor, #DB221 INSERT RETURNING atomico, #DB223 whitelist SyncClient, #DB225 VersaoChecker fallback, outros. DEEP_BUGS agora 1 parcial (#DB014/015 double em folha deferido). |
+| 2026-04-24 | Conferencia FINAL dos 30 CRITICOs AUDIT_V1.3 direto no codigo. Resultado: 23/30 ja corrigidos (6 Bugs + 6 Logic + 7 Resilience + 2 Performance + 2 Security #103/#107), 7 pendentes — todos Security/Tenant: #100, #102, #105, #106, #108, #114, #650. Checkboxes marcados em AUDIT_V1.3.md. |
 
 ---
 *Atualizado automaticamente por Claude Code (audit-4-report) — Revisao humana recomendada*

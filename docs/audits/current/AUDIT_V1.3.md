@@ -256,7 +256,7 @@ Regra critica: desktop SEMPRE usa banco local. Sync imediato quando online. Nunc
 ### 2.1 — Bugs Criticos e Runtime
 
 #### Issue #003 — NullPointerException em EncomendaService.pagar quando empresa_id vem null
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java`
 - **Linha(s):** 177
@@ -286,7 +286,7 @@ String subcontaId = (String) rows.get(0).get("psp_subconta_id");
 ---
 
 #### Issue #004 — NPE identico em FreteService.pagar (empresa_id null)
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FreteService.java`
 - **Linha(s):** 156
@@ -308,7 +308,7 @@ Integer empresaId = ((Number) empresaIdRaw).intValue();
 ---
 
 #### Issue #005 — NPE em PassagemService.comprar quando viagem.empresa_id null
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 76-77
@@ -332,7 +332,7 @@ Long idRota = ((Number) viagem.get(0).get("id_rota")).longValue();
 ---
 
 #### Issue #006 — NPE em PassagemService.comprar quando tarifa retorna null em valor_transporte/alimentacao/desconto
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 86-89
@@ -362,7 +362,7 @@ if (total.signum() < 0) total = BigDecimal.ZERO;
 ---
 
 #### Issue #007 — ClassCastException em PassagemService.comprar ao ler id_passageiro como Long
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 98-101
@@ -400,7 +400,7 @@ idPassageiro = jdbc.queryForObject(
 ---
 
 #### Issue #008 — Numero de bilhete colisivel (mod 1e6) em PassagemService
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 105
@@ -1176,7 +1176,7 @@ router.put('/usuarios/:id', async (req, res, next) => {
 ---
 
 #### Issue #103 — CadastrosWriteService (API) permite escalacao de privilegios via `PUT /op/cadastros/usuarios/{id}`
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/CadastrosWriteService.java`
 - **Linha(s):** 112-130 + `controller/CadastrosController.java` 118-125
@@ -1272,7 +1272,7 @@ router.get('/:id/itens', async (req, res) => {
 ---
 
 #### Issue #107 — Ownership weak em pagamento de encomenda/frete — match por nome permite pagar encomenda alheia
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/EncomendaService.java` (116-139); `FreteService.java` (92-117)
 - **Problema:** Em `pagar()`, quando `id_cliente_app_destinatario` e null, o fallback valida ownership comparando se `destinatario` contem o nome do cliente (case-insensitive, `contains`). Query nao filtra por empresa_id. Atacante cadastra cliente_app com nome "Silva" e paga/sequestra TODAS as encomendas com destinatario contendo "Silva" no SaaS inteiro.
@@ -1939,7 +1939,7 @@ if (!encoder.matches(req.senha(), hashAlvo) || clienteOpt.isEmpty()) {
 ### 2.3 — Logica de Negocio
 
 #### Issue #200 — Desktop e API divergem no conceito de "viagem ativa"
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `src/dao/ViagemDAO.java` vs `naviera-api/.../service/OpViagemWriteService.java` vs `naviera-web/server/routes/viagens.js`
 - **Linha(s):** ViagemDAO 423-458 | OpViagemWriteService 61-74 | viagens.js 114-142
@@ -1966,7 +1966,7 @@ jdbc.update("UPDATE viagens SET ativa = ?, is_atual = ? WHERE id_viagem = ? AND 
 ---
 
 #### Issue #201 — Webhook Asaas inexistente: pagamentos PSP ficam eternamente PENDENTE_CONFIRMACAO
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/` (diretorio inteiro — falta controller)
 - **Problema:** `PspCobrancaService.atualizarStatus()` e `AsaasGateway.validarAssinaturaWebhook()` existem mas NENHUM `@RestController` os invoca. Nao ha endpoint `/webhook/asaas` cadastrado. Resultado: Asaas envia callback mas nao ha quem receba. Esses registros ficam em `PENDENTE_CONFIRMACAO` para sempre.
@@ -2020,7 +2020,7 @@ public class PspWebhookController {
 ---
 
 #### Issue #202 — `ocr.js` usa `crypto.randomUUID()` sem importar `crypto` → ReferenceError em runtime
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 127, 132, 243
@@ -2041,7 +2041,7 @@ const uuid = client_uuid || randomUUID()
 ---
 
 #### Issue #203 — `OpPassagemService` faz query em colunas que nao existem na tabela `passageiros`
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpPassagemService.java`
 - **Linha(s):** 19, 23, 26, 30
@@ -2071,7 +2071,7 @@ return jdbc.queryForList("""
 ---
 
 #### Issue #204 — `POST /financeiro/estornar` zera `valor_pago` completamente e nao registra em `log_estornos_*`
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 531-580
@@ -2088,7 +2088,7 @@ await client.query('UPDATE passagens SET valor_pago = 0, valor_devedor = valor_t
 ---
 
 #### Issue #205 — PSP cria cobranca ANTES de confirmar, sem rollback caso gateway falhe apos UPDATE
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/.../service/PassagemService.java`, `FreteService.java`, `EncomendaService.java`
 - **Linha(s):** PassagemService 115-180 | FreteService 91-193 | EncomendaService 115-211
@@ -2711,7 +2711,7 @@ if (valorPago.compareTo(totalAPagar.subtract(desconto)) > 0)
 ### 2.4 — Resiliencia e Error Handling
 
 #### Issue #300 — AsaasGateway: RestTemplate sem timeout trava thread HTTP indefinidamente
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 42-45, 228-244
@@ -2740,7 +2740,7 @@ public AsaasGateway(AsaasProperties props, RestTemplateBuilder builder) {
 ---
 
 #### Issue #301 — Webhook Asaas sem idempotencia nem WebhookController implementado
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/PspCobrancaService.java`
 - **Linha(s):** 75-85
@@ -2772,7 +2772,7 @@ public void atualizarStatus(String provider, String pspCobrancaId, String novoSt
 ---
 
 #### Issue #304 — ocr.js usa `crypto.randomUUID()` sem importar crypto
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 127, 132, 243
@@ -2791,7 +2791,7 @@ const uuid = client_uuid || randomUUID()
 ---
 
 #### Issue #305 — Webhook secret vazio retorna `true` — aceita webhooks forjados
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java`
 - **Linha(s):** 191-196
@@ -2829,7 +2829,7 @@ public boolean validarAssinaturaWebhook(String payload, String assinatura) {
 ---
 
 #### Issue #308 — PassagemService.comprar: PSP call dentro de @Transactional com 4 queries + INSERT
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/PassagemService.java`
 - **Linha(s):** 65-181
@@ -2856,7 +2856,7 @@ public Map<String, Object> comprar(Long clienteId, CompraPassagemRequest req) {
 ---
 
 #### Issue #311 — FirebaseConfig.init falha silenciosa, sem healthcheck
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/FirebaseConfig.java`
 - **Linha(s):** 17-34
@@ -2884,7 +2884,7 @@ public Map<String, Object> comprar(Long clienteId, CompraPassagemRequest req) {
 ---
 
 #### Issue #315 — Dockerfile API: sem STOPSIGNAL / tini — graceful shutdown nao funciona
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/Dockerfile`
 - **Linha(s):** 10-14
@@ -3301,7 +3301,7 @@ const copiar = async (txt, label) => {
 ### 2.5 — Performance
 
 #### Issue #403 — `financeiro/dashboard`: UNION ALL full-scan da empresa + filtros em JS
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-web/server/routes/financeiro.js`
 - **Linha(s):** 95-161
@@ -3340,7 +3340,7 @@ const sql = `
 ---
 
 #### Issue #411 — PSP inline em POST `/encomendas/:id/pagar`: chamada sincrona ao Asaas dentro de `@Transactional`
-- [ ] **Concluido**
+- [x] **Concluido** _(verificado 2026-04-24 — corrigido via DEEPs)_
 - **Severidade:** CRITICO
 - **Arquivo:** `naviera-api/.../service/EncomendaService.java` (L116-211), `FreteService.java` (L91-193), `PassagemService.java` (L65-181)
 - **Linha(s):** EncomendaService L176-196, FreteService L155-175, PassagemService L140-166
