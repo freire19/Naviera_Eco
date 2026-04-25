@@ -682,7 +682,7 @@ JsonNode list = get("/customers?cpfCnpj=" + URLEncoder.encode(cpfClean, Standard
 ---
 
 #### Issue #DS5-008 — `SecurityConfig` `/sync/**` aceita `ROLE_OPERADOR` generico sem exigir ADMIN
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/SecurityConfig.java`
@@ -744,7 +744,7 @@ if (email == null || email.isBlank())
 ---
 
 #### Issue #DS5-011 — `SecurityConfig.filterChain` sem HSTS / frameOptions / contentSecurityPolicy
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/SecurityConfig.java`
@@ -792,7 +792,7 @@ c.setMaxAge(3600L);
 ---
 
 #### Issue #DS5-013 — Tokens WebSocket nao sao revalidados apos CONNECT — troca de senha/desativacao de empresa nao fecha sessoes STOMP
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/WebSocketAuthInterceptor.java`
@@ -975,7 +975,7 @@ int rows = jdbc.update("""
 ---
 
 #### Issue #DS5-207 — BFF nao envia nenhum security header (sem Helmet, sem X-Content-Type-Options, sem HSTS, sem X-Frame-Options)
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/index.js`
@@ -1004,7 +1004,7 @@ res.sendFile(fullPath, ...)
 ---
 
 #### Issue #DS5-208 — Auth middleware nao valida `alg` explicito no JWT (aceita qualquer algoritmo que jsonwebtoken reconhecer)
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/middleware/auth.js`
@@ -1027,7 +1027,7 @@ jwt.sign(payload, SECRET, { expiresIn: '8h', algorithm: 'HS256' })
 ---
 
 #### Issue #DS5-209 — Mobile App armazena JWT em `localStorage` (XSS -> roubo de sessao imediato)
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** App
 - **Arquivo:** `naviera-app/src/api.js:5-17`, `naviera-app/src/App.jsx:52-55, 106`
@@ -1050,7 +1050,7 @@ localStorage.setItem("naviera_token", data.token);
 ---
 
 #### Issue #DS5-210 — Mobile `PagamentoArtefato` renderiza `href={boletoUrl}` sem validacao de protocolo (aceita `javascript:`)
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** App
 - **Arquivo:** `naviera-app/src/components/PagamentoArtefato.jsx`
@@ -1194,7 +1194,7 @@ if (autorizador) {
 ---
 
 #### Issue #DS5-215 — Gemini prompt injection: `ocrText` diretamente interpolado no prompt sem escaping/delimitador seguro
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/helpers/geminiParser.js:64-78`, `geminiEncomendaParser.js`, `ocr.js:648`
@@ -1231,7 +1231,7 @@ END_OCR`
 ---
 
 #### Issue #DS5-216 — Desktop `ConexaoBD.java` aplica `sslmode=disable` AUTOMATICAMENTE se URL nao especificar — TLS nunca ate operador lembrar
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Desktop
 - **Arquivo:** `src/dao/ConexaoBD.java`
@@ -1350,7 +1350,7 @@ private static String redact(String s) {
 ---
 
 #### Issue #DS5-411 — Nginx nao define `server_tokens off`, vazando versao
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`, `naviera-app/nginx-https.conf`
@@ -1363,7 +1363,7 @@ private static String redact(String s) {
 ---
 
 #### Issue #DS5-412 — Nginx sem rate limit em endpoint de login (auth brute-force)
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`
@@ -1382,7 +1382,7 @@ location /api/ { limit_req zone=api burst=20; ... }
 ---
 
 #### Issue #DS5-413 — Nginx — ausencia de `client_max_body_size`, timeouts — slowloris trivial
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`
@@ -1403,7 +1403,7 @@ large_client_header_buffers 4 8k;
 ---
 
 #### Issue #DS5-414 — Nginx — `Referrer-Policy` e `Permissions-Policy` ausentes em todos os blocos
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`
@@ -1420,7 +1420,7 @@ add_header Permissions-Policy "camera=(self), microphone=(), geolocation=(self),
 ---
 
 #### Issue #DS5-415 — Nginx — `ssl_ciphers` e `ssl_prefer_server_ciphers` nao especificados; sem `ssl_session_cache` nem OCSP stapling
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`
@@ -1434,7 +1434,7 @@ add_header Permissions-Policy "camera=(self), microphone=(), geolocation=(self),
 ---
 
 #### Issue #DS5-416 — Nginx — CSP do subdominio wildcard aceita `'unsafe-inline'` em `style-src` e `connect-src wss://*.naviera.com.br`
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`
@@ -1448,7 +1448,7 @@ add_header Permissions-Policy "camera=(self), microphone=(), geolocation=(self),
 ---
 
 #### Issue #DS5-417 — Nginx — `server_name admin.naviera.com.br` proxy com `X-Tenant-Slug: admin` forjado no server side
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** ALTO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`
@@ -1579,7 +1579,7 @@ CREATE INDEX idx_embarcacao_gps_empresa_ts ON embarcacao_gps(empresa_id, timesta
 ---
 
 #### Issue #DS5-022 — `SecurityConfig` registra `filterChain` sem `authenticationEntryPoint` customizado — 401 retorna HTML
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/SecurityConfig.java`
@@ -1602,7 +1602,7 @@ http.exceptionHandling(e -> e
 ---
 
 #### Issue #DS5-023 — `ClienteApp` entity tem `senhaHash` sem `@JsonIgnore`
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/model/ClienteApp.java`
@@ -1658,7 +1658,7 @@ http.exceptionHandling(e -> e
 ---
 
 #### Issue #DS5-027 — `VersaoService.compararVersoes` usa `Integer.parseInt` sem try — versao `"1.2.x"` crasha
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/VersaoService.java`
@@ -1795,7 +1795,7 @@ if (originalName != null) {
 ---
 
 #### Issue #DS5-220 — `tenant.js` nao limita tamanho do `X-Tenant-Slug` — cache memory leak
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/middleware/tenant.js`
@@ -1823,7 +1823,7 @@ if (originalName != null) {
 ---
 
 #### Issue #DS5-222 — `multer.diskStorage` em `ocr.js` e `documentos.js` usa `Math.random()` — predictable
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/routes/ocr.js:63`, `routes/documentos.js:32`
@@ -1864,7 +1864,7 @@ if (originalName != null) {
 ---
 
 #### Issue #DS5-225 — `api.js` do app mobile: 403 tambem limpa sessao — logoff inesperado em ACL bloqueios
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** App
 - **Arquivo:** `naviera-app/src/api.js:27-30`
@@ -1877,7 +1877,7 @@ if (originalName != null) {
 ---
 
 #### Issue #DS5-226 — Mobile App `firebase-messaging-sw.js` abre qualquer URL de `notification.data.url`
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** App
 - **Arquivo:** `naviera-app/public/firebase-messaging-sw.js:39-47, 62`
@@ -1912,7 +1912,7 @@ function safeInternalUrl(u) {
 ---
 
 #### Issue #DS5-228 — `routes/cadastros.js /funcionarios/:id/historico` aceita `mes` e `ano` sem validacao — NaN cabe em EXTRACT
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/routes/cadastros.js:611-640`
@@ -1929,7 +1929,7 @@ Padronizar rule custom `month`/`year`/`date` em `validate.js`.
 ---
 
 #### Issue #DS5-229 — `routes/auth.js` logs: `err.message` do pg driver pode conter valor do parametro
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/routes/auth.js:92, 158`
@@ -1955,7 +1955,7 @@ Padronizar rule custom `month`/`year`/`date` em `validate.js`.
 ---
 
 #### Issue #DS5-231 — `logger.js` do BFF nao escapa newline — log injection via body/url
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/logger.js:47-58`
@@ -2007,7 +2007,7 @@ Padronizar rule custom `month`/`year`/`date` em `validate.js`.
 ---
 
 #### Issue #DS5-431 — Docker images `nginx:alpine` e `postgres:16-alpine` sem pinning (tag rolling)
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** Infra
 - **Arquivo:** `docker-compose.yml`, `naviera-app/Dockerfile`
@@ -2161,7 +2161,7 @@ api:
 ---
 
 #### Issue #DS5-441 — Spring Boot Actuator exposto em `/actuator/health` sem lista branca
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** MEDIO
 - **Camada:** Infra / API
 - **Arquivo:** `naviera-api/src/main/resources/application.properties`
@@ -2248,7 +2248,7 @@ Nginx: restringir `/actuator/*` a `allow 127.0.0.1`.
 ---
 
 #### Issue #DS5-040 — `GlobalExceptionHandler.handleGeneric` loga stack completo — pode incluir valor em `DataIntegrityViolationException`
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/GlobalExceptionHandler.java`
@@ -2275,7 +2275,7 @@ Nginx: restringir `/actuator/*` a `allow 127.0.0.1`.
 ---
 
 #### Issue #DS5-042 — `OpViagemService.listarTodas` sem LIMIT — 50k viagens retornadas
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OpViagemService.java`
@@ -2302,7 +2302,7 @@ Nginx: restringir `/actuator/*` a `allow 127.0.0.1`.
 ---
 
 #### Issue #DS5-044 — `SecurityConfig` nao bloqueia verbos TRACE/CONNECT explicitamente
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/config/SecurityConfig.java`
@@ -2316,7 +2316,7 @@ Nginx: restringir `/actuator/*` a `allow 127.0.0.1`.
 ---
 
 #### Issue #DS5-045 — `spring.jpa.show-sql=false` mas sem desativar `org.hibernate.SQL` no logger
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/resources/application.properties`
@@ -2334,7 +2334,7 @@ logging.level.org.hibernate.orm.jdbc.bind=WARN
 ---
 
 #### Issue #DS5-046 — `application.properties` sem `server.error.include-message=never`
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** API
 - **Arquivo:** `naviera-api/src/main/resources/application.properties`
@@ -2352,7 +2352,7 @@ server.error.include-binding-errors=never
 ---
 
 #### Issue #DS5-234 — Rate limit mensagem revela "Aguarde 1 minuto" — atacante aprende janela
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/routes/auth.js:9` + varios
@@ -2364,7 +2364,7 @@ server.error.include-binding-errors=never
 ---
 
 #### Issue #DS5-235 — `/api/health` publico retorna timestamp — micro-leak de clock skew
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** BFF
 - **Arquivo:** `naviera-web/server/index.js:81-83`
@@ -2376,7 +2376,7 @@ server.error.include-binding-errors=never
 ---
 
 #### Issue #DS5-236 — `/bilhetes/:id/totp` sem rate-limit especifico
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** App/API
 - **Arquivo:** `naviera-app/src/screens/BilheteScreen.jsx` chama `/bilhetes/:id/totp`
@@ -2429,7 +2429,7 @@ db.url=jdbc:postgresql://localhost:5432/naviera_eco?sslmode=prefer
 ---
 
 #### Issue #DS5-451 — Nginx `proxy_read_timeout`/`proxy_send_timeout` nao definidos
-- [ ] **Concluido**
+- [x] **Concluido** (2026-04-25 — DEEP_SECURITY V5.0 closeout, fix sec-hardening)
 - **Severidade:** BAIXO
 - **Camada:** Infra
 - **Arquivo:** `nginx/naviera.conf`
