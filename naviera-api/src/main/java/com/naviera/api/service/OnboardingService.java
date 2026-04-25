@@ -12,6 +12,7 @@ import java.security.SecureRandom;
 import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class OnboardingService {
@@ -47,6 +48,12 @@ public class OnboardingService {
      * Gera slug a partir do nome da empresa.
      * Ex: "Deus de Aliança Navegações" → "deus-de-alianca"
      */
+    // #DS5-417: slugs reservados (subdominios da plataforma) que nao podem virar tenant.
+    private static final Set<String> SLUGS_RESERVADOS = Set.of(
+        "admin", "api", "app", "www", "site", "auth", "ws", "static", "public",
+        "naviera", "suporte", "ajuda", "blog", "status", "cdn", "actuator", "health"
+    );
+
     private String gerarSlug(String nome) {
         String base = nome.toLowerCase()
             .replaceAll("[àáâãä]", "a")
@@ -65,10 +72,11 @@ public class OnboardingService {
             base = partes[0] + "-" + partes[1] + "-" + partes[2];
         }
 
-        // Garantir unicidade
+        // Garantir unicidade + nao colidir com slug reservado.
         String slug = base;
         int contador = 1;
-        while (!jdbc.queryForList("SELECT 1 FROM empresas WHERE slug = ?", slug).isEmpty()) {
+        while (SLUGS_RESERVADOS.contains(slug)
+                || !jdbc.queryForList("SELECT 1 FROM empresas WHERE slug = ?", slug).isEmpty()) {
             slug = base + "-" + contador++;
         }
         return slug;
@@ -90,12 +98,25 @@ public class OnboardingService {
 
         if (nomeEmpresa == null || nomeEmpresa.isBlank())
             throw ApiException.badRequest("Nome da empresa e obrigatorio");
+        if (nomeEmpresa.length() > 200)
+            throw ApiException.badRequest("Nome da empresa muito longo");
         if (email == null || email.isBlank())
             throw ApiException.badRequest("Email e obrigatorio");
+        if (!email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$") || email.length() > 200)
+            throw ApiException.badRequest("Email invalido");
         if (nomeOperador == null || nomeOperador.isBlank())
             throw ApiException.badRequest("Nome do operador e obrigatorio");
-        if (senha == null || senha.length() < 6)
-            throw ApiException.badRequest("Senha deve ter no minimo 6 caracteres");
+        if (nomeOperador.length() > 200)
+            throw ApiException.badRequest("Nome do operador muito longo");
+        if (senha == null || senha.length() < 6 || senha.length() > 128)
+            throw ApiException.badRequest("Senha deve ter entre 6 e 128 caracteres");
+        // #DS5-010: CNPJ opcional, mas se vier deve ser 14 digitos validos (digit-check).
+        if (cnpj != null && !cnpj.isBlank()) {
+            String soDigitos = cnpj.replaceAll("\\D", "");
+            if (soDigitos.length() != 14 || !cnpjValido(soDigitos))
+                throw ApiException.badRequest("CNPJ invalido");
+            cnpj = soDigitos;
+        }
 
         // Verificar email unico
         if (!jdbc.queryForList("SELECT 1 FROM usuarios WHERE LOWER(email) = LOWER(?)", email).isEmpty()) {
@@ -199,5 +220,19 @@ public class OnboardingService {
     private String str(Map<String, Object> map, String key) {
         Object v = map.get(key);
         return v != null ? v.toString().trim() : null;
+    }
+
+    // #DS5-010: digit check de CNPJ (mod 11 com pesos 5..2 e 6..2).
+    private static boolean cnpjValido(String s) {
+        if (s.length() != 14 || s.chars().distinct().count() == 1) return false;
+        int[] p1 = {5,4,3,2,9,8,7,6,5,4,3,2};
+        int[] p2 = {6,5,4,3,2,9,8,7,6,5,4,3,2};
+        return digito(s, p1) == (s.charAt(12) - '0') && digito(s, p2) == (s.charAt(13) - '0');
+    }
+    private static int digito(String s, int[] p) {
+        int sum = 0;
+        for (int i = 0; i < p.length; i++) sum += (s.charAt(i) - '0') * p[i];
+        int r = sum % 11;
+        return r < 2 ? 0 : 11 - r;
     }
 }

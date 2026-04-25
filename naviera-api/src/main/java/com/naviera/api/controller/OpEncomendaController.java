@@ -53,6 +53,7 @@ public class OpEncomendaController {
 
     @PutMapping("/{id}/entregar")
     public ResponseEntity<?> entregar(@PathVariable Long id, @RequestBody Map<String, Object> dados, Authentication auth) {
-        return ResponseEntity.ok(writeService.entregar(TenantUtils.getEmpresaId(auth), id, dados));
+        return ResponseEntity.ok(writeService.entregar(
+            TenantUtils.getEmpresaId(auth), TenantUtils.getOperadorId(auth), id, dados));
     }
 }

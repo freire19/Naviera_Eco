@@ -36,9 +36,14 @@ public class JwtFilter extends OncePerRequestFilter {
                     if ("OPERADOR".equals(tipo)) {
                         // ROLE_ADMIN = admin-empresa (/op/**, /psp/**); ROLE_SUPERADMIN = admin-plataforma
                         // (/admin/** cross-tenant), so quando usuarios.super_admin=TRUE no DB (fix #100/#114).
+                        // #DS5-213: comparar a forma canonica (trim + uppercase) contra um set fechado;
+                        //   evita aceitar "adm", "ADMINISTRATOR", "admin " ou variacoes que devem ser rejeitadas.
                         String funcao = claims.get("funcao", String.class);
-                        if (funcao != null && ("ADMIN".equalsIgnoreCase(funcao) || "Administrador".equalsIgnoreCase(funcao))) {
-                            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                        if (funcao != null) {
+                            String norm = funcao.trim().toUpperCase();
+                            if ("ADMIN".equals(norm) || "ADMINISTRADOR".equals(norm)) {
+                                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                            }
                         }
                         superAdmin = Boolean.TRUE.equals(claims.get("super_admin", Boolean.class));
                         if (superAdmin) {

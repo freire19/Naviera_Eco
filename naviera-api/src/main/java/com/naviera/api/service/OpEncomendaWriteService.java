@@ -2,6 +2,8 @@ package com.naviera.api.service;
 
 import com.naviera.api.config.ApiException;
 import static com.naviera.api.config.MoneyUtils.toBigDecimal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +13,7 @@ import java.util.Map;
 
 @Service
 public class OpEncomendaWriteService {
+    private static final Logger log = LoggerFactory.getLogger(OpEncomendaWriteService.class);
     private final JdbcTemplate jdbc;
     private final NotificationService notificationService;
 
@@ -119,14 +122,32 @@ public class OpEncomendaWriteService {
     }
 
     @Transactional
-    public Map<String, Object> entregar(Integer empresaId, Long id, Map<String, Object> dados) {
+    public Map<String, Object> entregar(Integer empresaId, Long operadorId, Long id, Map<String, Object> dados) {
+        // #DS5-020: validar identificacao do recebedor antes de marcar como entregue.
+        String docRec = trimToNull(dados.get("doc_recebedor"));
+        String nomeRec = trimToNull(dados.get("nome_recebedor"));
+        if (nomeRec == null || nomeRec.isBlank())
+            throw ApiException.badRequest("Nome do recebedor e obrigatorio");
+        if (nomeRec.length() > 200)
+            throw ApiException.badRequest("Nome do recebedor muito longo");
+        if (docRec != null && docRec.length() > 30)
+            throw ApiException.badRequest("Documento do recebedor invalido");
+
         int rows = jdbc.update("""
             UPDATE encomendas SET entregue = TRUE, doc_recebedor = ?, nome_recebedor = ?
-            WHERE id_encomenda = ? AND empresa_id = ?""",
-            dados.get("doc_recebedor"), dados.get("nome_recebedor"), id, empresaId);
-        if (rows == 0) throw ApiException.notFound("Encomenda nao encontrada");
+            WHERE id_encomenda = ? AND empresa_id = ? AND entregue = FALSE""",
+            docRec, nomeRec, id, empresaId);
+        if (rows == 0) throw ApiException.notFound("Encomenda nao encontrada ou ja entregue");
+        // #DS5-020: trilha de auditoria minima — quem entregou + quando (sem PII no log).
+        log.info("encomenda_entregue empresaId={} operadorId={} idEncomenda={}", empresaId, operadorId, id);
         notificationService.encomendaEntregue(empresaId, id);
         return Map.of("mensagem", "Encomenda entregue");
+    }
+
+    private static String trimToNull(Object v) {
+        if (v == null) return null;
+        String s = v.toString().trim();
+        return s.isEmpty() ? null : s;
     }
 
 }

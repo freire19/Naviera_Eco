@@ -51,6 +51,12 @@ public class SyncService {
         "sincronizado"
     );
 
+    // #DS5-009: PII a mascarar em download (operador comum nao precisa do CPF inteiro).
+    //   Mantem 4 ultimos digitos para casamento humano sem expor o documento completo.
+    private static final Map<String, Set<String>> COLUNAS_MASCARADAS = Map.of(
+        "passageiros", Set.of("numero_documento")
+    );
+
     // Mapa: tabela -> coluna PK auto-increment (para skip no INSERT)
     private static final Map<String, String> COLUNA_ID = Map.ofEntries(
         Map.entry("viagens", "id_viagem"),
@@ -359,14 +365,19 @@ public class SyncService {
 
         String excluirCol = getExcluidoColumn(tabela);
 
+        Set<String> mascarar = COLUNAS_MASCARADAS.getOrDefault(tabela, Set.of());
         return jdbc.query(sql.toString(), (rs, i) -> {
             ResultSetMetaData meta = rs.getMetaData();
             Map<String, Object> row = new LinkedHashMap<>();
             for (int c = 1; c <= meta.getColumnCount(); c++) {
                 String colName = meta.getColumnName(c);
-                // Nao incluir colunas de controle interno
                 if (COLUNAS_CONTROLE.contains(colName)) continue;
-                row.put(colName, rs.getObject(c));
+                Object val = rs.getObject(c);
+                // #DS5-009: mascarar PII na resposta de download.
+                if (mascarar.contains(colName) && val instanceof String s && s.length() > 4) {
+                    val = "***" + s.substring(s.length() - 4);
+                }
+                row.put(colName, val);
             }
 
             String rowUuid = row.get("uuid") != null ? row.get("uuid").toString() : null;
