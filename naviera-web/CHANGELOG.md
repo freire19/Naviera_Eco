@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.0...web-v1.7.1) (2026-04-25)
+
+
+### Bug Fixes
+
+* **web:** AUDIT_V1.3 closeout — rate limit, tenant cache, tolerance PAGO ([910c827](https://github.com/freire19/Naviera_Eco/commit/910c827f82e23ca07ee281b34e8c83a42ce422ec))
+
 ## [1.7.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.6.0...web-v1.7.0) (2026-04-25)
 
 
