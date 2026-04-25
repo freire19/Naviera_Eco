@@ -1,4 +1,13 @@
 /* === HELPERS === */
+// #DR282: 502/504 do Nginx e gateway timeouts devolvem HTML, nao JSON. Le o body cru
+//   e tenta parsear; nunca lanca. Caller monta msg com `data?.erro || raw.slice(0,120)`.
+export async function lerRespostaJson(res) {
+  const raw = await res.text();
+  let data = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { /* nao e JSON */ }
+  return { raw, data };
+}
+
 export const fmt = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "\u2014";
 export const money = (v) => v != null ? `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "\u2014";
 export const initials = (name) => name ? name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?";

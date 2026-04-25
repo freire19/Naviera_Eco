@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { API, useApi, authFetch } from "../api.js";
-import { fmt, money } from "../helpers.js";
+import { fmt, money, lerRespostaJson } from "../helpers.js";
 import { IconBack, IconCheck, IconCalendar } from "../icons.jsx";
 import Badge from "../components/Badge.jsx";
 import Cd from "../components/Card.jsx";
@@ -39,15 +39,9 @@ export default function PassagensCPF({ t, authHeaders }) {
       // #231: fallback para id_viagem quando DTO usar snake_case
       const viagemIdCompra = compra.id ?? compra.id_viagem ?? compra.idViagem;
       const res = await authFetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: viagemIdCompra, idTipoPassagem: tipoSel, formaPagamento: formaPag }) });
-      // #020: nem todo erro devolve JSON — 502/504 do Nginx, HTML de gateway timeout, etc. Le texto cru
-      // e tenta parsear; caso contrario, preserva a primeira linha pra diagnostico em vez de "Erro de conexao"
-      // (que e mentira para erro HTTP).
-      const raw = await res.text();
-      let data = null;
-      try { data = raw ? JSON.parse(raw) : null; } catch { /* nao e JSON */ }
+      const { raw, data } = await lerRespostaJson(res);
       if (!res.ok) {
-        const motivo = data?.erro || (raw && raw.slice(0, 120).trim()) || `HTTP ${res.status}`;
-        setErro(motivo);
+        setErro(data?.erro || (raw && raw.slice(0, 120).trim()) || `HTTP ${res.status}`);
         return;
       }
       setResultado(data); rm();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { API, useApi, authFetch } from "../api.js";
-import { money } from "../helpers.js";
+import { money, lerRespostaJson } from "../helpers.js";
 import Badge from "../components/Badge.jsx";
 import Cd from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
@@ -34,12 +34,7 @@ export default function EncomendaCPF({ t, authHeaders }) {
         method: "POST", headers: authHeaders,
         body: JSON.stringify({ formaPagamento: formaPag }),
       });
-      // #DR282: resposta pode nao ser JSON valido (502/504 Nginx, HTML de gateway timeout, etc).
-      //   Le texto cru e tenta parsear; caso contrario, preserva o status para diagnostico em
-      //   vez de cair no catch generico "Erro de conexao" (que e mentira para erro HTTP).
-      const raw = await res.text();
-      let data = null;
-      try { data = raw ? JSON.parse(raw) : null; } catch { /* nao e JSON */ }
+      const { raw, data } = await lerRespostaJson(res);
       if (!res.ok) {
         setErrPag(data?.erro || data?.message || (raw && raw.slice(0, 120).trim()) || `HTTP ${res.status}`);
         return;
