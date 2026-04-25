@@ -143,7 +143,7 @@ return jdbc.queryForList("""
 ---
 
 #### Issue #DP065 — GpsService.todasUltimasPosicoes: cross-tenant sem cache nem LIMIT
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/GpsService.java`
 - **Linha(s):** 54-62
@@ -156,7 +156,7 @@ return jdbc.queryForList("""
 ---
 
 #### Issue #DP066 — FinanceiroService.balanco: 4 queries sequenciais por viagem
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FinanceiroService.java`
 - **Linha(s):** 38-65
@@ -178,7 +178,7 @@ Map<String, Object> row = jdbc.queryForMap("""
 ---
 
 #### Issue #DP067 — FinanceiroService.listarEntradas/listarSaidas: SELECT * sem LIMIT
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/FinanceiroService.java`
 - **Linha(s):** 18-36
@@ -191,7 +191,7 @@ Map<String, Object> row = jdbc.queryForMap("""
 ---
 
 #### Issue #DP068 — OnboardingService.gerarSlug: while loop com query por tentativa
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/OnboardingService.java`
 - **Linha(s):** 66-71
@@ -233,7 +233,7 @@ try {
 ---
 
 #### Issue #DP070 — AuthService.login: @Transactional desnecessario
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/service/AuthService.java`
 - **Linha(s):** 23-33
@@ -290,7 +290,7 @@ Melhor ainda: endpoint batch `POST /fretes/itens?ids=1,2,3` que retorna `{1:[...
 ---
 
 #### Issue #DP073 — ocr.js upload storage: existsSync + mkdirSync no request path
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/ocr.js`
 - **Linha(s):** 52-55
@@ -316,7 +316,7 @@ const storage = multer.diskStorage({
 ---
 
 #### Issue #DP074 — documentos.js /upload: existsSync sincrono no request path
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/server/routes/documentos.js`
 - **Linha(s):** 4 (importar existsSync), destination handler
@@ -344,7 +344,7 @@ const storage = multer.diskStorage({
 ### WEB FRONTEND (React)
 
 #### Issue #DP076 — Layout.jsx: useEffect ESC handler sem cleanup
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/src/components/Layout.jsx`
 - **Linha(s):** 140-150
@@ -364,7 +364,7 @@ useEffect(() => {
 ---
 
 #### Issue #DP077 — ListaFretes/RelatorioFretes: filter + reduce sem useMemo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** Multiplos
 - **Linha(s):**
@@ -389,7 +389,7 @@ const totais = useMemo(() => {
 ---
 
 #### Issue #DP078 — Boletos.jsx: loop await de POST parcelas
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `naviera-web/src/pages/Boletos.jsx`
 - **Linha(s):** ~14 (funcao gerar)
@@ -402,7 +402,7 @@ const totais = useMemo(() => {
 ---
 
 #### Issue #DP079 — Agenda.jsx: forEach montando objeto contagem sem useMemo
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/src/pages/Agenda.jsx`
 - **Linha(s):** ~72
@@ -415,7 +415,7 @@ const totais = useMemo(() => {
 ---
 
 #### Issue #DP080 — App.jsx: localStorage+JSON.parse em useState initializer sem try/catch
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/src/App.jsx`
 - **Linha(s):** 12-25
@@ -431,7 +431,7 @@ const initial = (() => { try { return JSON.parse(localStorage.getItem(k)) ?? fal
 ---
 
 #### Issue #DP081 — Financeiro.jsx: new Date().toLocaleDateString no render
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-web/src/pages/Financeiro.jsx`
 - **Linha(s):** ~93
@@ -446,7 +446,7 @@ const initial = (() => { try { return JSON.parse(localStorage.getItem(k)) ?? fal
 ### APP MOBILE
 
 #### Issue #DP082 — FinanceiroCNPJ.jsx: array opts literal dentro do render
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/screens/FinanceiroCNPJ.jsx`
 - **Linha(s):** 83-92
@@ -459,7 +459,7 @@ const initial = (() => { try { return JSON.parse(localStorage.getItem(k)) ?? fal
 ---
 
 #### Issue #DP083 — Header.jsx: `<img>` sem loading=lazy nem thumbnail
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `naviera-app/src/components/Header.jsx`
 - **Linha(s):** ~17
@@ -506,7 +506,7 @@ new Thread(() -> {
 ---
 
 #### Issue #DP085 — ConfigurarApiController: FileInputStream em getters estaticos sem cache
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/ConfigurarApiController.java`
 - **Linha(s):** 352-386
@@ -539,7 +539,7 @@ public static String getUrlApi() {
 ---
 
 #### Issue #DP086 — ListaFretesController: clear() + loop .add() em ObservableList
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** MEDIO
 - **Arquivo:** `src/gui/ListaFretesController.java`
 - **Linha(s):** 428-429
@@ -568,7 +568,7 @@ public static String getUrlApi() {
 ---
 
 #### Issue #DP088 — ExtratoPassageiroController: clear() + loop .add() em ObservableList
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** BAIXO
 - **Arquivo:** `src/gui/ExtratoPassageiroController.java`
 - **Linha(s):** 176-177
