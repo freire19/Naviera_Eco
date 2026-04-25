@@ -1,4 +1,7 @@
-export default function Badge({ status, t }) {
+import { useTheme } from "../contexts/ThemeContext.jsx";
+
+export default function Badge({ status }) {
+  const { t } = useTheme();
   const m = {
     "Em tr\u00e2nsito": [t.infoBg, t.infoTx], "EM_VIAGEM": [t.infoBg, t.infoTx], "Em viagem": [t.infoBg, t.infoTx],
     "Entregue": [t.okBg, t.okTx], "NO_PORTO": [t.warnBg, t.warnTx], "Confirmada": [t.okBg, t.okTx],

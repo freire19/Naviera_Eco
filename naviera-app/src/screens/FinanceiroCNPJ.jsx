@@ -7,8 +7,12 @@ import Skeleton from "../components/Skeleton.jsx";
 import ErrorRetry from "../components/ErrorRetry.jsx";
 import Toast from "../components/Toast.jsx";
 import PagamentoArtefato from "../components/PagamentoArtefato.jsx";
+import { useTheme } from "../contexts/ThemeContext.jsx";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
-export default function FinanceiroCNPJ({ t, authHeaders }) {
+export default function FinanceiroCNPJ() {
+  const { t } = useTheme();
+  const { authHeaders } = useAuth();
   const { data: fretes, loading, erro, refresh } = useApi("/fretes", authHeaders);
   const [pagando, setPagando] = useState(null);
   const [formaPag, setFormaPag] = useState("PIX");
@@ -37,14 +41,14 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
     } catch { setErrPag("Erro de conexao."); } finally { setEnviando(false); }
   };
 
-  if (loading) return <Skeleton t={t} height={70} count={4} />;
-  if (erro) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
+  if (loading) return <Skeleton height={70} count={4} />;
+  if (erro) return <ErrorRetry erro={erro} onRetry={refresh} />;
 
   // Tela de sucesso com QR/boleto/checkout
   if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <button onClick={() => { setResultado(null); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h3>
-    <Cd t={t} style={{ padding: 14 }}>
+    <Cd style={{ padding: 14 }}>
       <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>FRT-{resultado.numeroFrete}</div>
       <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {resultado.destinatario || "-"}</div>
       {resultado.embarcacao && <div style={{ fontSize: 12, color: t.txMuted }}>Embarcacao: {resultado.embarcacao}</div>}
@@ -54,8 +58,8 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
     <PagamentoArtefato formaPagamento={resultado.formaPagamento}
       qrCodePayload={resultado.qrCodePayload} qrCodeImageUrl={resultado.qrCodeImageUrl}
       linhaDigitavel={resultado.linhaDigitavel} boletoUrl={resultado.boletoUrl}
-      checkoutUrl={resultado.checkoutUrl} t={t} />
-    {toast && <Toast message={toast} t={t} onClose={() => setToast(null)} />}
+      checkoutUrl={resultado.checkoutUrl} />
+    {toast && <Toast message={toast} onClose={() => setToast(null)} />}
   </div>;
 
   // Modal de pagamento
@@ -75,7 +79,7 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
     return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <button onClick={() => { setPagando(null); setErrPag(""); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
       <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagar frete</h3>
-      <Cd t={t} style={{ padding: 14 }}>
+      <Cd style={{ padding: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>FRT-{pagando.numeroFrete || pagando.id}</div>
         <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {pagando.destinatario || "-"}</div>
         <div style={{ fontSize: 12, color: t.txMuted }}>Embarcacao: {pagando.embarcacao || "-"}</div>
@@ -85,7 +89,7 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
       <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Forma de pagamento</div>
       {opts.map(o => {
         const sel = formaPag === o.v;
-        return <Cd key={o.v} t={t} style={{ padding: 12, cursor: "pointer", border: `2px solid ${sel ? t.pri : t.border}`, background: sel ? t.accent : t.card }} onClick={() => setFormaPag(o.v)}>
+        return <Cd key={o.v} style={{ padding: 12, cursor: "pointer", border: `2px solid ${sel ? t.pri : t.border}`, background: sel ? t.accent : t.card }} onClick={() => setFormaPag(o.v)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div><div style={{ fontSize: 14, fontWeight: 600 }}>{o.t}</div>
               <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>{o.s}</div></div>
@@ -94,13 +98,13 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
         </Cd>;
       })}
 
-      <Cd t={t} style={{ padding: 12, background: t.soft, border: `1px dashed ${t.border}` }}>
+      <Cd style={{ padding: 12, background: t.soft, border: `1px dashed ${t.border}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted }}><span>Saldo</span><span>{money(saldo)}</span></div>
         {desconto10 > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.ok, marginTop: 4 }}><span>Desconto PIX (10%)</span><span>- {money(desconto10)}</span></div>}
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.border}` }}><span>Total</span><span style={{ color: t.pri }}>{money(aPagar)}</span></div>
       </Cd>
 
-      {errPag && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{errPag}</div>}
+      {errPag && <div role="alert" style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{errPag}</div>}
       <button onClick={confirmarPagamento} disabled={enviando} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: enviando ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14 }}>
         {enviando ? "Processando..." : formaPag === "BARCO" ? "Reservar para pagar no barco" : formaPag === "BOLETO" ? "Gerar boleto" : `Pagar via ${formaPag === "PIX" ? "PIX" : "cartao"}`}
       </button>
@@ -126,7 +130,7 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Financeiro</h3>
 
-    <Cd t={t} style={{ padding: 16 }}>
+    <Cd style={{ padding: 16 }}>
       <div style={{ fontSize: 12, color: t.txMuted, marginBottom: 4 }}>Total pendente</div>
       <div style={{ fontSize: 28, fontWeight: 700, color: totalPendente > 0 ? t.err : t.ok }}>{money(totalPendente)}</div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: t.txMuted, marginTop: 6 }}>
@@ -135,7 +139,7 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
       </div>
     </Cd>
 
-    {listaGrupos.length === 0 && <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhum frete encontrado.</div></Cd>}
+    {listaGrupos.length === 0 && <Cd style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Nenhum frete encontrado.</div></Cd>}
 
     {listaGrupos.map(g => (
       <div key={g.embarcacao} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -148,10 +152,10 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
           const aguardando = f.statusPagamento === "PENDENTE_CONFIRMACAO";
           const podeP = !pago && !aguardando;
           return (
-            <Cd key={f.id} t={t} style={{ padding: 12 }}>
+            <Cd key={f.id} style={{ padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.txSoft }}>FRT-{f.numeroFrete || f.id}</span>
-                <Badge status={pago ? "Pago" : aguardando ? "Aguardando" : "Pendente"} t={t} />
+                <Badge status={pago ? "Pago" : aguardando ? "Aguardando" : "Pendente"} />
               </div>
               <div style={{ fontSize: 13 }}>{f.destinatario}</div>
               {f.dataViagem && <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>{fmt(f.dataViagem)}</div>}
@@ -171,6 +175,6 @@ export default function FinanceiroCNPJ({ t, authHeaders }) {
       </div>
     ))}
 
-    {toast && <Toast message={toast} t={t} onClose={() => setToast(null)} />}
+    {toast && <Toast message={toast} onClose={() => setToast(null)} />}
   </div>;
 }

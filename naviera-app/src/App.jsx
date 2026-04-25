@@ -5,7 +5,9 @@ import {
   IconUsers, IconWallet, IconStore, IconPackage
 } from "./icons.jsx";
 import { T } from "./theme.js";
-import { API, lerUsuarioValido } from "./api.js";
+import { API, authFetch, lerUsuarioValido } from "./api.js";
+import { ThemeProvider } from "./contexts/ThemeContext.jsx";
+import { AuthProvider } from "./contexts/AuthContext.jsx";
 import useWebSocket from "./hooks/useWebSocket.js";
 import useNotifications from "./hooks/useNotifications.js";
 import Header from "./components/Header.jsx";
@@ -100,7 +102,7 @@ export default function Naviera() {
   useEffect(() => {
     if (!tokenFcm || !token || pushTokenEnviado.current) return;
     pushTokenEnviado.current = true;
-    fetch(`${API}/push/registrar`, {
+    authFetch(`${API}/push/registrar`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ tokenFcm, plataforma: "web" }),
@@ -124,7 +126,7 @@ export default function Naviera() {
 
   useEffect(() => {
     if (!token) { setMinhaFoto(null); return; }
-    fetch(`${API}/perfil`, { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } })
+    authFetch(`${API}/perfil`, { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.fotoUrl) setMinhaFoto(`${API}${d.fotoUrl}`); })
       .catch(e => console.warn("[App] erro ao carregar foto do perfil:", e?.message));
@@ -141,67 +143,71 @@ export default function Naviera() {
 
   const doLogout = () => { sessionStorage.removeItem("naviera_token"); sessionStorage.removeItem("naviera_usuario"); setProfile(null); setToken(null); setUsuario(null); setTab("home"); setTabHistory([]); setMinhaFoto(null); pushTokenEnviado.current = false; };
 
-  /* ═══ LOGIN SCREEN ═══ */
-  if (!profile) return <LoginScreen t={t} mode={mode} setMode={setMode} onLogin={handleLogin} />;
-
-  /* ═══ AUTHENTICATED SHELL ═══ */
   const isCPF = profile === "cpf";
   const tabs = isCPF ? TABS_CPF : TABS_CNPJ;
   const authHeaders = token ? { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } : {};
+
   const screen = () => {
-    if (tab === "perfil") return <PerfilScreen t={t} token={token} authHeaders={authHeaders} usuario={usuario} onFotoChange={setMinhaFoto} />;
+    if (tab === "perfil") return <PerfilScreen onFotoChange={setMinhaFoto} />;
     if (isCPF) {
-      if (tab === "home") return <HomeCPF t={t} onNav={navigateTab} authHeaders={authHeaders} usuario={usuario} />;
-      if (tab === "amigos") return <AmigosCPF t={t} authHeaders={authHeaders} />;
-      if (tab === "mapa") return <MapaCPF t={t} authHeaders={authHeaders} />;
-      if (tab === "passagens") return <PassagensCPF t={t} authHeaders={authHeaders} />;
-      if (tab === "encomendas") return <EncomendaCPF t={t} authHeaders={authHeaders} />;
+      if (tab === "home") return <HomeCPF onNav={navigateTab} />;
+      if (tab === "amigos") return <AmigosCPF />;
+      if (tab === "mapa") return <MapaCPF />;
+      if (tab === "passagens") return <PassagensCPF />;
+      if (tab === "encomendas") return <EncomendaCPF />;
     } else {
-      if (tab === "home") return <HomeCNPJ t={t} onNav={navigateTab} authHeaders={authHeaders} usuario={usuario} />;
-      if (tab === "pedidos") return <PedidosCNPJ t={t} authHeaders={authHeaders} />;
-      if (tab === "lojas") return <LojasParceiras t={t} authHeaders={authHeaders} />;
-      if (tab === "financeiro") return <FinanceiroCNPJ t={t} authHeaders={authHeaders} />;
-      if (tab === "loja") return <LojaCNPJ t={t} authHeaders={authHeaders} />;
+      if (tab === "home") return <HomeCNPJ onNav={navigateTab} />;
+      if (tab === "pedidos") return <PedidosCNPJ />;
+      if (tab === "lojas") return <LojasParceiras />;
+      if (tab === "financeiro") return <FinanceiroCNPJ />;
+      if (tab === "loja") return <LojaCNPJ />;
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: t.bg, maxWidth: 420, margin: "0 auto", position: "relative", transition: "background 0.3s", color: t.tx }}>
-      <Header t={t} mode={mode} setMode={setMode} tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} doLogout={doLogout} notifications={notifications} clearNotifications={clearNotifications} unreadCount={unreadCount} />
-      {canInstall && (
-        <div style={{
-          margin: "8px 18px 0", padding: "12px 16px", borderRadius: 12,
-          background: t.priGrad, display: "flex", alignItems: "center",
-          justifyContent: "space-between", gap: 12
-        }}>
-          <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>
-            Instalar o app Naviera
-          </span>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button onClick={dismissInstall} style={{
-              background: "rgba(255,255,255,0.2)", color: "#fff", border: "none",
-              borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600,
-              cursor: "pointer", fontFamily: "inherit"
-            }}>Agora nao</button>
-            <button onClick={promptInstall} style={{
-              background: "#fff", color: "#059669", border: "none",
-              borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700,
-              cursor: "pointer", fontFamily: "inherit"
-            }}>Instalar</button>
+    <ThemeProvider value={{ t, mode, setMode }}>
+      <AuthProvider value={{ token, usuario, authHeaders, login: handleLogin, logout: doLogout }}>
+        {!profile ? (
+          <LoginScreen />
+        ) : (
+          <div style={{ minHeight: "100vh", background: t.bg, maxWidth: 420, margin: "0 auto", position: "relative", transition: "background 0.3s", color: t.tx }}>
+            <Header tab={tab} navigateTab={navigateTab} goBack={goBack} profile={profile} minhaFoto={minhaFoto} notifications={notifications} clearNotifications={clearNotifications} unreadCount={unreadCount} />
+            {canInstall && (
+              <div style={{
+                margin: "8px 18px 0", padding: "12px 16px", borderRadius: 12,
+                background: t.priGrad, display: "flex", alignItems: "center",
+                justifyContent: "space-between", gap: 12
+              }}>
+                <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>
+                  Instalar o app Naviera
+                </span>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button onClick={dismissInstall} style={{
+                    background: "rgba(255,255,255,0.2)", color: "#fff", border: "none",
+                    borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", fontFamily: "inherit"
+                  }}>Agora nao</button>
+                  <button onClick={promptInstall} style={{
+                    background: "#fff", color: "#059669", border: "none",
+                    borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit"
+                  }}>Instalar</button>
+                </div>
+              </div>
+            )}
+            <div style={{ padding: "16px 18px 100px" }}>{screen()}</div>
+            <TabBar tabs={tabs} tab={tab} setTab={(id) => { setTab(id); setTabHistory([]); }} />
+            {notifSuportado && (
+              <NotificationBanner
+                permissao={permissao}
+                notificacao={notificacao}
+                onSolicitar={handleSolicitarPermissao}
+                onLimpar={limparNotificacao}
+              />
+            )}
           </div>
-        </div>
-      )}
-      <div style={{ padding: "16px 18px 100px" }}>{screen()}</div>
-      <TabBar tabs={tabs} tab={tab} setTab={(id) => { setTab(id); setTabHistory([]); }} t={t} />
-      {notifSuportado && (
-        <NotificationBanner
-          t={t}
-          permissao={permissao}
-          notificacao={notificacao}
-          onSolicitar={handleSolicitarPermissao}
-          onLimpar={limparNotificacao}
-        />
-      )}
-    </div>
+        )}
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

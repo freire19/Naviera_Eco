@@ -4,8 +4,12 @@ import { initials } from "../helpers.js";
 import Cd from "../components/Card.jsx";
 import Av from "../components/Avatar.jsx";
 import Skeleton from "../components/Skeleton.jsx";
+import { useTheme } from "../contexts/ThemeContext.jsx";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
-export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoChange }) {
+export default function PerfilScreen({ onFotoChange }) {
+  const { t } = useTheme();
+  const { token, authHeaders } = useAuth();
   const [perfil, setPerfil] = useState(null);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({});
@@ -50,17 +54,17 @@ export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoCha
     } finally { setUploadingFoto(false); }
   };
 
-  if (loading) return <Skeleton t={t} height={60} count={3} />;
-  if (!perfil) return <Cd t={t} style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Erro ao carregar perfil.</div></Cd>;
+  if (loading) return <Skeleton height={60} count={3} />;
+  if (!perfil) return <Cd style={{ padding: 16, textAlign: "center" }}><div style={{ fontSize: 13, color: t.txMuted }}>Erro ao carregar perfil.</div></Cd>;
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Meu perfil</h3>
-    {sucesso && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.okBg, color: t.okTx, fontSize: 12, fontWeight: 500 }}>{sucesso}</div>}
-    {erro && <div style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12, fontWeight: 500 }}>{erro}</div>}
-    <Cd t={t} style={{ padding: 18 }}>
+    {sucesso && <div role="status" style={{ padding: "10px 14px", borderRadius: 10, background: t.okBg, color: t.okTx, fontSize: 12, fontWeight: 500 }}>{sucesso}</div>}
+    {erro && <div role="alert" style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12, fontWeight: 500 }}>{erro}</div>}
+    <Cd style={{ padding: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
         <div style={{ position: "relative" }}>
-          <Av letters={initials(perfil.nome)} size={64} t={t} fotoUrl={perfil.fotoUrl} />
+          <Av letters={initials(perfil.nome)} size={64} fotoUrl={perfil.fotoUrl} />
           <label style={{ position: "absolute", bottom: -2, right: -2, width: 24, height: 24, borderRadius: "50%", background: t.priGrad, display: "flex", alignItems: "center", justifyContent: "center", cursor: uploadingFoto ? "default" : "pointer", border: `2px solid ${t.card}` }}>
             <span style={{ fontSize: 12, color: "#fff" }}>{uploadingFoto ? "..." : "+"}</span>
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadFoto} style={{ display: "none" }} disabled={uploadingFoto} />
@@ -70,10 +74,10 @@ export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoCha
       </div>
       {editando ? <>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div><label style={labelStyle}>Nome</label><input value={form.nome} onChange={e => set("nome", e.target.value)} className="input-field" style={inputStyle} /></div>
-          <div><label style={labelStyle}>Email</label><input value={form.email} onChange={e => set("email", e.target.value)} type="email" className="input-field" style={inputStyle} /></div>
-          <div><label style={labelStyle}>Telefone</label><input value={form.telefone} onChange={e => set("telefone", e.target.value)} className="input-field" style={inputStyle} /></div>
-          <div><label style={labelStyle}>Cidade</label><input value={form.cidade} onChange={e => set("cidade", e.target.value)} className="input-field" style={inputStyle} /></div>
+          <div><label htmlFor="perfil-nome" style={labelStyle}>Nome</label><input id="perfil-nome" name="nome" autoComplete="name" value={form.nome} onChange={e => set("nome", e.target.value)} className="input-field" style={inputStyle} /></div>
+          <div><label htmlFor="perfil-email" style={labelStyle}>Email</label><input id="perfil-email" name="email" autoComplete="email" value={form.email} onChange={e => set("email", e.target.value)} type="email" className="input-field" style={inputStyle} /></div>
+          <div><label htmlFor="perfil-telefone" style={labelStyle}>Telefone</label><input id="perfil-telefone" name="telefone" autoComplete="tel" type="tel" inputMode="tel" value={form.telefone} onChange={e => set("telefone", e.target.value)} className="input-field" style={inputStyle} /></div>
+          <div><label htmlFor="perfil-cidade" style={labelStyle}>Cidade</label><input id="perfil-cidade" name="cidade" autoComplete="address-level2" value={form.cidade} onChange={e => set("cidade", e.target.value)} className="input-field" style={inputStyle} /></div>
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <button onClick={() => { setEditando(false); setErro(""); setForm({ nome: perfil.nome || "", email: perfil.email || "", telefone: perfil.telefone || "", cidade: perfil.cidade || "" }); }} className="btn-outline" style={{ flex: 1, padding: "10px 0", border: `1px solid ${t.border}`, color: t.txMuted, borderRadius: 10 }}>Cancelar</button>

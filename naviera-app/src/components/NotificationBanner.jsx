@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
+import { useTheme } from "../contexts/ThemeContext.jsx";
 
 /**
  * NotificationBanner — banner para solicitar permissao + toast de notificacao foreground.
  *
  * Props:
- *   t              — theme object
  *   permissao      — "default" | "granted" | "denied"
  *   notificacao    — { titulo, corpo } | null  (toast foreground)
  *   onSolicitar    — () => void  (pedir permissao)
  *   onLimpar       — () => void  (fechar toast)
  */
-export default function NotificationBanner({ t, permissao, notificacao, onSolicitar, onLimpar }) {
+export default function NotificationBanner({ permissao, notificacao, onSolicitar, onLimpar }) {
+  const { t } = useTheme();
   const [dismissed, setDismissed] = useState(() => {
     try { return sessionStorage.getItem("naviera_notif_dismissed") === "1"; }
     catch { return false; }

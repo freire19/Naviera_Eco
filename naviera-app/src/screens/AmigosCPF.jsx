@@ -6,8 +6,12 @@ import Cd from "../components/Card.jsx";
 import Av from "../components/Avatar.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import Toast from "../components/Toast.jsx";
+import { useTheme } from "../contexts/ThemeContext.jsx";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
-export default function AmigosCPF({ t, authHeaders }) {
+export default function AmigosCPF() {
+  const { t } = useTheme();
+  const { authHeaders } = useAuth();
   const { data: amigos, loading, refresh } = useApi("/amigos", authHeaders);
   const { data: pendentes, refresh: refreshPendentes } = useApi("/amigos/pendentes", authHeaders);
   const { data: sugestoes } = useApi("/amigos/sugestoes", authHeaders);
@@ -50,16 +54,16 @@ export default function AmigosCPF({ t, authHeaders }) {
   };
 
   const PessoaCard = ({ p, acao }) => (
-    <Cd t={t} style={{ padding: 12 }}>
+    <Cd style={{ padding: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Av letters={initials(p.nome)} size={42} t={t} fotoUrl={p.fotoUrl} />
+        <Av letters={initials(p.nome)} size={42} fotoUrl={p.fotoUrl} />
         <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{p.nome}</div><div style={{ fontSize: 12, color: t.txMuted }}>{p.cidade || ""}</div></div>
         {acao}
       </div>
     </Cd>
   );
 
-  if (loading) return <Skeleton t={t} height={60} count={4} />;
+  if (loading) return <Skeleton height={60} count={4} />;
 
   return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Amigos</h3>
@@ -103,6 +107,6 @@ export default function AmigosCPF({ t, authHeaders }) {
       } />)}
     </>}
 
-    {toast && <Toast message={toast} t={t} onClose={() => setToast(null)} />}
+    {toast && <Toast message={toast} onClose={() => setToast(null)} />}
   </div>;
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Cd from "./Card.jsx";
+import { useTheme } from "../contexts/ThemeContext.jsx";
 
 // #DS5-210: bloqueia hrefs javascript:/data: vindas do PSP/BFF (ataque XSS de 1-clique).
 //   Aceita apenas http(s); qualquer outra coisa retorna null e o link nao e renderizado.
@@ -24,7 +25,8 @@ function safeHttpUrl(u) {
  *   checkoutUrl                    : string (CARTAO)
  *   t : theme
  */
-export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCodeImageUrl, linhaDigitavel, boletoUrl, checkoutUrl, t }) {
+export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCodeImageUrl, linhaDigitavel, boletoUrl, checkoutUrl }) {
+  const { t } = useTheme();
   const [copiado, setCopiado] = useState("");
   // #018: clipboard pode rejeitar (HTTP, iframe, permissao negada) — fallback execCommand + catch evita unhandledrejection.
   const copiar = async (txt, label) => {
@@ -55,7 +57,7 @@ export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCod
     const imgSrc = qrCodeImageUrl?.startsWith("data:") ? qrCodeImageUrl
                  : qrCodeImageUrl ? `data:image/png;base64,${qrCodeImageUrl}` : null;
     return (
-      <Cd t={t} style={{ padding: 16, textAlign: "center", border: `2px solid ${t.pri}` }}>
+      <Cd style={{ padding: 16, textAlign: "center", border: `2px solid ${t.pri}` }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: t.pri, marginBottom: 10 }}>QR Code PIX</div>
         {imgSrc && <img src={imgSrc} alt="QR PIX" style={{ width: 200, height: 200, objectFit: "contain", background: "#fff", padding: 6, borderRadius: 8 }} />}
         {qrCodePayload && (
@@ -77,7 +79,7 @@ export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCod
     const safeBoletoUrl = safeHttpUrl(boletoUrl);
     if (!linhaDigitavel && !safeBoletoUrl) return null;
     return (
-      <Cd t={t} style={{ padding: 16, border: `2px solid ${t.pri}` }}>
+      <Cd style={{ padding: 16, border: `2px solid ${t.pri}` }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: t.pri, marginBottom: 10 }}>Boleto</div>
         {linhaDigitavel && (
           <>
@@ -103,7 +105,7 @@ export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCod
     const safeCheckoutUrl = safeHttpUrl(checkoutUrl);
     if (!safeCheckoutUrl) return null;
     return (
-      <Cd t={t} style={{ padding: 16, textAlign: "center", border: `2px solid ${t.pri}` }}>
+      <Cd style={{ padding: 16, textAlign: "center", border: `2px solid ${t.pri}` }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: t.pri, marginBottom: 10 }}>Pagar com cartao</div>
         <div style={{ fontSize: 12, color: t.txMuted, marginBottom: 12 }}>Voce sera redirecionado para o checkout seguro</div>
         <a href={safeCheckoutUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: "block", padding: "12px 18px", background: t.priGrad, color: "#fff", fontSize: 14, borderRadius: 10, border: "none", fontWeight: 600, textDecoration: "none" }}>

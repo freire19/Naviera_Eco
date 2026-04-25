@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { API } from "../api.js";
+import { API, authFetch } from "../api.js";
 import { IconRefresh, IconShip, IconMapPin, IconClock } from "../icons.jsx";
 import Badge from "../components/Badge.jsx";
 import Cd from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ErrorRetry from "../components/ErrorRetry.jsx";
+import { useTheme } from "../contexts/ThemeContext.jsx";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 /* ═══ CONFIG ═══ */
 const REFRESH_MS = 30_000;
@@ -55,7 +57,7 @@ function useGps(authHeaders) {
     setErro("");
     try {
       const headers = authHeaders?.Authorization ? { ...authHeaders } : {};
-      const r = await fetch(`${API}/gps/embarcacoes`, { headers, signal: controller.signal });
+      const r = await authFetch(`${API}/gps/embarcacoes`, { headers, signal: controller.signal });
       if (!r.ok) throw new Error("Erro ao carregar posicoes GPS");
       const d = await r.json();
       setData(d);
@@ -86,7 +88,8 @@ function useGps(authHeaders) {
 }
 
 /* ═══ SVG RIVER MAP ═══ */
-function RiverMap({ boats, t, onSelectBoat }) {
+function RiverMap({ boats, onSelectBoat }) {
+  const { t } = useTheme();
   return (
     <div style={{
       position: "relative", width: "100%", paddingBottom: "56%",
@@ -191,11 +194,12 @@ function RiverMap({ boats, t, onSelectBoat }) {
 }
 
 /* ═══ BOAT LIST CARD ═══ */
-function BoatCard({ boat, t, onClick }) {
+function BoatCard({ boat, onClick }) {
+  const { t } = useTheme();
   const cor = statusCor(boat.ultima_atualizacao);
   const tempo = tempoRelativo(boat.ultima_atualizacao);
   return (
-    <Cd t={t} onClick={onClick} style={{ padding: 14 }}>
+    <Cd onClick={onClick} style={{ padding: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
           <div style={{
@@ -231,7 +235,9 @@ function BoatCard({ boat, t, onClick }) {
 }
 
 /* ═══ MAIN SCREEN ═══ */
-export default function MapaCPF({ t, authHeaders }) {
+export default function MapaCPF() {
+  const { t } = useTheme();
+  const { authHeaders } = useAuth();
   const { data: boats, loading, erro, refresh } = useGps(authHeaders);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBoat, setSelectedBoat] = useState(null);
@@ -242,8 +248,8 @@ export default function MapaCPF({ t, authHeaders }) {
     setTimeout(() => setRefreshing(false), 500);
   };
 
-  if (loading && !boats) return <Skeleton t={t} height={80} count={4} />;
-  if (erro && !boats) return <ErrorRetry erro={erro} onRetry={refresh} t={t} />;
+  if (loading && !boats) return <Skeleton height={80} count={4} />;
+  if (erro && !boats) return <ErrorRetry erro={erro} onRetry={refresh} />;
 
   const isEmpty = !boats || boats.length === 0;
 
@@ -269,7 +275,7 @@ export default function MapaCPF({ t, authHeaders }) {
 
       {/* Error banner (non-blocking, when we have stale data) */}
       {erro && boats && (
-        <div style={{
+        <div role="status" aria-live="polite" style={{
           padding: "8px 14px", borderRadius: 10,
           background: t.warnBg, color: t.warnTx,
           fontSize: 12, display: "flex", alignItems: "center", gap: 6
@@ -281,7 +287,7 @@ export default function MapaCPF({ t, authHeaders }) {
 
       {/* Empty state */}
       {isEmpty && (
-        <Cd t={t} style={{ padding: 32, textAlign: "center" }}>
+        <Cd style={{ padding: 32, textAlign: "center" }}>
           <IconShip size={40} color={t.txMuted} />
           <div style={{ fontSize: 15, fontWeight: 600, color: t.tx, marginTop: 12 }}>
             Nenhuma embarcacao com GPS
@@ -294,12 +300,12 @@ export default function MapaCPF({ t, authHeaders }) {
 
       {/* Map */}
       {!isEmpty && (
-        <RiverMap boats={boats} t={t} onSelectBoat={setSelectedBoat} />
+        <RiverMap boats={boats} onSelectBoat={setSelectedBoat} />
       )}
 
       {/* Selected boat detail */}
       {selectedBoat && (
-        <Cd t={t} style={{ padding: 14, border: `2px solid ${statusCor(selectedBoat.ultima_atualizacao)}` }}>
+        <Cd style={{ padding: 14, border: `2px solid ${statusCor(selectedBoat.ultima_atualizacao)}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: t.tx }}>{selectedBoat.nome}</div>
             <button onClick={() => setSelectedBoat(null)} style={{
@@ -344,7 +350,7 @@ export default function MapaCPF({ t, authHeaders }) {
             Embarcacoes ({boats.length})
           </div>
           {boats.map((b) => (
-            <BoatCard key={b.id_embarcacao} boat={b} t={t} onClick={() => setSelectedBoat(b)} />
+            <BoatCard key={b.id_embarcacao} boat={b} onClick={() => setSelectedBoat(b)} />
           ))}
         </>
       )}

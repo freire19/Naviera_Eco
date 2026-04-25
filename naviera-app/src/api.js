@@ -36,44 +36,10 @@ export function lerUsuarioValido() {
   } catch { return null }
 }
 
-/* ═══ Core request function (unified pattern — mirrors naviera-web/naviera-ocr) ═══ */
-async function request(path, options = {}) {
-  const token = getToken()
-  const headers = { 'Content-Type': 'application/json', ...options.headers }
-  if (token) headers['Authorization'] = `Bearer ${token}`
-
-  const res = await fetch(`${API}${path}`, { ...options, headers })
-
-  // #DS5-225: 403 = autorizacao recusada (ACL pontual), nao expirada — NAO derruba sessao.
-  //   Apenas 401 (token invalido/expirado) deve forcar logout.
-  if (res.status === 401) {
-    clearSession()
-    return
-  }
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    const err = new Error(body.error || `Erro ${res.status}`)
-    err.status = res.status
-    Object.assign(err, body)
-    throw err
-  }
-
-  return res.json()
-}
-
-/* ═══ api object (unified pattern — same interface as naviera-web/naviera-ocr) ═══ */
-export const api = {
-  get: (path) => request(path),
-  post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
-  put: (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (path) => request(path, { method: 'DELETE' })
-}
-
-/* ═══ authFetch: backward-compatible wrapper (delegates to unified 401 handling) ═══ */
+/* ═══ authFetch: cliente HTTP unico (com handling de 401) ═══ */
+// #DS5-225: so 401 derruba sessao; 403 e ACL especifica.
 export function authFetch(url, options = {}) {
   return fetch(url, options).then(res => {
-    // #DS5-225: so 401 derruba sessao; 403 e ACL especifica.
     if (res.status === 401) {
       clearSession()
     }

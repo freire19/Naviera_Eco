@@ -4,8 +4,10 @@ import { fmt, money } from "../helpers.js";
 import { IconBack, IconShip, IconSun } from "../icons.jsx";
 import Logo from "../components/Logo.jsx";
 import { API, authFetch } from "../api.js";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
-export default function BilheteScreen({ bilhete, authHeaders, t: _t, onBack }) {
+export default function BilheteScreen({ bilhete, onBack }) {
+  const { authHeaders } = useAuth();
   // Forca tema dark pro bilhete — visual premium
   const t = { ...T.dark };
   const [now, setNow] = useState(Date.now());
@@ -78,7 +80,7 @@ export default function BilheteScreen({ bilhete, authHeaders, t: _t, onBack }) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Logo size={26} t={t} />
+            <Logo size={26} />
             <div><div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3 }}>NAVIERA</div><div style={{ fontSize: 7, color: t.txMuted, letterSpacing: 2, textTransform: "uppercase" }}>Passagem fluvial</div></div>
           </div>
           <div style={{ textAlign: "right" }}><div style={{ fontSize: 9, fontFamily: "'Space Mono', monospace", color: t.txMuted }}>BLT-{numBilhete}</div><div style={{ fontSize: 8, color: t.txMuted }}>Viagem #{idViagem}</div></div>

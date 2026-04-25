@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTheme } from "../contexts/ThemeContext.jsx";
 
 /* ═══ ICON MAP BY TYPE ═══ */
 const TYPE_META = {
@@ -25,16 +26,22 @@ function timeAgo(ts) {
   return `${Math.floor(hrs / 24)}d`;
 }
 
-export default function NotificationList({ t, notifications, clearNotifications, unreadCount }) {
+export default function NotificationList({ notifications, clearNotifications, unreadCount }) {
+  const { t } = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  /* close on outside click */
+  /* close on outside click + Escape key */
   useEffect(() => {
     if (!open) return;
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const keyHandler = (e) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", keyHandler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", keyHandler);
+    };
   }, [open]);
 
   return (
@@ -49,6 +56,8 @@ export default function NotificationList({ t, notifications, clearNotifications,
           position: "relative",
         }}
         aria-label="Notificacoes"
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={t.txMuted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
