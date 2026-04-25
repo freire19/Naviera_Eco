@@ -238,39 +238,51 @@ async function buscarPassagens(empresaId, cliente, viagemId, apenasDevedores, ag
 router.post('/baixa', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
-    const { tipo, id_original, valor } = req.body || {}
+    const { tipo, id_original, valor, forma_pagamento } = req.body || {}
     if (!tipo || !id_original) return res.status(400).json({ error: 'tipo e id_original obrigatorios' })
     const valorNum = Number(valor)
     if (!(valorNum > 0)) return res.status(400).json({ error: 'valor deve ser > 0' })
+    const forma = (forma_pagamento || 'DINHEIRO').toString().toUpperCase()
 
-    let sql
-    switch (String(tipo).toUpperCase()) {
-      case 'FRETE':
-        sql = `UPDATE fretes SET valor_pago = COALESCE(valor_pago,0) + $1,
-                 valor_devedor = GREATEST(COALESCE(valor_total_itens,0) - (COALESCE(valor_pago,0) + $1), 0)
-               WHERE id_frete = $2 AND empresa_id = $3`
-        break
-      case 'ENCOMENDA':
-        sql = `UPDATE encomendas SET valor_pago = COALESCE(valor_pago,0) + $1,
-                 status_pagamento = CASE WHEN (COALESCE(valor_pago,0) + $1) >= COALESCE(total_a_pagar,0) THEN 'PAGO' ELSE 'PARCIAL' END
-               WHERE id_encomenda = $2 AND empresa_id = $3`
-        break
-      case 'PASSAGEM':
-        sql = `UPDATE passagens SET valor_pago = COALESCE(valor_pago,0) + $1,
-                 valor_devedor = GREATEST(COALESCE(valor_a_pagar, valor_total, 0) - (COALESCE(valor_pago,0) + $1), 0)
-               WHERE id_passagem = $2 AND empresa_id = $3`
-        break
-      default:
-        return res.status(400).json({ error: 'tipo invalido' })
-    }
-    const { rowCount } = await pool.query(sql, [valorNum, Number(id_original), empresaId])
-    if (rowCount !== 1) return res.status(404).json({ error: 'registro nao encontrado' })
-    res.json({ ok: true, tipo, id_original, valor: valorNum })
+    const ok = await aplicarBaixa(pool, String(tipo).toUpperCase(), Number(id_original), valorNum, forma, empresaId)
+    if (!ok) return res.status(404).json({ error: 'registro nao encontrado' })
+    res.json({ ok: true, tipo, id_original, valor: valorNum, forma_pagamento: forma })
   } catch (err) {
     console.error('extrato-cliente/baixa:', err)
     res.status(500).json({ error: 'Erro ao dar baixa' })
   }
 })
+
+async function aplicarBaixa(db, tipo, idOriginal, valorNum, forma, empresaId) {
+  let sql
+  switch (tipo) {
+    case 'FRETE':
+      sql = `UPDATE fretes SET valor_pago = COALESCE(valor_pago,0) + $1,
+               valor_devedor = GREATEST(COALESCE(valor_total_itens,0) - (COALESCE(valor_pago,0) + $1), 0),
+               tipo_pagamento = COALESCE($4, tipo_pagamento)
+             WHERE id_frete = $2 AND empresa_id = $3`
+      break
+    case 'ENCOMENDA':
+      sql = `UPDATE encomendas SET valor_pago = COALESCE(valor_pago,0) + $1,
+               status_pagamento = CASE WHEN (COALESCE(valor_pago,0) + $1) >= COALESCE(total_a_pagar,0) THEN 'PAGO' ELSE 'PARCIAL' END,
+               forma_pagamento = COALESCE($4, forma_pagamento)
+             WHERE id_encomenda = $2 AND empresa_id = $3`
+      break
+    case 'PASSAGEM':
+      // passagens.id_forma_pagamento eh FK pra aux_formas_pagamento — nao atualiza
+      // (deixa o que ja estava). Atualiza so o valor_pago + devedor.
+      sql = `UPDATE passagens SET valor_pago = COALESCE(valor_pago,0) + $1,
+               valor_devedor = GREATEST(COALESCE(valor_a_pagar, valor_total, 0) - (COALESCE(valor_pago,0) + $1), 0)
+             WHERE id_passagem = $2 AND empresa_id = $3`
+      // ignora $4 propositalmente
+      const { rowCount: rcP } = await db.query(sql, [valorNum, idOriginal, empresaId])
+      return rcP === 1
+    default:
+      return false
+  }
+  const { rowCount } = await db.query(sql, [valorNum, idOriginal, empresaId, forma])
+  return rowCount === 1
+}
 
 /**
  * POST /api/extrato-cliente/quitar-tudo
@@ -278,8 +290,9 @@ router.post('/baixa', async (req, res) => {
  * Usado pra botao "Quitar Tudo em Aberto" no front.
  */
 router.post('/quitar-tudo', async (req, res) => {
-  const { itens } = req.body || {}
+  const { itens, forma_pagamento } = req.body || {}
   if (!Array.isArray(itens) || itens.length === 0) return res.status(400).json({ error: 'itens vazio' })
+  const forma = (forma_pagamento || 'DINHEIRO').toString().toUpperCase()
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -288,30 +301,11 @@ router.post('/quitar-tudo', async (req, res) => {
     for (const it of itens) {
       const valor = Number(it.valor)
       if (!(valor > 0)) continue
-      let sql
-      switch (String(it.tipo).toUpperCase()) {
-        case 'FRETE':
-          sql = `UPDATE fretes SET valor_pago = COALESCE(valor_pago,0) + $1,
-                   valor_devedor = GREATEST(COALESCE(valor_total_itens,0) - (COALESCE(valor_pago,0) + $1), 0)
-                 WHERE id_frete = $2 AND empresa_id = $3`
-          break
-        case 'ENCOMENDA':
-          sql = `UPDATE encomendas SET valor_pago = COALESCE(valor_pago,0) + $1,
-                   status_pagamento = CASE WHEN (COALESCE(valor_pago,0) + $1) >= COALESCE(total_a_pagar,0) THEN 'PAGO' ELSE 'PARCIAL' END
-                 WHERE id_encomenda = $2 AND empresa_id = $3`
-          break
-        case 'PASSAGEM':
-          sql = `UPDATE passagens SET valor_pago = COALESCE(valor_pago,0) + $1,
-                   valor_devedor = GREATEST(COALESCE(valor_a_pagar, valor_total, 0) - (COALESCE(valor_pago,0) + $1), 0)
-                 WHERE id_passagem = $2 AND empresa_id = $3`
-          break
-        default: continue
-      }
-      const r = await client.query(sql, [valor, Number(it.id_original), empresaId])
-      sucesso += r.rowCount
+      const ok = await aplicarBaixa(client, String(it.tipo).toUpperCase(), Number(it.id_original), valor, forma, empresaId)
+      if (ok) sucesso += 1
     }
     await client.query('COMMIT')
-    res.json({ ok: true, sucesso, total_itens: itens.length })
+    res.json({ ok: true, sucesso, total_itens: itens.length, forma_pagamento: forma })
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('extrato-cliente/quitar-tudo:', err)
