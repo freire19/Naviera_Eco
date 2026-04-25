@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.6.0...web-v1.7.0) (2026-04-25)
+
+
+### Features
+
+* **extrato-cliente:** comprovante de pagamento + impressao do extrato ([b7c29c3](https://github.com/freire19/Naviera_Eco/commit/b7c29c3c6cc53d4311178631b1727e146e59357f))
+
 ## [1.6.0](https://github.com/freire19/Naviera_Eco/compare/web-v1.5.0...web-v1.6.0) (2026-04-25)
 
 
