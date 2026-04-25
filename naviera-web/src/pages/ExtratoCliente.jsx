@@ -195,11 +195,14 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
             <label style={S.label}>Viagem</label>
             <select style={S.input} value={viagemId} onChange={e => setViagemId(e.target.value)}>
               <option value="">Todas as viagens</option>
-              {viagens.map(v => (
-                <option key={v.id_viagem} value={v.id_viagem}>
-                  {v.id_viagem} - {fmtDate(v.data_viagem)} {v.nome_rota ? `(${v.nome_rota})` : ''}
-                </option>
-              ))}
+              <option value="agenda">📅 Agenda (viagens a partir de hoje)</option>
+              <optgroup label="— Viagem específica —">
+                {viagens.map(v => (
+                  <option key={v.id_viagem} value={v.id_viagem}>
+                    {v.id_viagem} - {fmtDate(v.data_viagem)} {v.nome_rota ? `(${v.nome_rota})` : ''}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>

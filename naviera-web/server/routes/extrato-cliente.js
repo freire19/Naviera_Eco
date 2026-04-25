@@ -6,8 +6,10 @@
  */
 import express from 'express'
 import pool from '../db.js'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = express.Router()
+router.use(authMiddleware)
 
 /**
  * GET /api/extrato-cliente/clientes
@@ -17,8 +19,11 @@ const router = express.Router()
 router.get('/clientes', async (req, res) => {
   try {
     const empresaId = req.user.empresa_id
+    // Junta: destinatarios com movimento + passageiros com passagem +
+    //        cadastros (mesmo sem movimento ainda) pra facilitar autocomplete.
     const sql = `
       SELECT DISTINCT nome FROM (
+        -- Com movimento:
         SELECT destinatario_nome_temp AS nome FROM fretes
           WHERE empresa_id = $1 AND destinatario_nome_temp IS NOT NULL AND destinatario_nome_temp <> ''
         UNION
@@ -28,6 +33,16 @@ router.get('/clientes', async (req, res) => {
         SELECT p.nome AS nome FROM passageiros p
           INNER JOIN passagens pg ON pg.id_passageiro = p.id_passageiro
           WHERE pg.empresa_id = $1 AND p.nome IS NOT NULL AND p.nome <> ''
+        -- Cadastros (aparecem mesmo sem movimento):
+        UNION
+        SELECT nome_cliente AS nome FROM cad_clientes_frete
+          WHERE empresa_id = $1 AND nome_cliente IS NOT NULL AND nome_cliente <> ''
+        UNION
+        SELECT nome_cliente AS nome FROM cad_clientes_encomenda
+          WHERE empresa_id = $1 AND nome_cliente IS NOT NULL AND nome_cliente <> ''
+        UNION
+        SELECT nome AS nome FROM passageiros
+          WHERE empresa_id = $1 AND nome IS NOT NULL AND nome <> ''
       ) t ORDER BY nome`
     const { rows } = await pool.query(sql, [empresaId])
     res.json(rows.map(r => r.nome))
@@ -51,7 +66,10 @@ router.get('/buscar', async (req, res) => {
     const cliente = (req.query.cliente || '').trim()
     if (!cliente) return res.status(400).json({ error: 'cliente obrigatorio' })
     const clienteNorm = cliente.toUpperCase()
-    const viagemId = req.query.viagem_id ? Number(req.query.viagem_id) : null
+    const viagemRaw = req.query.viagem_id
+    // viagem_id pode ser: numero (id especifico) | 'agenda' (>= hoje) | vazio (todas)
+    const agenda = viagemRaw === 'agenda'
+    const viagemId = (!agenda && viagemRaw) ? Number(viagemRaw) : null
     const tiposCsv = (req.query.tipos || 'frete,encomenda,passagem').toLowerCase()
     const incluirFrete = tiposCsv.includes('frete')
     const incluirEnc = tiposCsv.includes('encomenda')
@@ -61,9 +79,9 @@ router.get('/buscar', async (req, res) => {
     const apenasPagos = status === 'pagos'
 
     const tarefas = []
-    if (incluirFrete) tarefas.push(buscarFretes(empresaId, clienteNorm, viagemId, apenasDevedores))
-    if (incluirEnc) tarefas.push(buscarEncomendas(empresaId, clienteNorm, viagemId, apenasDevedores))
-    if (incluirPas) tarefas.push(buscarPassagens(empresaId, clienteNorm, viagemId, apenasDevedores))
+    if (incluirFrete) tarefas.push(buscarFretes(empresaId, clienteNorm, viagemId, apenasDevedores, agenda))
+    if (incluirEnc) tarefas.push(buscarEncomendas(empresaId, clienteNorm, viagemId, apenasDevedores, agenda))
+    if (incluirPas) tarefas.push(buscarPassagens(empresaId, clienteNorm, viagemId, apenasDevedores, agenda))
 
     const partes = await Promise.all(tarefas)
     let itens = partes.flat()
@@ -87,7 +105,7 @@ router.get('/buscar', async (req, res) => {
   }
 })
 
-async function buscarFretes(empresaId, cliente, viagemId, apenasDevedores) {
+async function buscarFretes(empresaId, cliente, viagemId, apenasDevedores, agenda = false) {
   let sql = `
     SELECT f.id_frete AS id_original, f.numero_frete,
       f.id_viagem, v.data_viagem,
@@ -100,9 +118,10 @@ async function buscarFretes(empresaId, cliente, viagemId, apenasDevedores) {
     LEFT JOIN viagens v ON v.id_viagem = f.id_viagem
     LEFT JOIN rotas r ON r.id = v.id_rota
     WHERE f.empresa_id = $1 AND COALESCE(f.excluido, false) = false
-      AND UPPER(TRIM(f.destinatario_nome_temp)) = $2`
+      AND UPPER(f.destinatario_nome_temp) LIKE '%' || $2 || '%'`
   const params = [empresaId, cliente]
   if (viagemId) { params.push(viagemId); sql += ` AND f.id_viagem = $${params.length}` }
+  if (agenda) sql += ` AND v.data_viagem >= CURRENT_DATE`
   if (apenasDevedores) sql += ` AND (COALESCE(f.valor_total_itens,0) - COALESCE(f.valor_pago,0)) > 0.01`
   const { rows } = await pool.query(sql, params)
   return rows.map(r => ({
@@ -123,7 +142,7 @@ async function buscarFretes(empresaId, cliente, viagemId, apenasDevedores) {
   }))
 }
 
-async function buscarEncomendas(empresaId, cliente, viagemId, apenasDevedores) {
+async function buscarEncomendas(empresaId, cliente, viagemId, apenasDevedores, agenda = false) {
   let sql = `
     SELECT e.id_encomenda AS id_original, e.numero_encomenda,
       e.id_viagem, v.data_viagem,
@@ -136,9 +155,10 @@ async function buscarEncomendas(empresaId, cliente, viagemId, apenasDevedores) {
     LEFT JOIN viagens v ON v.id_viagem = e.id_viagem
     LEFT JOIN rotas r ON r.id = v.id_rota
     WHERE e.empresa_id = $1
-      AND UPPER(TRIM(e.destinatario)) = $2`
+      AND UPPER(e.destinatario) LIKE '%' || $2 || '%'`
   const params = [empresaId, cliente]
   if (viagemId) { params.push(viagemId); sql += ` AND e.id_viagem = $${params.length}` }
+  if (agenda) sql += ` AND v.data_viagem >= CURRENT_DATE`
   if (apenasDevedores) sql += ` AND (COALESCE(e.total_a_pagar,0) - COALESCE(e.valor_pago,0)) > 0.01`
   const { rows } = await pool.query(sql, params)
   return rows.map(r => {
@@ -165,7 +185,7 @@ async function buscarEncomendas(empresaId, cliente, viagemId, apenasDevedores) {
   })
 }
 
-async function buscarPassagens(empresaId, cliente, viagemId, apenasDevedores) {
+async function buscarPassagens(empresaId, cliente, viagemId, apenasDevedores, agenda = false) {
   let sql = `
     SELECT pg.id_passagem AS id_original, pg.numero_bilhete,
       pg.id_viagem, v.data_viagem,
@@ -181,9 +201,10 @@ async function buscarPassagens(empresaId, cliente, viagemId, apenasDevedores) {
     LEFT JOIN aux_tipos_passagem tp ON tp.id_tipo_passagem = pg.id_tipo_passagem
     LEFT JOIN aux_acomodacoes ac ON ac.id_acomodacao = pg.id_acomodacao
     WHERE pg.empresa_id = $1
-      AND UPPER(TRIM(p.nome)) = $2`
+      AND UPPER(p.nome) LIKE '%' || $2 || '%'`
   const params = [empresaId, cliente]
   if (viagemId) { params.push(viagemId); sql += ` AND pg.id_viagem = $${params.length}` }
+  if (agenda) sql += ` AND v.data_viagem >= CURRENT_DATE`
   if (apenasDevedores) sql += ` AND (COALESCE(pg.valor_a_pagar, pg.valor_total, 0) - COALESCE(pg.valor_pago,0)) > 0.01`
   const { rows } = await pool.query(sql, params)
   return rows.map(r => {
