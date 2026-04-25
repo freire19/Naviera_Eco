@@ -8,5 +8,11 @@ public class Rota {
     private String origem;
     private String destino;
 
-    public Long getId() { return id; } public String getOrigem() { return origem; } public String getDestino() { return destino; }
+    @Column(name = "empresa_id")
+    private Integer empresaId;
+
+    public Long getId() { return id; }
+    public String getOrigem() { return origem; }
+    public String getDestino() { return destino; }
+    public Integer getEmpresaId() { return empresaId; }
 }

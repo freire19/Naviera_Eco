@@ -36,7 +36,8 @@ public class AuthOperadorService {
             throw ApiException.unauthorized("Credenciais invalidas");
         }
 
-        String token = jwt.gerarTokenOperador(usuario.getId(), usuario.getNome(), usuario.getFuncao(), usuario.getEmpresaId());
+        boolean superAdmin = Boolean.TRUE.equals(usuario.getSuperAdmin());
+        String token = jwt.gerarTokenOperador(usuario.getId(), usuario.getNome(), usuario.getFuncao(), usuario.getEmpresaId(), superAdmin);
 
         var dto = new UsuarioDTO(
             usuario.getId(),

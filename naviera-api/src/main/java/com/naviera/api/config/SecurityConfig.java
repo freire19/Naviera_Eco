@@ -26,7 +26,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/auth/**", "/public/**", "/ws/**", "/webhooks/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/embarcacoes/*/gps", "/viagens/*/rastreio", "/viagens/publicas", "/gps/embarcacoes").permitAll()
-                .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/admin/**").hasAuthority("ROLE_SUPERADMIN")
                 .requestMatchers("/gps/**").hasAuthority("ROLE_OPERADOR")
                 .requestMatchers("/op/**", "/sync/**").hasAuthority("ROLE_OPERADOR")
                 .anyRequest().authenticated())

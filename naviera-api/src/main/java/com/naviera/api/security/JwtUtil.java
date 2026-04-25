@@ -46,10 +46,10 @@ public class JwtUtil {
             .signWith(key()).compact();
     }
 
-    public String gerarTokenOperador(Integer usuarioId, String login, String funcao, Integer empresaId) {
+    public String gerarTokenOperador(Integer usuarioId, String login, String funcao, Integer empresaId, boolean superAdmin) {
         return Jwts.builder().subject(login)
             .claim("id", usuarioId).claim("tipo", "OPERADOR").claim("funcao", funcao)
-            .claim("empresa_id", empresaId)
+            .claim("empresa_id", empresaId).claim("super_admin", superAdmin)
             .issuedAt(new Date()).expiration(new Date(System.currentTimeMillis() + expirationMs))
             .signWith(key()).compact();
     }

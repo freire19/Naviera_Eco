@@ -1,5 +1,7 @@
 package com.naviera.api.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.*; import jakarta.servlet.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,29 +21,34 @@ public class JwtFilter extends OncePerRequestFilter {
             String h = req.getHeader("Authorization");
             if (h != null && h.startsWith("Bearer ")) {
                 String token = h.substring(7);
-                if (jwtUtil.validar(token)) {
-                    String tipo = jwtUtil.getTipo(token);
-                    String role;
-                    if ("OPERADOR".equals(tipo)) {
-                        role = "ROLE_OPERADOR";
-                    } else if ("CNPJ".equals(tipo)) {
-                        role = "ROLE_CNPJ";
-                    } else {
-                        role = "ROLE_CPF";
-                    }
+                Claims claims = parseOrNull(token);
+                if (claims != null) {
+                    String tipo = claims.get("tipo", String.class);
                     var authorities = new ArrayList<SimpleGrantedAuthority>();
-                    authorities.add(new SimpleGrantedAuthority(role));
                     if ("OPERADOR".equals(tipo)) {
-                        // Operadores com funcao ADMIN ganham ROLE_ADMIN adicional
-                        io.jsonwebtoken.Claims claims = jwtUtil.parsear(token);
+                        authorities.add(new SimpleGrantedAuthority("ROLE_OPERADOR"));
+                    } else if ("CNPJ".equals(tipo)) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_CNPJ"));
+                    } else {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_CPF"));
+                    }
+                    boolean superAdmin = false;
+                    if ("OPERADOR".equals(tipo)) {
+                        // ROLE_ADMIN = admin-empresa (/op/**, /psp/**); ROLE_SUPERADMIN = admin-plataforma
+                        // (/admin/** cross-tenant), so quando usuarios.super_admin=TRUE no DB (fix #100/#114).
                         String funcao = claims.get("funcao", String.class);
                         if (funcao != null && ("ADMIN".equalsIgnoreCase(funcao) || "Administrador".equalsIgnoreCase(funcao))) {
                             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
                         }
+                        superAdmin = Boolean.TRUE.equals(claims.get("super_admin", Boolean.class));
+                        if (superAdmin) {
+                            authorities.add(new SimpleGrantedAuthority("ROLE_SUPERADMIN"));
+                        }
                     }
-                    var auth = new UsernamePasswordAuthenticationToken(jwtUtil.getClienteId(token), null, authorities);
+                    Long clienteId = claims.get("id", Long.class);
+                    var auth = new UsernamePasswordAuthenticationToken(clienteId, null, authorities);
                     if ("OPERADOR".equals(tipo)) {
-                        auth.setDetails(Map.of("empresa_id", jwtUtil.getEmpresaId(token)));
+                        auth.setDetails(Map.of("empresa_id", claims.get("empresa_id", Integer.class), "super_admin", superAdmin));
                     }
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
@@ -50,5 +57,9 @@ public class JwtFilter extends OncePerRequestFilter {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    private Claims parseOrNull(String token) {
+        try { return jwtUtil.parsear(token); } catch (JwtException e) { return null; }
     }
 }

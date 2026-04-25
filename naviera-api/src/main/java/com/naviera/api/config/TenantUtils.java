@@ -51,4 +51,11 @@ public class TenantUtils {
         return auth.getAuthorities().stream()
             .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
+
+    /** True apenas se usuarios.super_admin=TRUE no DB (flag cross-tenant para /admin/**). Fix #100/#114. */
+    public static boolean isSuperAdmin(Authentication auth) {
+        if (auth == null || auth.getAuthorities() == null) return false;
+        return auth.getAuthorities().stream()
+            .anyMatch(a -> "ROLE_SUPERADMIN".equals(a.getAuthority()));
+    }
 }
