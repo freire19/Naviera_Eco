@@ -16,12 +16,28 @@ import Cd from "./Card.jsx";
  */
 export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCodeImageUrl, linhaDigitavel, boletoUrl, checkoutUrl, t }) {
   const [copiado, setCopiado] = useState("");
-  const copiar = (txt, label) => {
+  // #018: clipboard pode rejeitar (HTTP, iframe, permissao negada) — fallback execCommand + catch evita unhandledrejection.
+  const copiar = async (txt, label) => {
     if (!txt) return;
-    navigator.clipboard?.writeText(txt).then(() => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(txt);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = txt;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "absolute";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
       setCopiado(label);
       setTimeout(() => setCopiado(""), 2000);
-    });
+    } catch (e) {
+      console.warn("[PagamentoArtefato] clipboard indisponivel:", e);
+    }
   };
 
   if (formaPagamento === "PIX") {

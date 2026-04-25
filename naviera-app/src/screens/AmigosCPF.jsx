@@ -24,7 +24,10 @@ export default function AmigosCPF({ t, authHeaders }) {
     try {
       const res = await authFetch(`${API}/amigos/buscar?nome=${encodeURIComponent(nome.trim())}`, { headers: authHeaders });
       if (res.ok) setResultados(await res.json());
-    } catch {} finally { setBuscando(false); }
+      else console.warn("[AmigosCPF] busca retornou HTTP", res.status);
+    } catch (e) {
+      console.warn("[AmigosCPF] erro na busca de amigos:", e?.message);
+    } finally { setBuscando(false); }
   };
 
   const addAmigo = async (amigoId, nome) => {

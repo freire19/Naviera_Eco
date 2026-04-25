@@ -14,17 +14,19 @@ export default function BilheteScreen({ bilhete, authHeaders, t: _t, onBack }) {
   const [timeLeft, setTimeLeft] = useState(30);
 
   // DS4-007 fix: buscar TOTP do servidor (HMAC-SHA256), nunca gerar client-side
+  // #600: id pode vir como `id`, `id_passagem` ou `idPassagem` (DTOs variam entre /passagens/minhas e /passagens/comprar)
+  const bilheteId = bilhete?.id || bilhete?.id_passagem || bilhete?.idPassagem;
   const fetchTotp = useCallback(async () => {
-    if (!bilhete?.id || !authHeaders?.Authorization) return;
+    if (!bilheteId || !authHeaders?.Authorization) return;
     try {
-      const res = await authFetch(`${API}/bilhetes/${bilhete.id}/totp`, { headers: authHeaders });
+      const res = await authFetch(`${API}/bilhetes/${bilheteId}/totp`, { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
         setTotp(data.code || "------");
         setTimeLeft(data.timeLeft || 30);
       }
     } catch { /* silencioso — mostra ultimo codigo valido */ }
-  }, [bilhete?.id, authHeaders]);
+  }, [bilheteId, authHeaders]);
 
   useEffect(() => { fetchTotp(); }, [fetchTotp]);
   useEffect(() => {
@@ -38,6 +40,9 @@ export default function BilheteScreen({ bilhete, authHeaders, t: _t, onBack }) {
     return () => clearInterval(iv);
   }, [fetchTotp]);
   const pct = (timeLeft / 30) * 100;
+
+  // #037: guard defensivo apos hooks — se bilhete ausente, render nada em vez de TypeError em b.field
+  if (!bilhete) return null;
 
   const b = bilhete;
   const nome = b.nome_passageiro || b.nomePassageiro || "Passageiro";

@@ -72,8 +72,15 @@ export default function useNotifications() {
       const messaging = await initFirebase(config);
       if (!messaging) return null;
 
-      // Registra o service worker dedicado ao FCM
-      const swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      // #036: isola SW register para erro especifico (arquivo ausente / escopo nao permitido)
+      //   em vez de cair no catch generico "Erro ao obter token FCM".
+      let swReg;
+      try {
+        swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      } catch (e) {
+        console.warn("[Notificacoes] SW FCM register falhou:", e);
+        return null;
+      }
 
       const { getToken } = await import("firebase/messaging");
       const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || config.vapidKey || undefined;

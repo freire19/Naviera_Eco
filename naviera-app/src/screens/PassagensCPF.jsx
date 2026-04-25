@@ -39,10 +39,22 @@ export default function PassagensCPF({ t, authHeaders }) {
       // #231: fallback para id_viagem quando DTO usar snake_case
       const viagemIdCompra = compra.id ?? compra.id_viagem ?? compra.idViagem;
       const res = await authFetch(`${API}/passagens/comprar`, { method: "POST", headers: authHeaders, body: JSON.stringify({ idViagem: viagemIdCompra, idTipoPassagem: tipoSel, formaPagamento: formaPag }) });
-      const data = await res.json();
-      if (!res.ok) { setErro(data.erro || "Erro ao comprar."); return; }
+      // #020: nem todo erro devolve JSON — 502/504 do Nginx, HTML de gateway timeout, etc. Le texto cru
+      // e tenta parsear; caso contrario, preserva a primeira linha pra diagnostico em vez de "Erro de conexao"
+      // (que e mentira para erro HTTP).
+      const raw = await res.text();
+      let data = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* nao e JSON */ }
+      if (!res.ok) {
+        const motivo = data?.erro || (raw && raw.slice(0, 120).trim()) || `HTTP ${res.status}`;
+        setErro(motivo);
+        return;
+      }
       setResultado(data); rm();
-    } catch { setErro("Erro de conexao."); } finally { setComprando(false); }
+    } catch (e) {
+      console.warn("[PassagensCPF] confirmarCompra falhou:", e?.message);
+      setErro("Sem conexao com o servidor.");
+    } finally { setComprando(false); }
   };
 
   if (ev) return <ErrorRetry erro={ev} onRetry={rv} t={t} />;
@@ -69,7 +81,9 @@ export default function PassagensCPF({ t, authHeaders }) {
       linhaDigitavel={resultado.linhaDigitavel} boletoUrl={resultado.boletoUrl}
       checkoutUrl={resultado.checkoutUrl} t={t} />
     <button onClick={() => {
-      setSelBilhete({ numero_bilhete: resultado.numeroBilhete, valor_total: resultado.valorTotal, status_passagem: resultado.status, embarcacao: compra?.embarcacao, origem: compra?.origem, destino: compra?.destino, data_viagem: compra?.dataViagem, totp_secret: resultado.numeroBilhete });
+      // #600: id_passagem obrigatorio — BilheteScreen chama /passagens/:id/totp sem ele.
+      // totp_secret fica vazio aqui; cliente vai buscar o secret do servidor pelo id_passagem.
+      setSelBilhete({ id_passagem: resultado.idPassagem, numero_bilhete: resultado.numeroBilhete, valor_total: resultado.valorTotal, status_passagem: resultado.status, embarcacao: compra?.embarcacao, origem: compra?.origem, destino: compra?.destino, data_viagem: compra?.dataViagem });
       setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); setFormaPag("PIX");
     }} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: t.priGrad, color: "#fff", fontSize: 14 }}>Ver bilhete digital</button>
     <button onClick={() => { setResultado(null); setCompra(null); setSelEmb(null); setTipoSel(null); setFormaPag("PIX"); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${t.border}`, background: "transparent", color: t.txMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Voltar para passagens</button>

@@ -24,7 +24,7 @@ export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoCha
     authFetch(`${API}/perfil`, { headers: authHeaders })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) { setPerfil(d); setForm({ nome: d.nome || "", email: d.email || "", telefone: d.telefone || "", cidade: d.cidade || "" }); } })
-      .catch(() => {})
+      .catch(e => console.warn("[PerfilScreen] erro ao carregar perfil:", e?.message))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -44,7 +44,10 @@ export default function PerfilScreen({ t, token, authHeaders, usuario, onFotoCha
       const fd = new FormData(); fd.append("foto", file);
       const res = await authFetch(`${API}/perfil/foto`, { method: "POST", headers: { "Authorization": authHeaders.Authorization }, body: fd });
       if (res.ok) { const d = await res.json(); if (d.fotoUrl) { setPerfil(p => ({ ...p, fotoUrl: d.fotoUrl })); onFotoChange(`${API}${d.fotoUrl}`); } }
-    } catch {} finally { setUploadingFoto(false); }
+      else { console.warn("[PerfilScreen] upload de foto retornou HTTP", res.status); }
+    } catch (e) {
+      console.warn("[PerfilScreen] erro no upload de foto:", e?.message);
+    } finally { setUploadingFoto(false); }
   };
 
   if (loading) return <Skeleton t={t} height={60} count={3} />;

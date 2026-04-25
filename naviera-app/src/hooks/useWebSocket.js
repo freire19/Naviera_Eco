@@ -32,7 +32,10 @@ export default function useWebSocket({ token, empresaId, apiUrl }) {
 
       onConnect: () => {
         setConnected(true);
-        reconnectDelay.current = 2000; // reset backoff
+        // #026: reseta tanto o ref (proxima onStompError) quanto o client.reconnectDelay
+        //   que e o valor realmente lido pelo STOMP em reconexoes.
+        reconnectDelay.current = 2000;
+        client.reconnectDelay = 2000;
 
         client.subscribe(
           `/topic/empresa/${empresaId}/notifications`,
@@ -52,8 +55,10 @@ export default function useWebSocket({ token, empresaId, apiUrl }) {
       onStompError: (frame) => {
         console.warn("[WS] STOMP error", frame.headers?.message);
         setConnected(false);
-        // exponential backoff capped at 30s
+        // #026: backoff exponencial ate 30s — sem atualizar client.reconnectDelay o STOMP
+        //   mantem o valor inicial (2s) e reconecta em loop tight em falhas repetidas.
         reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000);
+        client.reconnectDelay = reconnectDelay.current;
       },
 
       onWebSocketError: () => {

@@ -99,7 +99,7 @@ export default function Naviera() {
     fetch(`${API}/perfil`, { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.fotoUrl) setMinhaFoto(`${API}${d.fotoUrl}`); })
-      .catch(() => {});
+      .catch(e => console.warn("[App] erro ao carregar foto do perfil:", e?.message));
   }, [token]);
 
   const handleLogin = (data) => {
