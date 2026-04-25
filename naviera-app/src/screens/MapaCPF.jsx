@@ -67,16 +67,21 @@ function useGps(authHeaders) {
     }
   }, [authHeaders?.Authorization]);
 
+  // #DR284: ref pattern evita re-criar timer em cada mudanca de auth/token. Sem isso,
+  //   token refresh causaria 2 timers co-existentes (cleanup do anterior nao espera abort).
+  const fetchGpsRef = useRef(fetchGps);
+  useEffect(() => { fetchGpsRef.current = fetchGps; }, [fetchGps]);
+
   useEffect(() => {
-    fetchGps();
-    timerRef.current = setInterval(() => fetchGps(true), REFRESH_MS);
+    fetchGpsRef.current(false);
+    timerRef.current = setInterval(() => fetchGpsRef.current(true), REFRESH_MS);
     return () => {
       clearInterval(timerRef.current);
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [fetchGps]);
+  }, []);
 
-  const refresh = useCallback(() => fetchGps(false), [fetchGps]);
+  const refresh = useCallback(() => fetchGpsRef.current(false), []);
   return { data, loading, erro, refresh };
 }
 

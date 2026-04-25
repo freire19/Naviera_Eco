@@ -5,7 +5,7 @@ import {
   IconUsers, IconWallet, IconStore, IconPackage
 } from "./icons.jsx";
 import { T } from "./theme.js";
-import { API } from "./api.js";
+import { API, lerUsuarioValido } from "./api.js";
 import useWebSocket from "./hooks/useWebSocket.js";
 import useNotifications from "./hooks/useNotifications.js";
 import Header from "./components/Header.jsx";
@@ -62,7 +62,16 @@ const TABS_CNPJ = [
 /* ═══ MAIN ═══ */
 export default function Naviera() {
   // #DS5-209: token e usuario em sessionStorage (migracao do legado em localStorage roda no import do modulo acima).
-  const [profile, setProfile] = useState(() => { try { const u = JSON.parse(sessionStorage.getItem("naviera_usuario")); return u?.tipo === "CNPJ" ? "cnpj" : u ? "cpf" : null; } catch { return null; } });
+  // #DR286: schema validado em lerUsuarioValido — schema mismatch -> logout silencioso.
+  const [profile, setProfile] = useState(() => {
+    const u = lerUsuarioValido();
+    if (!u) {
+      sessionStorage.removeItem("naviera_usuario");
+      sessionStorage.removeItem("naviera_token");
+      return null;
+    }
+    return u.tipo === "CNPJ" ? "cnpj" : "cpf";
+  });
   const [tab, setTab] = useState("home");
   const [tabHistory, setTabHistory] = useState([]);
   const navigateTab = (newTab) => { setTabHistory(h => [...h, tab]); setTab(newTab); };
@@ -70,7 +79,7 @@ export default function Naviera() {
   const { canInstall, promptInstall, dismiss: dismissInstall } = usePWA();
   const [mode, setMode] = useState("light");
   const [token, setToken] = useState(() => sessionStorage.getItem("naviera_token"));
-  const [usuario, setUsuario] = useState(() => { try { return JSON.parse(sessionStorage.getItem("naviera_usuario")); } catch { return null; } });
+  const [usuario, setUsuario] = useState(() => lerUsuarioValido());
   const [minhaFoto, setMinhaFoto] = useState(null);
   const t = T[mode];
 

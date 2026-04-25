@@ -24,6 +24,18 @@ function clearSession() {
   window.location.reload()
 }
 
+// #DR286: schema mismatch apos refactor de campos virava bug silencioso. Logout limpo
+//   e melhor que estado indefinido — chamadores sao responsaveis por redirecionar pra login.
+export function lerUsuarioValido() {
+  try {
+    const u = JSON.parse(sessionStorage.getItem(USER_KEY))
+    if (!u || typeof u !== 'object') return null
+    if (u.tipo !== 'CPF' && u.tipo !== 'CNPJ') return null
+    if (typeof u.nome !== 'string') return null
+    return u
+  } catch { return null }
+}
+
 /* ═══ Core request function (unified pattern — mirrors naviera-web/naviera-ocr) ═══ */
 async function request(path, options = {}) {
   const token = getToken()
