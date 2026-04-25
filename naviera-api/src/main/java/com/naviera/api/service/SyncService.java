@@ -108,12 +108,17 @@ public class SyncService {
         int recebidos = 0;
         int erros = 0;
 
+        // #DP063: prefetch existencia em UMA query (era 1 SELECT por registro = N+1).
+        //   Mantem semantica: existencia + ultima_atualizacao por uuid.
+        Map<String, Map<String, Object>> existentesPorUuid = prefetchExistentes(tabela, registros, empresaId);
+
         for (SyncRegistro reg : registros) {
             if (reg.uuid() == null || reg.uuid().isBlank()) continue;
 
             try {
                 uuidsRecebidos.add(reg.uuid());
-                processarRegistro(tabela, reg, empresaId);
+                Map<String, Object> existente = existentesPorUuid.get(reg.uuid());
+                processarRegistro(tabela, reg, empresaId, existente);
                 recebidos++;
             } catch (Exception e) {
                 erros++;
@@ -139,15 +144,38 @@ public class SyncService {
     // UPLOAD: processar um registro individual
     // ========================================================================
 
-    private void processarRegistro(String tabela, SyncRegistro reg, Integer empresaId) {
+    // #DP063: prefetch — 1 SELECT cobre todos os uuids do batch em vez de N selects individuais.
+    //   Tamanho do IN() depende do batch do Desktop, limitado a 500 em SyncClient.UPLOAD_BATCH_LIMIT
+    //   (#DR277). PG aceita ate ~32k bind params; mantenha o IN coupling em mente se o limite mudar.
+    private Map<String, Map<String, Object>> prefetchExistentes(String tabela, List<SyncRegistro> registros, Integer empresaId) {
+        if (registros == null || registros.isEmpty()) return Map.of();
         String colunaId = getColunaId(tabela);
+        List<String> uuids = new ArrayList<>(registros.size());
+        for (SyncRegistro r : registros) {
+            if (r.uuid() != null && !r.uuid().isBlank()) uuids.add(r.uuid());
+        }
+        if (uuids.isEmpty()) return Map.of();
 
-        // Verificar se o registro ja existe no servidor (por uuid + empresa_id)
-        List<Map<String, Object>> existente = jdbc.queryForList(
-            "SELECT " + colunaId + ", ultima_atualizacao FROM " + tabela
-                + " WHERE uuid = ?::uuid AND empresa_id = ?",
-            reg.uuid(), empresaId);
+        String placeholders = String.join(",", Collections.nCopies(uuids.size(), "?::uuid"));
+        Object[] args = new Object[uuids.size() + 1];
+        for (int i = 0; i < uuids.size(); i++) args[i] = uuids.get(i);
+        args[uuids.size()] = empresaId;
 
+        List<Map<String, Object>> rows = jdbc.queryForList(
+            "SELECT uuid, " + colunaId + ", ultima_atualizacao FROM " + tabela
+                + " WHERE uuid IN (" + placeholders + ") AND empresa_id = ?",
+            args);
+
+        Map<String, Map<String, Object>> map = new HashMap<>(rows.size() * 2);
+        for (Map<String, Object> r : rows) {
+            Object u = r.get("uuid");
+            if (u != null) map.put(u.toString(), r);
+        }
+        return map;
+    }
+
+    private void processarRegistro(String tabela, SyncRegistro reg, Integer empresaId, Map<String, Object> existente) {
+        String colunaId = getColunaId(tabela);
         String acao = reg.acao() != null ? reg.acao().toUpperCase() : "UPDATE";
 
         switch (acao) {
@@ -159,8 +187,8 @@ public class SyncService {
     }
 
     private void processarDelete(String tabela, SyncRegistro reg, Integer empresaId,
-                                  List<Map<String, Object>> existente) {
-        if (existente.isEmpty()) return; // nada para deletar
+                                  Map<String, Object> existente) {
+        if (existente == null) return; // nada para deletar
 
         if (TABELAS_COM_EXCLUIDO.contains(tabela)) {
             jdbc.update(
@@ -183,16 +211,16 @@ public class SyncService {
     }
 
     private void processarInsertOuUpdate(String tabela, SyncRegistro reg, Integer empresaId,
-                                          String colunaId, List<Map<String, Object>> existente) {
+                                          String colunaId, Map<String, Object> existente) {
         Map<String, Object> dados = parseDadosJson(reg.dadosJson());
         if (dados.isEmpty()) {
             log.warn("dadosJson vazio para uuid {} na tabela {}", reg.uuid(), tabela);
             return;
         }
 
-        if (!existente.isEmpty()) {
+        if (existente != null) {
             // ---- UPDATE (last-write-wins) ----
-            if (!isClienteNewer(reg.ultimaAtualizacao(), existente.get(0))) {
+            if (!isClienteNewer(reg.ultimaAtualizacao(), existente)) {
                 return; // servidor tem versao mais recente, skip
             }
             executarUpdate(tabela, reg.uuid(), empresaId, colunaId, dados);

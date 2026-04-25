@@ -42,12 +42,19 @@ public class GpsService {
         return list.isEmpty() ? Map.of("disponivel", false) : list.get(0);
     }
 
+    // #DP064: viagem de 5 dias com GPS ativo coleta ~43k pontos — payload de 1-3MB. Limitar
+    //   aos 5000 pontos mais recentes (subquery DESC + LIMIT) e devolver em ordem cronologica.
+    //   Endpoint /viagens/{id}/rastreio e publico por design (id_viagem e globalmente unico).
     public List<Map<String, Object>> historicoViagem(Long idViagem) {
         return jdbc.queryForList("""
-            SELECT latitude, longitude, velocidade_nos, curso_graus, timestamp
-            FROM embarcacao_gps
-            WHERE id_viagem = ?
-            ORDER BY timestamp""", idViagem);
+            SELECT latitude, longitude, velocidade_nos, curso_graus, timestamp FROM (
+                SELECT latitude, longitude, velocidade_nos, curso_graus, timestamp
+                FROM embarcacao_gps
+                WHERE id_viagem = ?
+                ORDER BY timestamp DESC
+                LIMIT 5000
+            ) sub
+            ORDER BY timestamp ASC""", idViagem);
     }
 
     /** Última posição de cada embarcação — para mapa público de tracking */
