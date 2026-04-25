@@ -14,6 +14,10 @@ public class OpViagemService {
         this.jdbc = jdbc;
     }
 
+    // #DS5-042: limit fixo evita resposta ilimitada (50k+ linhas) que estoura memoria do BFF.
+    //   Frontend ja pagina; clientes que precisam de mais devem usar query com filtro de data.
+    private static final int LISTAR_TODAS_LIMIT = 1000;
+
     public List<Map<String, Object>> listarTodas(Integer empresaId) {
         return jdbc.queryForList("""
             SELECT v.id_viagem, v.data_viagem, v.data_chegada, v.descricao, v.ativa,
@@ -22,7 +26,8 @@ public class OpViagemService {
             LEFT JOIN embarcacoes e ON v.id_embarcacao = e.id_embarcacao
             LEFT JOIN rotas r ON v.id_rota = r.id_rota
             WHERE v.empresa_id = ?
-            ORDER BY v.data_viagem DESC""", empresaId);
+            ORDER BY v.data_viagem DESC
+            LIMIT ?""", empresaId, LISTAR_TODAS_LIMIT);
     }
 
     public Map<String, Object> buscarAtiva(Integer empresaId) {

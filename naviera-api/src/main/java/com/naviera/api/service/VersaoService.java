@@ -145,10 +145,16 @@ public class VersaoService {
         String[] partsB = b.split("\\.");
         int len = Math.max(partsA.length, partsB.length);
         for (int i = 0; i < len; i++) {
-            int va = i < partsA.length ? Integer.parseInt(partsA[i]) : 0;
-            int vb = i < partsB.length ? Integer.parseInt(partsB[i]) : 0;
+            // #DS5-027: parts nao numericas (ex: "1.2.x", "1.2-rc") sao tratadas como 0 em vez de crash.
+            int va = parseSegmento(i < partsA.length ? partsA[i] : "0");
+            int vb = parseSegmento(i < partsB.length ? partsB[i] : "0");
             if (va != vb) return va - vb;
         }
         return 0;
+    }
+
+    private int parseSegmento(String s) {
+        try { return Integer.parseInt(s.replaceAll("\\D.*$", "")); }
+        catch (NumberFormatException e) { return 0; }
     }
 }

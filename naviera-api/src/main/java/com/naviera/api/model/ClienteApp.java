@@ -1,5 +1,6 @@
 package com.naviera.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,6 +18,7 @@ public class ClienteApp {
     private String email;
     private String telefone;
     private String cidade;
+    // #DS5-023: @JsonIgnore vai no getter (Jackson usa property access por default).
     @Column(name = "senha_hash", nullable = false)
     private String senhaHash;
     @Column(name = "foto_url") private String fotoUrl;
@@ -41,7 +43,7 @@ public class ClienteApp {
     public String getEmail() { return email; } public void setEmail(String e) { this.email = e; }
     public String getTelefone() { return telefone; } public void setTelefone(String t) { this.telefone = t; }
     public String getCidade() { return cidade; } public void setCidade(String c) { this.cidade = c; }
-    public String getSenhaHash() { return senhaHash; } public void setSenhaHash(String s) { this.senhaHash = s; }
+    @JsonIgnore public String getSenhaHash() { return senhaHash; } public void setSenhaHash(String s) { this.senhaHash = s; }
     public String getFotoUrl() { return fotoUrl; } public void setFotoUrl(String f) { this.fotoUrl = f; }
     public Boolean getAtivo() { return ativo; } public void setAtivo(Boolean a) { this.ativo = a; }
     public LocalDateTime getUltimoAcesso() { return ultimoAcesso; } public void setUltimoAcesso(LocalDateTime u) { this.ultimoAcesso = u; }

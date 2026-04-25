@@ -20,6 +20,8 @@ public class JwtUtil {
         "dev", "local", "naviera", "secret", "changeme", "default", "test", "123", "password"
     );
 
+    private SecretKey cachedKey;
+
     @PostConstruct
     void validarSecret() {
         if (secret == null || secret.isBlank()) {
@@ -35,9 +37,11 @@ public class JwtUtil {
                     "JWT_SECRET contem padrao previsivel ('" + padrao + "') — gere um secret aleatorio real");
             }
         }
+        // SecretKey e imutavel e thread-safe — pre-derivada uma vez evita alocacao por parsear()/sign().
+        cachedKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    private SecretKey key() { return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)); }
+    private SecretKey key() { return cachedKey; }
 
     public String gerarToken(Long clienteId, String documento, String tipo) {
         return Jwts.builder().subject(documento)

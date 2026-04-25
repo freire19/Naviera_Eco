@@ -30,6 +30,8 @@ public class RateLimitFilter implements Filter {
     private static final int UPLOAD_MAX = 5;
     // #113: ativar codigo — defesa em profundidade contra brute-force, alem dos 8 hex (~4B).
     private static final int ATIVAR_MAX = 5;
+    // #DS5-236: TOTP de bilhete — codigo curto (6 digitos), brute-force online em ~10min sem limite.
+    private static final int TOTP_MAX = 10;
     private static final long WINDOW_MS = 60_000;
 
     private final ConcurrentHashMap<String, RateEntry> hits = new ConcurrentHashMap<>();
@@ -67,11 +69,14 @@ public class RateLimitFilter implements Filter {
             && (path.endsWith("/perfil/foto") || path.contains("/upload"));
         // #113: bucket dedicado para /public/ativar/{codigo} — brute-force defense.
         boolean isAtivar = path.contains("/public/ativar/") && "GET".equalsIgnoreCase(req.getMethod());
+        // #DS5-236: bucket dedicado para validacao TOTP de bilhetes (6 digitos = brute trivial).
+        boolean isTotp = path.contains("/bilhetes/") && path.endsWith("/totp");
         int max;
         String key;
         if (isLogin) { max = LOGIN_MAX; key = "login:" + ip; }
         else if (isUpload) { max = UPLOAD_MAX; key = "upload:" + ip; }
         else if (isAtivar) { max = ATIVAR_MAX; key = "ativar:" + ip; }
+        else if (isTotp) { max = TOTP_MAX; key = "totp:" + ip; }
         else { max = GENERAL_MAX; key = "general:" + ip; }
 
         RateEntry entry = hits.compute(key, (k, existing) -> {
