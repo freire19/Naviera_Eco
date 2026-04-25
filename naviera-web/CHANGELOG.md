@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.1...web-v1.7.2) (2026-04-25)
+
+
+### Bug Fixes
+
+* **web:** DEEP_SECURITY BFF — helmet, JWT alg, prompt sanitization, bounded caches ([7b6593a](https://github.com/freire19/Naviera_Eco/commit/7b6593a8ee28adeeed23e682f055233ae11f590e))
+
 ## [1.7.1](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.0...web-v1.7.1) (2026-04-25)
 
 
