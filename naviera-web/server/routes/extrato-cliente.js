@@ -30,9 +30,9 @@ router.get('/clientes', async (req, res) => {
         SELECT destinatario AS nome FROM encomendas
           WHERE empresa_id = $1 AND destinatario IS NOT NULL AND destinatario <> ''
         UNION
-        SELECT p.nome AS nome FROM passageiros p
+        SELECT p.nome_passageiro AS nome FROM passageiros p
           INNER JOIN passagens pg ON pg.id_passageiro = p.id_passageiro
-          WHERE pg.empresa_id = $1 AND p.nome IS NOT NULL AND p.nome <> ''
+          WHERE pg.empresa_id = $1 AND p.nome_passageiro IS NOT NULL AND p.nome_passageiro <> ''
         -- Cadastros (aparecem mesmo sem movimento):
         UNION
         SELECT nome_cliente AS nome FROM cad_clientes_frete
@@ -41,8 +41,8 @@ router.get('/clientes', async (req, res) => {
         SELECT nome_cliente AS nome FROM cad_clientes_encomenda
           WHERE empresa_id = $1 AND nome_cliente IS NOT NULL AND nome_cliente <> ''
         UNION
-        SELECT nome AS nome FROM passageiros
-          WHERE empresa_id = $1 AND nome IS NOT NULL AND nome <> ''
+        SELECT nome_passageiro AS nome FROM passageiros
+          WHERE empresa_id = $1 AND nome_passageiro IS NOT NULL AND nome_passageiro <> ''
       ) t ORDER BY nome`
     const { rows } = await pool.query(sql, [empresaId])
     res.json(rows.map(r => r.nome))
@@ -190,7 +190,7 @@ async function buscarPassagens(empresaId, cliente, viagemId, apenasDevedores, ag
     SELECT pg.id_passagem AS id_original, pg.numero_bilhete,
       pg.id_viagem, v.data_viagem,
       CONCAT(COALESCE(r.origem,''), ' - ', COALESCE(r.destino,'')) AS rota,
-      p.nome AS cliente,
+      p.nome_passageiro AS cliente,
       COALESCE(pg.valor_a_pagar, pg.valor_total, 0) AS valor_total,
       COALESCE(pg.valor_pago, 0) AS valor_pago,
       tp.nome_tipo_passagem, ac.nome_acomodacao
@@ -201,7 +201,7 @@ async function buscarPassagens(empresaId, cliente, viagemId, apenasDevedores, ag
     LEFT JOIN aux_tipos_passagem tp ON tp.id_tipo_passagem = pg.id_tipo_passagem
     LEFT JOIN aux_acomodacoes ac ON ac.id_acomodacao = pg.id_acomodacao
     WHERE pg.empresa_id = $1
-      AND UPPER(p.nome) LIKE '%' || $2 || '%'`
+      AND UPPER(p.nome_passageiro) LIKE '%' || $2 || '%'`
   const params = [empresaId, cliente]
   if (viagemId) { params.push(viagemId); sql += ` AND pg.id_viagem = $${params.length}` }
   if (agenda) sql += ` AND v.data_viagem >= CURRENT_DATE`

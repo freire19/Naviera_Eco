@@ -20,7 +20,8 @@ function fmtDate(d) {
  * Extrato de Cliente consolidado (frete + encomenda + passagem).
  * Filtra por cliente, viagem, tipo e status; permite dar baixa em aberto.
  */
-export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
+export default function ExtratoCliente({ viagens: viagensProp = [], viagemAtiva }) {
+  const [viagens, setViagens] = useState(viagensProp)
   const [clientes, setClientes] = useState([])
   const [cliente, setCliente] = useState('')
   const [viagemId, setViagemId] = useState('')
@@ -43,9 +44,10 @@ export default function ExtratoCliente({ viagens = [], viagemAtiva }) {
 
   function showToast(msg, type = 'success') { setToast({ msg, type }); setTimeout(() => setToast(null), 3500) }
 
-  // Carrega lista de clientes (autocomplete)
+  // Carrega lista de clientes (autocomplete) e viagens (filtro do combo)
   useEffect(() => {
     api.get('/extrato-cliente/clientes').then(setClientes).catch(() => {})
+    api.get('/viagens').then(v => setViagens(Array.isArray(v) ? v : [])).catch(() => {})
   }, [])
 
   const buscar = useCallback(async () => {
