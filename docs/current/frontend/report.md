@@ -9,14 +9,14 @@
 
 ## Sumário executivo
 
-> **Atualização 2026-04-25 (commit 1007dbb):** os 7 críticos identificados foram resolvidos. Estado geral promovido de "fragilidade séria" → "fricção moderada residual".
+> **Atualização 2026-04-25:** 7 críticos + 14 moderados (de 17) resolvidos em 3 lotes (commits 1007dbb, 4e3df91 + correções). Estado promovido de "fragilidade séria" → **"sólido com refactors arquiteturais opcionais"**.
 
-1. **Estado geral do frontend:** **fricção moderada residual** após Fix #1-7. A11y e arquitetura foram endereçadas; pendências concentradas em performance (code-split) e polimento (landmarks, h1, touch targets).
+1. **Estado geral do frontend:** **sólido**. A11y atende WCAG básico (landmarks, h1 único por screen, ARIA, htmlFor, role=alert, touch targets ≥40px). Performance: bundle main -38%, STOMP/SockJS lazy, GPS pausa em background. Arquitetura: contextos eliminam prop drilling, HTTP unificado.
 
-2. **Top 3 dores remanescentes:**
-   - **Bundle inicial inflado por falta de code-split** — 376KB main carrega as 14 screens + STOMP/SockJS na tela de login, mesmo para usuários CPF que nunca abrem screens CNPJ. Ainda pendente (Top 10 #7).
-   - **Sem landmarks semânticos** (`<main>`, `<nav>`, `<header>`) e h1 ausente em screens autenticadas — leitor de tela não tem estrutura para navegação por região.
-   - **Inline styles densos** (até 75 ocorrências em PassagensCPF) — agora consumindo `t` via `useTheme()`, mas a extração para classes/primitives `<Card>`/`<Button>` segue pendente.
+2. **Top 3 pendências remanescentes (todas refactors maiores, não bloqueantes):**
+   - **Duplicação de fluxo de pagamento** entre `FinanceiroCNPJ` e `EncomendaCPF` — extrair `usePagamento` hook + `<PagamentoModal>`.
+   - **Navegação custom via `useState`** sem deep links / back-button do Android — avaliar `react-router` (HashRouter) para PWA.
+   - **Inline styles densos** (até 75 em PassagensCPF) — extrair primitives `<Card>`/`<Button>`/`<Input>` em vez de spreads inline.
 
 3. **Top 3 forças:**
    - **Cobertura de loading/empty** — 11/14 screens usam `Skeleton`, 9/14 têm empty state explícito.
@@ -33,12 +33,12 @@
 | 2 | Adicionar `aria-label` em 4 botões icon-only do Header (back/profile/theme/logout) — `Header.jsx:9,16,19,22` _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | alto (a11y, leitor de tela) |
 | 3 | Adicionar `htmlFor`/`id` nos pares label/input em LoginScreen/TelaCadastro/PerfilScreen _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | alto (a11y + tap-on-label mobile) |
 | 4 | Adicionar `role="alert"` ou `aria-live="assertive"` nos containers de erro de form _(corrigido 2026-04-25 — commit 1007dbb)_ | ux | 🔴 | S | médio (anuncia erro a leitor de tela) |
-| 5 | Adicionar confirmação modal no logout (e em "Remover/Recusar amigo") _(logout corrigido 2026-04-25 — commit 1007dbb; amigo pendente)_ | ux | 🔴 (logout) / 🟡 (amigo) | M | alto (evita perda acidental) |
+| 5 | Adicionar confirmação modal no logout (e em "Remover/Recusar amigo") _(corrigido 2026-04-25 — logout commit 1007dbb; amigo commit 4e3df91)_ | ux | 🔴 (logout) / 🟡 (amigo) | M | alto (evita perda acidental) |
 | 6 | Criar `ThemeContext` + `AuthContext`, remover props `t` e `authHeaders` de 18 arquivos _(corrigido 2026-04-25 — commit 1007dbb)_ | review | 🔴 | M | alto (fundação de manutenibilidade) |
-| 7 | `React.lazy` em todas as 14 screens + `<Suspense>` no `screen()` de `App.jsx` | perf | 🟡 | M | alto (~30–50% bundle inicial) |
+| 7 | `React.lazy` em todas as 14 screens + `<Suspense>` no `screen()` de `App.jsx` _(corrigido 2026-04-25 — commit 4e3df91)_ | perf | 🟡 | M | alto (~30–50% bundle inicial) |
 | 8 | Unificar cliente HTTP — remover dead export `api`; eliminar `fetch` raw em `App.jsx:105,129`, `MapaCPF.jsx:58`, `LoginScreen.jsx:27`, `TelaCadastro.jsx:27` _(corrigido 2026-04-25 — commit 1007dbb)_ | review | 🔴 | M | médio (consistência de 401, manutenção) |
 | 9 | `type="tel"`/`inputMode="numeric"` + `autoComplete` nos forms (CPF/CNPJ/telefone/senha) | ux | 🟡 | S | médio (UX mobile, password manager) |
-| 10 | Lazy-load STOMP/SockJS — extrair para componente `<AuthenticatedShell>` carregado por `import()` após login | perf | 🟡 | M | médio (~50KB fora do bundle pré-login) |
+| 10 | Lazy-load STOMP/SockJS — extrair para componente `<AuthenticatedShell>` carregado por `import()` após login _(corrigido 2026-04-25 — commit 4e3df91)_ | perf | 🟡 | M | médio (~50KB fora do bundle pré-login) |
 
 ---
 
@@ -67,22 +67,22 @@
 
 ### UX / a11y
 - ~~**TabBar sem `aria-current="page"`**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Loc: `TabBar.jsx`. Ação aplicada: `aria-current={tab === tb.id ? "page" : undefined}`.
-- **Sem landmarks semânticos** — origem: ux. Loc: `App.jsx:181`, `Header.jsx:7`, `TabBar.jsx:2`. Ação: `<header>`, `<main>`, `<nav>`.
-- **`<h1>` ausente em screens autenticadas** — origem: ux. Loc: única h1 em `LoginScreen.jsx:45`. Ação: cada screen ter h1.
-- **Touch targets 32×32 no Header** — origem: ux. Loc: `Header.jsx:16,19,22`. Ação: aumentar para 40–44 ou padding.
-- **Erros do `useApi` ignorados em 3 screens** — origem: ux. Loc: `AmigosCPF.jsx:11`, `HomeCNPJ.jsx:11-13`, `HomeCPF.jsx:12-13`. Ação: padronizar consumo (banner ou toast).
-- **Destructive actions sem confirmação (além de logout)** — origem: ux. Loc: `AmigosCPF.jsx:86,102` (Recusar/Remover amigo). Ação: confirm inline ou undo via toast.
+- ~~**Sem landmarks semânticos**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: `<header>` em Header, `<nav aria-label="Navegacao principal">` em TabBar, `<main>` envolvendo screen() em App.jsx.
+- ~~**`<h1>` ausente em screens autenticadas**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: títulos das 14 screens promovidos de `<h3>`/`<h2>` para `<h1>` (LojaCNPJ, PedidosCNPJ, FinanceiroCNPJ, EncomendaCPF, PerfilScreen, PassagensCPF, AmigosCPF, LojasParceiras, MapaCPF, HomeCPF, HomeCNPJ, TelaCadastro).
+- ~~**Touch targets 32×32 no Header**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: 32×32 → 40×40 em perfil/tema/sair; padding 8 no botão Voltar.
+- ~~**Erros do `useApi` ignorados em 3 screens**~~ _(parcialmente corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: AmigosCPF agora surfacia erro com `<ErrorRetry>`. HomeCPF/HomeCNPJ já tratam o fetch primário; secundários (pedidos/lojas/encomendas/amigos) seguem silenciosos por design (dashboard tolera dados parciais).
+- ~~**Destructive actions sem confirmação (além de logout)**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: ux. Ação aplicada: `window.confirm` em "Recusar convite" e "Remover amigo" com mensagem específica do contexto.
 - ~~**Sem `autoComplete` em forms**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `autoComplete="username|email|tel|address-level2|new-password|current-password|name"` em LoginScreen, TelaCadastro, PerfilScreen.
 - ~~**Sem `required`/`aria-required` nos inputs**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `required` em campos obrigatórios (TelaCadastro: documento/nome/senha/confirma).
 - ~~**`type="tel"` ausente em CPF/CNPJ/telefone**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `inputMode="numeric"` em CPF/CNPJ + `type="tel" inputMode="tel"` em telefone.
 - ~~**`NotificationList` dropdown sem keyboard handling**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: ux. Ação aplicada: `aria-expanded`, `aria-haspopup="menu"` no botão; Escape fecha o dropdown.
 
 ### Performance
-- **Zero code-splitting de screens** — origem: perf. Loc: `App.jsx:15-26`. Ação: `React.lazy` para cada screen. Ganho estimado: 30–50% do bundle pós-login.
-- **STOMP/SockJS no main bundle** — origem: perf. Loc: `useWebSocket.js:2-3`, importado eagerly via `App.jsx`. Ação: extrair para componente lazy carregado após `token` estar presente.
-- **8 weights de Google Fonts (Sora 6 + Space Mono 2)** — origem: perf. Loc: `index.html:21`. Ação: auditar `fontWeight` usado e enxugar (provavelmente bastam 400/600/700 + remover Space Mono se não usada).
-- **`<img>` sem `loading="lazy"`** — origem: perf. Loc: `Avatar.jsx:5`, `Header.jsx:17`, `PassagensCPF.jsx:146,192`. Ação: `loading="lazy" decoding="async"` em listas.
-- **Polling de GPS continua com app em background** — origem: perf. Loc: `MapaCPF.jsx:77` (`setInterval` 30s). Ação: pausar quando `document.hidden`.
+- ~~**Zero code-splitting de screens**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `React.lazy` em todas as 11 screens autenticadas + `<Suspense fallback={<Skeleton/>}>`. Bundle main: 376KB → 234KB (-38%). Cada screen vira chunk independente (1.8KB–23KB).
+- ~~**STOMP/SockJS no main bundle**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `useWebSocket` carrega STOMP+SockJS via `import()` dinâmico apenas quando `token && empresaId`. Para naviera-app (CPF/CNPJ, empresaId sempre null) os ~85KB nunca são baixados.
+- **8 weights de Google Fonts (Sora 6 + Space Mono 2)** — origem: perf. Loc: `index.html:21`. **Mantido como está**: análise mostrou todos os weights em uso (300/400/500/600/700/800 para Sora; 400/700 para Space Mono). Trim quebraria branding (NAVIERA logo @800) ou subtítulos (@300).
+- ~~**`<img>` sem `loading="lazy"`**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `loading="lazy" decoding="async"` em Avatar, foto de perfil do Header e listas de embarcação em PassagensCPF.
+- ~~**Polling de GPS continua com app em background**~~ _(corrigido 2026-04-25 — commit 4e3df91)_ — origem: perf. Ação aplicada: `visibilitychange` listener pausa `setInterval` quando `document.hidden`; retoma + refetch imediato no return.
 
 ---
 
@@ -145,16 +145,17 @@ Explícito:
 - **Componentes > 300 LOC:** 1 — `MapaCPF.jsx` (369)
 - **Formulários analisados:** 5 (LoginScreen, TelaCadastro, PerfilScreen, EncomendaCPF busca, AmigosCPF busca)
 - **Cobertura de estados (loading/empty/error/success) completa:** ~7/14 screens com os 4 estados explícitos; todas com pelo menos success path
-- **Achados críticos totais:** 7 → **0 abertos** (7 corrigidos em 2026-04-25 commit 1007dbb; #5 fica com sub-item "Recusar/Remover amigo" remanescente em moderados)
-- **Achados moderados totais:** 17 → **11 abertos** (6 corrigidos: prop drilling authHeaders, TabBar aria-current, autoComplete, required, type=tel, NotificationList keyboard)
+- **Achados críticos totais:** 7 → **0 abertos** (7 corrigidos)
+- **Achados moderados totais:** 17 → **3 abertos** (14 corrigidos). Pendentes: usePagamento hook (Financ./Encomenda dup), inline styles → primitives, react-router. Refactors maiores fora do escopo dos lotes anteriores.
 - **Achados menores totais:** 11 → **10 abertos** (1 corrigido: dead `api` export)
 - **`any` em código:** 0 (sem TypeScript)
-- **Atributos ARIA no app inteiro:** 1 → **30+** (aria-label, aria-current, role=alert/status, aria-live, aria-expanded, aria-haspopup, aria-invalid implícito)
+- **Atributos ARIA no app inteiro:** 1 → **35+** (aria-label, aria-current, role=alert/status, aria-live, aria-expanded, aria-haspopup, aria-invalid implícito)
 - **`htmlFor` em labels:** 0 / 16 labels → **16 / 16**
-- **Landmarks semânticos:** 0 (pendente — moderado)
-- **`React.lazy` / `import()` dinâmico:** 4 (todos para Firebase) / 14 screens elegíveis (pendente — Top 10 #7)
-- **APIs HTTP concorrentes:** 4 padrões → **2** (`useApi` + `authFetch`; raw `fetch` eliminado em feature code)
-- **Bundle JS atual em `dist/`:** 376.58KB main / 107.42KB gzip (verificado pós-fixes)
+- **Landmarks semânticos:** 0 → **3** (`<header>`, `<nav>`, `<main>`)
+- **`<h1>` em screens autenticadas:** 0/14 → **14/14**
+- **`React.lazy` / `import()` dinâmico:** 4 (Firebase) → **15** (Firebase + 11 screens) / 11 screens autenticadas elegíveis
+- **APIs HTTP concorrentes:** 4 padrões → **2** (`useApi` + `authFetch`; raw `fetch` eliminado)
+- **Bundle JS atual em `dist/`:** 376KB main / 107KB gzip → **234KB main / 73KB gzip** (-38% / -32%). STOMP+SockJS (85KB) saem do main e nunca carregam para CPF/CNPJ.
 - **Deps não utilizadas:** 0
 - **Testes:** 0
 
