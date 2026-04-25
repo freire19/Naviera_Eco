@@ -41,6 +41,8 @@ public class AsaasGateway implements PspGateway {
 
     private static final Logger log = LoggerFactory.getLogger(AsaasGateway.class);
     private static final String PROVIDER = "asaas";
+    // #302: backoff progressivo para GETs idempotentes (pixQrCode/identificationField).
+    private static final long[] GET_RETRY_BACKOFF_MS = {200L, 500L, 1000L};
 
     private final AsaasProperties props;
     private final Environment env;
@@ -129,7 +131,11 @@ public class AsaasGateway implements PspGateway {
             if (splitResp.isArray() && splitResp.size() > 0) {
                 JsonNode totalValueNode = splitResp.get(0).path("totalValue");
                 if (!totalValueNode.isMissingNode() && !totalValueNode.isNull()) {
-                    try { splitNaviera = new BigDecimal(totalValueNode.asText()); } catch (NumberFormatException ignored) {}
+                    try {
+                        splitNaviera = new BigDecimal(totalValueNode.asText());
+                    } catch (NumberFormatException e) {
+                        log.warn("[AsaasGateway] split.totalValue invalido em {}: {}", pspCobrancaId, totalValueNode.asText());
+                    }
                 }
             }
             if (splitNaviera == null) {
@@ -285,17 +291,15 @@ public class AsaasGateway implements PspGateway {
         return parseBody(res, path);
     }
 
-    // #302: retry para GETs idempotentes (pixQrCode/identificationField) — recurso pode demorar
-    //   poucos ms para ser gerado apos o POST. Backoff: 200ms, 500ms, 1s.
     private JsonNode getWithRetry(String path, int tentativas) throws Exception {
         Exception ultima = null;
-        long[] backoffMs = {200L, 500L, 1000L};
         for (int i = 0; i < tentativas; i++) {
             try { return get(path); }
             catch (Exception e) {
                 ultima = e;
                 if (i < tentativas - 1) {
-                    try { Thread.sleep(backoffMs[Math.min(i, backoffMs.length - 1)]); }
+                    long wait = GET_RETRY_BACKOFF_MS[Math.min(i, GET_RETRY_BACKOFF_MS.length - 1)];
+                    try { Thread.sleep(wait); }
                     catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw ie; }
                 }
             }
