@@ -54,10 +54,21 @@ function setupMessaging() {
 }
 
 /* ── Click handler — abre o app ── */
+// #DS5-226: same-origin http(s) only — bloqueia javascript:/data:/cross-origin.
+function safeNotificationUrl(raw) {
+  if (typeof raw !== "string" || !raw) return "/";
+  try {
+    const u = new URL(raw, self.location.origin);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return "/";
+    if (u.origin !== self.location.origin) return "/";
+    return u.pathname + u.search + u.hash;
+  } catch { return "/"; }
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || "/";
+  const urlToOpen = safeNotificationUrl(event.notification.data?.url);
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {

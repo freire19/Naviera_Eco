@@ -1,5 +1,6 @@
 # ── Stage 1: Build ──
-FROM node:20-alpine AS build
+# #DS5-431: pin minor (20.18) — node:20-alpine flutua entre patches sem deteccao.
+FROM node:20.18-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -9,7 +10,8 @@ RUN npm run build
 # ── Stage 2: Serve ──
 # #DS5-402: imagem nginx oficial ja cria o usuario 'nginx' (uid 101) — executa como non-root
 # via entrypoint que aplica chown e depois dropa para nginx user nos workers.
-FROM nginx:alpine
+# #DS5-431: pin minor (1.27) — alpine plain pega rolling.
+FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx-http.conf nginx-https.conf /etc/nginx/templates/
 COPY docker-entrypoint.sh /docker-entrypoint.sh

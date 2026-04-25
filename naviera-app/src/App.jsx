@@ -25,6 +25,24 @@ import LojaCNPJ from "./screens/LojaCNPJ.jsx";
 import PerfilScreen from "./screens/PerfilScreen.jsx";
 import EncomendaCPF from "./screens/EncomendaCPF.jsx";
 
+// #DS5-209: migra credenciais de localStorage (legado) para sessionStorage no import do modulo.
+//   StrictMode roda useState initializers 2x — manter em escopo de modulo evita o duplo-efeito.
+try {
+  const legacyToken = localStorage.getItem("naviera_token");
+  const legacyUser = localStorage.getItem("naviera_usuario");
+  if (legacyToken && !sessionStorage.getItem("naviera_token")) {
+    sessionStorage.setItem("naviera_token", legacyToken);
+  }
+  if (legacyUser && !sessionStorage.getItem("naviera_usuario")) {
+    sessionStorage.setItem("naviera_usuario", legacyUser);
+  }
+  if (legacyToken || legacyUser) {
+    localStorage.removeItem("naviera_token");
+    localStorage.removeItem("naviera_usuario");
+    localStorage.removeItem("naviera_app_token");
+  }
+} catch { /* sandbox sem storage — ignorar */ }
+
 /* ═══ TAB DEFINITIONS ═══ */
 const TABS_CPF = [
   { id: "home", label: "In\u00edcio", Icon: IconHome },
@@ -43,15 +61,16 @@ const TABS_CNPJ = [
 
 /* ═══ MAIN ═══ */
 export default function Naviera() {
-  const [profile, setProfile] = useState(() => { try { const u = JSON.parse(localStorage.getItem("naviera_usuario")); return u?.tipo === "CNPJ" ? "cnpj" : u ? "cpf" : null; } catch { return null; } });
+  // #DS5-209: token e usuario em sessionStorage (migracao do legado em localStorage roda no import do modulo acima).
+  const [profile, setProfile] = useState(() => { try { const u = JSON.parse(sessionStorage.getItem("naviera_usuario")); return u?.tipo === "CNPJ" ? "cnpj" : u ? "cpf" : null; } catch { return null; } });
   const [tab, setTab] = useState("home");
   const [tabHistory, setTabHistory] = useState([]);
   const navigateTab = (newTab) => { setTabHistory(h => [...h, tab]); setTab(newTab); };
   const goBack = () => { if (tabHistory.length > 0) { setTab(tabHistory[tabHistory.length - 1]); setTabHistory(h => h.slice(0, -1)); } };
   const { canInstall, promptInstall, dismiss: dismissInstall } = usePWA();
   const [mode, setMode] = useState("light");
-  const [token, setToken] = useState(() => localStorage.getItem("naviera_token"));
-  const [usuario, setUsuario] = useState(() => { try { return JSON.parse(localStorage.getItem("naviera_usuario")); } catch { return null; } });
+  const [token, setToken] = useState(() => sessionStorage.getItem("naviera_token"));
+  const [usuario, setUsuario] = useState(() => { try { return JSON.parse(sessionStorage.getItem("naviera_usuario")); } catch { return null; } });
   const [minhaFoto, setMinhaFoto] = useState(null);
   const t = T[mode];
 
@@ -103,15 +122,15 @@ export default function Naviera() {
   }, [token]);
 
   const handleLogin = (data) => {
-    localStorage.setItem("naviera_token", data.token);
-    localStorage.setItem("naviera_usuario", JSON.stringify({ nome: data.nome, tipo: data.tipo, id: data.id }));
+    sessionStorage.setItem("naviera_token", data.token);
+    sessionStorage.setItem("naviera_usuario", JSON.stringify({ nome: data.nome, tipo: data.tipo, id: data.id }));
     setToken(data.token);
     setUsuario({ nome: data.nome, tipo: data.tipo, id: data.id });
     setProfile(data.tipo === "CNPJ" ? "cnpj" : "cpf");
     setTab("home"); setTabHistory([]);
   };
 
-  const doLogout = () => { localStorage.removeItem("naviera_token"); localStorage.removeItem("naviera_usuario"); setProfile(null); setToken(null); setUsuario(null); setTab("home"); setTabHistory([]); setMinhaFoto(null); pushTokenEnviado.current = false; };
+  const doLogout = () => { sessionStorage.removeItem("naviera_token"); sessionStorage.removeItem("naviera_usuario"); setProfile(null); setToken(null); setUsuario(null); setTab("home"); setTabHistory([]); setMinhaFoto(null); pushTokenEnviado.current = false; };
 
   /* ═══ LOGIN SCREEN ═══ */
   if (!profile) return <LoginScreen t={t} mode={mode} setMode={setMode} onLogin={handleLogin} />;

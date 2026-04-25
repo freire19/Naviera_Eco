@@ -1,6 +1,16 @@
 import { useState } from "react";
 import Cd from "./Card.jsx";
 
+// #DS5-210: bloqueia hrefs javascript:/data: vindas do PSP/BFF (ataque XSS de 1-clique).
+//   Aceita apenas http(s); qualquer outra coisa retorna null e o link nao e renderizado.
+function safeHttpUrl(u) {
+  if (typeof u !== "string" || !u) return null;
+  try {
+    const url = new URL(u);
+    return (url.protocol === "https:" || url.protocol === "http:") ? url.toString() : null;
+  } catch { return null; }
+}
+
 /**
  * Mostra o artefato de pagamento retornado pelo PSP (Asaas):
  *   - PIX   : QR Code (imagem base64) + copia-e-cola
@@ -64,7 +74,8 @@ export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCod
   }
 
   if (formaPagamento === "BOLETO") {
-    if (!linhaDigitavel && !boletoUrl) return null;
+    const safeBoletoUrl = safeHttpUrl(boletoUrl);
+    if (!linhaDigitavel && !safeBoletoUrl) return null;
     return (
       <Cd t={t} style={{ padding: 16, border: `2px solid ${t.pri}` }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: t.pri, marginBottom: 10 }}>Boleto</div>
@@ -79,8 +90,8 @@ export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCod
             </button>
           </>
         )}
-        {boletoUrl && (
-          <a href={boletoUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: "block", marginTop: 10, padding: "12px 18px", background: t.priGrad, color: "#fff", fontSize: 13, borderRadius: 10, border: "none", fontWeight: 600, cursor: "pointer", textAlign: "center", textDecoration: "none" }}>
+        {safeBoletoUrl && (
+          <a href={safeBoletoUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: "block", marginTop: 10, padding: "12px 18px", background: t.priGrad, color: "#fff", fontSize: 13, borderRadius: 10, border: "none", fontWeight: 600, cursor: "pointer", textAlign: "center", textDecoration: "none" }}>
             Abrir boleto (PDF)
           </a>
         )}
@@ -89,12 +100,13 @@ export default function PagamentoArtefato({ formaPagamento, qrCodePayload, qrCod
   }
 
   if (formaPagamento === "CARTAO") {
-    if (!checkoutUrl) return null;
+    const safeCheckoutUrl = safeHttpUrl(checkoutUrl);
+    if (!safeCheckoutUrl) return null;
     return (
       <Cd t={t} style={{ padding: 16, textAlign: "center", border: `2px solid ${t.pri}` }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: t.pri, marginBottom: 10 }}>Pagar com cartao</div>
         <div style={{ fontSize: 12, color: t.txMuted, marginBottom: 12 }}>Voce sera redirecionado para o checkout seguro</div>
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: "block", padding: "12px 18px", background: t.priGrad, color: "#fff", fontSize: 14, borderRadius: 10, border: "none", fontWeight: 600, textDecoration: "none" }}>
+        <a href={safeCheckoutUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: "block", padding: "12px 18px", background: t.priGrad, color: "#fff", fontSize: 14, borderRadius: 10, border: "none", fontWeight: 600, textDecoration: "none" }}>
           Abrir checkout
         </a>
       </Cd>

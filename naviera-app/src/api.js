@@ -5,14 +5,22 @@ export const API = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
 const TOKEN_KEY = 'naviera_token'
 const USER_KEY = 'naviera_usuario'
 
+// #DS5-209: token e dados de usuario migrados de localStorage para sessionStorage —
+//   sessionStorage e isolado por aba e some no fechamento, reduzindo janela de roubo via XSS.
+//   Trade-off aceito: usuario refaz login se fechar a aba/navegador.
 function getToken() {
-  return localStorage.getItem(TOKEN_KEY)
+  return sessionStorage.getItem(TOKEN_KEY)
 }
 
 function clearSession() {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
-  localStorage.removeItem('naviera_app_token') // legacy key cleanup
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(USER_KEY)
+  // Cleanup de chaves legadas (versoes anteriores guardavam em localStorage).
+  try {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+    localStorage.removeItem('naviera_app_token')
+  } catch { /* sandbox sem localStorage — ignorar */ }
   window.location.reload()
 }
 
@@ -24,7 +32,9 @@ async function request(path, options = {}) {
 
   const res = await fetch(`${API}${path}`, { ...options, headers })
 
-  if (res.status === 401 || res.status === 403) {
+  // #DS5-225: 403 = autorizacao recusada (ACL pontual), nao expirada — NAO derruba sessao.
+  //   Apenas 401 (token invalido/expirado) deve forcar logout.
+  if (res.status === 401) {
     clearSession()
     return
   }
@@ -51,7 +61,8 @@ export const api = {
 /* ═══ authFetch: backward-compatible wrapper (delegates to unified 401 handling) ═══ */
 export function authFetch(url, options = {}) {
   return fetch(url, options).then(res => {
-    if (res.status === 401 || res.status === 403) {
+    // #DS5-225: so 401 derruba sessao; 403 e ACL especifica.
+    if (res.status === 401) {
       clearSession()
     }
     return res
@@ -76,7 +87,8 @@ export function useApi(path, authHeaders, deps = []) {
     setLoading(true); setErro("");
     fetch(`${API}${path}`, { headers: authHeaders, signal })
       .then(r => {
-        if (r.status === 401 || r.status === 403) {
+        // #DS5-225: 403 nao expira sessao — usuario pode ter perdido permissao especifica.
+        if (r.status === 401) {
           clearSession()
           return Promise.reject("Sessao expirada");
         }
