@@ -76,18 +76,32 @@ export default function ListaFretes({ viagemAtiva, onNavigate, onClose }) {
   // Carregar itens de todos os fretes para busca por item
   useEffect(() => {
     if (!filtroItem || fretes.length === 0) return
-    // Carregar itens apenas quando usuario digitar busca
     const idsParaCarregar = fretes.filter(f => !itensMap[f.id_frete]).map(f => f.id_frete)
     if (idsParaCarregar.length === 0) return
-    Promise.all(idsParaCarregar.map(id =>
-      api.get(`/fretes/${id}/itens`).then(itens => ({ id, itens })).catch(() => ({ id, itens: [] }))
-    )).then(results => {
+    let cancelled = false
+    // #DP072: bound concurrency em 5 — sem isso, 500 fretes filtrados disparavam 500 GETs
+    //   paralelos, saturando rate limit + pool DB e travando UI 5-30s.
+    const CONCURRENCY = 5
+    ;(async () => {
+      const results = []
+      for (let i = 0; i < idsParaCarregar.length; i += CONCURRENCY) {
+        if (cancelled) return
+        const chunk = idsParaCarregar.slice(i, i + CONCURRENCY)
+        const chunkResults = await Promise.all(chunk.map(id =>
+          api.get(`/fretes/${id}/itens`)
+            .then(itens => ({ id, itens }))
+            .catch(() => ({ id, itens: [] }))
+        ))
+        results.push(...chunkResults)
+      }
+      if (cancelled) return
       setItensMap(prev => {
         const next = { ...prev }
         results.forEach(r => { next[r.id] = r.itens })
         return next
       })
-    })
+    })()
+    return () => { cancelled = true }
   }, [filtroItem, fretes])
 
   // Filtros locais
