@@ -86,6 +86,8 @@ public class EncomendaService {
         ClienteApp cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
 
+        // #015: LIMIT obrigatorio — rastreio cross-tenant por nome LIKE pode retornar milhares
+        //   de linhas em homonimos (~1M em producao futura), causando OOM no app mobile.
         String sql = """
             SELECT e.id_encomenda, e.numero_encomenda, e.remetente, e.destinatario, e.rota,
                    COALESCE(emb.nome, '') AS embarcacao,
@@ -100,6 +102,7 @@ public class EncomendaService {
             WHERE UPPER(e.destinatario) LIKE UPPER(?)
                OR UPPER(e.remetente) LIKE UPPER(?)
             ORDER BY e.id_encomenda DESC
+            LIMIT 200
             """;
 
         String termo = "%" + cliente.getNome() + "%";
@@ -120,13 +123,15 @@ public class EncomendaService {
         ClienteApp cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
 
-        String forma = formaPagamento != null ? formaPagamento : "PIX";
+        String forma = com.naviera.api.config.MoneyUtils.validarFormaPagamento(formaPagamento);
 
         Map<String, Object> resp = tx.execute(status -> {
+            // #029: FOR UPDATE serializa retries concorrentes — R2 aguarda commit de R1 e le
+            //   PENDENTE_CONFIRMACAO, lancando conflict antes de chamar PSP (evita cobranca duplicada).
             var rows = jdbc.queryForList(
                 "SELECT id_encomenda, total_a_pagar, desconto, valor_pago, status_pagamento, " +
                 "destinatario, id_cliente_app_destinatario, empresa_id, numero_encomenda " +
-                "FROM encomendas WHERE id_encomenda = ?",
+                "FROM encomendas WHERE id_encomenda = ? FOR UPDATE",
                 idEncomenda);
             if (rows.isEmpty()) throw ApiException.notFound("Encomenda nao encontrada");
             var enc = rows.get(0);

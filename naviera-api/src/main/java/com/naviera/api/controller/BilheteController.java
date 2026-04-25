@@ -20,23 +20,20 @@ public class BilheteController {
     }
 
     /**
-     * POST /api/bilhetes/comprar
-     * Body: { "idViagem": 42, "idRota": 1, "idTipoPassagem": 1 }
-     * Cria passagem + bilhete digital com TOTP
+     * POST /api/bilhetes/comprar — DEPRECATED em 2026-04-24 (#716).
+     *
+     * Era uma implementacao paralela de compra de passagem que gravava valor_pago = valor_total
+     * sem passar pelo PSP (passagem sai "paga" sem dinheiro efetivo). Divergente de
+     * PassagemService.comprar (que tem desconto PIX, integracao Asaas, PENDENTE_CONFIRMACAO).
+     *
+     * App mobile ja usa POST /passagens/comprar. Retorna 410 Gone para desencorajar clientes
+     * legados; mantido o metodo service.comprar por enquanto para nao quebrar testes.
      */
     @PostMapping("/comprar")
-    public ResponseEntity<?> comprar(Authentication auth, @RequestBody Map<String, Object> body) {
-        Long clienteId = (Long) auth.getPrincipal();
-        Long idViagem = toLong(body.get("idViagem"));
-        Long idRota = body.containsKey("idRota") ? toLong(body.get("idRota")) : null;
-        Long idTipoPassagem = toLong(body.getOrDefault("idTipoPassagem", 1));
-
-        if (idViagem == null)
-            return ResponseEntity.badRequest().body(Map.of("erro", "idViagem é obrigatório."));
-
-        // empresaId derivado da viagem server-side (nunca do request) — fix DS4-001
-        var bilhete = service.comprar(clienteId, idViagem, idRota, idTipoPassagem);
-        return ResponseEntity.ok(bilhete);
+    public ResponseEntity<?> comprar() {
+        return ResponseEntity.status(410).body(Map.of(
+            "erro", "Endpoint removido. Use POST /api/passagens/comprar (com formaPagamento)."
+        ));
     }
 
     /**
@@ -81,11 +78,5 @@ public class BilheteController {
     public ResponseEntity<?> gerarTOTP(@PathVariable Long id, Authentication auth) {
         Long clienteId = (Long) auth.getPrincipal();
         return ResponseEntity.ok(service.gerarTOTPPorBilhete(clienteId, id));
-    }
-
-    private Long toLong(Object v) {
-        if (v == null) return null;
-        if (v instanceof Number n) return n.longValue();
-        try { return Long.parseLong(v.toString()); } catch (Exception e) { return null; }
     }
 }

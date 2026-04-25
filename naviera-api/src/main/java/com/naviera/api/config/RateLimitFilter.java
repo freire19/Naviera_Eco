@@ -25,6 +25,11 @@ public class RateLimitFilter implements Filter {
 
     private static final int GENERAL_MAX = 200;
     private static final int LOGIN_MAX = 10;
+    // #654: upload por IP em janela curta — DoS por exaustao de disco vinha sem limite
+    //   especifico; com 200 req/min cabia > 100 fotos por IP por minuto.
+    private static final int UPLOAD_MAX = 5;
+    // #113: ativar codigo — defesa em profundidade contra brute-force, alem dos 8 hex (~4B).
+    private static final int ATIVAR_MAX = 5;
     private static final long WINDOW_MS = 60_000;
 
     private final ConcurrentHashMap<String, RateEntry> hits = new ConcurrentHashMap<>();
@@ -57,8 +62,17 @@ public class RateLimitFilter implements Filter {
         String path = req.getRequestURI();
 
         boolean isLogin = path.endsWith("/auth/login") && "POST".equalsIgnoreCase(req.getMethod());
-        int max = isLogin ? LOGIN_MAX : GENERAL_MAX;
-        String key = isLogin ? "login:" + ip : "general:" + ip;
+        // #654: upload bucket cobre /perfil/foto (e qualquer outro POST com /foto/upload-like).
+        boolean isUpload = "POST".equalsIgnoreCase(req.getMethod())
+            && (path.endsWith("/perfil/foto") || path.contains("/upload"));
+        // #113: bucket dedicado para /public/ativar/{codigo} — brute-force defense.
+        boolean isAtivar = path.contains("/public/ativar/") && "GET".equalsIgnoreCase(req.getMethod());
+        int max;
+        String key;
+        if (isLogin) { max = LOGIN_MAX; key = "login:" + ip; }
+        else if (isUpload) { max = UPLOAD_MAX; key = "upload:" + ip; }
+        else if (isAtivar) { max = ATIVAR_MAX; key = "ativar:" + ip; }
+        else { max = GENERAL_MAX; key = "general:" + ip; }
 
         RateEntry entry = hits.compute(key, (k, existing) -> {
             long now = System.currentTimeMillis();

@@ -72,7 +72,7 @@ public class PassagemService {
         var cliente = clienteRepo.findById(clienteId)
             .orElseThrow(() -> ApiException.notFound("Cliente nao encontrado"));
 
-        String forma = req.formaPagamento() != null ? req.formaPagamento() : "PIX";
+        String forma = com.naviera.api.config.MoneyUtils.validarFormaPagamento(req.formaPagamento());
 
         // #212: idTipoPassagem obrigatorio — sem ele nao da pra escolher tarifa.
         if (req.idTipoPassagem() == null) throw ApiException.badRequest("idTipoPassagem obrigatorio");

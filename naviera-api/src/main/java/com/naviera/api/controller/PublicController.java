@@ -67,7 +67,13 @@ public class PublicController {
             Resource resource = new UrlResource(file.toUri());
             if (!resource.exists()) return ResponseEntity.notFound().build();
             String ct = safe.endsWith(".png") ? "image/png" : safe.endsWith(".webp") ? "image/webp" : "image/jpeg";
-            return ResponseEntity.ok().contentType(MediaType.parseMediaType(ct)).body(resource);
+            // #125: X-Content-Type-Options=nosniff impede browser MIME-sniff (defesa em profundidade
+            //   contra arquivo .jpg com payload HTML/JS — mesmo que regex passe e magic-bytes
+            //   tenha falsos negativos, browser respeita o content-type declarado).
+            return ResponseEntity.ok()
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.parseMediaType(ct))
+                .body(resource);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }

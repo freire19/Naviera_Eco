@@ -116,6 +116,15 @@ public class CadastrosWriteService {
     @Transactional
     public Map<String, Object> criarUsuario(Integer empresaId, boolean isAdmin, Map<String, Object> dados) {
         if (!isAdmin) throw ApiException.forbidden("Apenas administradores podem criar usuarios");
+        // #656: pre-check de email duplicado por empresa — sem isso, INSERT estourava SQLException
+        //   crua (409 com detail do schema vazando) ou criava duplicata se nao houvesse UNIQUE no DB.
+        String email = (String) dados.get("email");
+        if (email != null && !email.isBlank()) {
+            var dup = jdbc.queryForList(
+                "SELECT 1 FROM usuarios WHERE LOWER(email) = LOWER(?) AND empresa_id = ?",
+                email, empresaId);
+            if (!dup.isEmpty()) throw ApiException.conflict("Email ja cadastrado nesta empresa");
+        }
         jdbc.update("""
             INSERT INTO usuarios (nome, email, senha, funcao, permissao, empresa_id)
             VALUES (?, ?, ?, ?, ?, ?)""",

@@ -2,9 +2,22 @@ package com.naviera.api.config;
 
 import java.math.BigDecimal;
 import java.time.ZoneId;
+import java.util.Set;
 
 public final class MoneyUtils {
     private MoneyUtils() {}
+
+    /** #033: whitelist de forma de pagamento aceita pelos services de pagar(). BARCO = presencial. */
+    public static final Set<String> FORMAS_PAGAMENTO_VALIDAS = Set.of("PIX", "CARTAO", "BOLETO", "BARCO");
+
+    /** Valida forma de pagamento contra whitelist. Lanca ApiException.badRequest se invalida. */
+    public static String validarFormaPagamento(String forma) {
+        String f = forma != null ? forma.trim().toUpperCase() : "PIX";
+        if (!FORMAS_PAGAMENTO_VALIDAS.contains(f)) {
+            throw ApiException.badRequest("Forma de pagamento invalida: " + forma);
+        }
+        return f;
+    }
 
     /** #DB209: TZ de negocio — usar em LocalDate.now()/LocalDateTime para evitar drift UTC. */
     public static final ZoneId ZONE_BR = ZoneId.of("America/Sao_Paulo");

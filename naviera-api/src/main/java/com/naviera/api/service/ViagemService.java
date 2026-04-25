@@ -43,9 +43,12 @@ public class ViagemService {
 
     /** Viagens ativas de todas as empresas — cross-tenant para o app mobile */
     // #DL041: nao mostrar viagens com data_chegada passada (cliente CPF ve viagem expirada)
+    // #131: payload publico — sem `descricao` (pode conter notas internas) e LIMIT 500 para
+    //   evitar dump da tabela inteira por scraper. empresa_nome/embarcacao mantidos pois
+    //   usuario precisa saber quem opera a viagem antes de comprar.
     public List<Map<String, Object>> buscarPublicas() {
         String sql = """
-            SELECT v.id_viagem, v.data_viagem, v.data_chegada, v.descricao,
+            SELECT v.id_viagem, v.data_viagem, v.data_chegada,
                    emb.nome AS nome_embarcacao, r.origem, r.destino,
                    emp.nome AS empresa_nome
             FROM viagens v
@@ -54,6 +57,7 @@ public class ViagemService {
             LEFT JOIN empresas emp ON emb.empresa_id = emp.id
             WHERE v.ativa = TRUE AND v.data_chegada >= CURRENT_DATE
             ORDER BY v.data_viagem ASC
+            LIMIT 500
             """;
         return jdbc.queryForList(sql);
     }

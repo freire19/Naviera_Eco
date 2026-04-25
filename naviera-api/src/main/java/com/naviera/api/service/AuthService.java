@@ -20,12 +20,19 @@ public class AuthService {
         this.repo = repo; this.encoder = encoder; this.jwt = jwt;
     }
 
+    // #126: hash dummy fixo do BCrypt para equalizar tempo de resposta quando documento nao existe.
+    //   Sem isso, atacante mede latencia (com BCrypt vs sem) e enumera CPFs/CNPJs cadastrados.
+    private static final String DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+
     @Transactional
     public AuthResponse login(LoginRequest req) {
-        var cliente = repo.findByDocumentoAndAtivoTrue(req.documento())
-            .orElseThrow(() -> ApiException.unauthorized("Documento nao encontrado"));
-        if (!encoder.matches(req.senha(), cliente.getSenhaHash()))
-            throw ApiException.unauthorized("Senha incorreta");
+        var clienteOpt = repo.findByDocumentoAndAtivoTrue(req.documento());
+        String hashAlvo = clienteOpt.map(ClienteApp::getSenhaHash).orElse(DUMMY_HASH);
+        boolean senhaOk = encoder.matches(req.senha(), hashAlvo);
+        if (clienteOpt.isEmpty() || !senhaOk) {
+            throw ApiException.unauthorized("Credenciais invalidas");
+        }
+        var cliente = clienteOpt.get();
         cliente.setUltimoAcesso(LocalDateTime.now());
         repo.save(cliente);
         String token = jwt.gerarToken(cliente.getId(), cliente.getDocumento(), cliente.getTipoDocumento());

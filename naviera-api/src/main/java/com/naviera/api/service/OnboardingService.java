@@ -31,7 +31,10 @@ public class OnboardingService {
      */
     private String gerarCodigoAtivacao() {
         for (int tentativa = 0; tentativa < 10; tentativa++) {
-            String codigo = "NAV-" + String.format("%08X", RANDOM.nextInt());
+            // #236: evita "NAV-00000000" (1 em 4B com nextInt() == 0) — substituir por 1.
+            int rand = RANDOM.nextInt();
+            if (rand == 0) rand = 1;
+            String codigo = "NAV-" + String.format("%08X", rand);
             List<Map<String, Object>> existente = jdbc.queryForList(
                 "SELECT 1 FROM empresas WHERE codigo_ativacao = ?", codigo);
             if (existente.isEmpty()) return codigo;

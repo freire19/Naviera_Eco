@@ -51,19 +51,23 @@ public class EmpresaPspService {
     //   faz HTTP que segura conexao DB durante latencia do Asaas. Usa TX curta para validacao e
     //   TX2 apenas para UPDATE final. #235: valida empresa.ativo antes de onboard.
     public Map<String, Object> onboarding(Integer empresaId, OnboardingRequest req) {
+        // #658: reserva atomica em UM round-trip — UPDATE...RETURNING distingue
+        //   "ja onboardada/em andamento" (rowcount=0 + linha existe) de "empresa nao existe"
+        //   (rowcount=0 + sem linha). Sem isso, R1/R2 paralelos chamavam Asaas e criavam
+        //   2 subcontas reais, com 2o UPDATE sobrescrevendo (orfa recebendo dinheiro).
         Boolean validOk = tx.execute(st -> {
-            var rows = jdbc.queryForList(
-                "SELECT psp_subconta_id, ativo FROM empresas WHERE id = ?", empresaId);
-            if (rows.isEmpty()) throw ApiException.notFound("Empresa nao encontrada");
-            Object ativo = rows.get(0).get("ativo");
-            if (ativo != null && Boolean.FALSE.equals(ativo)) {
+            var reservadas = jdbc.queryForList(
+                "UPDATE empresas SET psp_subconta_id = 'PENDING_' || id "
+                + "WHERE id = ? AND psp_subconta_id IS NULL AND ativo = TRUE "
+                + "RETURNING id", empresaId);
+            if (!reservadas.isEmpty()) return true;
+            var existe = jdbc.queryForList(
+                "SELECT ativo, psp_subconta_id FROM empresas WHERE id = ?", empresaId);
+            if (existe.isEmpty()) throw ApiException.notFound("Empresa nao encontrada");
+            if (Boolean.FALSE.equals(existe.get(0).get("ativo"))) {
                 throw ApiException.forbidden("Empresa inativa — reative antes do onboarding");
             }
-            String existing = (String) rows.get(0).get("psp_subconta_id");
-            if (existing != null && !existing.isBlank()) {
-                throw ApiException.conflict("Empresa ja tem subconta cadastrada: " + existing);
-            }
-            return true;
+            throw ApiException.conflict("Empresa ja tem subconta cadastrada ou onboarding em andamento");
         });
         if (validOk == null) throw ApiException.badRequest("Falha ao validar empresa");
 
@@ -89,7 +93,17 @@ public class EmpresaPspService {
         );
 
         // HTTP externo FORA de transacao (pool nao fica preso durante latencia do Asaas)
-        SubcontaResponse resp = gateway.criarSubconta(subReq);
+        SubcontaResponse resp;
+        try {
+            resp = gateway.criarSubconta(subReq);
+        } catch (RuntimeException e) {
+            // #658: PSP falhou — liberar reserva PENDING_<id> para nao bloquear retries do admin.
+            tx.executeWithoutResult(s -> jdbc.update(
+                "UPDATE empresas SET psp_subconta_id = NULL "
+                + "WHERE id = ? AND psp_subconta_id LIKE 'PENDING_%'",
+                empresaId));
+            throw e;
+        }
 
         // TX2 curta apenas para persistir o resultado
         tx.executeWithoutResult(s -> jdbc.update(

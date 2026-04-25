@@ -27,6 +27,9 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**", "/public/**", "/ws/**", "/webhooks/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/embarcacoes/*/gps", "/viagens/*/rastreio", "/viagens/publicas", "/gps/embarcacoes").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ROLE_SUPERADMIN")
+                // #104: /psp/onboarding cria subconta Asaas com dados financeiros — restringir a ADMIN
+                //   da empresa (operador comum nao deve poder cadastrar conta de recebimento).
+                .requestMatchers("/psp/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/gps/**").hasAuthority("ROLE_OPERADOR")
                 .requestMatchers("/op/**", "/sync/**").hasAuthority("ROLE_OPERADOR")
                 .anyRequest().authenticated())
