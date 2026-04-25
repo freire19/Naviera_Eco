@@ -103,6 +103,8 @@ public class SyncService {
 
         // ---- 1. UPLOAD: processar registros vindos do Desktop ----
         Set<String> uuidsRecebidos = new HashSet<>();
+        // #309: trackear quais uuids falharam para o Desktop nao marcar como sync ok.
+        List<String> uuidsFalha = new ArrayList<>();
         int recebidos = 0;
         int erros = 0;
 
@@ -115,6 +117,7 @@ public class SyncService {
                 recebidos++;
             } catch (Exception e) {
                 erros++;
+                uuidsFalha.add(reg.uuid());
                 log.warn("Sync upload erro [tabela={}, uuid={}, acao={}]: {}",
                     tabela, reg.uuid(), reg.acao(), e.getMessage());
             }
@@ -125,11 +128,11 @@ public class SyncService {
             tabela, request.ultimaSincronizacao(), empresaId, uuidsRecebidos);
 
         String mensagem = erros > 0
-            ? String.format("OK com %d erro(s)", erros)
+            ? String.format("OK com %d erro(s) — reenviar uuids", erros)
             : "OK";
 
         notificationService.syncCompleto(empresaId, tabela, recebidos, paraDownload.size());
-        return new SyncResponse(erros == 0, mensagem, recebidos, paraDownload.size(), paraDownload);
+        return new SyncResponse(erros == 0, mensagem, recebidos, paraDownload.size(), paraDownload, uuidsFalha);
     }
 
     // ========================================================================

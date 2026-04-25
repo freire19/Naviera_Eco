@@ -112,17 +112,31 @@ public class AsaasGateway implements PspGateway {
             String checkoutUrl = body.hasNonNull("invoiceUrl") ? body.get("invoiceUrl").asText() : null;
 
             if ("PIX".equals(req.formaPagamento())) {
-                JsonNode qr = get("/payments/" + pspCobrancaId + "/pixQrCode");
+                // #302: GET pixQrCode pode falhar transitoriamente apos POST — Asaas leva alguns ms
+                //   para gerar o QR. Sem retry, usuario re-emite cobranca e duplica.
+                JsonNode qr = getWithRetry("/payments/" + pspCobrancaId + "/pixQrCode", 3);
                 qrPayload = qr.path("payload").asText(null);
                 qrImageUrl = qr.path("encodedImage").asText(null);
             } else if ("BOLETO".equals(req.formaPagamento())) {
-                JsonNode idf = get("/payments/" + pspCobrancaId + "/identificationField");
+                JsonNode idf = getWithRetry("/payments/" + pspCobrancaId + "/identificationField", 3);
                 linhaDigitavel = idf.path("identificationField").asText(null);
             }
 
-            BigDecimal splitNaviera = valorLiquido
-                .multiply(req.splitNavieraPct() != null ? req.splitNavieraPct() : BigDecimal.ZERO)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            // #DR261: preferir splits retornados pelo Asaas (regras de arredondamento dele); calculo
+            //   local serve so de fallback quando body.split nao vier preenchido.
+            BigDecimal splitNaviera = null;
+            JsonNode splitResp = body.path("split");
+            if (splitResp.isArray() && splitResp.size() > 0) {
+                JsonNode totalValueNode = splitResp.get(0).path("totalValue");
+                if (!totalValueNode.isMissingNode() && !totalValueNode.isNull()) {
+                    try { splitNaviera = new BigDecimal(totalValueNode.asText()); } catch (NumberFormatException ignored) {}
+                }
+            }
+            if (splitNaviera == null) {
+                splitNaviera = valorLiquido
+                    .multiply(req.splitNavieraPct() != null ? req.splitNavieraPct() : BigDecimal.ZERO)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            }
             BigDecimal splitEmpresa = valorLiquido.subtract(splitNaviera);
 
             return new CobrancaResponse(
@@ -269,6 +283,24 @@ public class AsaasGateway implements PspGateway {
             new HttpEntity<>(headers()),
             String.class);
         return parseBody(res, path);
+    }
+
+    // #302: retry para GETs idempotentes (pixQrCode/identificationField) — recurso pode demorar
+    //   poucos ms para ser gerado apos o POST. Backoff: 200ms, 500ms, 1s.
+    private JsonNode getWithRetry(String path, int tentativas) throws Exception {
+        Exception ultima = null;
+        long[] backoffMs = {200L, 500L, 1000L};
+        for (int i = 0; i < tentativas; i++) {
+            try { return get(path); }
+            catch (Exception e) {
+                ultima = e;
+                if (i < tentativas - 1) {
+                    try { Thread.sleep(backoffMs[Math.min(i, backoffMs.length - 1)]); }
+                    catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw ie; }
+                }
+            }
+        }
+        throw ultima != null ? ultima : new IllegalStateException("getWithRetry exhausted: " + path);
     }
 
     // #DR260: resposta sem body vira NPE em readTree — tratar como erro upstream.

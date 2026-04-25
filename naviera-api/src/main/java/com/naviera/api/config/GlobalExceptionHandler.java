@@ -7,7 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -38,11 +40,19 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> handleGeneric(Exception e) {
+    public ResponseEntity<?> handleGeneric(Exception e, HttpServletRequest req) {
+        // #313: correlationId em 5xx — devolve no body + log para casar request/log em prod.
+        //   Reusa header X-Request-Id se ja existir (proxy upstream pode setar); senao gera um.
+        String correlationId = req != null ? req.getHeader("X-Request-Id") : null;
+        if (correlationId == null || correlationId.isBlank()) {
+            correlationId = UUID.randomUUID().toString();
+        }
         // #DS5-040: mensagem da exception pode conter parametros de query — registrar
         //   apenas a classe; stack continua em DEBUG via TRACE_LOG, ativavel pontualmente.
-        log.error("Erro nao tratado [{}]", e.getClass().getSimpleName());
-        log.debug("Stack trace", e);
-        return ResponseEntity.internalServerError().body(Map.of("erro", "Erro interno do servidor"));
+        log.error("Erro nao tratado [{}] correlationId={}", e.getClass().getSimpleName(), correlationId);
+        log.debug("Stack trace [correlationId={}]", correlationId, e);
+        return ResponseEntity.internalServerError()
+            .header("X-Request-Id", correlationId)
+            .body(Map.of("erro", "Erro interno do servidor", "correlationId", correlationId));
     }
 }
