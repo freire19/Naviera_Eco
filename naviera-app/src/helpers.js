@@ -1,4 +1,11 @@
 /* === HELPERS === */
+// #DM084: calculo de desconto PIX centralizado — antes triplicado nas 3 telas de pagamento.
+//   Percentual virá de bootstrap quando #502 for resolvido (PSP_DESCONTO_PIX_PCT no backend).
+export const PCT_DESCONTO_PIX = 0.10;
+export const calcularDescontoApp = (saldo, formaPag, pct = PCT_DESCONTO_PIX) =>
+  formaPag === "PIX" ? Number(saldo || 0) * pct : 0;
+
+
 // #DR282: 502/504 do Nginx e gateway timeouts devolvem HTML, nao JSON. Le o body cru
 //   e tenta parsear; nunca lanca. Caller monta msg com `data?.erro || raw.slice(0,120)`.
 export async function lerRespostaJson(res) {

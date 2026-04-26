@@ -1,26 +1,28 @@
 import { useState } from "react";
-import { API, useApi, authFetch } from "../api.js";
-import { money, lerRespostaJson } from "../helpers.js";
+import { API, useApi } from "../api.js";
+import { money, calcularDescontoApp } from "../helpers.js";
 import Badge from "../components/Badge.jsx";
 import Cd from "../components/Card.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import ErrorRetry from "../components/ErrorRetry.jsx";
 import Toast from "../components/Toast.jsx";
-import PagamentoArtefato from "../components/PagamentoArtefato.jsx";
+import PagamentoSucesso from "../components/PagamentoSucesso.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import usePagamento from "../hooks/usePagamento.js";
+
+const FORMAS_PAGAMENTO = [
+  { v: "PIX", t: "PIX", s: "10% de desconto" },
+  { v: "CARTAO", t: "Cartao", s: "Sem desconto" },
+  { v: "BARCO", t: "Pagar no barco", s: "Sem desconto, confirma no embarque" },
+];
 
 export default function EncomendaCPF() {
   const { t } = useTheme();
   const { authHeaders } = useAuth();
   const { data: encomendas, loading, erro, refresh } = useApi("/encomendas/rastreio", authHeaders);
   const [busca, setBusca] = useState("");
-  const [pagando, setPagando] = useState(null);
-  const [formaPag, setFormaPag] = useState("PIX");
-  const [enviando, setEnviando] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [errPag, setErrPag] = useState("");
-  const [resultado, setResultado] = useState(null);
+  const pag = usePagamento(item => `${API}/encomendas/${item.id_encomenda}/pagar`, authHeaders);
 
   const filtradas = encomendas?.filter(e => {
     if (!busca.trim()) return true;
@@ -30,75 +32,35 @@ export default function EncomendaCPF() {
       || (e.destinatario || "").toLowerCase().includes(q);
   });
 
-  const confirmarPagamento = async () => {
-    if (!pagando || enviando) return;
-    setErrPag(""); setEnviando(true);
-    try {
-      const res = await authFetch(`${API}/encomendas/${pagando.id_encomenda}/pagar`, {
-        method: "POST", headers: authHeaders,
-        body: JSON.stringify({ formaPagamento: formaPag }),
-      });
-      const { raw, data } = await lerRespostaJson(res);
-      if (!res.ok) {
-        setErrPag(data?.erro || data?.message || (raw && raw.slice(0, 120).trim()) || `HTTP ${res.status}`);
-        return;
-      }
-      if (formaPag === "BARCO") {
-        setToast("Reservado para pagar no embarque");
-        setPagando(null); setFormaPag("PIX"); refresh();
-      } else {
-        setResultado({ ...(data || {}), numeroEncomenda: pagando.numero_encomenda, destinatario: pagando.destinatario });
-        setPagando(null); refresh();
-      }
-    } catch (e) {
-      console.warn("[EncomendaCPF] confirmarPagamento falhou:", e?.message);
-      setErrPag("Sem conexao com o servidor.");
-    } finally { setEnviando(false); }
-  };
+  const confirmarPagamento = () => pag.confirmar(
+    { numero: pag.pagando?.numero_encomenda, destinatario: pag.pagando?.destinatario },
+    refresh
+  );
 
   if (erro) return <ErrorRetry erro={erro} onRetry={refresh} />;
 
-  // Tela de sucesso (apos pagar PIX/CARTAO) mostra QR/checkout
-  if (resultado) return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-    <button onClick={() => { setResultado(null); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
-    <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagamento gerado</h1>
-    <Cd style={{ padding: 14 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{resultado.numeroEncomenda}</div>
-      <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>Para: {resultado.destinatario || "-"}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 8 }}>{money(resultado.valorAPagar)}</div>
-      {Number(resultado.descontoApp) > 0 && <div style={{ fontSize: 11, color: t.ok, marginTop: 2 }}>Desconto PIX: -{money(resultado.descontoApp)}</div>}
-    </Cd>
-    <PagamentoArtefato formaPagamento={resultado.formaPagamento}
-      qrCodePayload={resultado.qrCodePayload} qrCodeImageUrl={resultado.qrCodeImageUrl}
-      linhaDigitavel={resultado.linhaDigitavel} boletoUrl={resultado.boletoUrl}
-      checkoutUrl={resultado.checkoutUrl} />
-    {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-  </div>;
+  if (pag.resultado) return <PagamentoSucesso resultado={pag.resultado}
+    toast={pag.toast} onCloseToast={() => pag.setToast(null)} onVoltar={pag.fecharResultado} />;
 
-  // Modal de pagamento
-  if (pagando) {
-    const saldo = Math.max(0, (Number(pagando.total_a_pagar) || 0) - (Number(pagando.desconto) || 0) - (Number(pagando.valor_pago) || 0));
-    const desconto10 = formaPag === "PIX" ? saldo * 0.10 : 0;
+  if (pag.pagando) {
+    const item = pag.pagando;
+    const saldo = Math.max(0, (Number(item.total_a_pagar) || 0) - (Number(item.desconto) || 0) - (Number(item.valor_pago) || 0));
+    const desconto10 = calcularDescontoApp(saldo, pag.formaPag);
     const aPagar = saldo - desconto10;
-    const opts = [
-      { v: "PIX", t: "PIX", s: "10% de desconto" },
-      { v: "CARTAO", t: "Cartao", s: "Sem desconto" },
-      { v: "BARCO", t: "Pagar no barco", s: "Sem desconto, confirma no embarque" },
-    ];
     return <div className="screen-enter" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <button onClick={() => { setPagando(null); setErrPag(""); setFormaPag("PIX"); }} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
+      <button onClick={pag.cancelar} style={{ background: "none", border: "none", color: t.txMuted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: 0 }}>{"< Voltar"}</button>
       <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Pagar encomenda</h1>
       <Cd style={{ padding: 14 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{pagando.numero_encomenda}</div>
-        <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>De: {pagando.remetente || "-"}</div>
-        <div style={{ fontSize: 12, color: t.txMuted }}>Para: {pagando.destinatario || "-"}</div>
-        {pagando.embarcacao && <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>Embarcacao: {pagando.embarcacao}</div>}
+        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace", color: t.pri }}>{item.numero_encomenda}</div>
+        <div style={{ fontSize: 12, color: t.txMuted, marginTop: 4 }}>De: {item.remetente || "-"}</div>
+        <div style={{ fontSize: 12, color: t.txMuted }}>Para: {item.destinatario || "-"}</div>
+        {item.embarcacao && <div style={{ fontSize: 12, color: t.txMuted, marginTop: 2 }}>Embarcacao: {item.embarcacao}</div>}
       </Cd>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>Forma de pagamento</div>
-      {opts.map(o => {
-        const sel = formaPag === o.v;
-        return <Cd key={o.v} style={{ padding: 12, cursor: "pointer", border: `2px solid ${sel ? t.pri : t.border}`, background: sel ? t.accent : t.card }} onClick={() => setFormaPag(o.v)}>
+      {FORMAS_PAGAMENTO.map(o => {
+        const sel = pag.formaPag === o.v;
+        return <Cd key={o.v} style={{ padding: 12, cursor: "pointer", border: `2px solid ${sel ? t.pri : t.border}`, background: sel ? t.accent : t.card }} onClick={() => pag.setFormaPag(o.v)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div><div style={{ fontSize: 14, fontWeight: 600 }}>{o.t}</div>
               <div style={{ fontSize: 11, color: t.txMuted, marginTop: 2 }}>{o.s}</div></div>
@@ -113,9 +75,9 @@ export default function EncomendaCPF() {
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.border}` }}><span>Total</span><span style={{ color: t.pri }}>{money(aPagar)}</span></div>
       </Cd>
 
-      {errPag && <div role="alert" style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{errPag}</div>}
-      <button onClick={confirmarPagamento} disabled={enviando} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: enviando ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14 }}>
-        {enviando ? "Processando..." : formaPag === "BARCO" ? "Reservar para pagar no barco" : `Pagar via ${formaPag === "PIX" ? "PIX" : "cartao"}`}
+      {pag.errPag && <div role="alert" style={{ padding: "10px 14px", borderRadius: 10, background: t.errBg, color: t.errTx, fontSize: 12 }}>{pag.errPag}</div>}
+      <button onClick={confirmarPagamento} disabled={pag.enviando} className="btn-primary" style={{ width: "100%", padding: "14px 0", background: pag.enviando ? t.txMuted : t.priGrad, color: "#fff", fontSize: 14 }}>
+        {pag.enviando ? "Processando..." : pag.formaPag === "BARCO" ? "Reservar para pagar no barco" : `Pagar via ${pag.formaPag === "PIX" ? "PIX" : "cartao"}`}
       </button>
     </div>;
   }
@@ -166,7 +128,7 @@ export default function EncomendaCPF() {
                 </div>
               </div>
               {podeP && (
-                <button onClick={() => setPagando(e)} className="btn-primary" style={{ marginTop: 10, width: "100%", padding: "10px 0", background: t.priGrad, color: "#fff", fontSize: 13, borderRadius: 10, border: "none", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                <button onClick={() => pag.setPagando(e)} className="btn-primary" style={{ marginTop: 10, width: "100%", padding: "10px 0", background: t.priGrad, color: "#fff", fontSize: 13, borderRadius: 10, border: "none", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                   Pagar encomenda
                 </button>
               )}
@@ -182,7 +144,7 @@ export default function EncomendaCPF() {
         )
       }
 
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      {pag.toast && <Toast message={pag.toast} onClose={() => pag.setToast(null)} />}
     </div>
   );
 }

@@ -11,6 +11,10 @@ import { useAuth } from "../contexts/AuthContext.jsx";
 /* ═══ CONFIG ═══ */
 const REFRESH_MS = 30_000;
 const BOUNDS = { latMin: -5, latMax: 0, lonMin: -70, lonMax: -50 };
+// Status freshness palette (domain-specific, fora de theme.js que e brand-only).
+const GPS_FRESH = "#22C55E";
+const GPS_STALE = "#F59E0B";
+const GPS_OLD = "#9CA3AF";
 
 /* ═══ HELPERS ═══ */
 function latLonToPercent(lat, lon) {
@@ -34,9 +38,9 @@ function tempoRelativo(iso) {
 function statusCor(iso) {
   if (!iso) return "gray";
   const min = (Date.now() - new Date(iso).getTime()) / 60000;
-  if (min < 5) return "#22C55E";
-  if (min < 30) return "#F59E0B";
-  return "#9CA3AF";
+  if (min < 5) return GPS_FRESH;
+  if (min < 30) return GPS_STALE;
+  return GPS_OLD;
 }
 
 /* ═══ HOOK: fetch GPS positions ═══ */
@@ -166,7 +170,7 @@ function RiverMap({ boats, onSelectBoat }) {
               width: 14, height: 14, borderRadius: "50%",
               background: cor, border: "2px solid white",
               boxShadow: `0 0 8px ${cor}`,
-              animation: cor === "#22C55E" ? "pulse-gps 2s infinite" : undefined
+              animation: cor === GPS_FRESH ? "pulse-gps 2s infinite" : undefined
             }} />
             <div style={{
               fontSize: 9, color: "white", fontWeight: 600,
@@ -186,7 +190,7 @@ function RiverMap({ boats, onSelectBoat }) {
         background: "rgba(0,0,0,0.6)", borderRadius: 8,
         padding: "5px 10px", display: "flex", gap: 12, alignItems: "center"
       }}>
-        {[["#22C55E", "< 5 min"], ["#F59E0B", "< 30 min"], ["#9CA3AF", "> 30 min"]].map(([c, label]) => (
+        {[[GPS_FRESH, "< 5 min"], [GPS_STALE, "< 30 min"], [GPS_OLD, "> 30 min"]].map(([c, label]) => (
           <div key={c} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
             <span style={{ fontSize: 9, color: "rgba(255,255,255,0.7)" }}>{label}</span>
@@ -380,8 +384,8 @@ export default function MapaCPF() {
       {/* CSS animations */}
       <style>{`
         @keyframes pulse-gps {
-          0%, 100% { box-shadow: 0 0 4px #22C55E; }
-          50% { box-shadow: 0 0 14px #22C55E, 0 0 24px rgba(34,197,94,0.3); }
+          0%, 100% { box-shadow: 0 0 4px ${GPS_FRESH}; }
+          50% { box-shadow: 0 0 14px ${GPS_FRESH}, 0 0 24px rgba(34,197,94,0.3); }
         }
         @keyframes spin {
           from { transform: rotate(0deg); }

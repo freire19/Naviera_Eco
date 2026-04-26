@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { API, useApi, authFetch } from "../api.js";
-import { fmt, money, lerRespostaJson } from "../helpers.js";
+import { fmt, money, lerRespostaJson, calcularDescontoApp } from "../helpers.js";
 import { IconBack, IconCheck, IconCalendar } from "../icons.jsx";
 import Badge from "../components/Badge.jsx";
 import Cd from "../components/Card.jsx";
@@ -114,7 +114,7 @@ export default function PassagensCPF() {
     {tipoSel && (() => {
       const tarifa = tarifasDaViagem.find(x => x.tipo_passageiro_id === tipoSel);
       const valorTotal = tarifa ? Math.max(0, (Number(tarifa.valor_transporte) || 0) + (Number(tarifa.valor_alimentacao) || 0) - (Number(tarifa.valor_desconto) || 0)) : 0;
-      const desconto10 = formaPag === "PIX" ? valorTotal * 0.10 : 0;
+      const desconto10 = calcularDescontoApp(valorTotal, formaPag);
       const aPagar = valorTotal - desconto10;
       const opts = [
         { v: "PIX", t: "PIX", s: "10% de desconto" },
