@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.5...api-v1.1.6) (2026-04-26)
+
+
+### Refactoring
+
+* **api:** DM075 — AsaasGateway recebe RestTemplateBuilder injetado ([1df5812](https://github.com/freire19/Naviera_Eco/commit/1df5812a5466e267ec3079ef00c3e1b60158014b))
+
 ## [1.1.5](https://github.com/freire19/Naviera_Eco/compare/api-v1.1.4...api-v1.1.5) (2026-04-25)
 
 
