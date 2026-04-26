@@ -11,7 +11,7 @@
 
     <groupId>com.naviera</groupId>
     <artifactId>naviera-api</artifactId>
-    <version>1.1.6-SNAPSHOT</version>
+    <version>1.1.6</version>
     <name>Naviera API</name>
     <description>Backend REST API para o app Naviera — navegação fluvial</description>
 
