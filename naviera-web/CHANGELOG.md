@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.6](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.5...web-v1.7.6) (2026-04-26)
+
+
+### Performance
+
+* **web:** DEEP_PERFORMANCE V5.0 MEDIO/BAIXO — useMemo, batch POST, dir cache ([82af664](https://github.com/freire19/Naviera_Eco/commit/82af664c38b28b2f733bbdb4a73e8f5c592b4ccc))
+
 ## [1.7.5](https://github.com/freire19/Naviera_Eco/compare/web-v1.7.4...web-v1.7.5) (2026-04-25)
 
 
