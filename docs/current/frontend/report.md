@@ -13,10 +13,9 @@
 
 1. **Estado geral do frontend:** **sólido**. A11y atende WCAG básico (landmarks, h1 único por screen, ARIA, htmlFor, role=alert, touch targets ≥40px). Performance: bundle main -38%, STOMP/SockJS lazy, GPS pausa em background. Arquitetura: contextos eliminam prop drilling, HTTP unificado.
 
-2. **Top 3 pendências remanescentes (todas refactors maiores, não bloqueantes):**
-   - **Duplicação de fluxo de pagamento** entre `FinanceiroCNPJ` e `EncomendaCPF` — extrair `usePagamento` hook + `<PagamentoModal>`.
-   - **Navegação custom via `useState`** sem deep links / back-button do Android — avaliar `react-router` (HashRouter) para PWA.
-   - **Inline styles densos** (até 75 em PassagensCPF) — extrair primitives `<Card>`/`<Button>`/`<Input>` em vez de spreads inline.
+2. **Pendências remanescentes (refactors arquiteturais opcionais, não bloqueantes):**
+   - **Navegação custom via `useState`** sem deep links / back-button do Android — avaliar `react-router` (HashRouter) para PWA. Mudaria paradigma de navegação.
+   - **Inline styles densos** (até 75 em PassagensCPF) — extrair primitives `<Card>`/`<Button>`/`<Input>` em vez de spreads inline. Refactor de muito código com baixo risco mas alto custo.
 
 3. **Top 3 forças:**
    - **Cobertura de loading/empty** — 11/14 screens usam `Skeleton`, 9/14 têm empty state explícito.
@@ -61,7 +60,7 @@
 
 ### Arquitetura
 - ~~**Prop drilling de `authHeaders` em 12 screens**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — origem: review. Ação aplicada: `AuthContext` expõe `token`/`usuario`/`authHeaders`/`login`/`logout`; todas as screens consomem via `useAuth()`.
-- **Duplicação substancial entre `FinanceiroCNPJ` e `EncomendaCPF`** (fluxo pagamento) — origem: review. Loc: `FinanceiroCNPJ.jsx:24-37` vs `EncomendaCPF.jsx:33-50`. Ação: extrair `usePagamento(item, endpoint)` hook + `<PagamentoModal>`.
+- ~~**Duplicação substancial entre `FinanceiroCNPJ` e `EncomendaCPF`**~~ _(corrigido 2026-04-25 — commit 7128196)_ — origem: review. Ação aplicada: novo `hooks/usePagamento.js` (state + confirmar) + `components/PagamentoSucesso.jsx` (tela de sucesso compartilhada). Modais ficam inline porque divergem (forma options, saldo formula, header fields, button text). `helpers.calcularDescontoApp` agora consumido nas 3 telas (era usado só em PassagensCPF).
 - **Navegação custom via `useState` em vez de router** — origem: review (manutenção) + ux (sem deep links / back-button do Android fecha app) + perf (sem code-split por rota). Loc: `App.jsx:66-69,142-156`. Ação: avaliar `react-router` com `HashRouter` ou `MemoryRouter` para PWA.
 - **Inline styles densos nas screens (até 75 ocorrências em PassagensCPF)** — origem: review. Loc top: `PassagensCPF.jsx`(75), `FinanceiroCNPJ.jsx`(50), `MapaCPF.jsx`(47), `EncomendaCPF.jsx`(45), `BilheteScreen.jsx`(45). Ação: combinar classes em `App.css` com tokens via `useTheme()`; padronizar primitives `<Card>`/`<Button>`/`<Input>`.
 
@@ -88,14 +87,14 @@
 
 ## Achados menores (🟢)
 
-- **28 cores hex hardcoded fora de `theme.js`** — review. A maioria é `"#fff"` justificável; ~10 são palette GPS em `MapaCPF.jsx:35-37,90,148,168` que deveriam ser tokens.
+- ~~**28 cores hex hardcoded fora de `theme.js`**~~ _(parcialmente corrigido 2026-04-25 — commit 7128196)_ — review. Palette GPS extraída para `GPS_FRESH/STALE/OLD` constants em `MapaCPF.jsx`. Os ~18 restantes são `"#fff"` em texto sobre gradiente (justificável) e cores de overlay no SVG do mapa (domain-specific).
 - **Variáveis de erro com 4 nomes diferentes** — review. `erro` vs `loginErro` vs `errPag` vs `setMsg`. Padronizar.
 - **Componentes minúsculos (5–9 LOC) sub-utilizados** — review. `Card.jsx`, `Skeleton.jsx`, `Bar.jsx`, `Avatar.jsx`, `Logo.jsx`, `Toast.jsx`. Validar consumo real.
 - ~~**`api.js` exporta `api` mas zero importadores**~~ _(corrigido 2026-04-25 — commit 1007dbb)_ — review. Ação aplicada: removido export `api` + função `request` interna.
 - **Workaround StrictMode no escopo de módulo** — review. Loc: `App.jsx:28-44`. Funcional mas confuso; extrair para `migrations/migrateAuthStorage.js` chamado em `main.jsx`.
 - **`setTimeout` ad-hoc em 4 lugares** — review. `Toast.jsx:4`, `NotificationBanner.jsx:22`, `PagamentoArtefato.jsx:47`, `MapaCPF.jsx:237`. Tolerável.
 - **Padrão de feedback inconsistente** — ux. Toast em 3 screens, banner inline em outras, `console.warn` em algumas. Padronizar.
-- **Avatar usa `alt=""` em contexto onde identifica usuário** — ux. `Avatar.jsx:5`, consumido por `Header.jsx:17`. Quando autônomo, passar nome ou usar `aria-label` no botão pai.
+- ~~**Avatar usa `alt=""` em contexto onde identifica usuário**~~ _(corrigido 2026-04-25 — commit 7128196)_ — ux. Avatar agora aceita `alt` prop com `role="img"`/`aria-label` no fallback de letras. Sítios de identificação (PerfilScreen, LojaCNPJ etc.) podem opcionalmente passar o nome.
 - **Skeleton sem variantes** — ux. Genérico retangular para todas as situações.
 - **Vite config minimalista — sem `manualChunks`** — perf. Vendor (React/STOMP/SockJS) num único chunk. Ação: split `vendor` e `realtime`.
 - **`Toast` reinicia timer quando `onClose` muda referência** — perf. `Toast.jsx:4`, consumer em `PassagensCPF.jsx:206` passa `() => setToast(null)` inline. Suposição (validar). Ação: estabilizar `onClose` com `useCallback`.
@@ -146,8 +145,8 @@ Explícito:
 - **Formulários analisados:** 5 (LoginScreen, TelaCadastro, PerfilScreen, EncomendaCPF busca, AmigosCPF busca)
 - **Cobertura de estados (loading/empty/error/success) completa:** ~7/14 screens com os 4 estados explícitos; todas com pelo menos success path
 - **Achados críticos totais:** 7 → **0 abertos** (7 corrigidos)
-- **Achados moderados totais:** 17 → **3 abertos** (14 corrigidos). Pendentes: usePagamento hook (Financ./Encomenda dup), inline styles → primitives, react-router. Refactors maiores fora do escopo dos lotes anteriores.
-- **Achados menores totais:** 11 → **10 abertos** (1 corrigido: dead `api` export)
+- **Achados moderados totais:** 17 → **2 abertos** (15 corrigidos). Pendentes: inline styles → primitives, react-router. Refactors arquiteturais opcionais.
+- **Achados menores totais:** 11 → **8 abertos** (3 corrigidos: dead `api` export, GPS palette → constants, Avatar alt opcional)
 - **`any` em código:** 0 (sem TypeScript)
 - **Atributos ARIA no app inteiro:** 1 → **35+** (aria-label, aria-current, role=alert/status, aria-live, aria-expanded, aria-haspopup, aria-invalid implícito)
 - **`htmlFor` em labels:** 0 / 16 labels → **16 / 16**
