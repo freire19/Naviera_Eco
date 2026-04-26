@@ -49,11 +49,15 @@ export default function AmigosCPF() {
     refresh(); refreshPendentes();
   };
 
-  const removerAmigo = async (amizadeId, nome, contexto = "remover") => {
-    const msg = contexto === "recusar" ? `Recusar convite de ${nome}?` : `Remover ${nome} dos amigos?`;
-    if (!window.confirm(msg)) return;
+  const deletarAmizade = async (amizadeId) => {
     await authFetch(`${API}/amigos/${amizadeId}`, { method: "DELETE", headers: authHeaders });
     refresh(); refreshPendentes();
+  };
+  const recusarConvite = (amizadeId, nome) => {
+    if (window.confirm(`Recusar convite de ${nome}?`)) deletarAmizade(amizadeId);
+  };
+  const removerAmigo = (amizadeId, nome) => {
+    if (window.confirm(`Remover ${nome} dos amigos?`)) deletarAmizade(amizadeId);
   };
 
   const PessoaCard = ({ p, acao }) => (
@@ -91,7 +95,7 @@ export default function AmigosCPF() {
       {pendentes.map(p => <PessoaCard key={p.amizadeId} p={p} acao={
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => aceitarAmigo(p.amizadeId)} style={{ background: t.priGrad, border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: "#fff", fontSize: 11, fontWeight: 600 }}>Aceitar</button>
-          <button onClick={() => removerAmigo(p.amizadeId, p.nome, "recusar")} style={{ background: "none", border: `1px solid ${t.border}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: t.txMuted, fontSize: 11 }}>Recusar</button>
+          <button onClick={() => recusarConvite(p.amizadeId, p.nome)} style={{ background: "none", border: `1px solid ${t.border}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: t.txMuted, fontSize: 11 }}>Recusar</button>
         </div>
       } />)}
     </>}

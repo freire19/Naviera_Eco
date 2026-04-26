@@ -1,12 +1,4 @@
 import { useState } from "react";
-// #DP082: opts em escopo de modulo — antes recriava o array a cada render do PagandoView,
-//   forçando React a tratar Cd elements como nova prop reference.
-const FORMAS_PAGAMENTO = [
-  { v: "PIX", t: "PIX", s: "10% de desconto" },
-  { v: "CARTAO", t: "Cartao", s: "Sem desconto" },
-  { v: "BOLETO", t: "Boleto", s: "Sem desconto, link via email" },
-  { v: "BARCO", t: "Pagar no barco", s: "Sem desconto, no embarque" },
-];
 import { API, useApi, authFetch } from "../api.js";
 import { fmt, money } from "../helpers.js";
 import Badge from "../components/Badge.jsx";
@@ -17,6 +9,15 @@ import Toast from "../components/Toast.jsx";
 import PagamentoArtefato from "../components/PagamentoArtefato.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useAuth } from "../contexts/AuthContext.jsx";
+
+// #DP082: opts em escopo de modulo — antes recriava o array a cada render do PagandoView,
+//   forçando React a tratar Cd elements como nova prop reference.
+const FORMAS_PAGAMENTO = [
+  { v: "PIX", t: "PIX", s: "10% de desconto" },
+  { v: "CARTAO", t: "Cartao", s: "Sem desconto" },
+  { v: "BOLETO", t: "Boleto", s: "Sem desconto, link via email" },
+  { v: "BARCO", t: "Pagar no barco", s: "Sem desconto, no embarque" },
+];
 
 export default function FinanceiroCNPJ() {
   const { t } = useTheme();
