@@ -7,8 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -19,6 +19,7 @@ import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -49,14 +50,16 @@ public class AsaasGateway implements PspGateway {
     private final RestTemplate rest;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public AsaasGateway(AsaasProperties props, Environment env) {
+    // #DM075: RestTemplateBuilder injetado em vez de `new RestTemplate()` inline — permite
+    //   override centralizado em testes (Spring auto-substitui builder em @SpringBootTest)
+    //   e mantem timeouts antes resolvidos por SimpleClientHttpRequestFactory.
+    public AsaasGateway(AsaasProperties props, Environment env, RestTemplateBuilder builder) {
         this.props = props;
         this.env = env;
-        // #300: sem timeout, um slowloris upstream trava a thread + conexao indefinidamente.
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5_000);
-        factory.setReadTimeout(15_000);
-        this.rest = new RestTemplate(factory);
+        this.rest = builder
+            .setConnectTimeout(Duration.ofSeconds(5))
+            .setReadTimeout(Duration.ofSeconds(15))
+            .build();
     }
 
     @Override
