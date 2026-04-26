@@ -198,7 +198,7 @@ public CobrancaResponse criarCobranca(CobrancaRequest req) {
 ---
 
 #### Issue #DM075 — `AsaasGateway` instancia `RestTemplate` inline (sem injecao + sem timeout)
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivo:** `naviera-api/src/main/java/com/naviera/api/psp/AsaasGateway.java:39, 44`
 - **Problema:**
@@ -311,7 +311,7 @@ Nao e SQL injection (input vem de configuracao server-side, nao de request). **M
 ### Cross-cutting
 
 #### Issue #DM082 — `log_erros.txt` (3495 linhas) commitado no root + `db.properties.bak2` apesar de pattern em .gitignore
-- [ ] **Concluido**
+- [x] **Concluido**
 - **Severidade:** ALTO
 - **Arquivos:** `log_erros.txt` (~150KB, 3495L), `db.properties.bak2` (1.6KB)
 - **Problema:**
